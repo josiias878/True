@@ -1,0 +1,424 @@
+{
+  "categories": [
+    { "id": "palmoel",      "name": "Palmöl",               "icon": "🌴", "description": "Palmöl in Lieferketten verbunden mit Regenwald-Abholzung und Artenverlust", "createdBy": "manual", "createdAt": "2025-01-01" },
+    { "id": "wasser",       "name": "Wasserrechte",         "icon": "💧", "description": "Abpumpen von Grundwasser in wasserarmen Regionen, Privatisierung von Wasserquellen", "createdBy": "manual", "createdAt": "2025-01-01" },
+    { "id": "pfas",         "name": "PFAS / Chemikalien",   "icon": "☠️", "description": "Einsatz von per- und polyfluorierten Alkylsubstanzen — für immer in der Umwelt", "createdBy": "manual", "createdAt": "2025-01-01" },
+    { "id": "glyphosat",    "name": "Glyphosat",            "icon": "🧬", "description": "Herbizid klassifiziert als wahrscheinlich krebserregend (IARC Gruppe 2A)", "createdBy": "manual", "createdAt": "2025-01-01" },
+    { "id": "plastik",      "name": "Plastik",              "icon": "🐟", "description": "Größter Verursacher von Einwegplastikmüll weltweit, Meeresplastik", "createdBy": "manual", "createdAt": "2025-01-01" },
+    { "id": "kinderarbeit", "name": "Kinderarbeit",         "icon": "👶", "description": "Dokumentierte Kinderarbeit in Kakao- und Palmöl-Lieferketten", "createdBy": "manual", "createdAt": "2025-01-01" },
+    { "id": "nova4",        "name": "Ultra-verarbeitet",    "icon": "🏭", "description": "NOVA Gruppe 4 — stark verarbeitetes Lebensmittel mit gesundheitlichen Risiken", "createdBy": "manual", "createdAt": "2025-01-01" },
+    { "id": "mikroplastik", "name": "Mikroplastik",         "icon": "🔬", "description": "Mikroplastik in Produkten und Produktionsabwässern nachgewiesen", "createdBy": "manual", "createdAt": "2025-01-01" },
+    { "id": "abholzung",    "name": "Abholzung",            "icon": "🌳", "description": "Direkte oder indirekte Verbindung zur Abholzung von Regenwäldern", "createdBy": "manual", "createdAt": "2025-01-01" },
+    { "id": "steuern",      "name": "Steuervermeidung",     "icon": "💸", "description": "Aggressive Steuervermeidung in Niedrigsteuerländern", "createdBy": "manual", "createdAt": "2025-01-01" },
+    { "id": "zucker",       "name": "Zuckerzusatz",         "icon": "🍬", "description": "Übermäßiger Zuckerzusatz, gezieltes Marketing an Kinder", "createdBy": "manual", "createdAt": "2025-01-01" },
+    { "id": "tierwohl",     "name": "Tierwohl",             "icon": "🐄", "description": "Dokumentierte Tierschutzmängel in Lieferketten", "createdBy": "manual", "createdAt": "2025-01-01" },
+    { "id": "arbeit",       "name": "Arbeitsbedingungen",   "icon": "⚠️", "description": "Überdurchschnittlich hohe Verletzungsraten, Niedriglöhne, Anti-Gewerkschafts-Praktiken", "createdBy": "manual", "createdAt": "2025-01-01" },
+    { "id": "co2",          "name": "CO₂ / Klima",          "icon": "🌍", "description": "Hohe CO₂-Emissionen, Blockade von Klimaschutzmaßnahmen", "createdBy": "manual", "createdAt": "2025-01-01" },
+    { "id": "greenwashing", "name": "Greenwashing",         "icon": "🎭", "description": "Irreführende Nachhaltigkeitsversprechen ohne belegte Maßnahmen", "createdBy": "manual", "createdAt": "2025-01-01" }
+  ],
+  "evidence": [
+    { "id": "nestle-palm-1",      "title": "Nestlé Palmöl-Lieferkette zerstört Borneo-Regenwald",              "source": "Rainforest Action Network",     "date": "2020-03-12", "level": "verified" },
+    { "id": "nestle-water-1",     "title": "Nestlé pumpt Grundwasser in Michigan während Dürre ab",             "source": "Michigan Live / Bloomberg",     "date": "2021-07-08", "level": "verified" },
+    { "id": "nestle-child-1",     "title": "Kinderarbeit in Nestlé Kakao-Lieferketten dokumentiert",           "source": "Washington Post Investigation", "date": "2019-06-05", "level": "verified" },
+    { "id": "nestle-plastic-1",   "title": "Nestlé #1 Plastikverschmutzer weltweit — 5. Jahr in Folge",        "source": "Break Free From Plastic 2023", "date": "2023-10-18", "level": "verified" },
+    { "id": "nestle-baby-1",      "title": "Nestlé vermarktet Babynahrung gegen WHO-Empfehlungen in Asien",    "source": "WHO / Save the Children 2022", "date": "2022-04-11", "level": "verified" },
+    { "id": "cocacola-water-1",   "title": "Coca-Cola entnimmt täglich 1,8 Mrd. Liter Grundwasser",           "source": "TU Berlin Studie",             "date": "2023-05-14", "level": "verified" },
+    { "id": "cocacola-plastic-1", "title": "Coca-Cola #2 Plastikverschmutzer weltweit",                        "source": "Break Free From Plastic 2023", "date": "2023-10-18", "level": "verified" },
+    { "id": "cocacola-zucker-1",  "title": "Coca-Cola bekämpft Zuckersteuer in mehreren Ländern",              "source": "BMJ / Politico Europe 2023",   "date": "2023-08-22", "level": "verified" },
+    { "id": "bayer-glyph-1",      "title": "Bayer zahlt 13 Mrd. USD für Glyphosat-Krebsklagen",               "source": "US Federal Court",             "date": "2023-02-22", "level": "verified" },
+    { "id": "bayer-glyph-2",      "title": "Glyphosat wahrscheinlich krebserregend — IARC Gruppe 2A",         "source": "IARC / WHO",                   "date": "2015-03-20", "level": "verified" },
+    { "id": "bayer-glyph-3",      "title": "Bayer verliert $2,25 Mrd. Klage — Non-Hodgkin-Lymphom",          "source": "US Court of Appeals",          "date": "2022-05-13", "level": "verified" },
+    { "id": "unilever-palm-1",    "title": "Unilever Palmöl-Lieferkette — Abholzung in Indonesien",           "source": "Greenpeace Report",            "date": "2021-09-30", "level": "verified" },
+    { "id": "unilever-plastic-1", "title": "Unilever: 85% Plastikverpackungen nicht recycelbar",               "source": "Changing Markets Foundation",  "date": "2022-06-14", "level": "verified" },
+    { "id": "pg-pfas-1",          "title": "P&G Ariel Pods enthalten PFAS-Beschichtung",                      "source": "EFSA Chemikalienbericht",      "date": "2023-06-15", "level": "pending"  },
+    { "id": "pg-micro-1",         "title": "Mikroplastik aus Waschmitteln in Flusssedimenten nachgewiesen",   "source": "Fraunhofer Institut",          "date": "2022-11-08", "level": "verified" },
+    { "id": "mondelez-child-1",   "title": "Mondelez Kakao-Lieferkette: 19.000 Kinder in Kinderarbeit",      "source": "Washington Post",              "date": "2019-06-05", "level": "verified" },
+    { "id": "mondelez-palm-1",    "title": "Mondelez kauft Palmöl aus entwaldeten Gebieten — RSPO versagt",   "source": "Rainforest Alliance 2022",     "date": "2022-11-03", "level": "verified" },
+    { "id": "pepsico-plastic-1",  "title": "PepsiCo #3 Plastikverschmutzer weltweit",                         "source": "Break Free From Plastic 2023", "date": "2023-10-18", "level": "verified" },
+    { "id": "pepsico-zucker-1",   "title": "PepsiCo vermarktet zuckerreiche Produkte gezielt an Kinder",      "source": "PAHO / WHO 2023",              "date": "2023-07-19", "level": "verified" },
+    { "id": "shell-niger-1",      "title": "Shell Niger-Delta: 50 Jahre Ölverschmutzung",                     "source": "UN Environment Programme",     "date": "2022-04-04", "level": "verified" },
+    { "id": "shell-co2-1",        "title": "Shell ignoriert Gerichtsurteil zur CO₂-Reduzierung",              "source": "Rechtbank Den Haag",           "date": "2021-05-26", "level": "verified" },
+    { "id": "ferrero-palm-1",     "title": "Ferrero Palmöl-Zertifizierung reicht nicht zum Schutz",           "source": "WWF Palmöl-Scorecard",         "date": "2022-07-19", "level": "verified" },
+    { "id": "ferrero-child-1",    "title": "Kinderarbeit in Ferrero Haselnuss-Lieferkette (Türkei)",          "source": "Reuters Investigation 2021",   "date": "2021-08-11", "level": "verified" },
+    { "id": "henkel-pfas-1",      "title": "Persil Tensid-Rückstände im Grundwasser nachgewiesen",            "source": "Umweltbundesamt",              "date": "2022-09-12", "level": "pending"  },
+    { "id": "mars-palm-1",        "title": "Mars Palmöl-Lieferanten in Indonesien wegen Brandrodung",         "source": "Rainforest Alliance 2023",     "date": "2023-03-11", "level": "verified" },
+    { "id": "kelloggs-palm-1",    "title": "Kellogg's RSPO-Zertifizierung schützt Regenwald nicht",           "source": "TuK Indonesia 2022",           "date": "2022-08-17", "level": "verified" },
+    { "id": "danone-water-1",     "title": "Danone (Evian) Wasserentnahme in Hochsavoyen unter Kritik",       "source": "Le Monde / WWF France 2023",   "date": "2023-09-05", "level": "verified" },
+    { "id": "danone-plastic-1",   "title": "Danone verfehlt eigene Plastik-Reduktionsziele 2022",             "source": "Plastics Scorecard 2023",      "date": "2023-04-18", "level": "verified" },
+    { "id": "kraftheinz-nova-1",  "title": "Kraft Heinz: 90% Produkte als NOVA Gruppe 3-4 eingestuft",        "source": "NOVA / NOVA-BR Studie 2022",   "date": "2022-06-01", "level": "verified" },
+    { "id": "kraftheinz-salt-1",  "title": "Kraft Heinz Saucen: Natriumgehalt 2× über WHO-Empfehlung",       "source": "Stiftung Warentest 2023",      "date": "2023-05-03", "level": "verified" },
+    { "id": "ritter-palm-1",      "title": "Ritter Sport: Palmöl aus nicht-zertifizierten Quellen",           "source": "WWF Palmöl-Scorecard 2022",    "date": "2022-07-19", "level": "verified" },
+    { "id": "haribo-child-1",     "title": "Haribo Gelatine-Lieferkette: Tierschutzmängel dokumentiert",      "source": "ARD Reportage 2020",           "date": "2020-02-24", "level": "verified" },
+    { "id": "haribo-zucker-1",    "title": "Haribo wirbt intensiv bei Kindern unter 12 Jahren",               "source": "Verbraucherzentrale 2022",     "date": "2022-11-14", "level": "verified" },
+    { "id": "deoetker-palm-1",    "title": "Dr. Oetker Tiefkühlpizzen enthalten nicht-zertifiziertes Palmöl", "source": "Foodwatch 2023",               "date": "2023-02-28", "level": "pending"  },
+    { "id": "amazon-arbeit-1",    "title": "Amazon Lagerarbeiter: doppelt so hohe Verletzungsrate wie Branche","source": "OSHA Report 2022",             "date": "2022-10-01", "level": "verified" },
+    { "id": "amazon-steuer-1",    "title": "Amazon zahlt unter 1% effektiven Steuersatz auf EU-Gewinne",      "source": "EU Tax Observatory 2022",      "date": "2022-11-22", "level": "verified" },
+    { "id": "amazon-waste-1",     "title": "Amazon vernichtete 2021 täglich über 3 Mio. unverkaufte Artikel", "source": "ITV News Investigation 2021",  "date": "2021-06-21", "level": "verified" },
+    { "id": "barilla-water-1",    "title": "Barilla verbraucht 1.700 Liter Wasser pro Kilo Pasta",            "source": "Water Footprint Network 2022", "date": "2022-03-15", "level": "verified" },
+    { "id": "barilla-palm-1",     "title": "Barilla-Saucen enthalten Palmöl aus kritischen Lieferketten",     "source": "RSPO Audit 2022",              "date": "2022-09-07", "level": "pending"  },
+    { "id": "dm-micro-1",         "title": "dm Eigenmarken: Mikroplastik in Duschgel-Produkten nachgewiesen", "source": "BUND Test 2022",               "date": "2022-04-22", "level": "pending"  },
+    { "id": "caprisonne-zucker-1","title": "Capri-Sonne enthält bis zu 11g Zucker pro 200ml Portion",         "source": "Öko-Test 2023",                "date": "2023-06-12", "level": "verified" },
+    { "id": "reckitt-pfas-1",     "title": "Reckitt Calgon-Produkte: PFAS-Verbindungen im Abwasser",          "source": "ECHA Risikobewertung 2023",    "date": "2023-08-30", "level": "pending"  },
+    { "id": "3m-pfas-1",          "title": "3M stellt PFAS-Produktion ein — nach 15 Mrd. USD Klagen",         "source": "US Federal Court / Bloomberg", "date": "2022-12-20", "level": "verified" },
+    { "id": "muller-tierwohl-1",  "title": "Müller Milch: Bezogene Rohmilch aus Haltung unter EU-Mindeststandard","source": "Tierschutzbund 2021",       "date": "2021-11-08", "level": "pending"  }
+  ],
+  "corporations": [
+    {
+      "id": "nestle",
+      "name": "Nestlé",
+      "aliases": [
+        "nestle", "nestlé", "nescafe", "nescafé", "nespresso", "maggi", "milo",
+        "purina", "toll house", "after eight", "lion bar", "lion", "smarties",
+        "choco crossies", "nesquik", "vittel", "perrier", "san pellegrino",
+        "contrex", "buxton", "buitoni", "herta", "thomy", "wagner pizza",
+        "wagner", "hot pockets", "stouffer", "lean cuisine", "garden gourmet",
+        "sveltesse", "ski", "yes cake", "kitkat", "kit kat", "kit-kat",
+        "rowntree", "aero", "quality street", "rolo", "yorkie", "polo mint",
+        "cailler", "nestle fitness", "fitness cereals", "cheerios nestle",
+        "uncle tobys", "carnation", "coffee-mate", "nestle pure life"
+      ],
+      "categoryIds": ["palmoel", "wasser", "plastik", "kinderarbeit", "nova4"],
+      "evidenceIds": ["nestle-palm-1", "nestle-water-1", "nestle-child-1", "nestle-plastic-1", "nestle-baby-1"],
+      "severity": "critical",
+      "lastUpdated": "2025-04-01"
+    },
+    {
+      "id": "cocacola",
+      "name": "Coca-Cola",
+      "aliases": [
+        "coca-cola", "coca cola", "cocacola", "coke", "fanta", "sprite",
+        "powerade", "minute maid", "fuze tea", "fuze", "smartwater",
+        "vitaminwater", "vitamin water", "honest tea", "dasani", "schweppes",
+        "appletiser", "mezzo mix", "mezzo-mix", "bonaqua", "glacéau",
+        "simply orange", "burn energy", "monster energy", "costa coffee",
+        "innocent smoothies", "innocent", "illy caffe"
+      ],
+      "categoryIds": ["wasser", "plastik", "nova4", "zucker"],
+      "evidenceIds": ["cocacola-water-1", "cocacola-plastic-1", "cocacola-zucker-1"],
+      "severity": "high",
+      "lastUpdated": "2025-04-01"
+    },
+    {
+      "id": "bayer",
+      "name": "Bayer / Monsanto",
+      "aliases": [
+        "bayer", "monsanto", "roundup", "round up", "glyphosat",
+        "aspirin", "aleve bayer", "canesten", "bepanthen", "claritin",
+        "contadino", "crop science", "dekalb", "seminis", "agraquest"
+      ],
+      "categoryIds": ["glyphosat", "pfas"],
+      "evidenceIds": ["bayer-glyph-1", "bayer-glyph-2", "bayer-glyph-3"],
+      "severity": "critical",
+      "lastUpdated": "2025-04-01"
+    },
+    {
+      "id": "unilever",
+      "name": "Unilever",
+      "aliases": [
+        "unilever", "knorr", "hellmann", "hellmann's", "dove", "axe",
+        "lynx", "ben jerry", "ben & jerry's", "ben and jerry", "lipton",
+        "flora", "domestos", "cif", "comfort fabric", "radox", "rexona",
+        "vaseline", "sunsilk", "timotei", "signal toothpaste", "coral",
+        "omo", "skip", "surf detergent", "sunlight", "vim", "sun care",
+        "becel", "rama margarine", "blueband", "carte d'or", "magnum ice",
+        "wall's", "ben & jerry", "breyers", "good humor", "popsicle",
+        "heartbrand", "solero", "twister ice", "cornetto", "mövenpick ice",
+        "pot noodle", "chicken tonight", "bovril", "colman's mustard",
+        "marmite", "peperami", "slim fast", "alberto balsam"
+      ],
+      "categoryIds": ["palmoel", "abholzung", "nova4", "plastik"],
+      "evidenceIds": ["unilever-palm-1", "unilever-plastic-1"],
+      "severity": "high",
+      "lastUpdated": "2025-04-01"
+    },
+    {
+      "id": "pepsico",
+      "name": "PepsiCo",
+      "aliases": [
+        "pepsico", "pepsi", "pepsi max", "pepsi zero", "lay's", "lays",
+        "doritos", "cheetos", "cheesy wotsits", "wotsits", "gatorade",
+        "tropicana", "lipton ice tea", "mountain dew", "7up", "7 up",
+        "mirinda", "schweppes pepsi", "quaker oats", "quaker", "aunt jemima",
+        "uncle ben pepsi", "naked juice", "sabra", "kevita", "rockstar energy",
+        "stacy's pita", "off the eaten path", "smartfood", "miss vickie",
+        "sunchips", "ruffles chips", "fritos", "funyuns", "tostitos", "santitas",
+        "granola quaker", "cap'n crunch", "life cereal", "oven baked lays"
+      ],
+      "categoryIds": ["palmoel", "plastik", "nova4", "zucker"],
+      "evidenceIds": ["pepsico-plastic-1", "pepsico-zucker-1"],
+      "severity": "high",
+      "lastUpdated": "2025-04-01"
+    },
+    {
+      "id": "mondelez",
+      "name": "Mondelez",
+      "aliases": [
+        "mondelez", "mondelēz", "milka", "oreo", "toblerone", "cadbury",
+        "prince cookies", "tuc crackers", "tuc", "philadelphia cream",
+        "philadelphia", "trident gum", "halls", "chiclets", "dentyne",
+        "bubbaloo", "sour patch", "swedish fish", "lu biscuits", "belvita",
+        "chips ahoy", "nabisco", "ritz crackers", "ritz", "wheat thins",
+        "triscuit", "honey maid", "nutter butter", "peek freans",
+        "jacobs keks", "jacobs", "côte d'or chocolate", "suchard", "marabou",
+        "daim", "freia", "mikado", "pim's", "digestive mcvitie",
+        "cadbury fingers", "flake", "twirl", "roses chocolate", "heroes choc",
+        "crunchie", "picnic bar", "wispa", "boost cadbury", "double decker"
+      ],
+      "categoryIds": ["palmoel", "kinderarbeit", "nova4"],
+      "evidenceIds": ["mondelez-child-1", "mondelez-palm-1"],
+      "severity": "high",
+      "lastUpdated": "2025-04-01"
+    },
+    {
+      "id": "ferrero",
+      "name": "Ferrero",
+      "aliases": [
+        "ferrero", "nutella", "kinder", "kinder bueno", "kinder riegel",
+        "kinder schokolade", "kinder überraschung", "kinder surprise",
+        "kinder pingui", "kinder country", "kinder delice", "kinder maxi",
+        "ferrero rocher", "raffaello", "mon chéri", "rondnoir",
+        "tic tac", "hanuta", "nutella b-ready", "nutella biscuits",
+        "duplo riegel", "duplo", "pocket coffee", "giotto", "küsschen"
+      ],
+      "categoryIds": ["palmoel", "kinderarbeit", "nova4"],
+      "evidenceIds": ["ferrero-palm-1", "ferrero-child-1"],
+      "severity": "high",
+      "lastUpdated": "2025-04-01"
+    },
+    {
+      "id": "pg",
+      "name": "Procter & Gamble",
+      "aliases": [
+        "procter", "gamble", "p&g", "ariel", "ariel pods", "pampers",
+        "gillette", "head & shoulders", "head shoulders", "febreze",
+        "fairy liquid", "lenor", "bold detergent", "daz detergent",
+        "tide detergent", "downy", "gain detergent", "swiffer", "mr clean",
+        "flash cleaner", "bounty paper", "charmin", "pringles", "always pads",
+        "tampax", "oral-b", "crest toothpaste", "scope mouthwash", "olay",
+        "sk-ii", "old spice", "vicks", "zzzquil", "pepto-bismol", "metamucil",
+        "safeguard soap", "secret deodorant", "pantene"
+      ],
+      "categoryIds": ["pfas", "mikroplastik"],
+      "evidenceIds": ["pg-pfas-1", "pg-micro-1"],
+      "severity": "medium",
+      "lastUpdated": "2025-04-01"
+    },
+    {
+      "id": "henkel",
+      "name": "Henkel",
+      "aliases": [
+        "henkel", "persil", "persil universal", "pril", "somat",
+        "schwarzkopf", "got2b", "syoss", "gliss kur", "palette hair",
+        "brillance", "schauma", "fa deodorant", "right guard", "dial soap",
+        "purex laundry", "all detergent", "snuggle", "renuzit",
+        "loctite", "pritt", "rubson", "bref toilet", "sidolin",
+        "terra activ", "vernel", "sil stain", "spee waschmittel"
+      ],
+      "categoryIds": ["pfas", "mikroplastik"],
+      "evidenceIds": ["henkel-pfas-1"],
+      "severity": "medium",
+      "lastUpdated": "2025-04-01"
+    },
+    {
+      "id": "shell",
+      "name": "Shell",
+      "aliases": ["shell", "royal dutch shell", "shell v-power", "shell helix", "shell fuel"],
+      "categoryIds": ["co2", "abholzung", "pfas"],
+      "evidenceIds": ["shell-niger-1", "shell-co2-1"],
+      "severity": "critical",
+      "lastUpdated": "2025-04-01"
+    },
+    {
+      "id": "mars",
+      "name": "Mars",
+      "aliases": [
+        "mars", "bounty", "snickers", "twix", "m&m", "m&ms", "milky way",
+        "extra gum", "wrigley", "doublemint", "juicy fruit", "orbit gum",
+        "skittles", "starburst candy", "pedigree", "whiskas", "royal canin",
+        "iams", "eukanuba", "chappi", "cesar dog", "sheba", "dreamies",
+        "miracoli", "uncle ben's", "dolmio", "masterfoods",
+        "seeds of change", "kind bar", "rondo keks"
+      ],
+      "categoryIds": ["palmoel", "nova4"],
+      "evidenceIds": ["mars-palm-1"],
+      "severity": "medium",
+      "lastUpdated": "2025-04-01"
+    },
+    {
+      "id": "kelloggs",
+      "name": "Kellogg's",
+      "aliases": [
+        "kellogg", "kellogg's", "kelloggs", "cornflakes", "special k",
+        "frosties", "crunchy nut", "coco pops", "rice krispies",
+        "all-bran", "bran flakes", "fruit loops", "pop-tarts", "eggo",
+        "nutri-grain", "cheez-it", "club crackers", "keebler",
+        "townhouse crackers", "morningstar farms", "gardenburger",
+        "bear naked granola", "rxbar", "pringles kelloggs"
+      ],
+      "categoryIds": ["palmoel", "nova4"],
+      "evidenceIds": ["kelloggs-palm-1"],
+      "severity": "medium",
+      "lastUpdated": "2025-04-01"
+    },
+    {
+      "id": "danone",
+      "name": "Danone",
+      "aliases": [
+        "danone", "activia", "actimel", "danonino", "danio", "dan'up",
+        "oikos", "light & fit", "danimals", "evian", "volvic", "badoit",
+        "aqua d'or", "mizone", "zywiec zdroj", "Font Vella",
+        "cow & gate", "aptamil", "nutricia", "bebelac", "milupa",
+        "alpro", "provamel", "silk soy", "so delicious", "horizon organic",
+        "stonyfield", "international delight", "coffee-mate danone",
+        "wallaby organic", "two good", "danonino petit filous"
+      ],
+      "categoryIds": ["wasser", "plastik", "greenwashing"],
+      "evidenceIds": ["danone-water-1", "danone-plastic-1"],
+      "severity": "medium",
+      "lastUpdated": "2025-04-01"
+    },
+    {
+      "id": "kraftheinz",
+      "name": "Kraft Heinz",
+      "aliases": [
+        "kraft", "heinz", "kraft heinz", "philadelphia kraft",
+        "velveeta", "oscar mayer", "lunchables", "planters peanuts",
+        "jell-o", "cool whip", "kool-aid", "tang drink",
+        "maxwell house", "gevalia coffee", "ore-ida", "bagel bites",
+        "smart ones", "weight watchers food", "stove top stuffing",
+        "a.1. sauce", "grey poupon", "classico pasta",
+        "bull's-eye bbq", "heinz ketchup", "heinz mayo",
+        "heinz beanz", "heinz soup", "heinz salad cream",
+        "hp sauce", "lea & perrins", "golden circle",
+        "kraft singles", "kraft mac cheese", "delissio", "digiorno"
+      ],
+      "categoryIds": ["nova4", "zucker", "plastik"],
+      "evidenceIds": ["kraftheinz-nova-1", "kraftheinz-salt-1"],
+      "severity": "high",
+      "lastUpdated": "2025-04-01"
+    },
+    {
+      "id": "ritter",
+      "name": "Ritter Sport",
+      "aliases": [
+        "ritter sport", "ritter", "ritter sport schokolade",
+        "ritter sport knusperkeks", "ritter sport marzipan",
+        "ritter sport pralinés"
+      ],
+      "categoryIds": ["palmoel", "nova4"],
+      "evidenceIds": ["ritter-palm-1"],
+      "severity": "medium",
+      "lastUpdated": "2025-04-01"
+    },
+    {
+      "id": "haribo",
+      "name": "Haribo",
+      "aliases": [
+        "haribo", "goldbären", "gold bears", "maoam", "starmix",
+        "tangfastics", "happy cola", "tropifrutti", "happy cherries",
+        "phantasia", "balla balla", "fruitilicious", "kinder fizz",
+        "berries haribo", "smurfs haribo", "funny mix", "color-rado",
+        "haribo roulette", "twin snakes", "pico-balla"
+      ],
+      "categoryIds": ["tierwohl", "zucker", "nova4"],
+      "evidenceIds": ["haribo-child-1", "haribo-zucker-1"],
+      "severity": "medium",
+      "lastUpdated": "2025-04-01"
+    },
+    {
+      "id": "deoetker",
+      "name": "Dr. Oetker",
+      "aliases": [
+        "dr oetker", "dr. oetker", "oetker", "ristorante pizza",
+        "ristorante", "chicago town", "casa di mama", "gustavo gusto",
+        "vitalis müsli", "paula pudding", "dr oetker pudding",
+        "backpulver oetker", "pizzaboden oetker", "bifi oetker",
+        "frozen pizza oetker", "tradizionale pizza"
+      ],
+      "categoryIds": ["palmoel", "nova4"],
+      "evidenceIds": ["deoetker-palm-1"],
+      "severity": "medium",
+      "lastUpdated": "2025-04-01"
+    },
+    {
+      "id": "caprisonne",
+      "name": "Capri-Sonne",
+      "aliases": [
+        "capri-sonne", "capri sonne", "capri sun", "caprisun", "caprisonne"
+      ],
+      "categoryIds": ["zucker", "nova4", "plastik"],
+      "evidenceIds": ["caprisonne-zucker-1"],
+      "severity": "medium",
+      "lastUpdated": "2025-04-01"
+    },
+    {
+      "id": "barilla",
+      "name": "Barilla",
+      "aliases": [
+        "barilla", "mulino bianco", "harrys bread", "pavesi",
+        "voiello", "academia barilla", "filiz", "yemina",
+        "vesta barilla", "wasa crispbread", "wasa"
+      ],
+      "categoryIds": ["wasser", "palmoel"],
+      "evidenceIds": ["barilla-water-1", "barilla-palm-1"],
+      "severity": "medium",
+      "lastUpdated": "2025-04-01"
+    },
+    {
+      "id": "amazon",
+      "name": "Amazon",
+      "aliases": [
+        "amazon", "amazon basics", "amazon fresh", "whole foods market",
+        "whole foods", "audible", "kindle", "alexa amazon", "ring amazon",
+        "twitch", "prime video", "amazon web services", "aws",
+        "zappos", "goodreads", "amazon launchpad"
+      ],
+      "categoryIds": ["arbeit", "steuern", "co2"],
+      "evidenceIds": ["amazon-arbeit-1", "amazon-steuer-1", "amazon-waste-1"],
+      "severity": "high",
+      "lastUpdated": "2025-04-01"
+    },
+    {
+      "id": "reckitt",
+      "name": "Reckitt",
+      "aliases": [
+        "reckitt", "reckitt benckiser", "finish dishwasher", "finish",
+        "vanish stain", "vanish", "dettol", "lysol", "harpic", "mortein",
+        "nurofen", "strepsils", "gaviscon", "durex", "scholl",
+        "veet", "air wick", "cillit bang", "easy off", "resolve cleaner",
+        "woolite", "calgon", "french's mustard reckitt"
+      ],
+      "categoryIds": ["pfas", "greenwashing"],
+      "evidenceIds": ["reckitt-pfas-1"],
+      "severity": "medium",
+      "lastUpdated": "2025-04-01"
+    },
+    {
+      "id": "3m",
+      "name": "3M",
+      "aliases": [
+        "3m", "scotch tape", "post-it", "scotchgard", "command strips",
+        "filtrete", "nexcare", "peltor", "littmann", "imation",
+        "3m scotch-brite", "scotch-brite", "ace bandage"
+      ],
+      "categoryIds": ["pfas"],
+      "evidenceIds": ["3m-pfas-1"],
+      "severity": "high",
+      "lastUpdated": "2025-04-01"
+    },
+    {
+      "id": "muller",
+      "name": "Müller Milch",
+      "aliases": [
+        "müller", "muller", "müller milch", "muller milch",
+        "müller joghurt", "müller quark", "müllermilch",
+        "müller froop", "müller corner", "müller vitalpudding",
+        "müller light", "müller rice"
+      ],
+      "categoryIds": ["tierwohl", "plastik"],
+      "evidenceIds": ["muller-tierwohl-1"],
+      "severity": "low",
+      "lastUpdated": "2025-04-01"
+    }
+  ]
+}

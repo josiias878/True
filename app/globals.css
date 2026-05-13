@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+/* ── Dark Mode (default) ─────────────────────────────── */
+:root {
+  --background: #08080f;
+  --surface:    #0f0f1a;
+  --surface-2:  #16162a;
+  --border:     #252538;
+  --accent:     #2ECC8A;
+  --accent-dim: rgba(46, 204, 138, 0.12);
+  --danger:     #ff4455;
+  --danger-dim: rgba(255, 68, 85, 0.12);
+  --warning:    #ffaa00;
+  --warning-dim:rgba(255, 170, 0, 0.12);
+  --text:       #e8e8f2;
+  --text-dim:   #7a7a9a;
+  --nav-bg:     rgba(8, 8, 15, 0.95);
+  --shadow:     0 4px 24px rgba(0,0,0,0.4);
+}
+
+/* ── Light Mode ───────────────────────────────────────── */
+html.light {
+  --background: #f2f4f6;
+  --surface:    #ffffff;
+  --surface-2:  #e4e7ec;
+  --border:     #d0d4db;
+  --accent:     #1EA872;
+  --accent-dim: rgba(30, 168, 114, 0.12);
+  --danger:     #d01818;
+  --danger-dim: rgba(208, 24, 24, 0.1);
+  --warning:    #b87000;
+  --warning-dim:rgba(184, 112, 0, 0.1);
+  --text:       #1a1c20;
+  --text-dim:   #50535c;
+  --nav-bg:     rgba(242, 244, 246, 0.97);
+  --shadow:     0 2px 12px rgba(0,0,0,0.10);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--background);
+  color: var(--text);
+  font-family: system-ui, -apple-system, sans-serif;
+  transition: background 0.25s, color 0.25s;
+}
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* smooth transitions for theme switch */
+*, *::before, *::after {
+  transition: background-color 0.2s, border-color 0.2s, color 0.15s;
+}
+/* except animations — don't slow those down */
+@keyframes kb         { from { transform:scale(1.08) } to { transform:scale(1.0) } }
+@keyframes confettiFall { 0% { transform:translateY(-20px) rotate(0deg) scale(1); opacity:1; } 100% { transform:translateY(110vh) rotate(800deg) scale(0.5); opacity:0; } }
+@keyframes celebPop   { 0%{transform:scale(0.4);opacity:0} 60%{transform:scale(1.12)} 100%{transform:scale(1);opacity:1} }
+@keyframes pulse  { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(1.7)} }
+@keyframes bounce { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(8px)} }
+@keyframes ticker { from { transform:translateX(0) } to { transform:translateX(-50%) } }
+@keyframes slideUp { from { transform:translateY(100%); opacity:0 } to { transform:translateY(0); opacity:1 } }
+@keyframes fadeIn  { from { opacity:0 } to { opacity:1 } }
+
+/* ── Mobile Nav ──────────────────────────────────────── */
+.desktop-nav { display: flex !important; }
+.mobile-hamburger { display: none !important; }
+
+@media (max-width: 680px) {
+  .desktop-nav { display: none !important; }
+  .mobile-hamburger { display: flex !important; }
+}
+
+/* ── Responsive helpers ──────────────────────────────── */
+@media (max-width: 760px) {
+  [data-grid] { display: flex !important; flex-direction: column !important; }
+}
+
+/* ── Input / textarea reset ─────────────────────────── */
+input, textarea, select {
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+input::placeholder, textarea::placeholder { color: var(--text-dim); }
+input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
