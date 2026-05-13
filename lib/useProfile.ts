@@ -64,17 +64,41 @@ export function useProfile(user: User | null) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 
+  function mergeGoalsFromOnboarding(parsed: Record<string, any>): Record<string, any> {
+    // Onboarding stores goals in "true-goals-v1" — always merge into profile if present
+    try {
+      const v1Raw = localStorage.getItem("true-goals-v1")
+      if (v1Raw) {
+        const v1Goals: string[] = JSON.parse(v1Raw)
+        if (Array.isArray(v1Goals) && v1Goals.length > 0) {
+          // Merge: combine both arrays, deduplicate, prefer onboarding goals if profile goals empty
+          const existing: string[] = Array.isArray(parsed.goals) ? parsed.goals : []
+          const merged = Array.from(new Set([...v1Goals, ...existing]))
+          parsed.goals = merged
+        }
+      }
+    } catch (e) { console.error("[useProfile] goals-v1 merge failed:", e) }
+    return parsed
+  }
+
   async function loadProfile() {
     setLoading(true)
     // First load from localStorage for instant render
     try {
       const raw = localStorage.getItem(LS_KEY)
       if (raw) {
-        const parsed = JSON.parse(raw)
+        let parsed = JSON.parse(raw)
         // Migration: Onboarding stores "phone" and "name" — map to "telefon" / "vorname"
         if (parsed.phone && !parsed.telefon) parsed.telefon = parsed.phone
         if (parsed.name  && !parsed.vorname) parsed.vorname = parsed.name
+        // Sync goals from onboarding key
+        parsed = mergeGoalsFromOnboarding(parsed)
         setProfileState({ ...DEFAULT_PROFILE, ...parsed })
+      } else {
+        // No profile yet — still check onboarding goals
+        const bare: Record<string, any> = {}
+        const merged = mergeGoalsFromOnboarding(bare)
+        if (merged.goals?.length) setProfileState({ ...DEFAULT_PROFILE, ...merged })
       }
     } catch (e) { console.error("[useProfile] localStorage read failed:", e) }
 
@@ -84,9 +108,11 @@ export function useProfile(user: User | null) {
         const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single()
         // Re-read localStorage AFTER the async fetch — user may have changed goals/settings while waiting
         const lsRaw = localStorage.getItem(LS_KEY)
-        const lsParsed = lsRaw ? JSON.parse(lsRaw) : {}
+        let lsParsed = lsRaw ? JSON.parse(lsRaw) : {}
         if (lsParsed.phone && !lsParsed.telefon) lsParsed.telefon = lsParsed.phone
         if (lsParsed.name  && !lsParsed.vorname) lsParsed.vorname = lsParsed.name
+        // Always merge onboarding goals here too
+        lsParsed = mergeGoalsFromOnboarding(lsParsed)
         const authPhone = user.phone ?? ""
         if (data) {
           const dbData = fromDbProfile(data as DbProfile)
