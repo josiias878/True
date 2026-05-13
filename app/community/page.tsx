@@ -271,10 +271,14 @@ export default function CommunityPage() {
     return () => { supabase?.removeChannel(channel) }
   }, [])
 
+  const [visibleCount, setVisibleCount] = useState(20)
+
   const filtered = activeTopic === "all" ? posts : posts.filter(p => p.topic === activeTopic)
   const sorted   = [...filtered].sort((a, b) =>
     sortMode === "beliebt" ? b.likes - a.likes : b.id - a.id
   )
+  const visible  = sorted.slice(0, visibleCount)
+  const hasMore  = sorted.length > visibleCount
 
   function like(id: number) {
     if (!user) { setShowLogin(true); return }
@@ -483,7 +487,7 @@ export default function CommunityPage() {
           return (
             <button
               key={t.id}
-              onClick={() => setActiveTopic(t.id)}
+              onClick={() => { setActiveTopic(t.id); setVisibleCount(20) }}
               style={{
                 flexShrink: 0,
                 background: active ? t.color : "var(--surface)",
@@ -514,7 +518,7 @@ export default function CommunityPage() {
           {/* Sort toggle */}
           <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden", flexShrink: 0 }}>
             {(["neu", "beliebt"] as const).map(m => (
-              <button key={m} onClick={() => setSortMode(m)} style={{ padding: "8px 12px", fontSize: "0.75rem", fontWeight: sortMode === m ? 700 : 500, background: sortMode === m ? "var(--accent)" : "transparent", color: sortMode === m ? "#000" : "var(--text-dim)", border: "none", cursor: "pointer", transition: "all 0.15s" }}>
+              <button key={m} onClick={() => { setSortMode(m); setVisibleCount(20) }} style={{ padding: "8px 12px", fontSize: "0.75rem", fontWeight: sortMode === m ? 700 : 500, background: sortMode === m ? "var(--accent)" : "transparent", color: sortMode === m ? "#000" : "var(--text-dim)", border: "none", cursor: "pointer", transition: "all 0.15s" }}>
                 {m === "neu" ? "🕐 Neu" : "🔥 Top"}
               </button>
             ))}
@@ -592,7 +596,7 @@ export default function CommunityPage() {
 
         {/* Posts */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {sorted.map(post => {
+          {visible.map(post => {
             const topic = TOPICS.find(t => t.id === post.topic)!
             return (
               <article key={post.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
@@ -765,6 +769,22 @@ export default function CommunityPage() {
               </article>
             )
           })}
+
+          {hasMore && (
+            <div style={{ padding: "8px 16px 16px", textAlign: "center" }}>
+              <button
+                onClick={() => setVisibleCount(v => v + 20)}
+                style={{
+                  background: "var(--surface-2)", border: "1px solid var(--border)",
+                  borderRadius: 12, padding: "10px 28px",
+                  fontWeight: 700, fontSize: "0.85rem", color: "var(--text-dim)",
+                  cursor: "pointer",
+                }}
+              >
+                Mehr laden ({sorted.length - visibleCount} weitere)
+              </button>
+            </div>
+          )}
 
           {sorted.length === 0 && (
             <div style={{ textAlign: "center", padding: "3rem 1rem", color: "var(--text-dim)" }}>

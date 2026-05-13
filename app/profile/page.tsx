@@ -130,6 +130,7 @@ export default function ProfilePage() {
   const [meidliste, setMeidliste]         = useState<string[]>([])
   const [meidInput, setMeidInput]         = useState("")
   const [meidExpanded, setMeidExpanded]   = useState(false)
+  const [meidError, setMeidError]         = useState("")
   const [openSetting, setOpenSetting]     = useState<string | null>(null)
 
   const KONZERNE_OPTIONS = [
@@ -165,7 +166,10 @@ export default function ProfilePage() {
 
   function addCustomMeid() {
     const v = meidInput.trim()
-    if (!v || meidliste.includes(v)) return
+    if (!v) { setMeidError("Bitte einen Namen eingeben."); return }
+    if (v.length > 50) { setMeidError("Maximal 50 Zeichen erlaubt."); return }
+    if (meidliste.includes(v)) { setMeidError(`"${v}" ist bereits auf der Meidliste.`); return }
+    setMeidError("")
     const next = [...meidliste, v]
     setMeidliste(next)
     try { localStorage.setItem("true-meidliste", JSON.stringify(next)) } catch (e) { console.error("[Profile] addCustomMeid save failed:", e) }
@@ -1160,11 +1164,14 @@ export default function ProfilePage() {
                         )}
                         {meidExpanded && <div style={{ marginBottom: 14 }} />}
                         <div style={{ fontSize: "0.68rem", color: "var(--text-dim)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>Eigenen Konzern hinzufügen</div>
-                        <div style={{ display: "flex", gap: 8, marginBottom: meidliste.filter(n => !KONZERNE_OPTIONS.find(k => k.name === n)).length > 0 ? 10 : 0 }}>
-                          <input value={meidInput} onChange={e => setMeidInput(e.target.value)} onKeyDown={e => e.key === "Enter" && addCustomMeid()} placeholder="z.B. Aldi, Lidl, H&M …"
-                            style={{ flex: 1, background: "var(--background)", border: "1px solid var(--border)", borderRadius: 10, padding: "8px 12px", color: "var(--text)", fontSize: "0.82rem", outline: "none" }} />
+                        <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
+                          <input value={meidInput} onChange={e => { setMeidInput(e.target.value); setMeidError("") }} onKeyDown={e => e.key === "Enter" && addCustomMeid()} placeholder="z.B. Aldi, Lidl, H&M …" maxLength={50}
+                            style={{ flex: 1, background: "var(--background)", border: `1px solid ${meidError ? "var(--danger)" : "var(--border)"}`, borderRadius: 10, padding: "8px 12px", color: "var(--text)", fontSize: "0.82rem", outline: "none" }} />
                           <button onClick={addCustomMeid} style={{ background: "var(--accent)", color: "#000", border: "none", borderRadius: 10, padding: "0 14px", fontWeight: 800, cursor: "pointer", fontSize: "0.85rem" }}>＋</button>
                         </div>
+                        {meidError && (
+                          <div style={{ fontSize: "0.72rem", color: "var(--danger)", marginBottom: 8, paddingLeft: 2 }}>{meidError}</div>
+                        )}
                         {meidliste.filter(n => !KONZERNE_OPTIONS.find(k => k.name === n)).map(n => (
                           <div key={n} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 12px", background: "rgba(255,68,85,0.08)", border: "1px solid rgba(255,68,85,0.2)", borderRadius: 8, marginBottom: 5 }}>
                             <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>🚫 {n}</span>

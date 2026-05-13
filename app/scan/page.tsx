@@ -879,6 +879,25 @@ export default function ScanPage() {
           </div>
         )}
 
+        {/* LOOKUP LOADING — shown while API-call is in-flight */}
+        {mode === "result" && !result && !lookupError && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, animation: "fadeIn 0.2s" }}>
+            {/* Skeleton Hauptkarte */}
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 24, padding: "1.5rem", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+              <div style={{ width: 72, height: 72, borderRadius: "50%", background: "var(--surface-2)", animation: "pulse 1.4s ease-in-out infinite" }} />
+              <div style={{ width: "60%", height: 14, borderRadius: 8, background: "var(--surface-2)", animation: "pulse 1.4s ease-in-out infinite 0.1s" }} />
+              <div style={{ width: "40%", height: 10, borderRadius: 8, background: "var(--surface-2)", animation: "pulse 1.4s ease-in-out infinite 0.2s" }} />
+            </div>
+            {/* Skeleton Cards */}
+            {[1,2].map(i => (
+              <div key={i} style={{ height: 64, borderRadius: 16, background: "var(--surface)", border: "1px solid var(--border)", animation: `pulse 1.4s ease-in-out infinite ${i * 0.15}s` }} />
+            ))}
+            <div style={{ textAlign: "center", fontSize: "0.8rem", color: "var(--text-dim)", marginTop: 4 }}>
+              🔍 Produkt wird analysiert…
+            </div>
+          </div>
+        )}
+
         {/* LOOKUP ERROR */}
         {mode === "result" && lookupError && (
           <div style={{ background: "rgba(255,68,85,0.08)", border: "1.5px solid rgba(255,68,85,0.3)", borderRadius: 16, padding: "1.5rem 1.25rem", display: "flex", flexDirection: "column", gap: 12, alignItems: "center", textAlign: "center" }}>
