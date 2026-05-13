@@ -2,17 +2,18 @@
 import React, { createContext, useContext, useEffect, useState } from "react"
 
 type Theme = "dark" | "light"
-const Ctx = createContext<{ theme: Theme; toggle: () => void }>({ theme: "dark", toggle: () => {} })
+const Ctx = createContext<{ theme: Theme; toggle: () => void }>({ theme: "light", toggle: () => {} })
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("dark")
+  const [theme, setTheme] = useState<Theme>("light")
 
   useEffect(() => {
-    // Saved preference wins. New users always start in dark mode.
+    // Saved preference wins. New users always start in light mode.
     const saved = localStorage.getItem("true-theme") as Theme | null
-    const initial = saved ?? "dark"
+    const initial = saved ?? "light"
     setTheme(initial)
     document.documentElement.classList.toggle("light", initial === "light")
+    document.documentElement.classList.toggle("dark", initial === "dark")
   }, [])
 
   function toggle() {
@@ -20,6 +21,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const next = t === "dark" ? "light" : "dark"
       localStorage.setItem("true-theme", next)
       document.documentElement.classList.toggle("light", next === "light")
+      document.documentElement.classList.toggle("dark", next === "dark")
       return next
     })
   }

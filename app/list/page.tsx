@@ -235,7 +235,7 @@ function isPet(member: { name: string; emoji: string }) {
 const SUGARY_DRINKS = ["cocacola","fanta","sprite","redbull","monster","caprisun","eistee","softdrink"]
 const HEALTHY_DRINKS = ["wasser","sprudel","tee","kräutertee","mineralwasser","grüner-tee","kaffee"]
 
-function drinkTips(items: ListItem[]): CoachTip[] {
+function drinkTips(items: ListItem[], goal?: string): CoachTip[] {
   const tips: CoachTip[] = []
   const drinks = items.filter(i => i.category === "drinks")
   const sugaryDrinks = drinks.filter(i => SUGARY_DRINKS.includes(i.id) || getFlags(i).includes("high-sugar"))
@@ -243,14 +243,27 @@ function drinkTips(items: ListItem[]): CoachTip[] {
   const hasWater = items.some(i => i.name.toLowerCase().includes("wasser") || i.id === "wasser" || i.id === "mineralwasser")
 
   if (!hasWater && !hasHealthyDrink) {
-    tips.push({ type: "miss", text: "💧 Wasser fehlt — 1.5–2L/Tag. Der günstigste Gesundheits-Booster." })
+    // Personalized water tip by goal
+    let waterMissTip = "💧 Wasser fehlt — 1.5–2L/Tag. Der günstigste Gesundheits-Booster."
+    if (goal === "abnehmen") waterMissTip = "💧 Wasser fehlt! Tipp: 500ml Wasser vor dem Essen trinken — reduziert Hunger um bis zu 22% und spart Kalorien."
+    else if (goal === "muskel" || goal === "muskelaufbau") waterMissTip = "💧 Wasser fehlt — Muskeln bestehen zu 76% aus Wasser. Ohne ausreichend Flüssigkeit sinkt deine Leistung im Training."
+    else if (goal === "kind" || goal === "familie") waterMissTip = "💧 Wasser fehlt — Kinder brauchen 1–1,5L/Tag. Zuckergetränke fördern Karies und Übergewicht."
+    tips.push({ type: "miss", text: waterMissTip })
   } else if (hasWater) {
-    tips.push({ type: "good", text: "💧 Wasser ✓ — perfekte Wahl. Kein Zucker, kein Koffein." })
+    // Personalized water good tip by goal
+    let waterGoodTip = "💧 Wasser ✓ — perfekte Wahl. Kein Zucker, kein Koffein."
+    if (goal === "abnehmen") waterGoodTip = "💧 Wasser ✓ — Top! Wenn du Hunger spürst, zuerst ein Glas Wasser trinken — oft ist es nur Durst."
+    else if (goal === "muskel" || goal === "muskelaufbau") waterGoodTip = "💧 Wasser ✓ — Gut! Trinke 0.5L extra für jede Stunde Training."
+    else if (goal === "kind" || goal === "familie") waterGoodTip = "💧 Wasser ✓ — Super! Wasser ist die beste Wahl für die ganze Familie."
+    tips.push({ type: "good", text: waterGoodTip })
   }
   if (sugaryDrinks.length > 0) {
     const d = sugaryDrinks[0]
     const s = SUGAR_LABEL[d.id] ? ` (${SUGAR_LABEL[d.id]} Zucker)` : ""
-    tips.push({ type: "warn", text: `🥤 ${d.emoji} ${d.name}${s} — Alternative: stilles Wasser mit Zitrone` })
+    let altText = "Alternative: stilles Wasser mit Zitrone"
+    if (goal === "abnehmen") altText = "Alternative: Wasser mit Gurke oder ungesüßter Tee — spart 100–150 kcal pro Dose"
+    else if (goal === "muskel" || goal === "muskelaufbau") altText = "Alternative: Wasser + eine Prise Salz nach dem Training (Elektrolyte)"
+    tips.push({ type: "warn", text: `🥤 ${d.emoji} ${d.name}${s} — ${altText}` })
   }
   if (sugaryDrinks.length >= 2) {
     tips.push({ type: "tip", text: "💡 Ungesüßter Tee, Kefir oder Kombucha als Soft-Drink-Ersatz" })
@@ -265,8 +278,8 @@ function analyzeCart(goal: string, items: ListItem[]): CoachTip[] {
   const get = (id: string) => food.find(i => i.id === id)
   const withFlag = (f: string) => food.filter(i => getFlags(i).includes(f))
 
-  // Immer: Getränke-Check
-  const dTips = drinkTips(food)
+  // Immer: Getränke-Check (personalisiert nach Ziel)
+  const dTips = drinkTips(food, goal)
   tips.push(...dTips.slice(0, 1)) // max 1 Getränke-Tipp in Ziel-Analyse
 
   switch (goal) {
@@ -1645,7 +1658,7 @@ function ProductTile({ item, catBg, selectedStore, onToggle, onInfo, onVorschlag
       )}
 
       {/* Vorschlag button — sits below the tile as its own row */}
-      {item.alternative && !item.checked && (
+      {item.alternative && !item.checked && (item.severity === "high" || item.severity === "critical") && (
         <button
           onClick={e => { e.stopPropagation(); onVorschlag() }}
           style={{

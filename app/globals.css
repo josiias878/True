@@ -1,25 +1,7 @@
 @import "tailwindcss";
 
-/* ── Dark Mode (default) ─────────────────────────────── */
-:root {
-  --background: #08080f;
-  --surface:    #0f0f1a;
-  --surface-2:  #16162a;
-  --border:     #252538;
-  --accent:     #2ECC8A;
-  --accent-dim: rgba(46, 204, 138, 0.12);
-  --danger:     #ff4455;
-  --danger-dim: rgba(255, 68, 85, 0.12);
-  --warning:    #ffaa00;
-  --warning-dim:rgba(255, 170, 0, 0.12);
-  --text:       #e8e8f2;
-  --text-dim:   #7a7a9a;
-  --nav-bg:     rgba(8, 8, 15, 0.95);
-  --shadow:     0 4px 24px rgba(0,0,0,0.4);
-}
-
-/* ── Light Mode ───────────────────────────────────────── */
-html.light {
+/* ── Light Mode (default) ────────────────────────────── */
+:root, html.light {
   --background: #f2f4f6;
   --surface:    #ffffff;
   --surface-2:  #e4e7ec;
@@ -34,6 +16,24 @@ html.light {
   --text-dim:   #50535c;
   --nav-bg:     rgba(242, 244, 246, 0.97);
   --shadow:     0 2px 12px rgba(0,0,0,0.10);
+}
+
+/* ── Dark Mode ────────────────────────────────────────── */
+html.dark {
+  --background: #08080f;
+  --surface:    #0f0f1a;
+  --surface-2:  #16162a;
+  --border:     #252538;
+  --accent:     #2ECC8A;
+  --accent-dim: rgba(46, 204, 138, 0.12);
+  --danger:     #ff4455;
+  --danger-dim: rgba(255, 68, 85, 0.12);
+  --warning:    #ffaa00;
+  --warning-dim:rgba(255, 170, 0, 0.12);
+  --text:       #e8e8f2;
+  --text-dim:   #7a7a9a;
+  --nav-bg:     rgba(8, 8, 15, 0.95);
+  --shadow:     0 4px 24px rgba(0,0,0,0.4);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }

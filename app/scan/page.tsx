@@ -1008,7 +1008,18 @@ export default function ScanPage() {
                           {[1,2].map(i => <div key={i} style={{ height: 38, borderRadius: 10, background: "var(--surface-2)", opacity: 0.55, animation: "pulse 1.4s ease-in-out infinite" }} />)}
                         </div>
                       ) : !ingredientData?.found ? (
-                        <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", padding: "4px 0" }}>Kein Eintrag in Open Food Facts gefunden.</div>
+                        <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 14, padding: "14px 16px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                            <span style={{ fontSize: "1.2rem" }}>🔍</span>
+                            <span style={{ fontWeight: 800, fontSize: "0.85rem", color: "var(--text)" }}>Keine Nährwertdaten gefunden</span>
+                          </div>
+                          <div style={{ fontSize: "0.77rem", color: "var(--text-dim)", lineHeight: 1.55, marginBottom: 10 }}>
+                            Für dieses Produkt liegen in Open Food Facts noch keine Inhaltsstoffe vor. Du kannst helfen, die Datenbank zu verbessern!
+                          </div>
+                          <a href={`https://www.openfoodfacts.org/product/add`} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--accent-dim)", border: "1px solid var(--accent)", borderRadius: 10, padding: "7px 14px", fontSize: "0.75rem", fontWeight: 700, color: "var(--accent)", textDecoration: "none" }}>
+                            📝 Produkt eintragen →
+                          </a>
+                        </div>
                       ) : ingredientData.clean || !hasFlags ? (
                         <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(46,204,138,0.08)", border: "1px solid rgba(46,204,138,0.2)", borderRadius: 12, padding: "10px 14px" }}>
                           <span style={{ fontSize: "1.1rem" }}>✅</span>
@@ -1109,8 +1120,8 @@ export default function ScanPage() {
                   )
                 })()}
 
-                {/* ── ALTERNATIVEN — nur bei Score < 72 ── */}
-                {konzernScore.score < 72 && (() => {
+                {/* ── ALTERNATIVEN — nur bei hoher/kritischer Bewertung ── */}
+                {(result.corporation.severity === "high" || result.corporation.severity === "critical") && (() => {
                   const open = expandedDetail === "alternativen"
                   return (
                     <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>

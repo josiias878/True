@@ -149,7 +149,7 @@ export default function ProductCoachPanel({ product, goals, allergies = [], onCl
       transition: "all 0.3s",
     }}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: "linear-gradient(180deg,#131813 0%,#0d100d 100%)",
+        background: "var(--surface)",
         borderRadius: "28px 28px 0 0",
         padding: "0 0 calc(env(safe-area-inset-bottom,20px) + 24px)",
         width: "100%", maxWidth: 520,
