@@ -803,11 +803,9 @@ const CAT_STYLE: Record<string, { bg: string; color: string; border: string }> =
 }
 
 // ── Main Home Page ─────────────────────────────────────────────────────────
-interface FeedPost { id: number; text: string; tag: string; likes: number; created_at: string; author_name: string; type: string }
 
 export default function HomePage() {
   const [greeting, setGreeting]       = useState("Guten Tag")
-  const [liked, setLiked]             = useState(false)
   const [modal, setModal]             = useState<string | null>(null)
   const [productModal] = useState<Product | null>(null)
   const [listItems, setListItems]     = useState<{ id: number|string; name: string; emoji: string; brand?: string; severity?: string; issue?: string; alternative?: { name: string }; checked: boolean; personId?: string; category?: string }[]>([])
@@ -826,7 +824,6 @@ export default function HomePage() {
   const [altModal, setAltModal]         = useState<{ name: string; productName: string; productEmoji: string; price?: string } | null>(null)
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([])
   const [mapOpen, setMapOpen]         = useState(false)
-  const [feedPost, setFeedPost]       = useState<FeedPost | null>(null)
   const [userGoals, setUserGoals]     = useState<string[]>([])
   const [userName, setUserName]       = useState("")
   const [isPremium, setIsPremium]     = useState(false)
@@ -955,21 +952,7 @@ export default function HomePage() {
     })
   }
 
-  // Load latest post from Supabase feed
-  useEffect(() => {
-    async function loadFeedPost() {
-      if (!supabase) return
-      const { data } = await supabase
-        .from("posts")
-        .select("id, text, tag, likes, created_at, author_name, type")
-        .in("type", ["journalist", "bot", "admin"])
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single()
-      if (data) setFeedPost(data as FeedPost)
-    }
-    loadFeedPost()
-  }, [])
+  // feedPost removed — not rendered anywhere (dead code cleanup)
 
   // ── Scroll-Lock wenn Quick-Add offen (verhindert Seiten-Scroll bei Tastatur) ──
   useEffect(() => {

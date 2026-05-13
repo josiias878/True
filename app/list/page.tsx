@@ -811,8 +811,12 @@ export default function ShoppingListPage() {
   }, [syncRemove])
 
   const clearDone = useCallback(() => {
-    setItems(prev => prev.filter(it => !it.checked))
-  }, [])
+    setItems(prev => {
+      // Remove checked items from Supabase too
+      prev.filter(it => it.checked).forEach(it => syncRemove(it.id))
+      return prev.filter(it => !it.checked)
+    })
+  }, [syncRemove])
 
   function addItemComment(itemId: string, text: string, author: string) {
     const comment = { id: Date.now().toString(), author, text, time: Date.now() }

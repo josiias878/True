@@ -153,14 +153,14 @@ export default function ProductCoachPanel({ product, goals, allergies = [], onCl
         borderRadius: "28px 28px 0 0",
         padding: "0 0 calc(env(safe-area-inset-bottom,20px) + 24px)",
         width: "100%", maxWidth: 520,
-        boxShadow: "0 -16px 60px rgba(0,0,0,0.5),0 -1px 0 rgba(255,255,255,0.06)",
+        boxShadow: "var(--shadow)",
         transform: visible ? "translateY(0)" : "translateY(110%)",
         transition: "transform 0.36s cubic-bezier(.16,1,.3,1)",
         maxHeight: "85dvh", overflowY: "auto",
       }}>
         {/* Handle */}
         <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 8px" }}>
-          <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.12)" }} />
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--border)" }} />
         </div>
 
         <div style={{ padding: "0 20px" }}>
@@ -176,7 +176,7 @@ export default function ProductCoachPanel({ product, goals, allergies = [], onCl
               {product.emoji}
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 900, fontSize: "1.05rem", color: "#fff", marginBottom: 4 }}>{product.name}</div>
+              <div style={{ fontWeight: 900, fontSize: "1.05rem", color: "var(--text)", marginBottom: 4 }}>{product.name}</div>
               {hasIssue && (
                 <div style={{
                   display: "inline-flex", alignItems: "center", gap: 5,
@@ -188,16 +188,16 @@ export default function ProductCoachPanel({ product, goals, allergies = [], onCl
                 </div>
               )}
             </div>
-            <button onClick={close} style={{ background: "rgba(255,255,255,0.06)", border: "none", borderRadius: 10, width: 32, height: 32, cursor: "pointer", color: "rgba(255,255,255,0.4)", fontSize: "1rem", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+            <button onClick={close} style={{ background: "var(--surface-2)", border: "none", borderRadius: 10, width: 32, height: 32, cursor: "pointer", color: "var(--text-dim)", fontSize: "1rem", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
           </div>
 
           {/* Issue */}
           {product.issue && (
             <div style={{ background: `${sevColor}10`, border: `1px solid ${sevColor}25`, borderRadius: 14, padding: "12px 14px", marginBottom: 14 }}>
               <div style={{ fontSize: "0.75rem", fontWeight: 800, color: sevColor, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Problem</div>
-              <div style={{ fontSize: "0.88rem", color: "rgba(255,255,255,0.75)", lineHeight: 1.5 }}>{product.issue}</div>
+              <div style={{ fontSize: "0.88rem", color: "var(--text)", lineHeight: 1.5 }}>{product.issue}</div>
               {product.issueDetail && (
-                <div style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.4)", marginTop: 6, lineHeight: 1.5 }}>{product.issueDetail}</div>
+                <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", marginTop: 6, lineHeight: 1.5 }}>{product.issueDetail}</div>
               )}
             </div>
           )}
@@ -206,9 +206,9 @@ export default function ProductCoachPanel({ product, goals, allergies = [], onCl
           {product.alternative?.name && (
             <div style={{ background: "rgba(46,204,138,0.08)", border: "1px solid rgba(46,204,138,0.22)", borderRadius: 14, padding: "12px 14px", marginBottom: 14 }}>
               <div style={{ fontSize: "0.75rem", fontWeight: 800, color: "#2ECC8A", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>✅ Bessere Alternative</div>
-              <div style={{ fontSize: "0.92rem", color: "#fff", fontWeight: 700 }}>{product.alternative.name}</div>
+              <div style={{ fontSize: "0.92rem", color: "var(--text)", fontWeight: 700 }}>{product.alternative.name}</div>
               {product.alternative.stores && product.alternative.stores.length > 0 && (
-                <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.4)", marginTop: 4 }}>
+                <div style={{ fontSize: "0.75rem", color: "var(--text-dim)", marginTop: 4 }}>
                   Erhältlich bei: {product.alternative.stores.join(", ")}
                 </div>
               )}
@@ -218,16 +218,16 @@ export default function ProductCoachPanel({ product, goals, allergies = [], onCl
           {/* Goal-based advice */}
           {advice.length > 0 && (
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: "0.75rem", fontWeight: 800, color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
+              <div style={{ fontSize: "0.75rem", fontWeight: 800, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
                 💡 Deine Ziele
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {advice.map((a, i) => (
-                  <div key={i} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "10px 12px" }}>
-                    <div style={{ fontSize: "0.72rem", fontWeight: 800, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>
+                  <div key={i} style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 12px" }}>
+                    <div style={{ fontSize: "0.72rem", fontWeight: 800, color: "var(--text-dim)", marginBottom: 4 }}>
                       {a.emoji} {a.goal}
                     </div>
-                    <div style={{ fontSize: "0.83rem", color: "rgba(255,255,255,0.7)", lineHeight: 1.55 }}>{a.text}</div>
+                    <div style={{ fontSize: "0.83rem", color: "var(--text)", lineHeight: 1.55 }}>{a.text}</div>
                   </div>
                 ))}
               </div>
@@ -236,8 +236,8 @@ export default function ProductCoachPanel({ product, goals, allergies = [], onCl
 
           {/* No goals set yet */}
           {advice.length === 0 && (
-            <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px 14px", marginBottom: 14, textAlign: "center" }}>
-              <div style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.35)", lineHeight: 1.6 }}>
+            <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 12, padding: "12px 14px", marginBottom: 14, textAlign: "center" }}>
+              <div style={{ fontSize: "0.82rem", color: "var(--text-dim)", lineHeight: 1.6 }}>
                 Lege deine Ziele im Profil fest — dann bekommst du hier personalisierte Tipps zu jedem Produkt.
               </div>
             </div>
@@ -246,8 +246,8 @@ export default function ProductCoachPanel({ product, goals, allergies = [], onCl
           {/* Close button */}
           <button onClick={close} style={{
             display: "block", width: "100%", padding: "14px",
-            background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 16, color: "#fff", fontWeight: 700, fontSize: "0.95rem", cursor: "pointer",
+            background: "var(--surface-2)", border: "1px solid var(--border)",
+            borderRadius: 16, color: "var(--text)", fontWeight: 700, fontSize: "0.95rem", cursor: "pointer",
           }}>
             Schließen
           </button>
