@@ -196,21 +196,11 @@ export default function AuthModal({ onClose, onSuccess, onGuest, defaultMode = "
     setLoading(false)
     if (e) { setError("Falscher Code — bitte nochmal versuchen."); return }
 
-    const userId    = data?.user?.id ?? ""
-    const createdAt = new Date(data?.user?.created_at ?? 0).getTime()
-    const isNew     = Date.now() - createdAt < 120_000
-
+    const userId = data?.user?.id ?? ""
     handleUserSwitch(userId)
 
-    if (!isNew) {
-      // Existing account — just log in
-      restoreMetadata(data?.user?.user_metadata ?? {})
-      try { localStorage.setItem("true-onboarded-v3", "1") } catch {}
-      success()
-      return
-    }
-
-    // New account — save name to profile, continue to password step
+    // Always continue to password → goals in register mode
+    // (do NOT skip onboarding based on account age — email can arrive late)
     try {
       const raw     = localStorage.getItem("true-profile")
       const profile = raw ? JSON.parse(raw) : {}
