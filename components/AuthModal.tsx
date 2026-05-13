@@ -5,6 +5,7 @@ import { useSupabaseAuth } from "@/lib/useSupabaseAuth"
 interface Props {
   onClose: () => void
   onSuccess?: () => void
+  onGuest?: () => void
   defaultMode?: "login" | "register"
 }
 
@@ -31,7 +32,7 @@ function isIOS()        { return typeof navigator !== "undefined" && /iphone|ipa
 function isAndroid()    { return typeof navigator !== "undefined" && /android/i.test(navigator.userAgent) }
 function isStandalone() { return typeof window !== "undefined" && (window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone === true) }
 
-export default function AuthModal({ onClose, onSuccess, defaultMode = "login" }: Props) {
+export default function AuthModal({ onClose, onSuccess, onGuest, defaultMode = "login" }: Props) {
   const { signInWithPassword, signInWithEmail, signInWithEmailLoginOnly, verifyEmailOtp, resetPassword, updateUserMetadata, updatePassword } = useSupabaseAuth()
 
   const [mode, setMode]         = useState<Mode>(defaultMode)
@@ -444,6 +445,14 @@ export default function AuthModal({ onClose, onSuccess, defaultMode = "login" }:
                     Überspringen
                   </button>
                   <button onClick={() => switchMode("login")} style={{ ...linkBtn, display: "block", width: "100%", textAlign: "center", marginTop: 6 }}>← Zurück zum Login</button>
+                  {onGuest && (
+                    <button
+                      onClick={() => { setVisible(false); setTimeout(onGuest, 300) }}
+                      style={{ display: "block", width: "100%", marginTop: 14, background: "none", border: "none", color: "rgba(255,255,255,0.2)", fontSize: "0.78rem", cursor: "pointer", padding: "6px 0", textAlign: "center" }}
+                    >
+                      Ohne Konto fortfahren →
+                    </button>
+                  )}
                 </div>
               )}
 
