@@ -148,7 +148,7 @@ export async function GET(req: NextRequest) {
     const n = pickByDay(BOT_NEWS)
     post = {
       author_name: "TRUE Bot",
-      author_avatar: "🤖",
+      author_avatar: "📰",
       type: "bot",
       tag: n.tag,
       tag_color: n.tagColor,

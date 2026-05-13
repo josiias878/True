@@ -9,6 +9,7 @@ import PremiumGate from "@/components/PremiumGate"
 import { useListSync } from "@/lib/useListSync"
 import { useSupabaseAuth } from "@/lib/useSupabaseAuth"
 import { guessEmoji, guessCategory } from "@/lib/productDetection"
+import ProductCoachPanel from "@/components/ProductCoachPanel"
 
 interface FamilyMember { id: string; name: string; age: string; emoji: string }
 
@@ -688,6 +689,7 @@ export default function ShoppingListPage() {
   const [viewMode, setViewMode]               = useState<"list" | "grid">("list")
   const [showSortSheet, setShowSortSheet]     = useState(false)
   const [coachOpen, setCoachOpen]             = useState(false)
+  const [coachItem, setCoachItem]             = useState<ListItem | null>(null)
   const [menuSheetItem, setMenuSheetItem]     = useState<ListItem | null>(null)
   const [itemQty, setItemQty]                 = useState<Record<string, number>>({})
   const [itemComment, setItemComment]         = useState<Record<string, string>>({})
@@ -1011,6 +1013,7 @@ export default function ShoppingListPage() {
                       onVorschlag={() => setVorschlagItem(item)}
                       onSource={() => setSourceItem(item)}
                       onMenu={() => setMenuSheetItem(item)}
+                      onCoach={() => setCoachItem(item)}
                       catBg={meta.bg}
                       catColor={meta.color}
                       catBorder={meta.border}
@@ -1077,6 +1080,7 @@ export default function ShoppingListPage() {
                     onVorschlag={() => setVorschlagItem(item)}
                     onSource={() => setSourceItem(item)}
                     onMenu={() => setMenuSheetItem(item)}
+                    onCoach={() => setCoachItem(item)}
                     qty={itemQty[item.id]}
                     comment={itemComment[item.id]}
                   />
@@ -1087,13 +1091,21 @@ export default function ShoppingListPage() {
         )}
       </main>
 
-      {/* Coach Chat Sheet — per 3-Punkte-Menü aufgerufen, kein FAB mehr */}
+      {/* Coach Chat Sheet — per 3-Punkte-Menü aufgerufen */}
       <NutritionCoachChat
         items={unchecked}
         goals={userGoals}
         allergies={userAllergies}
         open={coachOpen}
         onClose={() => setCoachOpen(false)}
+      />
+
+      {/* Per-product coach panel — opens on ⚠️ triangle click */}
+      <ProductCoachPanel
+        product={coachItem}
+        goals={userGoals}
+        allergies={userAllergies}
+        onClose={() => setCoachItem(null)}
       />
 
       {/* ── FAB ── */}
@@ -1484,6 +1496,7 @@ interface RowProps {
   onVorschlag: () => void
   onSource: () => void
   onMenu: () => void
+  onCoach?: () => void
   catBg?: string
   catColor?: string
   catBorder?: string
@@ -1491,7 +1504,7 @@ interface RowProps {
   comment?: string
 }
 
-function ProductRow({ item, selectedStore, onToggle, onInfo, onVorschlag, onSource, onMenu, catBg, catColor, catBorder, qty, comment }: RowProps) {
+function ProductRow({ item, selectedStore, onToggle, onInfo, onVorschlag, onSource, onMenu, onCoach, catBg, catColor, catBorder, qty, comment }: RowProps) {
   const hasIssue = item.severity !== "none" && item.issue !== "—"
   const sevColor = hasIssue ? SEVERITY_COLOR[item.severity] : null
   const hasAlt   = !!item.alternative
@@ -1537,22 +1550,22 @@ function ProductRow({ item, selectedStore, onToggle, onInfo, onVorschlag, onSour
         </div>
       </div>
 
-      {/* Issue badge */}
+      {/* Issue badge — opens ProductCoachPanel */}
       {hasIssue && (
         <button
-          onClick={hasSrc ? onSource : onInfo}
+          onClick={e => { e.stopPropagation(); onCoach ? onCoach() : (hasSrc ? onSource() : onInfo()) }}
           style={{
             background: (sevColor ?? "#888") + "18",
             color: sevColor ?? "#888",
             border: `1px solid ${(sevColor ?? "#888")}33`,
-            borderRadius: 99, padding: "3px 8px",
-            fontSize: "0.65rem", fontWeight: 700,
+            borderRadius: 8, padding: "5px 9px",
+            fontSize: "0.75rem", fontWeight: 800,
             cursor: "pointer", flexShrink: 0,
             display: "flex", alignItems: "center", gap: 3,
-            whiteSpace: "nowrap",
           }}
+          title="Coach-Tipp für dieses Produkt"
         >
-          ⚠ {item.issue}{hasSrc ? " ↗" : ""}
+          ⚠️
         </button>
       )}
 
