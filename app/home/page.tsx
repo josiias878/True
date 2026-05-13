@@ -1921,14 +1921,7 @@ export default function HomePage() {
         )
       })()}
 
-      {/* ── FAB Ernährungscoach (links) — versteckt wenn Quick-Add offen ── */}
-      {!showQuickAdd && (
-        <button
-          onClick={() => setCoachOpen(true)}
-          style={{ position: "fixed", bottom: 76, left: 20, zIndex: 152, width: 46, height: 46, borderRadius: "50%", background: "var(--surface)", border: "2px solid var(--accent)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem", boxShadow: "0 4px 16px rgba(46,204,138,0.25), 0 2px 8px rgba(0,0,0,0.2)" }}
-          aria-label="Ernährungscoach öffnen"
-        >🥗</button>
-      )}
+      {/* ── Ernährungscoach FAB entfernt — nur noch in der Einkaufsliste ── */}
 
 {/* ── FAB Produkt hinzufügen (rechts) — versteckt wenn Quick-Add offen ── */}
       {!showQuickAdd && (

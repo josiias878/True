@@ -13,12 +13,12 @@ type RegStep = "name" | "email" | "otp" | "password" | "goals" | "done"
 type LoginMode = "password" | "otp"
 
 const GOALS = [
-  { id: "abnehmen",    label: "Abnehmen",       emoji: "🏃" },
-  { id: "muskel",      label: "Mehr Protein",    emoji: "💪" },
-  { id: "familie",     label: "Familie",         emoji: "👨‍👩‍👧" },
-  { id: "vegan",       label: "Vegan/Vegetarisch",emoji: "🌱" },
-  { id: "nachhaltig",  label: "Nachhaltigkeit",  emoji: "🌍" },
-  { id: "konzerne",    label: "Konzerne meiden", emoji: "🚫" },
+  { id: "abnehmen",   label: "Abnehmen",          emoji: "🏃", hint: "Kalorienarme Alternativen" },
+  { id: "muskel",     label: "Mehr Protein",       emoji: "💪", hint: "Proteinreiche Produkte" },
+  { id: "familie",    label: "Familie & Kinder",   emoji: "👨‍👩‍👧", hint: "Sicher für die ganze Familie" },
+  { id: "vegan",      label: "Vegan/Vegetarisch",  emoji: "🌱", hint: "Pflanzliche Produkte" },
+  { id: "nachhaltig", label: "Nachhaltigkeit",     emoji: "🌍", hint: "Wenig CO₂ & Palmöl" },
+  { id: "konzerne",   label: "Konzerne meiden",    emoji: "🚫", hint: "Unabhängige Hersteller" },
 ]
 
 // Step index for progress bar (name=0, email=1, otp=2, password=3, goals=4)
@@ -518,25 +518,35 @@ export default function AuthModal({ onClose, onSuccess, defaultMode = "login" }:
                   <p style={{ textAlign: "center", fontSize: "0.84rem", color: "rgba(255,255,255,0.4)", marginBottom: 20 }}>
                     Wähle was zu dir passt — mehrere möglich
                   </p>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
                     {GOALS.map(g => {
                       const active = selectedGoals.includes(g.id)
                       return (
                         <button key={g.id}
                           onClick={() => setSelectedGoals(prev => prev.includes(g.id) ? prev.filter(x => x !== g.id) : [...prev, g.id])}
                           style={{
-                            background: active ? "rgba(46,204,138,0.15)" : "rgba(255,255,255,0.05)",
-                            border: `1.5px solid ${active ? "#2ECC8A" : "rgba(255,255,255,0.1)"}`,
-                            borderRadius: 14, padding: "12px 10px", cursor: "pointer",
-                            display: "flex", alignItems: "center", gap: 8,
-                            color: active ? "#2ECC8A" : "rgba(255,255,255,0.65)",
-                            fontWeight: active ? 700 : 500, fontSize: "0.88rem",
-                            transition: "all 0.2s",
-                            boxShadow: active ? "0 0 16px rgba(46,204,138,0.15)" : "none",
+                            background: active ? "rgba(46,204,138,0.12)" : "rgba(255,255,255,0.04)",
+                            border: `1.5px solid ${active ? "#2ECC8A" : "rgba(255,255,255,0.08)"}`,
+                            borderRadius: 14, padding: "11px 14px", cursor: "pointer",
+                            display: "flex", alignItems: "center", gap: 12,
+                            textAlign: "left", transition: "all 0.2s",
+                            boxShadow: active ? "0 0 14px rgba(46,204,138,0.12)" : "none",
                           }}
                         >
-                          <span style={{ fontSize: "1.3rem" }}>{g.emoji}</span>
-                          <span style={{ textAlign: "left", lineHeight: 1.2 }}>{g.label}</span>
+                          <span style={{ fontSize: "1.4rem", flexShrink: 0 }}>{g.emoji}</span>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 700, fontSize: "0.9rem", color: active ? "#2ECC8A" : "#fff" }}>{g.label}</div>
+                            <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.35)", marginTop: 1 }}>{g.hint}</div>
+                          </div>
+                          <div style={{
+                            width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
+                            border: `2px solid ${active ? "#2ECC8A" : "rgba(255,255,255,0.15)"}`,
+                            background: active ? "#2ECC8A" : "transparent",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            fontSize: "0.65rem", color: "#000", fontWeight: 900,
+                          }}>
+                            {active ? "✓" : ""}
+                          </div>
                         </button>
                       )
                     })}
@@ -557,11 +567,13 @@ export default function AuthModal({ onClose, onSuccess, defaultMode = "login" }:
         )}
 
         <style>{`
-          @keyframes slideRight { from{opacity:0;transform:translateX(28px)} to{opacity:1;transform:translateX(0)} }
-          @keyframes slideLeft  { from{opacity:0;transform:translateX(-28px)} to{opacity:1;transform:translateX(0)} }
-          @keyframes popIn      { from{opacity:0;transform:scale(0.9)} to{opacity:1;transform:scale(1)} }
-          @keyframes bounce     { 0%{transform:scale(0.4) rotate(-10deg)} 60%{transform:scale(1.25) rotate(5deg)} 80%{transform:scale(0.95)} 100%{transform:scale(1) rotate(0)} }
-          @keyframes confettiDrop { from{opacity:0;transform:translateY(-20px) rotate(0deg)} to{opacity:1;transform:translateY(0) rotate(20deg)} }
+          @keyframes slideRight   { from{opacity:0;transform:translateX(28px)} to{opacity:1;transform:translateX(0)} }
+          @keyframes slideLeft    { from{opacity:0;transform:translateX(-28px)} to{opacity:1;transform:translateX(0)} }
+          @keyframes popIn        { from{opacity:0;transform:scale(0.85)} to{opacity:1;transform:scale(1)} }
+          @keyframes bounce       { 0%{transform:scale(0.3) rotate(-15deg)} 55%{transform:scale(1.3) rotate(8deg)} 75%{transform:scale(0.9) rotate(-3deg)} 100%{transform:scale(1) rotate(0)} }
+          @keyframes confettiDrop { 0%{opacity:0;transform:translateY(-30px) rotate(-20deg) scale(0.5)} 70%{opacity:1;transform:translateY(4px) rotate(10deg) scale(1.15)} 100%{opacity:1;transform:translateY(0) rotate(5deg) scale(1)} }
+          @keyframes scanLine     { 0%,100%{top:22%} 50%{top:68%} }
+          @keyframes pulse        { 0%,100%{opacity:0.4} 50%{opacity:0.9} }
           input::placeholder,textarea::placeholder { color:rgba(255,255,255,0.2)!important }
           input:focus,select:focus { outline:none }
           select option { background:#161a16;color:#fff }
@@ -643,21 +655,28 @@ function PhoneTour({ name, onFinish, isIOS, isAndroid, isStandalone }: {
 
   if (screen === -1) {
     return (
-      <div style={{ padding: "20px 24px 0", textAlign: "center", animation: "popIn 0.4s cubic-bezier(.16,1,.3,1)" }}>
-        {/* Confetti */}
-        <div style={{ fontSize: "3.5rem", marginBottom: 8, animation: "bounce 0.7s cubic-bezier(.16,1,.3,1)" }}>🎉</div>
-        <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 14, fontSize: "1.3rem" }}>
-          {"🌟✨🎊💚🌱".split("").map((e, i) => (
-            <span key={i} style={{ animation: `confettiDrop 0.5s ${i * 0.08}s cubic-bezier(.16,1,.3,1) both` }}>{e}</span>
+      <div style={{ padding: "20px 24px 0", textAlign: "center", animation: "popIn 0.45s cubic-bezier(.16,1,.3,1)" }}>
+        {/* Big confetti emoji */}
+        <div style={{ fontSize: "4rem", marginBottom: 10, display: "inline-block", animation: "bounce 0.8s cubic-bezier(.16,1,.3,1)" }}>🎉</div>
+        {/* Confetti row */}
+        <div style={{ display: "flex", justifyContent: "center", gap: 10, marginBottom: 18, fontSize: "1.6rem" }}>
+          {["🌟","✨","🎊","💚","🌱","🎈","✅"].map((e, i) => (
+            <span key={i} style={{
+              display: "inline-block",
+              animation: `confettiDrop 0.55s ${i * 0.07}s cubic-bezier(.16,1,.3,1) both`,
+            }}>{e}</span>
           ))}
         </div>
-        <h2 style={{ margin: "0 0 8px", fontWeight: 900, fontSize: "1.4rem", color: "#fff" }}>
-          {name ? `Willkommen, ${name}! 🌱` : "Du bist dabei! 🌱"}
+        <h2 style={{ margin: "0 0 8px", fontWeight: 900, fontSize: "1.5rem", color: "#fff" }}>
+          {name ? `Willkommen, ${name}!` : "Du bist dabei!"}
         </h2>
-        <p style={{ margin: "0 0 24px", fontSize: "0.88rem", color: "rgba(255,255,255,0.4)", lineHeight: 1.6 }}>
-          Dein Konto ist aktiv. Wir zeigen dir kurz wie TRUE funktioniert.
+        <p style={{ margin: "0 0 6px", fontSize: "0.92rem", color: "#2ECC8A", fontWeight: 700 }}>
+          🌱 Dein Konto ist aktiv
         </p>
-        <Btn label="App kennenlernen →" color="#2ECC8A" disabled={false} onClick={() => setScreen(0)} />
+        <p style={{ margin: "0 0 24px", fontSize: "0.82rem", color: "rgba(255,255,255,0.35)", lineHeight: 1.6 }}>
+          Kurze Einführung? Wir zeigen dir in 3 Schritten was TRUE kann.
+        </p>
+        <Btn label="TRUE kennenlernen →" color="#2ECC8A" disabled={false} onClick={() => setScreen(0)} />
         <button onClick={onFinish} style={{ display: "block", width: "100%", marginTop: 10, background: "none", border: "none", color: "rgba(255,255,255,0.25)", fontSize: "0.82rem", cursor: "pointer", padding: "8px 0" }}>
           Direkt loslegen
         </button>
