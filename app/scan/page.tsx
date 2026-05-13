@@ -126,7 +126,7 @@ function VertikalScore({ score }: { score: number }) {
         {[100, 75, 50, 25, 0].map(n => (
           <span key={n} style={{
             fontSize: "0.55rem", fontWeight: n === 100 || n === 0 ? 800 : 500,
-            color: n === 100 ? "#2ECC8A" : n === 0 ? "#ff2233" : "rgba(255,255,255,0.3)",
+            color: n === 100 ? "#2ECC8A" : n === 0 ? "#ff2233" : "var(--text-dim)",
             lineHeight: 1,
           }}>{n}</span>
         ))}
@@ -136,7 +136,7 @@ function VertikalScore({ score }: { score: number }) {
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
         <div style={{ position: "relative", width: 20, height: 200, borderRadius: 10, flexShrink: 0,
           background: "linear-gradient(to bottom, #2ECC8A 0%, #a8e060 18%, #ffcc00 42%, #ff7700 68%, #ff2233 100%)",
-          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08), 0 2px 12px rgba(0,0,0,0.25)" }}>
+          boxShadow: "inset 0 0 0 1px var(--border), 0 2px 12px rgba(0,0,0,0.15)" }}>
           {/* Tick marks at 25/50/75 */}
           {[25, 50, 75].map(n => (
             <div key={n} style={{ position: "absolute", left: 3, right: 3, top: `${100 - n}%`, height: 1, background: "rgba(0,0,0,0.25)" }} />
@@ -166,24 +166,29 @@ function VertikalScore({ score }: { score: number }) {
 // ── Better alternatives (Premium) ──────────────────────────────────────────
 type Alt = { name: string; brand: string; reason: string; price: string; link: string }
 const ALTERNATIVES: Record<string, Alt[]> = {
-  nestle:     [{ name: "Nocciolata Bio", brand: "Rigoni di Asiago", reason: "Ohne Palmöl, fair produziert", price: "~4,50€", link: "https://www.amazon.de/s?k=nocciolata+bio" },
-               { name: "Zotter Schokolade", brand: "Zotter", reason: "Fairtrade, Bio, familiengeführt", price: "~3,80€", link: "https://www.amazon.de/s?k=zotter+schokolade" }],
-  unilever:   [{ name: "Frosch Spülmittel", brand: "Werner & Mertz", reason: "Ohne Mikroplastik, biologisch abbaubar", price: "~2,20€", link: "https://www.amazon.de/s?k=frosch+spülmittel" },
-               { name: "Sonett Waschmittel", brand: "Sonett", reason: "100% biologisch abbaubar", price: "~8,90€", link: "https://www.amazon.de/s?k=sonett+waschmittel" }],
-  cocacola:   [{ name: "Bionade", brand: "Bionade GmbH", reason: "Organisch gebraut, keine Konzernzugehörigkeit", price: "~1,20€", link: "https://www.amazon.de/s?k=bionade" },
-               { name: "Voelkel Direktsaft", brand: "Voelkel", reason: "Bio, familiengeführt seit 1936", price: "~2,50€", link: "https://www.amazon.de/s?k=voelkel+direktsaft" }],
-  pepsi:      [{ name: "Fritz Kola", brand: "fritz-kola", reason: "Unabhängig, nachhaltigere Produktion", price: "~1,50€", link: "https://www.amazon.de/s?k=fritz+kola" }],
-  procter:    [{ name: "Alverde Shampoo", brand: "dm Alverde", reason: "Naturkosmetik, kein Mikroplastik", price: "~2,95€", link: "https://www.amazon.de/s?k=alverde+shampoo" }],
-  pg:         [{ name: "Alverde Shampoo", brand: "dm Alverde", reason: "Naturkosmetik, kein Mikroplastik", price: "~2,95€", link: "https://www.amazon.de/s?k=alverde+shampoo" }],
-  kraft:      [{ name: "Alnatura Nudeln", brand: "Alnatura", reason: "Bio, fair, ohne Zusatzstoffe", price: "~1,99€", link: "https://www.amazon.de/s?k=alnatura+nudeln" }],
-  mondelez:   [{ name: "Zotter Schokolade", brand: "Zotter", reason: "Fairtrade, Bio, ohne Palmöl", price: "~3,80€", link: "https://www.amazon.de/s?k=zotter+schokolade" }],
-  mars:       [{ name: "Vivani Schokolade", brand: "Vivani", reason: "Bio-Kakao, fairer Handel", price: "~2,50€", link: "https://www.amazon.de/s?k=vivani+schokolade" }],
-  ferrero:    [{ name: "Nocciolata Bio", brand: "Rigoni di Asiago", reason: "Ohne Palmöl, Bio-zertifiziert", price: "~4,50€", link: "https://www.amazon.de/s?k=nocciolata+bio" }],
-  danone:     [{ name: "Andechser Bio-Joghurt", brand: "Andechser Natur", reason: "Bio, bayerische Molkerei", price: "~0,99€", link: "https://www.amazon.de/s?k=andechser+joghurt" }],
-  henkel:     [{ name: "Ecover Waschmittel", brand: "Ecover", reason: "Pflanzliche Inhaltsstoffe, biologisch abbaubar", price: "~7,50€", link: "https://www.amazon.de/s?k=ecover+waschmittel" }],
-  "noe-quelle": [{ name: "Überkinger Mineralwasser", brand: "Überkinger", reason: "Regionale Quelle, fairer Preis", price: "~0,35€", link: "https://www.amazon.de/s?k=mineralwasser+regional" },
-                  { name: "Leitungswasser Filteranlage", brand: "BRITA", reason: "Kein Plastikmüll, günstigste Option", price: "~30€ einmalig", link: "https://www.amazon.de/s?k=brita+wasserfilter" }],
-  "noe":      [{ name: "Lokales Mineralwasser", brand: "Regionale Quelle", reason: "Kürzere Transportwege, weniger CO₂", price: "variiert", link: "https://www.google.de/search?q=regionales+mineralwasser+kaufen" }],
+  nestle:     [{ name: "Nocciolata Bio", brand: "Rigoni di Asiago", reason: "Ohne Palmöl, fair produziert", price: "~4,50€", link: "https://www.rewe.de/suche/?search=nocciolata" },
+               { name: "Zotter Schokolade", brand: "Zotter", reason: "Fairtrade, Bio, familiengeführt", price: "~3,80€", link: "https://www.zotter.at/shop" }],
+  unilever:   [{ name: "Frosch Spülmittel", brand: "Werner & Mertz", reason: "Ohne Mikroplastik, biologisch abbaubar", price: "~2,20€", link: "https://www.frosch.de/produkte/geschirrspuelen/" },
+               { name: "Sonett Waschmittel", brand: "Sonett", reason: "100% biologisch abbaubar", price: "~8,90€", link: "https://www.sonett.eu/produkte/waschmittel/" }],
+  cocacola:   [{ name: "Bionade", brand: "Bionade GmbH", reason: "Organisch gebraut, keine Konzernzugehörigkeit", price: "~1,20€", link: "https://www.bionade.de/produkte/" },
+               { name: "Voelkel Direktsaft", brand: "Voelkel", reason: "Bio, familiengeführt seit 1936", price: "~2,50€", link: "https://www.voelkeljuice.de/produkte/" }],
+  pepsi:      [{ name: "Fritz Kola", brand: "fritz-kola", reason: "Unabhängig, nachhaltigere Produktion", price: "~1,50€", link: "https://www.fritz-kola.de/produkte/" },
+               { name: "Bionade", brand: "Bionade GmbH", reason: "Organisch gebraut, fair", price: "~1,20€", link: "https://www.bionade.de/produkte/" }],
+  procter:    [{ name: "Alverde Naturkosmetik", brand: "dm Alverde", reason: "Naturkosmetik, kein Mikroplastik", price: "~2,95€", link: "https://www.dm.de/marken/alverde-naturkosmetik/" }],
+  pg:         [{ name: "Alverde Naturkosmetik", brand: "dm Alverde", reason: "Naturkosmetik, kein Mikroplastik", price: "~2,95€", link: "https://www.dm.de/marken/alverde-naturkosmetik/" }],
+  kraft:      [{ name: "Alnatura Produkte", brand: "Alnatura", reason: "Bio, fair, ohne Zusatzstoffe", price: "ab 1,99€", link: "https://www.alnatura.de/de-de/produkte/" }],
+  mondelez:   [{ name: "Zotter Schokolade", brand: "Zotter", reason: "Fairtrade, Bio, ohne Palmöl", price: "~3,80€", link: "https://www.zotter.at/shop" },
+               { name: "Vivani Bio-Schokolade", brand: "Vivani", reason: "Bio-Kakao, Fairtrade", price: "~2,50€", link: "https://www.rewe.de/suche/?search=vivani" }],
+  mars:       [{ name: "Vivani Schokolade", brand: "Vivani", reason: "Bio-Kakao, fairer Handel", price: "~2,50€", link: "https://www.rewe.de/suche/?search=vivani+schokolade" }],
+  ferrero:    [{ name: "Nocciolata Bio", brand: "Rigoni di Asiago", reason: "Ohne Palmöl, Bio-zertifiziert", price: "~4,50€", link: "https://www.rewe.de/suche/?search=nocciolata" }],
+  danone:     [{ name: "Andechser Bio-Joghurt", brand: "Andechser Natur", reason: "Bio, bayerische Molkerei", price: "~0,99€", link: "https://www.andechser-natur.de/produkte/" },
+               { name: "Alnatura Bio-Joghurt", brand: "Alnatura", reason: "Bio, fair, regional", price: "~0,89€", link: "https://www.alnatura.de/de-de/produkte/milchprodukte/" }],
+  henkel:     [{ name: "Ecover Waschmittel", brand: "Ecover", reason: "Pflanzliche Inhaltsstoffe, biologisch abbaubar", price: "~7,50€", link: "https://www.ecover.com/de/produkte/" },
+               { name: "Frosch Waschmittel", brand: "Werner & Mertz", reason: "Biologisch abbaubar, ohne Mikroplastik", price: "~5,50€", link: "https://www.frosch.de/produkte/waschmittel/" }],
+  bayer:      [{ name: "Naturheilmittel", brand: "Alnatura / Weleda", reason: "Pflanzliche Alternativen wo möglich", price: "variiert", link: "https://www.weleda.de/produkte" }],
+  "noe-quelle": [{ name: "BRITA Wasserfilter", brand: "BRITA", reason: "Kein Plastikmüll, günstigste Dauerlösung", price: "~30€ einmalig", link: "https://www.brita.de/wasserfilter/" },
+                  { name: "Regionales Mineralwasser", brand: "Lokale Quelle", reason: "Kürzere Transportwege, weniger CO₂", price: "~0,30€", link: "https://www.rewe.de/suche/?search=mineralwasser+regional" }],
+  "noe":      [{ name: "BRITA Wasserfilter", brand: "BRITA", reason: "Kein Plastikmüll, günstigste Dauerlösung", price: "~30€ einmalig", link: "https://www.brita.de/wasserfilter/" }],
 }
 
 function getAlternatives(corpName: string): Alt[] {

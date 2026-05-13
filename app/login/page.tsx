@@ -23,7 +23,7 @@ export default function LoginPage() {
   return (
     <div style={{
       minHeight: "100dvh",
-      background: "#0a0f0a",
+      background: "var(--background)",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
@@ -41,7 +41,7 @@ export default function LoginPage() {
       </div>
       <div style={{
         fontSize: "0.8rem",
-        color: "rgba(255,255,255,0.3)",
+        color: "var(--text-dim)",
         marginBottom: 40,
         letterSpacing: "0.05em",
       }}>
@@ -53,7 +53,7 @@ export default function LoginPage() {
         <>
           <div style={{
             width: 28, height: 28,
-            border: "3px solid rgba(255,255,255,0.08)",
+            border: "3px solid var(--border)",
             borderTop: "3px solid #2ECC8A",
             borderRadius: "50%",
             animation: "spin 0.8s linear infinite",

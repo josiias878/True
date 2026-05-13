@@ -109,7 +109,7 @@ export default function PremiumPage() {
             <div style={{ fontSize: "1.6rem", fontWeight: 900, letterSpacing: "-0.02em", background: "linear-gradient(135deg,#ffd700,#ffaa00)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: "0.4rem" }}>
               Du bist Premium!
             </div>
-            <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.9rem", fontWeight: 500 }}>
+            <div style={{ color: "var(--text-dim)", fontSize: "0.9rem", fontWeight: 500 }}>
               Alle Features freigeschaltet ✨
             </div>
           </div>

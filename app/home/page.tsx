@@ -1326,7 +1326,7 @@ export default function HomePage() {
 
       {/* Premium Toast */}
       {premiumToast && (
-        <div style={{ position: "fixed", top: 64, left: "50%", transform: "translateX(-50%)", background: "#1a1a1a", color: "#fff", borderRadius: 12, padding: "0.6rem 1.2rem", fontWeight: 700, fontSize: "0.88rem", zIndex: 999, boxShadow: "0 4px 20px rgba(0,0,0,0.4)", border: "1px solid rgba(255,215,0,0.3)", whiteSpace: "nowrap" }}>
+        <div style={{ position: "fixed", top: 64, left: "50%", transform: "translateX(-50%)", background: "var(--surface)", color: "var(--text)", borderRadius: 12, padding: "0.6rem 1.2rem", fontWeight: 700, fontSize: "0.88rem", zIndex: 999, boxShadow: "var(--shadow)", border: "1px solid rgba(255,215,0,0.4)", whiteSpace: "nowrap" }}>
           {premiumToast}
         </div>
       )}
