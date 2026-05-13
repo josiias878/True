@@ -1,31 +1,12 @@
 "use client"
-import { useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
 import { useSupabaseAuth } from "@/lib/useSupabaseAuth"
 
+// AuthGuard allows guest access — no login required.
+// Login is optional (for cloud sync, profile, etc.)
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useSupabaseAuth()
-  const router = useRouter()
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const { loading } = useSupabaseAuth()
 
-  useEffect(() => {
-    // Clear any pending redirect when auth state changes
-    if (timerRef.current) clearTimeout(timerRef.current)
-
-    if (!loading && !user) {
-      // Small buffer (300ms) to handle the race condition where
-      // verifyOtp just succeeded but onAuthStateChange hasn't fired yet
-      timerRef.current = setTimeout(() => {
-        router.replace("/login")
-      }, 300)
-    }
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-    }
-  }, [user, loading, router])
-
-  // Loading spinner
+  // Show spinner while auth state is being determined
   if (loading) return (
     <div style={{
       minHeight: "100dvh",
@@ -46,7 +27,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     </div>
   )
 
-  if (!user) return null
-
+  // Guest & logged-in users both get access
   return <>{children}</>
 }

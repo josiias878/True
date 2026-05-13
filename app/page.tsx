@@ -611,7 +611,10 @@ function LandingInner() {
     return () => window.removeEventListener("scroll", fn)
   }, [])
   useEffect(() => { if (searchParams.get("login") === "1") setAuthMode("login") }, [searchParams])
+  // Logged-in users skip landing and go straight to the app
   useEffect(() => { if (user) router.replace("/home") }, [user, router])
+  // Guest CTA — no login required
+  const goToApp = useCallback(() => router.push("/scan"), [router])
 
   return (
     <>
@@ -693,7 +696,7 @@ function LandingInner() {
             zu kennen.
           </h1>
           <div style={{ display: "flex", justifyContent: "center", marginBottom: "3.5rem" }}>
-            <button onClick={() => setAuthMode("register")} style={{ background: "#2ECC8A", color: "#000", borderRadius: "12px", padding: "1rem 2.8rem", fontWeight: 800, fontSize: "1.05rem", boxShadow: "0 0 60px rgba(46,204,138,0.35)", border: "none", cursor: "pointer" }}>
+            <button onClick={goToApp} style={{ background: "#2ECC8A", color: "#000", borderRadius: "12px", padding: "1rem 2.8rem", fontWeight: 800, fontSize: "1.05rem", boxShadow: "0 0 60px rgba(46,204,138,0.35)", border: "none", cursor: "pointer" }}>
               Kostenlos starten →
             </button>
           </div>
@@ -716,7 +719,7 @@ function LandingInner() {
       <AppFeatureBlocks />
 
       {/* ── 4 PHONES ── */}
-      <FeaturesShowcase onLogin={() => setAuthMode("register")} />
+      <FeaturesShowcase onLogin={goToApp} />
 
       {/* ── TRUST STRIP ── */}
       <section style={{ padding: "1.25rem 2rem", background: "#fff", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
@@ -744,10 +747,10 @@ function LandingInner() {
             Bereit für die <span style={{ color: "#2ECC8A" }}>Wahrheit?</span>
           </h2>
           <button
-            onClick={() => setAuthMode("register")}
+            onClick={goToApp}
             style={{ background: "#2ECC8A", color: "#000", borderRadius: "14px", padding: "1.15rem 3.8rem", fontWeight: 900, fontSize: "1.1rem", border: "none", cursor: "pointer", animation: "ctaPulse 2.2s ease-in-out infinite" }}
           >
-            Kostenlos registrieren →
+            Jetzt App öffnen →
           </button>
         </div>
       </section>
