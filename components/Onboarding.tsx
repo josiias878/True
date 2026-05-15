@@ -210,19 +210,25 @@ export default function Onboarding() {
           {/* ── STEP 1: WELCOME ── */}
           {step === "welcome" && (
             <>
-              <div style={{ fontSize: "3.5rem", marginBottom: "1rem", animation: "bounceIn 0.6s ease" }}>🌍</div>
-              <h2 style={{ fontSize: "1.5rem", fontWeight: 900, letterSpacing: "-0.025em", marginBottom: "1.25rem" }}>
+              <div style={{ fontSize: "3.5rem", marginBottom: "0.75rem", animation: "bounceIn 0.6s ease" }}>🌍</div>
+              <h2 style={{ fontSize: "1.6rem", fontWeight: 900, letterSpacing: "-0.03em", marginBottom: "0.35rem" }}>
                 Willkommen bei TRUE
               </h2>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem", marginBottom: "1.75rem", textAlign: "left" }}>
+              <p style={{ color: "var(--text-dim)", fontSize: "0.82rem", marginBottom: "1.25rem" }}>
+                Scanne Barcodes — sieh sofort wer dahintersteckt.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginBottom: "1.5rem", textAlign: "left" }}>
                 {[
-                  { icon: "📷", text: "Produkt scannen" },
-                  { icon: "🔄", text: "Bessere Alternative" },
-                  { icon: "👥", text: "Community" },
+                  { icon: "📷", text: "Barcode scannen", sub: "Sofort Konzern & Score sehen" },
+                  { icon: "🔄", text: "Bessere Alternative", sub: "Ethische Produkte entdecken" },
+                  { icon: "👥", text: "Community", sub: "Tipps teilen & lernen" },
                 ].map(row => (
-                  <div key={row.text} style={{ display: "flex", gap: "0.85rem", alignItems: "center", background: "var(--surface-2)", borderRadius: "12px", padding: "0.65rem 1rem" }}>
-                    <span style={{ fontSize: "1.2rem" }}>{row.icon}</span>
-                    <span style={{ fontSize: "0.9rem", color: "var(--text)", fontWeight: 700 }}>{row.text}</span>
+                  <div key={row.text} style={{ display: "flex", gap: "0.75rem", alignItems: "center", background: "var(--surface-2)", borderRadius: "12px", padding: "0.6rem 0.9rem" }}>
+                    <span style={{ fontSize: "1.3rem", flexShrink: 0 }}>{row.icon}</span>
+                    <div>
+                      <div style={{ fontSize: "0.92rem", color: "var(--text)", fontWeight: 800 }}>{row.text}</div>
+                      <div style={{ fontSize: "0.7rem", color: "var(--text-dim)" }}>{row.sub}</div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -233,10 +239,13 @@ export default function Onboarding() {
           {/* ── STEP 2: INSTALL ── */}
           {step === "install" && (
             <>
-              <div style={{ fontSize: "3.5rem", marginBottom: "1rem" }}>📲</div>
-              <h2 style={{ fontSize: "1.4rem", fontWeight: 900, letterSpacing: "-0.02em", marginBottom: "0.75rem" }}>
-                Zum Homescreen hinzufügen
+              <div style={{ fontSize: "3.5rem", marginBottom: "0.75rem" }}>📲</div>
+              <h2 style={{ fontSize: "1.5rem", fontWeight: 900, letterSpacing: "-0.02em", marginBottom: "0.3rem" }}>
+                Zum Homescreen
               </h2>
+              <p style={{ color: "var(--text-dim)", fontSize: "0.8rem", marginBottom: "1.25rem" }}>
+                Schneller Zugriff beim Einkaufen
+              </p>
               <InstallButton style={{ width: "100%", justifyContent: "center", borderRadius: "14px", padding: "1rem", fontSize: "1rem", marginBottom: "0.75rem" }} />
               <button onClick={() => go("goals")} style={skipBtnStyle}>Bereits installiert → Weiter</button>
             </>
@@ -245,42 +254,37 @@ export default function Onboarding() {
           {/* ── STEP 3: GOALS ── */}
           {step === "goals" && (
             <>
-              <div style={{ fontSize: "3.2rem", marginBottom: "1rem" }}>🎯</div>
-              <h2 style={{ fontSize: "1.4rem", fontWeight: 900, letterSpacing: "-0.02em", marginBottom: "1.25rem" }}>
+              <div style={{ fontSize: "3rem", marginBottom: "0.6rem" }}>🎯</div>
+              <h2 style={{ fontSize: "1.5rem", fontWeight: 900, letterSpacing: "-0.02em", marginBottom: "1rem" }}>
                 Was ist dir wichtig?
               </h2>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "2rem", textAlign: "left" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginBottom: "1.5rem", textAlign: "left" }}>
                 {GOALS.map(g => {
                   const active = goals.has(g.id)
                   return (
                     <button key={g.id} onClick={() => toggleGoal(g.id)} style={{
-                      display: "flex", alignItems: "center", gap: "0.85rem",
+                      display: "flex", alignItems: "center", gap: "0.75rem",
                       background: active ? "var(--accent-dim)" : "var(--surface-2)",
                       border: `1.5px solid ${active ? "var(--accent)" : "var(--border)"}`,
-                      borderRadius: "14px", padding: "0.85rem 1rem",
+                      borderRadius: "12px", padding: "0.65rem 0.9rem",
                       cursor: "pointer", textAlign: "left", width: "100%",
-                      transition: "all 0.18s",
+                      transition: "all 0.15s",
                     }}>
-                      <span style={{ fontSize: "1.5rem", flexShrink: 0 }}>{g.icon}</span>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: "0.9rem", color: active ? "var(--accent)" : "var(--text)" }}>{g.label}</div>
-                        <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", lineHeight: 1.4 }}>{g.desc}</div>
-                      </div>
-                      <div style={{
-                        marginLeft: "auto", width: "20px", height: "20px", borderRadius: "50%", flexShrink: 0,
+                      <span style={{ fontSize: "1.3rem", flexShrink: 0 }}>{g.icon}</span>
+                      <span style={{ fontWeight: 800, fontSize: "0.92rem", color: active ? "var(--accent)" : "var(--text)" }}>{g.label}</span>
+                      <span style={{
+                        marginLeft: "auto", width: "18px", height: "18px", borderRadius: "50%", flexShrink: 0,
                         border: `2px solid ${active ? "var(--accent)" : "var(--border)"}`,
                         background: active ? "var(--accent)" : "transparent",
                         display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: "0.7rem", color: active ? "#000" : "transparent",
-                      }}>✓</div>
+                        fontSize: "0.65rem", color: active ? "#000" : "transparent",
+                      }}>✓</span>
                     </button>
                   )
                 })}
               </div>
-
               <button onClick={submitGoals} style={btnStyle}>
-                {goals.size > 0 ? `Weiter mit ${goals.size} Ziel${goals.size > 1 ? "en" : ""} →` : "Weiter →"}
+                {goals.size > 0 ? `Weiter →` : "Weiter →"}
               </button>
               <button onClick={() => go("register")} style={skipBtnStyle}>Überspringen</button>
             </>
@@ -289,44 +293,40 @@ export default function Onboarding() {
           {/* ── STEP 4: SUPERMARKT ── */}
           {step === "supermarkt" && (
             <>
-              <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🏪</div>
-              <h2 style={{ fontSize: "1.4rem", fontWeight: 900, letterSpacing: "-0.02em", marginBottom: "1.25rem" }}>
+              <div style={{ fontSize: "3rem", marginBottom: "0.6rem" }}>🏪</div>
+              <h2 style={{ fontSize: "1.5rem", fontWeight: 900, letterSpacing: "-0.02em", marginBottom: "1rem" }}>
                 Wo kaufst du ein?
               </h2>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem", marginBottom: "2rem", textAlign: "left" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", marginBottom: "1.5rem" }}>
                 {[
-                  { id: "Rewe",        emoji: "🛒", color: "#cc0000" },
-                  { id: "Edeka",       emoji: "🏪", color: "#ffcc00" },
-                  { id: "Lidl",        emoji: "🔵", color: "#0050aa" },
-                  { id: "Aldi",        emoji: "🟦", color: "#004a9f" },
-                  { id: "dm",          emoji: "🟠", color: "#ff6600" },
-                  { id: "Alnatura",    emoji: "🌿", color: "#5c8a00" },
-                  { id: "Bio Company", emoji: "🌱", color: "#3d7a00" },
-                  { id: "Penny",       emoji: "🔴", color: "#cc0000" },
-                  { id: "Netto",       emoji: "🟡", color: "#ffcc00" },
-                  { id: "Kaufland",    emoji: "🏬", color: "#cc0000" },
+                  { id: "Rewe",        emoji: "🛒" },
+                  { id: "Edeka",       emoji: "🏪" },
+                  { id: "Lidl",        emoji: "🔵" },
+                  { id: "Aldi",        emoji: "🟦" },
+                  { id: "dm",          emoji: "🟠" },
+                  { id: "Alnatura",    emoji: "🌿" },
+                  { id: "Bio Company", emoji: "🌱" },
+                  { id: "Penny",       emoji: "🔴" },
+                  { id: "Netto",       emoji: "🟡" },
+                  { id: "Kaufland",    emoji: "🏬" },
                 ].map(s => {
                   const active = supermarkets.has(s.id)
                   return (
                     <button key={s.id} onClick={() => toggleSupermarkt(s.id)} style={{
-                      display: "flex", alignItems: "center", gap: "0.75rem",
+                      display: "flex", alignItems: "center", gap: "0.6rem",
                       background: active ? "var(--accent-dim)" : "var(--surface-2)",
                       border: `1.5px solid ${active ? "var(--accent)" : "var(--border)"}`,
-                      borderRadius: "12px", padding: "0.75rem 0.9rem",
+                      borderRadius: "10px", padding: "0.6rem 0.75rem",
                       cursor: "pointer", transition: "all 0.15s",
                     }}>
-                      <span style={{ fontSize: "1.3rem" }}>{s.emoji}</span>
-                      <span style={{ fontSize: "0.88rem", fontWeight: active ? 700 : 500, color: active ? "var(--accent)" : "var(--text)" }}>{s.id}</span>
-                      {active && <span style={{ marginLeft: "auto", color: "var(--accent)", fontSize: "0.9rem" }}>✓</span>}
+                      <span style={{ fontSize: "1.1rem" }}>{s.emoji}</span>
+                      <span style={{ fontSize: "0.88rem", fontWeight: active ? 800 : 500, color: active ? "var(--accent)" : "var(--text)" }}>{s.id}</span>
+                      {active && <span style={{ marginLeft: "auto", color: "var(--accent)", fontSize: "0.8rem" }}>✓</span>}
                     </button>
                   )
                 })}
               </div>
-
-              <button onClick={() => go("register")} style={btnStyle}>
-                {supermarkets.size > 0 ? `Weiter mit ${supermarkets.size} Markt${supermarkets.size > 1 ? "märkten" : ""} →` : "Weiter →"}
-              </button>
+              <button onClick={() => go("register")} style={btnStyle}>Weiter →</button>
               <button onClick={() => go("register")} style={skipBtnStyle}>Überspringen</button>
             </>
           )}
@@ -334,116 +334,70 @@ export default function Onboarding() {
           {/* ── STEP 5: REGISTER ── */}
           {step === "register" && (
             <>
-              <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>👤</div>
-              <h2 style={{ fontSize: "1.4rem", fontWeight: 900, letterSpacing: "-0.02em", marginBottom: "1.25rem" }}>
+              <div style={{ fontSize: "3rem", marginBottom: "0.6rem" }}>👤</div>
+              <h2 style={{ fontSize: "1.5rem", fontWeight: 900, letterSpacing: "-0.02em", marginBottom: "0.3rem" }}>
                 Profil anlegen
               </h2>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1rem", textAlign: "left" }}>
-                <div>
-                  <label style={{ fontSize: "0.75rem", color: "var(--text-dim)", fontWeight: 600, display: "block", marginBottom: "0.35rem" }}>
-                    Vorname <span style={{ color: "var(--accent)" }}>*</span>
-                  </label>
-                  <input
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    placeholder="z. B. Maximilian"
-                    style={inputStyle}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: "0.75rem", color: "var(--text-dim)", fontWeight: 600, display: "block", marginBottom: "0.35rem" }}>
-                    E-Mail <span style={{ color: "var(--accent)" }}>*</span>
-                  </label>
-                  <input
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="deine@email.de"
-                    type="email"
-                    style={inputStyle}
-                  />
-                  <p style={{ fontSize: "0.7rem", color: "var(--text-dim)", margin: "4px 0 0 2px" }}>
-                    Zum späteren Anmelden & Synchronisieren
-                  </p>
-                </div>
-
-                <div>
-                  <label style={{ fontSize: "0.75rem", color: "var(--text-dim)", fontWeight: 600, display: "block", marginBottom: "0.35rem" }}>
-                    Handynummer <span style={{ color: "var(--text-dim)", fontWeight: 400 }}>(optional)</span>
-                  </label>
-                  <input
-                    value={contact}
-                    onChange={e => setContact(e.target.value)}
-                    placeholder="0151 23456789"
-                    type="tel"
-                    inputMode="numeric"
-                    style={inputStyle}
-                  />
-                </div>
-
+              <p style={{ color: "var(--text-dim)", fontSize: "0.78rem", marginBottom: "1.1rem" }}>
+                🔒 Privat · Kein Spam · Jederzeit löschbar
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginBottom: "1rem", textAlign: "left" }}>
+                <input
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="Vorname *"
+                  style={inputStyle}
+                />
+                <input
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="E-Mail *"
+                  type="email"
+                  style={inputStyle}
+                />
                 {regError && <p style={{ fontSize: "0.78rem", color: "#ff4455", margin: 0 }}>{regError}</p>}
-
-                <p style={{ fontSize: "0.7rem", color: "var(--text-dim)", lineHeight: 1.6, margin: 0 }}>
-                  🔒 Deine Daten bleiben privat. Keine Werbung, kein Tracking.
-                </p>
               </div>
-
               <button onClick={submitRegister} disabled={regLoading} style={{ ...btnStyle, opacity: regLoading ? 0.7 : 1 }}>
-                {regLoading ? "Wird gespeichert…" : "Profil speichern →"}
+                {regLoading ? "Wird gespeichert…" : "Konto erstellen →"}
               </button>
               <button onClick={() => {
                 localStorage.setItem("true-onboarded-v3", "skip")
                 setShow(false)
-              }} style={skipBtnStyle}>Ohne Profil fortfahren</button>
+              }} style={skipBtnStyle}>Ohne Konto fortfahren</button>
             </>
           )}
 
-          {/* ── STEP 5: DONE ── */}
+          {/* ── DONE ── */}
           {step === "done" && (
             <div style={{ animation: "bounceIn 0.7s ease" }}>
-              <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>🎉</div>
-              <h2 style={{ fontSize: "1.7rem", fontWeight: 900, letterSpacing: "-0.025em", color: "var(--accent)", marginBottom: "0.6rem" }}>
-                Willkommen{name ? `, ${name}` : ""}!
+              <div style={{ fontSize: "4rem", marginBottom: "0.75rem" }}>🎉</div>
+              <h2 style={{ fontSize: "1.8rem", fontWeight: 900, letterSpacing: "-0.03em", color: "var(--accent)", marginBottom: "0.5rem" }}>
+                {name ? `Willkommen, ${name}!` : "Willkommen!"}
               </h2>
-              <p style={{ color: "var(--text-dim)", lineHeight: 1.75, fontSize: "0.92rem", marginBottom: "0.75rem" }}>
-                Ab jetzt weißt du immer, was du kaufst — und hast{name ? `, ${name.split(" ")[0]}` : ""}, die Wahl.
-              </p>
-              {goals.size > 0 && (
-                <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "12px", padding: "0.85rem 1rem", marginBottom: "1.25rem" }}>
-                  <div style={{ fontSize: "0.72rem", color: "var(--accent)", fontWeight: 700, marginBottom: "0.5rem", letterSpacing: "0.05em" }}>DEINE ZIELE</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", justifyContent: "center" }}>
-                    {GOALS.filter(g => goals.has(g.id)).map(g => (
-                      <span key={g.id} style={{ background: "var(--accent-dim)", color: "var(--accent)", border: "1px solid var(--accent)", borderRadius: "20px", padding: "0.2rem 0.65rem", fontSize: "0.78rem", fontWeight: 700 }}>
-                        {g.icon} {g.label}
-                      </span>
-                    ))}
+              {emailSent ? (
+                <div style={{ background: "rgba(46,204,138,0.08)", border: "1px solid rgba(46,204,138,0.3)", borderRadius: "12px", padding: "0.85rem 1rem", margin: "1rem 0", textAlign: "left" }}>
+                  <div style={{ fontWeight: 800, fontSize: "0.9rem", marginBottom: "0.25rem" }}>📧 E-Mail unterwegs</div>
+                  <div style={{ fontSize: "0.78rem", color: "var(--text-dim)" }}>
+                    Bestätigungslink an <strong style={{ color: "var(--text)" }}>{email}</strong> gesendet.
                   </div>
                 </div>
+              ) : (
+                <p style={{ color: "var(--text-dim)", fontSize: "0.85rem", marginBottom: "1rem" }}>
+                  Alles bereit — los geht's!
+                </p>
               )}
-              {emailSent && (
-                <div style={{ background: "rgba(46,204,138,0.08)", border: "1px solid rgba(46,204,138,0.3)", borderRadius: "12px", padding: "0.85rem 1rem", marginBottom: "1.25rem", fontSize: "0.82rem", color: "var(--text-dim)", lineHeight: 1.6 }}>
-                  📧 Wir haben dir einen Bestätigungslink an <strong style={{ color: "var(--text)" }}>{email}</strong> gesendet — klicke darauf, um dein Konto zu aktivieren.
+              {goals.size > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem", justifyContent: "center", marginBottom: "1.25rem" }}>
+                  {GOALS.filter(g => goals.has(g.id)).map(g => (
+                    <span key={g.id} style={{ background: "var(--accent-dim)", color: "var(--accent)", border: "1px solid var(--accent)", borderRadius: "20px", padding: "0.2rem 0.6rem", fontSize: "0.76rem", fontWeight: 800 }}>
+                      {g.icon} {g.label}
+                    </span>
+                  ))}
                 </div>
               )}
-              <p style={{ color: "var(--accent)", fontSize: "1rem", fontWeight: 700, marginBottom: "1.5rem", fontStyle: "italic" }}>
-                „Deine Kaufentscheidung ist deine Stimme."
-              </p>
-
-              {/* PWA install hint */}
-              <div style={{ background: "rgba(46,204,138,0.06)", border: "1px solid rgba(46,204,138,0.2)", borderRadius: "14px", padding: "1rem", marginBottom: "1.5rem" }}>
-                <p style={{ fontSize: "0.82rem", color: "var(--text-dim)", margin: "0 0 0.75rem" }}>
-                  📲 Speichere TRUE auf deinem Homescreen — für schnellen Zugriff beim Einkaufen.
-                </p>
-                <InstallButton style={{ width: "100%", justifyContent: "center", borderRadius: "10px", padding: "0.75rem 1rem", fontSize: "0.9rem" }} />
-              </div>
-
-              <button onClick={goHome} style={{ ...btnStyle, fontSize: "1.05rem", padding: "1rem 2rem" }}>
+              <button onClick={goHome} style={{ ...btnStyle, fontSize: "1.05rem", padding: "1rem 2rem", marginBottom: "0.5rem" }}>
                 TRUE öffnen →
               </button>
-              <Link href="/community" onClick={() => setShow(false)} style={{ display: "block", marginTop: "0.75rem", fontSize: "0.85rem", color: "var(--text-dim)", textDecoration: "none" }}>
-                Community entdecken →
-              </Link>
             </div>
           )}
         </div>
