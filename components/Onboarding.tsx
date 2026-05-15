@@ -117,6 +117,15 @@ export default function Onboarding() {
       supermarkets: [...supermarkets],
       joined: new Date().toISOString(),
     }
+    // Clear any leftover data from a previous account on this device
+    const staleKeys = [
+      "shopping-list-items-v1", "true-scan-history", "true-premium",
+      "true-meidliste", "true-saved-posts-v2", "true-post-likes-v1",
+      "true-community-user-posts", "true-community-comments",
+      "true-joined-communities", "true-following", "true-profile-photo",
+      "true-followed-channels", "true-community-card-dismissed",
+    ]
+    staleKeys.forEach(k => { try { localStorage.removeItem(k) } catch {} })
     localStorage.setItem("true-profile", JSON.stringify(profile))
     localStorage.setItem("true-onboarded-v3", "1")
     setStep("done")
@@ -181,26 +190,19 @@ export default function Onboarding() {
           {/* ── STEP 1: WELCOME ── */}
           {step === "welcome" && (
             <>
-              <div style={{ fontSize: "3.8rem", marginBottom: "1.25rem", animation: "bounceIn 0.6s ease" }}>🌍</div>
-              <h2 style={{ fontSize: "1.55rem", fontWeight: 900, letterSpacing: "-0.025em", marginBottom: "0.5rem" }}>
+              <div style={{ fontSize: "3.5rem", marginBottom: "1rem", animation: "bounceIn 0.6s ease" }}>🌍</div>
+              <h2 style={{ fontSize: "1.5rem", fontWeight: 900, letterSpacing: "-0.025em", marginBottom: "1.25rem" }}>
                 Willkommen bei TRUE
               </h2>
-              <div style={{ fontSize: "0.78rem", color: "var(--accent)", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "1.25rem" }}>
-                Dein Kompass für bewusstes Einkaufen
-              </div>
-              <p style={{ color: "var(--text-dim)", lineHeight: 1.75, fontSize: "0.92rem", marginBottom: "2rem" }}>
-                TRUE macht Einkaufen einfacher — du siehst sofort, ob ein Produkt
-                zu deinen Werten passt, und bekommst direkt bessere Alternativen.
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginBottom: "2rem", textAlign: "left" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem", marginBottom: "1.75rem", textAlign: "left" }}>
                 {[
-                  { icon: "📷", text: "Barcode scannen — sofort eine Kaufempfehlung" },
-                  { icon: "🔄", text: "Bessere Alternativen auf einen Blick" },
-                  { icon: "✅", text: "Bewusst einkaufen — ganz ohne schlechtes Gewissen" },
+                  { icon: "📷", text: "Produkt scannen" },
+                  { icon: "🔄", text: "Bessere Alternative" },
+                  { icon: "👥", text: "Community" },
                 ].map(row => (
-                  <div key={row.text} style={{ display: "flex", gap: "1rem", alignItems: "center", background: "var(--surface-2)", borderRadius: "12px", padding: "0.75rem 1rem" }}>
-                    <span style={{ fontSize: "1.25rem" }}>{row.icon}</span>
-                    <span style={{ fontSize: "0.88rem", color: "var(--text-dim)" }}>{row.text}</span>
+                  <div key={row.text} style={{ display: "flex", gap: "0.85rem", alignItems: "center", background: "var(--surface-2)", borderRadius: "12px", padding: "0.65rem 1rem" }}>
+                    <span style={{ fontSize: "1.2rem" }}>{row.icon}</span>
+                    <span style={{ fontSize: "0.9rem", color: "var(--text)", fontWeight: 700 }}>{row.text}</span>
                   </div>
                 ))}
               </div>
@@ -212,24 +214,11 @@ export default function Onboarding() {
           {step === "install" && (
             <>
               <div style={{ fontSize: "3.5rem", marginBottom: "1rem" }}>📲</div>
-              <h2 style={{ fontSize: "1.4rem", fontWeight: 900, letterSpacing: "-0.02em", marginBottom: "0.4rem" }}>
-                TRUE auf dem Homescreen
+              <h2 style={{ fontSize: "1.4rem", fontWeight: 900, letterSpacing: "-0.02em", marginBottom: "0.75rem" }}>
+                Zum Homescreen hinzufügen
               </h2>
-              <p style={{ color: "var(--text-dim)", fontSize: "0.85rem", marginBottom: "0.5rem", lineHeight: 1.65 }}>
-                <strong style={{ color: "var(--text)" }}>Wichtig:</strong> Installiere TRUE jetzt — bevor du deine Daten eingibst. So musst du das Onboarding nicht zweimal machen.
-              </p>
-              <div style={{ background: "rgba(255,204,0,0.07)", border: "1px solid rgba(255,204,0,0.25)", borderRadius: "12px", padding: "0.85rem 1rem", marginBottom: "1.5rem", textAlign: "left" }}>
-                <div style={{ fontSize: "0.75rem", color: "#ffcc00", fontWeight: 700, marginBottom: "0.4rem" }}>⚠️ Warum jetzt?</div>
-                <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", lineHeight: 1.6 }}>
-                  Wenn du später die App zum Homescreen hinzufügst, startet sie neu — und deine eingegebenen Daten wären weg. Installiere jetzt, dann läuft alles in der App.
-                </div>
-              </div>
-
               <InstallButton style={{ width: "100%", justifyContent: "center", borderRadius: "14px", padding: "1rem", fontSize: "1rem", marginBottom: "0.75rem" }} />
-
-              <button onClick={() => go("goals")} style={skipBtnStyle}>
-                Habe es bereits installiert → Weiter zur Anmeldung
-              </button>
+              <button onClick={() => go("goals")} style={skipBtnStyle}>Bereits installiert → Weiter</button>
             </>
           )}
 
@@ -237,12 +226,9 @@ export default function Onboarding() {
           {step === "goals" && (
             <>
               <div style={{ fontSize: "3.2rem", marginBottom: "1rem" }}>🎯</div>
-              <h2 style={{ fontSize: "1.4rem", fontWeight: 900, letterSpacing: "-0.02em", marginBottom: "0.4rem" }}>
-                Was ist dein Ziel mit TRUE?
+              <h2 style={{ fontSize: "1.4rem", fontWeight: 900, letterSpacing: "-0.02em", marginBottom: "1.25rem" }}>
+                Was ist dir wichtig?
               </h2>
-              <p style={{ color: "var(--text-dim)", fontSize: "0.82rem", marginBottom: "1.5rem", lineHeight: 1.6 }}>
-                Wähle was dir wichtig ist — TRUE passt sich an dich an.
-              </p>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "2rem", textAlign: "left" }}>
                 {GOALS.map(g => {
@@ -284,12 +270,9 @@ export default function Onboarding() {
           {step === "supermarkt" && (
             <>
               <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🏪</div>
-              <h2 style={{ fontSize: "1.4rem", fontWeight: 900, letterSpacing: "-0.02em", marginBottom: "0.4rem" }}>
+              <h2 style={{ fontSize: "1.4rem", fontWeight: 900, letterSpacing: "-0.02em", marginBottom: "1.25rem" }}>
                 Wo kaufst du ein?
               </h2>
-              <p style={{ color: "var(--text-dim)", fontSize: "0.82rem", marginBottom: "1.5rem", lineHeight: 1.65 }}>
-                TRUE zeigt dir dann direkt, ob die Alternative <strong style={{ color: "var(--text)" }}>bei dir erhältlich</strong> ist.
-              </p>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem", marginBottom: "2rem", textAlign: "left" }}>
                 {[
@@ -332,12 +315,9 @@ export default function Onboarding() {
           {step === "register" && (
             <>
               <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>👤</div>
-              <h2 style={{ fontSize: "1.4rem", fontWeight: 900, letterSpacing: "-0.02em", marginBottom: "0.4rem" }}>
-                Dein Profil anlegen
+              <h2 style={{ fontSize: "1.4rem", fontWeight: 900, letterSpacing: "-0.02em", marginBottom: "1.25rem" }}>
+                Profil anlegen
               </h2>
-              <p style={{ color: "var(--text-dim)", fontSize: "0.82rem", marginBottom: "1.5rem" }}>
-                Name und Handynummer sind wichtig — E-Mail ist optional.
-              </p>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1rem", textAlign: "left" }}>
                 <div>

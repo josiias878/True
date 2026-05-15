@@ -1,7 +1,8 @@
 "use client"
 import AuthGuard from "@/components/AuthGuard"
-import { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ThemeToggle } from "@/components/ThemeProvider"
 import BottomNav from "@/components/BottomNav"
 import NotificationBell from "@/components/NotificationBell"
@@ -94,11 +95,88 @@ function PasswordSection() {
   )
 }
 
+// ─── Telefonnummer-Sektion ────────────────────────────────────────────────────
+function PhoneSection({ currentPhone, onSave }: { currentPhone: string; onSave: (v: string) => void }) {
+  const [open, setOpen]   = useState(false)
+  const [phone, setPhone] = useState(currentPhone)
+  const [saved, setSaved] = useState(false)
+
+  function savePhone() {
+    onSave(phone)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  return (
+    <div>
+      <button onClick={() => setOpen(v => !v)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}>
+        <span style={{ fontSize: "1.1rem" }}>📱</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, fontSize: "0.88rem", color: "var(--text)" }}>Handynummer (optional)</div>
+          <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginTop: 1 }}>
+            {currentPhone ? currentPhone : "Noch keine Nummer hinterlegt"}
+          </div>
+        </div>
+        <span style={{ fontSize: "0.7rem", color: "var(--text-dim)", transform: open ? "rotate(180deg)" : "none", display: "inline-block" }}>▼</span>
+      </button>
+      {open && (
+        <div style={{ padding: "0 14px 14px", borderTop: "1px solid var(--border)" }}>
+          <p style={{ fontSize: "0.75rem", color: "var(--text-dim)", margin: "10px 0 10px", lineHeight: 1.5 }}>
+            Optional — für spätere SMS-Benachrichtigungen. Niemals öffentlich sichtbar.
+          </p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              type="tel"
+              value={phone}
+              onChange={e => { setPhone(e.target.value); setSaved(false) }}
+              placeholder="+49 170 123 4567"
+              style={{ flex: 1, background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px", color: "var(--text)", fontSize: "0.88rem", outline: "none" }}
+            />
+            <button onClick={savePhone} style={{ background: saved ? "rgba(46,204,138,0.15)" : "var(--accent)", color: saved ? "var(--accent)" : "#000", border: `1px solid ${saved ? "rgba(46,204,138,0.4)" : "var(--accent)"}`, borderRadius: 10, padding: "10px 16px", fontWeight: 800, cursor: "pointer", fontSize: "0.85rem", whiteSpace: "nowrap" }}>
+              {saved ? "✓" : "Speichern"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
   const { user, loading: authLoading, signOut } = useSupabaseAuth()
   const { profile, setProfile, saveProfile: saveProfileToDb, saving } = useProfile(user)
+  const router = useRouter()
+
+  async function handleSignOut() {
+    // Clear all user-specific local data so next user starts fresh
+    const keysToRemove = [
+      "shopping-list-items-v1",
+      "true-profile",
+      "true-scan-history",
+      "true-community-user-posts",
+      "true-post-likes-v1",
+      "true-goals-v1",
+      "true-joined-communities",
+      "true-community-comments",
+      "true-welcome-seen",
+      "true-onboarded-v3",
+      "true-premium",
+      "true-community-card-dismissed",
+      "true-meidliste",
+      "true-saved-posts-v2",
+      "true-support-messages",
+      "true-following",
+      "true-profile-photo",
+      "true-followed-channels",
+    ]
+    keysToRemove.forEach(k => {
+      try { localStorage.removeItem(k) } catch {}
+    })
+    await signOut()
+    router.replace("/")
+  }
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading]         = useState(false)
@@ -108,7 +186,8 @@ export default function ProfilePage() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [savedToast, setSavedToast]       = useState(false)
   const [activeTab, setActiveTab]         = useState<"posts" | "saved" | "settings">("posts")
-  const [savedPosts, setSavedPosts]       = useState<number[]>([])
+  const [savedPosts, setSavedPosts]       = useState<{ id: number; title: string; body: string; topic: string; img?: string; time: string; author: string }[]>([])
+  const [myPosts, setMyPosts]             = useState<{ id: number; title: string; body: string; topic: string; img?: string; time: string; likes: number }[]>([])
   const [supportMessages, setSupportMessages] = useState<SupportMessage[]>([])
   const [supportInput, setSupportInput]   = useState("")
   const [pushStatus, setPushStatus]       = useState<"idle" | "requesting" | "granted" | "denied">("idle")
@@ -214,9 +293,53 @@ export default function ProfilePage() {
       })
   }, [user?.id])
 
+  // Eigene Community-Posts laden
+  useEffect(() => {
+    if (!user) {
+      // Fallback: localStorage posts
+      try {
+        const up = localStorage.getItem("true-community-user-posts")
+        if (up) {
+          const parsed = JSON.parse(up)
+          setMyPosts(parsed.map((p: any) => ({
+            id: p.id, title: p.title, body: p.body, topic: p.topic, img: p.img, time: p.time, likes: p.likes ?? 0,
+          })))
+        }
+      } catch {}
+      return
+    }
+    if (!supabase) return
+    supabase
+      .from("posts")
+      .select("id, title, text, tag, img_url, created_at, likes")
+      .eq("user_id", user.id)
+      .eq("type", "community")
+      .order("created_at", { ascending: false })
+      .limit(50)
+      .then(({ data }) => {
+        if (!data) return
+        const mapped = data.map((row: any) => ({
+          id: row.id,
+          title: row.title ?? "",
+          body: row.text ?? "",
+          topic: row.tag ?? "bewusst",
+          img: row.img_url ?? undefined,
+          time: (() => {
+            const diff = Date.now() - new Date(row.created_at).getTime()
+            if (diff < 60_000)    return "gerade eben"
+            if (diff < 3_600_000) return `vor ${Math.floor(diff / 60_000)} Min.`
+            if (diff < 86_400_000) return `vor ${Math.floor(diff / 3_600_000)} Std.`
+            return `vor ${Math.floor(diff / 86_400_000)} Tag(en)`
+          })(),
+          likes: row.likes ?? 0,
+        }))
+        setMyPosts(mapped)
+      })
+  }, [user?.id])
+
   useEffect(() => {
     try {
-      const sv = localStorage.getItem("true-saved-posts")
+      const sv = localStorage.getItem("true-saved-posts-v2")
       if (sv) setSavedPosts(JSON.parse(sv))
     } catch (e) { console.error("[Profile] true-saved-posts load failed:", e) }
     try {
@@ -464,6 +587,20 @@ export default function ProfilePage() {
 
       <div style={{ maxWidth: 480, margin: "0 auto" }}>
 
+        {/* ── Gast-Modus Banner ─────────────────────────────────────────── */}
+        {!authLoading && !user && (
+          <div style={{ margin: "12px 20px 0", background: "rgba(255,180,0,0.1)", border: "1px solid rgba(255,180,0,0.35)", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 20 }}>👤</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "var(--text)" }}>Gast-Modus</div>
+              <div style={{ fontSize: "0.75rem", color: "var(--text-dim)", marginTop: 2 }}>Deine Daten sind nur lokal gespeichert — nicht geräteübergreifend.</div>
+            </div>
+            <button onClick={() => setShowAuthModal(true)} style={{ background: "var(--accent)", border: "none", borderRadius: 8, padding: "5px 12px", color: "#000", fontWeight: 700, fontSize: "0.75rem", cursor: "pointer", whiteSpace: "nowrap" }}>
+              Anmelden
+            </button>
+          </div>
+        )}
+
         {/* ── Profile Header (Instagram style) ─────────────────────────── */}
         <div style={{ padding: "20px 20px 0" }}>
 
@@ -501,9 +638,9 @@ export default function ProfilePage() {
             {/* Stats */}
             <div style={{ flex: 1, display: "flex", justifyContent: "space-around", paddingTop: 10 }}>
               {[
-                { label: "Folge ich", value: followingCount },
-                { label: "Gespeichert", value: savedCount },
-                { label: "Community", value: "👥" },
+                { label: "Folge ich",  value: followingCount  },
+                { label: "Gespeichert", value: savedCount     },
+                { label: "Beiträge",   value: myPosts.length  },
               ].map(s => (
                 <div key={s.label} style={{ textAlign: "center" }}>
                   <div style={{ fontWeight: 800, fontSize: "1.25rem", lineHeight: 1 }}>{s.value}</div>
@@ -598,7 +735,7 @@ export default function ProfilePage() {
                 <span style={{ fontWeight: 600, color: "var(--text)" }}>Synchronisiert · </span>
                 <span style={{ color: "var(--text-dim)" }}>{user.phone || user.email}</span>
               </div>
-              <button onClick={signOut} style={{ background: "none", border: "1px solid var(--border)", borderRadius: 8, padding: "4px 10px", color: "var(--text-dim)", fontSize: "0.75rem", cursor: "pointer" }}>Abmelden</button>
+              <button onClick={handleSignOut} style={{ background: "none", border: "1px solid var(--border)", borderRadius: 8, padding: "4px 10px", color: "var(--text-dim)", fontSize: "0.75rem", cursor: "pointer" }}>Abmelden</button>
             </div>
           )}
         </div>
@@ -681,31 +818,46 @@ export default function ProfilePage() {
         {/* ── Posts Tab ─────────────────────────────────────────────── */}
         {activeTab === "posts" && (
           <div style={{ padding: "16px" }}>
-            {/* Community CTA */}
-            <div style={{ textAlign: "center", padding: "2.5rem 1rem 1.5rem", color: "var(--text-dim)" }}>
-              <div style={{ fontSize: 44, marginBottom: 10 }}>👥</div>
-              <p style={{ fontWeight: 700, fontSize: "1rem", color: "var(--text)", marginBottom: 6 }}>Beiträge in der Community</p>
-              <p style={{ fontSize: "0.82rem", marginBottom: 20, lineHeight: 1.5 }}>
-                Teile Entdeckungen, Alternativen und Tipps direkt in der TRUE Community — alle sehen es sofort.
-              </p>
-              <Link href="/community" style={{ background: "var(--accent)", color: "#000", borderRadius: 10, padding: "11px 24px", fontWeight: 700, textDecoration: "none", fontSize: "0.9rem", display: "inline-block" }}>
-                ✏️ Jetzt in der Community posten
-              </Link>
-            </div>
-
-            {/* Info card */}
-            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "14px 16px", marginTop: 8 }}>
-              <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                <span style={{ fontSize: "1.2rem", flexShrink: 0 }}>💡</span>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: "0.85rem", marginBottom: 4 }}>Was kannst du posten?</div>
-                  <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", lineHeight: 1.6 }}>
-                    Einkaufstipps · Produkt-Alternativen · Konzern-News · Aktionen · Fragen an die Community
-                  </div>
-                </div>
+            {myPosts.length === 0 ? (
+              /* Empty state */
+              <div style={{ textAlign: "center", padding: "2.5rem 1rem 1.5rem", color: "var(--text-dim)" }}>
+                <div style={{ fontSize: 44, marginBottom: 10 }}>✍️</div>
+                <p style={{ fontWeight: 700, fontSize: "1rem", color: "var(--text)", marginBottom: 6 }}>Noch keine Beiträge</p>
+                <p style={{ fontSize: "0.82rem", marginBottom: 20, lineHeight: 1.5 }}>
+                  Teile Entdeckungen, Alternativen und Tipps — alle sehen es sofort.
+                </p>
+                <Link href="/community" style={{ background: "var(--accent)", color: "#000", borderRadius: 10, padding: "11px 24px", fontWeight: 700, textDecoration: "none", fontSize: "0.9rem", display: "inline-block" }}>
+                  ✏️ Jetzt in der Community posten
+                </Link>
               </div>
-            </div>
-
+            ) : (
+              /* Own posts list */
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-dim)", fontWeight: 600 }}>{myPosts.length} {myPosts.length === 1 ? "Beitrag" : "Beiträge"}</span>
+                  <Link href="/community" style={{ fontSize: "0.78rem", color: "var(--accent)", fontWeight: 700, textDecoration: "none" }}>+ Neuer Beitrag</Link>
+                </div>
+                {myPosts.map(post => (
+                  <Link key={post.id} href="/community" style={{ textDecoration: "none" }}>
+                    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
+                      <div style={{ padding: "12px 14px 10px" }}>
+                        <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--text)", marginBottom: 4, lineHeight: 1.35 }}>{post.title}</div>
+                        <p style={{ fontSize: "0.8rem", color: "var(--text-dim)", lineHeight: 1.5, margin: "0 0 8px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{post.body}</p>
+                        {post.img && <img src={post.img} alt="" style={{ width: "100%", maxHeight: 140, objectFit: "cover", borderRadius: 8, marginBottom: 6, display: "block" }} />}
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: "0.72rem", color: "var(--text-dim)" }}>
+                          <span>🕐 {post.time}</span>
+                          <span>❤️ {post.likes}</span>
+                          <span style={{ marginLeft: "auto", color: "var(--accent)", fontWeight: 600 }}>Öffnen →</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+                <Link href="/community" style={{ display: "block", textAlign: "center", background: "var(--surface)", border: "1px dashed var(--border)", borderRadius: 12, padding: "12px", color: "var(--accent)", fontWeight: 700, fontSize: "0.88rem", textDecoration: "none", marginTop: 4 }}>
+                  ✏️ Weiteren Beitrag schreiben
+                </Link>
+              </div>
+            )}
           </div>
         )}
 
@@ -716,7 +868,7 @@ export default function ProfilePage() {
               <div style={{ textAlign: "center", padding: "3rem 1rem", color: "var(--text-dim)" }}>
                 <div style={{ fontSize: 40, marginBottom: 8 }}>🔖</div>
                 <p style={{ fontWeight: 600 }}>Noch nichts gespeichert</p>
-                <p style={{ fontSize: "0.82rem" }}>Tippe in der Community auf das Lesezeichen-Icon 🔖</p>
+                <p style={{ fontSize: "0.82rem" }}>Tippe auf das 🔖-Symbol in der Community um Beiträge zu speichern.</p>
                 <Link href="/community" style={{ display: "inline-block", marginTop: 14, background: "var(--accent)", color: "#000", borderRadius: 10, padding: "9px 20px", fontWeight: 700, textDecoration: "none", fontSize: "0.88rem" }}>
                   👥 Community öffnen
                 </Link>
@@ -725,16 +877,22 @@ export default function ProfilePage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {/* Header */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                  <span style={{ fontSize: "0.8rem", color: "var(--text-dim)", fontWeight: 600 }}>{savedPosts.length} gespeicherte Posts</span>
-                  <Link href="/community" style={{ fontSize: "0.78rem", color: "var(--accent)", fontWeight: 700, textDecoration: "none" }}>Community öffnen →</Link>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-dim)", fontWeight: 600 }}>{savedPosts.length} gespeicherte {savedPosts.length === 1 ? "Beitrag" : "Beiträge"}</span>
+                  <Link href="/community" style={{ fontSize: "0.78rem", color: "var(--accent)", fontWeight: 700, textDecoration: "none" }}>Community →</Link>
                 </div>
-                {/* Saved post placeholders → link to Community */}
-                {savedPosts.map(id => (
-                  <Link key={id} href="/community" style={{ textDecoration: "none", display: "block" }}>
-                    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--accent)" stroke="none"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-                      <span style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>Gespeicherter Post #{id}</span>
-                      <span style={{ marginLeft: "auto", color: "var(--accent)", fontSize: "0.78rem", fontWeight: 600 }}>→</span>
+                {/* Saved posts with real content */}
+                {savedPosts.map(post => (
+                  <Link key={post.id} href="/community" style={{ textDecoration: "none", display: "block" }}>
+                    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
+                      <div style={{ padding: "12px 14px 10px" }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 5 }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="var(--accent)" stroke="none" style={{ flexShrink: 0, marginTop: 3 }}><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                          <span style={{ fontWeight: 700, fontSize: "0.88rem", color: "var(--text)", lineHeight: 1.3 }}>{post.title}</span>
+                        </div>
+                        <p style={{ fontSize: "0.78rem", color: "var(--text-dim)", lineHeight: 1.5, margin: "0 0 6px 21px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{post.body}</p>
+                        {post.img && <img src={post.img} alt="" style={{ width: "calc(100% - 21px)", maxHeight: 120, objectFit: "cover", borderRadius: 8, display: "block", marginLeft: 21, marginBottom: 6 }} />}
+                        <div style={{ fontSize: "0.68rem", color: "var(--text-dim)", marginLeft: 21 }}>von {post.author} · {post.time}</div>
+                      </div>
                     </div>
                   </Link>
                 ))}
@@ -761,16 +919,6 @@ export default function ProfilePage() {
                   Scanne dein erstes Produkt um deinen Impact zu tracken 📷
                 </p>
               )}
-            </div>
-
-            {/* Suggested users */}
-            <div style={{ marginTop: 16 }}>
-              <h3 style={{ margin: "0 0 10px", fontSize: "0.92rem", fontWeight: 700 }}>👥 Empfohlene Profile</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {SUGGESTED_USERS.slice(0, 4).map(u => (
-                  <SuggestedUserCard key={u.id} user={u} following={following.has(u.id)} onFollow={() => toggleFollow(u.id)} />
-                ))}
-              </div>
             </div>
           </div>
         )}
@@ -846,7 +994,7 @@ export default function ProfilePage() {
                     ) : (
                       <div style={{ paddingTop: 12 }}>
                         <div style={{ fontSize: "0.82rem", color: "var(--text-dim)", marginBottom: 12, lineHeight: 1.6 }}>
-                          Unbegrenzte Scans · Familienprofil · KI-Ernährungscoach · Meide-Liste · Ziel-Modus
+                          Unbegrenzte Scans · Familienprofil · KI-Ernährungscoach · Vollständige Hintergründe · Ziel-Modus
                         </div>
                         <Link href="/premium" style={{ display: "block", background: "linear-gradient(135deg, #ffd700, #ffaa00)", color: "#000", borderRadius: 12, padding: "12px", fontWeight: 800, fontSize: "0.88rem", textDecoration: "none", textAlign: "center" }}>
                           Jetzt upgraden — 2,99€/Monat →
@@ -1110,82 +1258,7 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              {/* 7 · Meide-Liste */}
-              <div style={{ borderBottom: "1px solid var(--border)", background: !isPremium ? "rgba(255,170,0,0.02)" : "transparent" }}>
-                <button onClick={() => setOpenSetting(openSetting === "meid" ? null : "meid")}
-                  style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}>
-                  <span style={{ fontSize: "1.3rem", width: 28, textAlign: "center" }}>🚫</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: "0.88rem", color: "var(--text)" }}>Meide-Liste</div>
-                    <div style={{ fontSize: "0.7rem", color: "var(--text-dim)" }}>{isPremium ? (meidliste.length > 0 ? `${meidliste.length} Konzern${meidliste.length > 1 ? "e" : ""}` : "Leer") : "👑 Premium"}</div>
-                  </div>
-                  {!isPremium && <span style={{ background: "rgba(255,170,0,0.15)", color: "#ffaa00", border: "1px solid rgba(255,170,0,0.4)", borderRadius: 6, padding: "2px 8px", fontSize: "0.62rem", fontWeight: 800, flexShrink: 0 }}>PREMIUM</span>}
-                  <span style={{ color: "var(--text-dim)", fontSize: "1.1rem", transform: openSetting === "meid" ? "rotate(90deg)" : "none", transition: "transform 0.2s" }}>›</span>
-                </button>
-                {openSetting === "meid" && (
-                  <div style={{ padding: "0 16px 16px", borderTop: "1px solid var(--border)" }}>
-                    {!isPremium ? (
-                      <div style={{ position: "relative", paddingTop: 12 }}>
-                        <div style={{ filter: "blur(3px)", pointerEvents: "none", userSelect: "none" }}>
-                          {["Nestlé", "Coca-Cola", "Unilever"].map(n => (
-                            <div key={n} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--border)", opacity: 0.6 }}>
-                              <span style={{ fontWeight: 600, fontSize: "0.88rem" }}>{n}</span>
-                              <span style={{ background: "#ff3b3022", color: "#ff3b30", borderRadius: 6, padding: "2px 8px", fontSize: "0.68rem", fontWeight: 700 }}>KRITISCH</span>
-                            </div>
-                          ))}
-                        </div>
-                        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
-                          <span style={{ fontSize: "1.8rem" }}>🔒</span>
-                          <div style={{ fontWeight: 700, fontSize: "0.85rem", color: "var(--text)", textAlign: "center" }}>Premium freischalten</div>
-                          <a href="/premium" style={{ background: "#ffaa00", color: "#000", borderRadius: 10, padding: "8px 20px", fontWeight: 800, fontSize: "0.82rem", textDecoration: "none" }}>Jetzt upgraden →</a>
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ paddingTop: 12 }}>
-                        <div style={{ fontSize: "0.68rem", color: "var(--text-dim)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Konzern meiden</div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
-                          {(meidExpanded ? KONZERNE_OPTIONS : KONZERNE_OPTIONS.slice(0, 4)).map(k => {
-                            const active = meidliste.includes(k.name)
-                            return (
-                              <button key={k.name} onClick={() => toggleMeid(k.name)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 12px", background: active ? k.color + "12" : "var(--background)", border: `1.5px solid ${active ? k.color + "66" : "var(--border)"}`, borderRadius: 10, cursor: "pointer", width: "100%", textAlign: "left", transition: "all 0.15s" }}>
-                                <span style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--text)" }}>{k.name}</span>
-                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                  <span style={{ background: k.color + "22", color: k.color, border: `1px solid ${k.color}44`, borderRadius: 6, padding: "2px 8px", fontSize: "0.62rem", fontWeight: 700 }}>{k.badge}</span>
-                                  <div style={{ width: 20, height: 20, borderRadius: "50%", border: `2px solid ${active ? k.color : "var(--border)"}`, background: active ? k.color : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", color: active ? "#000" : "transparent", flexShrink: 0 }}>✓</div>
-                                </div>
-                              </button>
-                            )
-                          })}
-                        </div>
-                        {!meidExpanded && (
-                          <button onClick={() => setMeidExpanded(true)} style={{ width: "100%", padding: "8px", background: "transparent", border: "1px dashed var(--border)", borderRadius: 10, color: "var(--text-dim)", fontSize: "0.78rem", cursor: "pointer", fontWeight: 600, marginBottom: 14 }}>
-                            ↓ {KONZERNE_OPTIONS.length - 4} weitere Konzerne anzeigen
-                          </button>
-                        )}
-                        {meidExpanded && <div style={{ marginBottom: 14 }} />}
-                        <div style={{ fontSize: "0.68rem", color: "var(--text-dim)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>Eigenen Konzern hinzufügen</div>
-                        <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
-                          <input value={meidInput} onChange={e => { setMeidInput(e.target.value); setMeidError("") }} onKeyDown={e => e.key === "Enter" && addCustomMeid()} placeholder="z.B. Aldi, Lidl, H&M …" maxLength={50}
-                            style={{ flex: 1, background: "var(--background)", border: `1px solid ${meidError ? "var(--danger)" : "var(--border)"}`, borderRadius: 10, padding: "8px 12px", color: "var(--text)", fontSize: "0.82rem", outline: "none" }} />
-                          <button onClick={addCustomMeid} style={{ background: "var(--accent)", color: "#000", border: "none", borderRadius: 10, padding: "0 14px", fontWeight: 800, cursor: "pointer", fontSize: "0.85rem" }}>＋</button>
-                        </div>
-                        {meidError && (
-                          <div style={{ fontSize: "0.72rem", color: "var(--danger)", marginBottom: 8, paddingLeft: 2 }}>{meidError}</div>
-                        )}
-                        {meidliste.filter(n => !KONZERNE_OPTIONS.find(k => k.name === n)).map(n => (
-                          <div key={n} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 12px", background: "rgba(255,68,85,0.08)", border: "1px solid rgba(255,68,85,0.2)", borderRadius: 8, marginBottom: 5 }}>
-                            <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>🚫 {n}</span>
-                            <button onClick={() => toggleMeid(n)} style={{ background: "transparent", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: "1rem", padding: "0 4px" }}>×</button>
-                          </div>
-                        ))}
-                        {meidliste.length === 0 && <div style={{ textAlign: "center", color: "var(--text-dim)", fontSize: "0.78rem", padding: "12px 0" }}>Noch keine Konzerne ausgewählt.</div>}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* 8 · Score-Methodik */}
+              {/* 7 · Score-Methodik */}
               <div style={{ borderBottom: "1px solid var(--border)" }}>
                 <button onClick={() => setOpenSetting(openSetting === "score" ? null : "score")}
                   style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}>
@@ -1236,9 +1309,9 @@ export default function ProfilePage() {
                   <div style={{ padding: "0 16px 16px", borderTop: "1px solid var(--border)" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 12 }}>
                       {[
-                        { label: "Datenschutz", href: "#" },
-                        { label: "Nutzungsbedingungen", href: "#" },
-                        { label: "Impressum", href: "#" },
+                        { label: "Datenschutz", href: "/datenschutz" },
+                        { label: "Impressum", href: "/impressum" },
+                        { label: "Community", href: "/community" },
                       ].map(l => (
                         <a key={l.label} href={l.href} style={{ color: "var(--text-dim)", textDecoration: "none", fontSize: "0.85rem", display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
                           {l.label} <span>›</span>
@@ -1254,11 +1327,24 @@ export default function ProfilePage() {
 
             </div>{/* end accordion card */}
 
-            {/* Passwort setzen */}
-            <PasswordSection />
+            {/* ── Sicherheit & Login ─────────────────────────────────────── */}
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", marginTop: 12 }}>
+              {/* Passwort */}
+              <PasswordSection />
+              {/* Trennlinie */}
+              <div style={{ borderTop: "1px solid var(--border)" }} />
+              {/* Telefonnummer */}
+              <PhoneSection
+                currentPhone={profile.telefon ?? ""}
+                onSave={phone => {
+                  setProfile(p => ({ ...p, telefon: phone }))
+                  if (supabase && user) supabase.from("profiles").update({ telefon: phone }).eq("id", user.id).then(() => {})
+                }}
+              />
+            </div>
 
             {/* Logout button */}
-            <button onClick={signOut} style={{ width: "100%", marginTop: 12, background: "transparent", border: "1px solid rgba(255,68,85,0.3)", borderRadius: 12, padding: "12px", color: "#ff4455", fontWeight: 700, fontSize: "0.88rem", cursor: "pointer" }}>
+            <button onClick={handleSignOut} style={{ width: "100%", marginTop: 12, background: "transparent", border: "1px solid rgba(255,68,85,0.3)", borderRadius: 12, padding: "12px", color: "#ff4455", fontWeight: 700, fontSize: "0.88rem", cursor: "pointer" }}>
               🚪 Abmelden
             </button>
           </div>
