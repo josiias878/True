@@ -16,15 +16,22 @@ rsync -az --delete \
   --exclude='.env.local' \
   "$LOCAL/" "$SERVER:$REMOTE/"
 
-echo "▶ 2/5  CRON_SECRET auf Server setzen..."
+echo "▶ 2/5  Env-Variablen auf Server setzen..."
 ssh "$SERVER" "
-  if grep -q 'CRON_SECRET' $REMOTE/.env.local 2>/dev/null; then
-    sed -i 's/^CRON_SECRET=.*/CRON_SECRET=truecron2026secure/' $REMOTE/.env.local
-    echo '   CRON_SECRET aktualisiert'
-  else
-    echo 'CRON_SECRET=truecron2026secure' >> $REMOTE/.env.local
-    echo '   CRON_SECRET hinzugefügt'
-  fi
+  # Helper: upsert a KEY=VALUE in .env.local
+  upsert_env() {
+    local KEY=\$1 VAL=\$2
+    if grep -q \"^\$KEY=\" $REMOTE/.env.local 2>/dev/null; then
+      sed -i \"s|^\$KEY=.*|\$KEY=\$VAL|\" $REMOTE/.env.local
+      echo \"   \$KEY aktualisiert\"
+    else
+      echo \"\$KEY=\$VAL\" >> $REMOTE/.env.local
+      echo \"   \$KEY hinzugefügt\"
+    fi
+  }
+  upsert_env CRON_SECRET         truecron2026secure
+  upsert_env ADMIN_SECRET        true2026admin
+  upsert_env NEXT_PUBLIC_ADMIN_SECRET true2026admin
 "
 
 echo "▶ 3/5  Dependencies installieren & Build starten..."
