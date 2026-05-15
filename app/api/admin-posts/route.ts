@@ -11,7 +11,7 @@ function getSupabaseAdmin() {
 // DELETE: remove one or many posts
 export async function DELETE(req: Request) {
   const secret = new URL(req.url).searchParams.get("secret")
-  if (secret !== "true2026admin") return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (secret !== process.env.ADMIN_SECRET) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { ids } = await req.json() // array of post IDs
   if (!ids || !Array.isArray(ids) || ids.length === 0) {

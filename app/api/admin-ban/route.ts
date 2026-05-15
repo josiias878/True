@@ -11,7 +11,7 @@ function getSupabaseAdmin() {
 // POST: ban or unban a user, or send a warning
 export async function POST(req: Request) {
   const secret = new URL(req.url).searchParams.get("secret")
-  if (secret !== "true2026admin") return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (secret !== process.env.ADMIN_SECRET) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { userId, action, message } = await req.json()
   // action: "ban" | "unban" | "warn"

@@ -9,16 +9,17 @@ export default function LoginPage() {
   const { user, loading } = useSupabaseAuth()
   const [ready, setReady] = useState(false)
 
-  // If already logged in → go straight to /home
+  // If already logged in on page load → go straight to /home
+  // But if user just registered/logged in via the modal (ready=true), let onSuccess handle redirect
   useEffect(() => {
     if (!loading) {
-      if (user) {
+      if (user && !ready) {
         router.replace("/home")
-      } else {
+      } else if (!user) {
         setReady(true)
       }
     }
-  }, [user, loading, router])
+  }, [user, loading, router, ready])
 
   return (
     <div style={{

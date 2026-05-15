@@ -10,7 +10,7 @@ interface Props {
 }
 
 type Mode = "login" | "register" | "forgot"
-type RegStep = "name" | "email" | "otp" | "password" | "goals" | "done"
+type RegStep = "name" | "email" | "otp" | "goals" | "done"
 type LoginMode = "password" | "otp"
 
 const GOALS = [
@@ -22,11 +22,11 @@ const GOALS = [
   { id: "konzerne",   label: "Konzerne meiden",    emoji: "🚫", hint: "Unabhängige Hersteller" },
 ]
 
-// Step index for progress bar (name=0, email=1, otp=2, password=3, goals=4)
+// Step index for progress bar (name=0, email=1, otp=2, goals=3)
 const STEP_IDX: Record<Exclude<RegStep, "done">, number> = {
-  name: 0, email: 1, otp: 2, password: 3, goals: 4
+  name: 0, email: 1, otp: 2, goals: 3
 }
-const TOTAL_STEPS = 5
+const TOTAL_STEPS = 4
 
 function isIOS()        { return typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent) }
 function isAndroid()    { return typeof navigator !== "undefined" && /android/i.test(navigator.userAgent) }
@@ -51,8 +51,6 @@ export default function AuthModal({ onClose, onSuccess, onGuest, defaultMode = "
   const [name, setName]             = useState("")
   const [regEmail, setRegEmail]     = useState("")
   const [otp, setOtp]               = useState("")
-  const [regPw, setRegPw]           = useState("")
-  const [showRegPw, setShowRegPw]   = useState(false)
   const [selectedGoals, setSelectedGoals] = useState<string[]>([])
   const [animDir, setAnimDir]       = useState<"forward" | "back">("forward")
   const [animKey, setAnimKey]       = useState(0)
@@ -159,11 +157,12 @@ export default function AuthModal({ onClose, onSuccess, onGuest, defaultMode = "
     setCooldown(60)
   }
 
-  async function handleVerifyLoginOtp() {
+  async function handleVerifyLoginOtp(val?: string) {
+    const code = val ?? loginOtp
     setError("")
-    if (loginOtp.length !== 6) { setError("Bitte den 6-stelligen Code eingeben."); return }
+    if (code.length !== 6) { setError("Bitte den 6-stelligen Code eingeben."); return }
     setLoading(true)
-    const { data, error: e } = await verifyEmailOtp(loginEmail.trim(), loginOtp) as any
+    const { data, error: e } = await verifyEmailOtp(loginEmail.trim(), code) as any
     setLoading(false)
     if (e) { setError("Falscher Code — bitte nochmal versuchen."); return }
     if (data?.user?.id) handleUserSwitch(data.user.id)
@@ -188,19 +187,19 @@ export default function AuthModal({ onClose, onSuccess, onGuest, defaultMode = "
   }
 
   // ── REGISTER: Step 3 — Verify OTP ───────────────────────────────────────────
-  async function handleVerifyOtp() {
+  async function handleVerifyOtp(val?: string) {
+    const code = val ?? otp
     setError("")
-    if (otp.length !== 6) { setError("Bitte den 6-stelligen Code eingeben."); return }
+    if (code.length !== 6) { setError("Bitte den 6-stelligen Code eingeben."); return }
     setLoading(true)
-    const { data, error: e } = await verifyEmailOtp(regEmail.trim(), otp) as any
+    const { data, error: e } = await verifyEmailOtp(regEmail.trim(), code) as any
     setLoading(false)
     if (e) { setError("Falscher Code — bitte nochmal versuchen."); return }
 
     const userId = data?.user?.id ?? ""
     handleUserSwitch(userId)
 
-    // Always continue to password → goals in register mode
-    // (do NOT skip onboarding based on account age — email can arrive late)
+    // Save name + email to profile, then go straight to goals
     try {
       const raw     = localStorage.getItem("true-profile")
       const profile = raw ? JSON.parse(raw) : {}
@@ -209,24 +208,10 @@ export default function AuthModal({ onClose, onSuccess, onGuest, defaultMode = "
       localStorage.setItem("true-profile", JSON.stringify(profile))
     } catch {}
 
-    goReg("password")
-  }
-
-  // ── REGISTER: Step 4 — Set Password (optional) ──────────────────────────────
-  async function handleSetPassword() {
-    if (regPw.length > 0 && regPw.length < 6) {
-      setError("Passwort muss mindestens 6 Zeichen haben."); return
-    }
-    setError("")
-    if (regPw.length >= 6) {
-      setLoading(true)
-      await updatePassword(regPw)
-      setLoading(false)
-    }
     goReg("goals")
   }
 
-  // ── REGISTER: Step 5 — Save Goals ───────────────────────────────────────────
+  // ── REGISTER: Step 4 — Save Goals ───────────────────────────────────────────
   async function handleSaveGoals() {
     try {
       localStorage.setItem("true-goals-v1", JSON.stringify(selectedGoals))
@@ -339,8 +324,10 @@ export default function AuthModal({ onClose, onSuccess, onGuest, defaultMode = "
                   ✉️ Code gesendet an {loginEmail}
                 </div>
                 <OtpInput value={loginOtp} onChange={v => { setLoginOtp(v); setError("") }} onComplete={handleVerifyLoginOtp} color="#38BDF8" />
-                {error && <Err text={error} />}
-                <Btn label={loading ? "Wird geprüft…" : "Bestätigen ✓"} color="#38BDF8" disabled={loading || loginOtp.length !== 6} onClick={handleVerifyLoginOtp} style={{ marginTop: 18 }} />
+                {loginOtp.length === 6 && !error
+                  ? <div style={{ textAlign: "center", marginTop: 10, fontSize: "0.85rem", color: "#38BDF8", fontWeight: 700 }}>✓ Code vollständig</div>
+                  : error ? <Err text={error} /> : null}
+                <Btn label={loading ? "Wird geprüft…" : "Bestätigen ✓"} color="#38BDF8" disabled={loading || loginOtp.length !== 6} onClick={() => handleVerifyLoginOtp(loginOtp)} style={{ marginTop: 18 }} />
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
                   <button onClick={() => { setLoginMode("password"); setLoginOtpSent(false); setLoginOtp(""); setError("") }} style={linkBtn}>← Zurück</button>
                   <button onClick={() => { setLoginOtp(""); handleSendLoginOtp() }} disabled={cooldown > 0}
@@ -393,13 +380,17 @@ export default function AuthModal({ onClose, onSuccess, onGuest, defaultMode = "
         {mode === "register" && regStep !== "done" && (
           <>
             {/* Header with progress */}
-            <div style={{ padding: "4px 24px 0", textAlign: "center" }}>
+            <div style={{ padding: "4px 24px 0", textAlign: "center", position: "relative" }}>
+              {/* ✕ Close button */}
+              <button
+                onClick={handleClose}
+                style={{ position: "absolute", right: 24, top: 4, background: "rgba(255,255,255,0.07)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", color: "rgba(255,255,255,0.4)", fontSize: "1rem", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}
+              >✕</button>
               <h2 style={{ margin: "0 0 4px", fontWeight: 900, fontSize: "1.2rem", color: "#fff" }}>
-                {regStep === "name"     && "Wie heißt du?"}
-                {regStep === "email"    && "Deine E-Mail"}
-                {regStep === "otp"     && "Code bestätigen"}
-                {regStep === "password" && "Passwort festlegen"}
-                {regStep === "goals"    && "Was sind deine Ziele?"}
+                {regStep === "name"  && "Wie heißt du?"}
+                {regStep === "email" && "Deine E-Mail"}
+                {regStep === "otp"   && "Code bestätigen"}
+                {regStep === "goals" && "Was sind deine Ziele?"}
               </h2>
               <p style={{ margin: "0 0 14px", fontSize: "0.8rem", color: "rgba(255,255,255,0.3)" }}>
                 Schritt {regIdx + 1} von {TOTAL_STEPS}
@@ -424,25 +415,19 @@ export default function AuthModal({ onClose, onSuccess, onGuest, defaultMode = "
               {/* ── Step 1: Name ── */}
               {regStep === "name" && (
                 <div>
-                  <div style={{ textAlign: "center", fontSize: "2.5rem", marginBottom: 16 }}>👋</div>
+                  <div style={{ textAlign: "center", fontSize: "2.8rem", marginBottom: 16 }}>👋</div>
+                  <p style={{ textAlign: "center", fontSize: "0.84rem", color: "rgba(255,255,255,0.35)", marginBottom: 20, lineHeight: 1.6 }}>
+                    Wie dürfen wir dich nennen? (optional)
+                  </p>
                   <input ref={inputRef} type="text" value={name}
                     onChange={e => { setName(e.target.value); setError("") }}
                     onKeyDown={e => e.key === "Enter" && goReg("email")}
-                    placeholder="Dein Vorname (optional)"
+                    placeholder="Dein Vorname"
                     style={iStyle(false, "#2ECC8A")} />
                   <Btn label="Weiter →" color="#2ECC8A" disabled={false} onClick={() => goReg("email")} />
-                  <button onClick={() => goReg("email")} style={{ display: "block", width: "100%", marginTop: 8, background: "none", border: "none", color: "rgba(255,255,255,0.25)", fontSize: "0.82rem", cursor: "pointer", padding: "8px 0", textAlign: "center" }}>
+                  <button onClick={() => goReg("email")} style={{ display: "block", width: "100%", marginTop: 10, background: "none", border: "none", color: "rgba(255,255,255,0.22)", fontSize: "0.8rem", cursor: "pointer", padding: "8px 0", textAlign: "center" }}>
                     Überspringen
                   </button>
-                  <button onClick={() => switchMode("login")} style={{ ...linkBtn, display: "block", width: "100%", textAlign: "center", marginTop: 6 }}>← Zurück zum Login</button>
-                  {onGuest && (
-                    <button
-                      onClick={() => { setVisible(false); setTimeout(onGuest, 300) }}
-                      style={{ display: "block", width: "100%", marginTop: 14, background: "none", border: "none", color: "rgba(255,255,255,0.2)", fontSize: "0.78rem", cursor: "pointer", padding: "6px 0", textAlign: "center" }}
-                    >
-                      Ohne Konto fortfahren →
-                    </button>
-                  )}
                 </div>
               )}
 
@@ -472,9 +457,11 @@ export default function AuthModal({ onClose, onSuccess, onGuest, defaultMode = "
                     ✉️ Code an <strong>{regEmail}</strong> gesendet
                   </div>
                   <OtpInput value={otp} onChange={v => { setOtp(v); setError("") }} onComplete={handleVerifyOtp} color="#2ECC8A" />
-                  {error && <Err text={error} />}
+                  {otp.length === 6 && !error
+                    ? <div style={{ textAlign: "center", marginTop: 10, fontSize: "0.85rem", color: "#2ECC8A", fontWeight: 700 }}>✓ Code vollständig</div>
+                    : error ? <Err text={error} /> : null}
                   <Btn label={loading ? "Wird geprüft…" : "Bestätigen ✓"} color="#2ECC8A"
-                    disabled={loading || otp.length !== 6} onClick={handleVerifyOtp} style={{ marginTop: 18 }} />
+                    disabled={loading || otp.length !== 6} onClick={() => handleVerifyOtp(otp)} style={{ marginTop: 18 }} />
                   <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
                     <button onClick={() => { goReg("email", "back"); setOtp("") }} style={linkBtn}>← Zurück</button>
                     <button onClick={() => { setOtp(""); handleSendRegOtp() }} disabled={cooldown > 0}
@@ -485,37 +472,12 @@ export default function AuthModal({ onClose, onSuccess, onGuest, defaultMode = "
                 </div>
               )}
 
-              {/* ── Step 4: Password (optional) ── */}
-              {regStep === "password" && (
-                <div>
-                  <div style={{ textAlign: "center", fontSize: "2.5rem", marginBottom: 16 }}>🔐</div>
-                  <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 14, padding: "12px 14px", marginBottom: 16, fontSize: "0.82rem", color: "rgba(255,255,255,0.45)", lineHeight: 1.6 }}>
-                    Mit einem Passwort kannst du dich einfach mit E-Mail + Passwort anmelden. Du kannst es auch später in deinem Profil einrichten.
-                  </div>
-                  <div style={{ position: "relative" }}>
-                    <input ref={inputRef} type={showRegPw ? "text" : "password"} value={regPw}
-                      onChange={e => { setRegPw(e.target.value); setError("") }}
-                      onKeyDown={e => e.key === "Enter" && handleSetPassword()}
-                      placeholder="Passwort (min. 6 Zeichen)"
-                      style={{ ...iStyle(!!error, "#A78BFA"), paddingRight: 48, marginBottom: 0 }} />
-                    <button onClick={() => setShowRegPw(s => !s)} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.35)", fontSize: "0.85rem" }}>
-                      {showRegPw ? "🙈" : "👁"}
-                    </button>
-                  </div>
-                  {error && <Err text={error} />}
-                  <Btn label={loading ? "Wird gespeichert…" : "Passwort speichern →"} color="#A78BFA" disabled={loading || regPw.length < 6} onClick={handleSetPassword} style={{ marginTop: 12 }} />
-                  <button onClick={() => goReg("goals")} style={{ display: "block", width: "100%", marginTop: 8, background: "none", border: "none", color: "rgba(255,255,255,0.25)", fontSize: "0.82rem", cursor: "pointer", padding: "8px 0", textAlign: "center" }}>
-                    Überspringen — App ohne Passwort nutzen
-                  </button>
-                </div>
-              )}
-
-              {/* ── Step 5: Goals ── */}
+              {/* ── Step 4: Goals ── */}
               {regStep === "goals" && (
                 <div>
-                  <div style={{ textAlign: "center", fontSize: "2.5rem", marginBottom: 8 }}>🎯</div>
-                  <p style={{ textAlign: "center", fontSize: "0.84rem", color: "rgba(255,255,255,0.4)", marginBottom: 20 }}>
-                    Wähle was zu dir passt — mehrere möglich
+                  <div style={{ textAlign: "center", fontSize: "2.8rem", marginBottom: 8 }}>🎯</div>
+                  <p style={{ textAlign: "center", fontSize: "0.84rem", color: "rgba(255,255,255,0.4)", marginBottom: 20, lineHeight: 1.6 }}>
+                    Was ist dir beim Einkaufen wichtig?
                   </p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
                     {GOALS.map(g => {
@@ -551,7 +513,10 @@ export default function AuthModal({ onClose, onSuccess, onGuest, defaultMode = "
                     })}
                   </div>
                   <Btn label="Los geht's 🚀" color="#2ECC8A" disabled={false} onClick={handleSaveGoals} />
-                  <button onClick={() => { goReg("done") }} style={{ display: "block", width: "100%", marginTop: 8, background: "none", border: "none", color: "rgba(255,255,255,0.25)", fontSize: "0.82rem", cursor: "pointer", padding: "8px 0", textAlign: "center" }}>
+                  <button onClick={() => {
+                    try { localStorage.setItem("true-onboarded-v3", "1") } catch {}
+                    goReg("done")
+                  }} style={{ display: "block", width: "100%", marginTop: 8, background: "none", border: "none", color: "rgba(255,255,255,0.25)", fontSize: "0.82rem", cursor: "pointer", padding: "8px 0", textAlign: "center" }}>
                     Überspringen
                   </button>
                 </div>
@@ -587,7 +552,7 @@ const TOUR_SCREENS = [
   {
     color: "#38BDF8",
     title: "Produkt scannen",
-    desc: "Kamera auf Barcode — in Sekunden siehst du wer dahinter steckt und ob du kaufen solltest.",
+    desc: "Halte die Kamera auf jeden Barcode — du bekommst sofort deinen Score. Der basiert auf drei Dingen: welcher Konzern dahintersteckt & welche Schäden belegt sind, was wirklich in den Inhaltsstoffen steckt, und ob das Produkt zu deinen Zielen passt (Protein, palmölfrei, laktosefrei & mehr).",
     screen: (
       <div style={{ background: "#0a0f0a", borderRadius: 12, padding: "14px 12px", height: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ background: "rgba(56,189,248,0.12)", border: "2px solid #38BDF8", borderRadius: 10, flex: 1, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
@@ -604,7 +569,7 @@ const TOUR_SCREENS = [
   {
     color: "#2ECC8A",
     title: "Einkaufsliste",
-    desc: "Produkte direkt nach dem Scan hinzufügen. Liste ist auf allen Geräten synchron.",
+    desc: "Füge Produkte direkt nach dem Scan hinzu. Deine Liste ist auf allen Geräten synchron — teile sie mit deiner Familie und plane bewusst ein.",
     screen: (
       <div style={{ background: "#0a0f0a", borderRadius: 12, padding: "12px 10px", height: "100%", display: "flex", flexDirection: "column", gap: 7 }}>
         {[
@@ -624,22 +589,35 @@ const TOUR_SCREENS = [
   {
     color: "#A78BFA",
     title: "Community",
-    desc: "Tausche Tipps, teile Alternativen und entdecke was andere bewusst kaufen.",
+    desc: "Tritt Gruppen zu deinen Themen bei — tausche Tipps, teile bessere Alternativen und bleib informiert über Konzerne und Inhaltsstoffe.",
     screen: (
-      <div style={{ background: "#0a0f0a", borderRadius: 12, padding: "12px 10px", height: "100%", display: "flex", flexDirection: "column", gap: 7 }}>
-        {[
-          { avatar: "📰", name: "TRUE Bot", text: "Nestlé verletzt erneut Palmöl-Richtlinien…", tag: "Palmöl" },
-          { avatar: "✍️", name: "Eva M.", text: "Warum Zucker so gefährlich ist…", tag: "Analyse" },
-        ].map((post, i) => (
-          <div key={i} style={{ background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: "8px 10px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-              <span style={{ fontSize: "0.85rem" }}>{post.avatar}</span>
-              <span style={{ fontSize: "0.6rem", fontWeight: 700, color: "rgba(255,255,255,0.6)" }}>{post.name}</span>
-              <span style={{ marginLeft: "auto", fontSize: "0.55rem", color: "#A78BFA", background: "rgba(167,139,250,0.15)", padding: "1px 5px", borderRadius: 4 }}>{post.tag}</span>
+      <div style={{ background: "#0a0f0a", borderRadius: 12, height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {/* Header */}
+        <div style={{ padding: "7px 10px 6px", borderBottom: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontSize: "0.6rem", fontWeight: 800, color: "#fff" }}>👥 Gruppen</span>
+          <span style={{ fontSize: "0.42rem", color: "#A78BFA", fontWeight: 700 }}>+ Beitreten</span>
+        </div>
+        {/* Group list */}
+        <div style={{ flex: 1, padding: "8px 8px", display: "flex", flexDirection: "column", gap: 5, overflow: "hidden" }}>
+          {[
+            { emoji: "🌴", name: "Palmöl-frei",        members: "2.4k", color: "#2ECC8A" },
+            { emoji: "🤰", name: "Schwangerschaft",     members: "1.1k", color: "#f472b6" },
+            { emoji: "👶", name: "Babys & Kinder",      members: "3.2k", color: "#38BDF8" },
+            { emoji: "💪", name: "Sport & Protein",     members: "1.8k", color: "#fb923c" },
+            { emoji: "🌱", name: "Vegan",               members: "4.7k", color: "#4ade80" },
+          ].map((g, i) => (
+            <div key={i} style={{ background: `${g.color}0d`, border: `1px solid ${g.color}28`, borderRadius: 8, padding: "6px 8px", display: "flex", alignItems: "center", gap: 7 }}>
+              <span style={{ fontSize: "0.9rem", flexShrink: 0 }}>{g.emoji}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: "0.55rem", fontWeight: 800, color: "#fff" }}>{g.name}</div>
+                <div style={{ fontSize: "0.42rem", color: "rgba(255,255,255,0.3)", marginTop: 1 }}>{g.members} Mitglieder</div>
+              </div>
+              <div style={{ background: `${g.color}20`, border: `1px solid ${g.color}45`, borderRadius: 4, padding: "2px 5px", fontSize: "0.38rem", fontWeight: 800, color: g.color }}>
+                Beitreten
+              </div>
             </div>
-            <div style={{ fontSize: "0.6rem", color: "rgba(255,255,255,0.4)", lineHeight: 1.4 }}>{post.text}</div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     ),
   },
@@ -672,9 +650,15 @@ function PhoneTour({ name, onFinish, isIOS, isAndroid, isStandalone }: {
         <p style={{ margin: "0 0 6px", fontSize: "0.92rem", color: "#2ECC8A", fontWeight: 700 }}>
           🌱 Dein Konto ist aktiv
         </p>
-        <p style={{ margin: "0 0 24px", fontSize: "0.82rem", color: "rgba(255,255,255,0.35)", lineHeight: 1.6 }}>
+        <p style={{ margin: "0 0 6px", fontSize: "0.82rem", color: "rgba(255,255,255,0.35)", lineHeight: 1.6 }}>
           Kurze Einführung? Wir zeigen dir in 3 Schritten was TRUE kann.
         </p>
+        <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "10px 14px", marginBottom: 18, display: "flex", alignItems: "center", gap: 10, textAlign: "left" }}>
+          <span style={{ fontSize: "1.1rem" }}>🔐</span>
+          <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.3)", lineHeight: 1.5 }}>
+            Du kannst in <strong style={{ color: "rgba(255,255,255,0.5)" }}>Einstellungen → Passwort</strong> jederzeit ein Passwort hinzufügen.
+          </div>
+        </div>
         <Btn label="TRUE kennenlernen →" color="#2ECC8A" disabled={false} onClick={() => setScreen(0)} />
         <button onClick={onFinish} style={{ display: "block", width: "100%", marginTop: 10, background: "none", border: "none", color: "rgba(255,255,255,0.25)", fontSize: "0.82rem", cursor: "pointer", padding: "8px 0" }}>
           Direkt loslegen
@@ -719,22 +703,9 @@ function PhoneTour({ name, onFinish, isIOS, isAndroid, isStandalone }: {
         <div style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>{s.desc}</div>
       </div>
 
-      {/* PWA hint on last card */}
-      {isLast && !isStandalone && (
-        <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "10px 14px", marginBottom: 14, textAlign: "left" }}>
-          <div style={{ fontWeight: 700, fontSize: "0.8rem", color: "#fff", marginBottom: 4 }}>📲 Zum Homescreen hinzufügen</div>
-          {isIOS ? (
-            <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.4)", lineHeight: 1.8 }}>
-              Teilen <strong style={{ color: "#38BDF8" }}>↑</strong> → <strong style={{ color: "#38BDF8" }}>„Zum Home-Bildschirm"</strong>
-            </div>
-          ) : isAndroid ? (
-            <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.4)", lineHeight: 1.8 }}>
-              Menü <strong style={{ color: "#38BDF8" }}>⋮</strong> → <strong style={{ color: "#38BDF8" }}>„Zum Startbildschirm"</strong>
-            </div>
-          ) : (
-            <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.4)" }}>Menü → „App installieren"</div>
-          )}
-        </div>
+      {/* PWA hint removed — app not yet released */}
+      {false && isLast && !isStandalone && (
+        <div></div>
       )}
 
       <Btn label={isLast ? "Los geht's 🚀" : "Weiter →"} color={s.color} disabled={false}
@@ -748,23 +719,23 @@ function PhoneTour({ name, onFinish, isIOS, isAndroid, isStandalone }: {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function OtpInput({ value, onChange, onComplete, color }: { value: string; onChange: (v: string) => void; onComplete: () => void; color: string }) {
+function OtpInput({ value, onChange, onComplete, color }: { value: string; onChange: (v: string) => void; onComplete: (val: string) => void; color: string }) {
   const refs = [useRef<HTMLInputElement>(null),useRef<HTMLInputElement>(null),useRef<HTMLInputElement>(null),useRef<HTMLInputElement>(null),useRef<HTMLInputElement>(null),useRef<HTMLInputElement>(null)]
 
   function handleKey(i: number, e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Backspace") {
       if (value[i]) { onChange(value.slice(0,i)+value.slice(i+1)) }
       else if (i > 0) { refs[i-1].current?.focus(); onChange(value.slice(0,i-1)+value.slice(i)) }
-    } else if (e.key === "Enter" && value.length === 6) onComplete()
+    } else if (e.key === "Enter" && value.length === 6) onComplete(value)
   }
   function handleChange(i: number, raw: string) {
     const d = raw.replace(/\D/g,"").slice(-1); if (!d) return
     const next = value.slice(0,i)+d+value.slice(i+1); onChange(next.slice(0,6))
-    if (i < 5) refs[i+1].current?.focus(); else if (next.length === 6) setTimeout(onComplete, 100)
+    if (i < 5) refs[i+1].current?.focus(); else if (next.length === 6) setTimeout(() => onComplete(next.slice(0,6)), 100)
   }
   function handlePaste(e: React.ClipboardEvent) {
     const p = e.clipboardData.getData("text").replace(/\D/g,"").slice(0,6)
-    if (p) { onChange(p); refs[Math.min(p.length,5)].current?.focus(); if (p.length===6) setTimeout(onComplete,100) }
+    if (p) { onChange(p); refs[Math.min(p.length,5)].current?.focus(); if (p.length===6) setTimeout(() => onComplete(p),100) }
     e.preventDefault()
   }
   return (

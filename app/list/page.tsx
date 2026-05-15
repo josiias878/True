@@ -986,7 +986,22 @@ export default function ShoppingListPage() {
       {/* ── Main content ── */}
       <main style={{ padding: "16px 14px" }}>
 
-        {/* Coach Chat + FAB werden unten als floating gerendert */}
+        {/* Coach-Hinweis wenn Items vorhanden */}
+        {unchecked.length >= 2 && !coachOpen && (
+          <button
+            onClick={() => setCoachOpen(true)}
+            style={{ width: "100%", marginBottom: 14, background: "rgba(46,204,138,0.07)", border: "1px dashed rgba(46,204,138,0.35)", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", textAlign: "left" }}
+          >
+            <span style={{ fontSize: "1.3rem", flexShrink: 0 }}>🥗</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "var(--accent)" }}>Ernährungscoach</div>
+              <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 1 }}>
+                {userGoals.length > 0 ? `Tipps für dein Ziel: ${userGoals[0]}` : "Frag mich zu deiner Einkaufsliste"}
+              </div>
+            </div>
+            <span style={{ fontSize: "0.78rem", color: "var(--accent)", fontWeight: 700 }}>Öffnen →</span>
+          </button>
+        )}
 
         {/* Empty state */}
         {unchecked.length === 0 && checked.length === 0 && (
@@ -1125,7 +1140,27 @@ export default function ShoppingListPage() {
         onClose={() => setCoachItem(null)}
       />
 
-      {/* ── FAB ── */}
+      {/* ── FABs ── */}
+      {/* Coach FAB */}
+      <button
+        onClick={() => setCoachOpen(v => !v)}
+        title="Ernährungscoach"
+        style={{
+          position: "fixed", bottom: 90, right: 88, zIndex: 40,
+          width: 52, height: 52, borderRadius: "50%",
+          background: coachOpen ? "var(--accent)" : "var(--surface)",
+          border: `2px solid ${coachOpen ? "var(--accent)" : "var(--border)"}`,
+          cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: "1.45rem",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
+          transition: "all 0.2s",
+        }}
+        aria-label="Ernährungscoach öffnen"
+      >
+        🥗
+      </button>
+      {/* Add FAB */}
       <button
         className="fab"
         onClick={() => setShowAddModal(true)}

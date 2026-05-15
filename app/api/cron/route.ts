@@ -127,7 +127,8 @@ function pickByDay<T>(pool: T[], offset = 0): T {
 
 export async function GET(req: NextRequest) {
   const secret = req.nextUrl.searchParams.get("secret")
-  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
+  const validSecret = secret === process.env.CRON_SECRET || secret === process.env.ADMIN_SECRET
+  if (!validSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -190,6 +191,18 @@ export async function GET(req: NextRequest) {
   } else {
     return NextResponse.json({ error: "Unknown type" }, { status: 400 })
   }
+
+  // Duplicate guard: skip if same type was already posted today
+  const todayStart = new Date()
+  todayStart.setUTCHours(0, 0, 0, 0)
+  const { data: existing } = await supabase
+    .from("posts")
+    .select("id")
+    .eq("type", type)
+    .gte("created_at", todayStart.toISOString())
+    .limit(1)
+    .maybeSingle()
+  if (existing) return NextResponse.json({ ok: true, id: existing.id, type, skipped: true, time: now })
 
   const { data, error } = await supabase.from("posts").insert(post).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

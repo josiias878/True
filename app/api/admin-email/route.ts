@@ -3,7 +3,7 @@ import { sendMail } from "@/lib/mailer"
 
 export async function POST(req: Request) {
   const { secret, to, subject, body } = await req.json()
-  if (secret !== "true2026admin") return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (secret !== process.env.ADMIN_SECRET) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   if (!to || !subject || !body) return NextResponse.json({ error: "Felder fehlen" }, { status: 400 })
 
   await sendMail({

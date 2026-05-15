@@ -1,18 +1,9 @@
-import nodemailer from "nodemailer"
+import { Resend } from "resend"
 
-function getTransporter() {
-  const pass = process.env.STRATO_MAIL_PASSWORD
-  if (!pass) return null
-
-  return nodemailer.createTransport({
-    host: "smtp.strato.de",
-    port: 465,
-    secure: true,
-    auth: {
-      user: "info@get-true.de",
-      pass,
-    },
-  })
+function getResend() {
+  const key = process.env.RESEND_API_KEY
+  if (!key) return null
+  return new Resend(key)
 }
 
 export async function sendMail({
@@ -26,10 +17,16 @@ export async function sendMail({
   html: string
   from?: string
 }) {
-  const transporter = getTransporter()
-  if (!transporter) {
-    console.warn("STRATO_MAIL_PASSWORD nicht gesetzt — E-Mail übersprungen")
+  const resend = getResend()
+  if (!resend) {
+    console.warn("RESEND_API_KEY nicht gesetzt — E-Mail übersprungen")
     return
   }
-  await transporter.sendMail({ from, to, subject, html })
+  const { error } = await resend.emails.send({
+    from,
+    to: Array.isArray(to) ? to : [to],
+    subject,
+    html,
+  })
+  if (error) console.error("Resend Fehler:", error)
 }

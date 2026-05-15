@@ -1,13 +1,19 @@
 "use client"
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useSupabaseAuth } from "@/lib/useSupabaseAuth"
 
-// AuthGuard allows guest access — no login required.
-// Login is optional (for cloud sync, profile, etc.)
+// AuthGuard — Login erforderlich. Gäste werden zur Landingpage weitergeleitet.
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { loading } = useSupabaseAuth()
+  const { user, loading } = useSupabaseAuth()
+  const router = useRouter()
 
-  // Show spinner while auth state is being determined
-  if (loading) return (
+  useEffect(() => {
+    if (!loading && !user) router.replace("/")
+  }, [loading, user, router])
+
+  // Spinner während Auth-Check oder wenn kein User
+  if (loading || !user) return (
     <div style={{
       minHeight: "100dvh",
       display: "flex", alignItems: "center", justifyContent: "center",
@@ -27,6 +33,5 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     </div>
   )
 
-  // Guest & logged-in users both get access
   return <>{children}</>
 }

@@ -122,11 +122,12 @@ export function calcProductScore(issues: string[]): ProductScoreResult {
 
   score = Math.max(0, Math.min(100, score))
 
+  // Thresholds match calcScoreFromSeverity for consistency
   const grade: ScoreGrade =
     score >= 80 ? "A" :
-    score >= 60 ? "B" :
-    score >= 40 ? "C" :
-    score >= 20 ? "D" : "F"
+    score >= 65 ? "B" :
+    score >= 45 ? "C" :
+    score >= 25 ? "D" : "F"
 
   const meta = GRADE_META[grade]
   const tips = TIPS[grade]

@@ -170,6 +170,9 @@ export default function ProfilePage() {
       "true-following",
       "true-profile-photo",
       "true-followed-channels",
+      "true-notifications-v2",
+      "true-notifications-v2-day",
+      "true-family-members",
     ]
     keysToRemove.forEach(k => {
       try { localStorage.removeItem(k) } catch {}
@@ -425,6 +428,7 @@ export default function ProfilePage() {
 
   async function saveProfile(next?: typeof profile) {
     const p = next ?? profile
+    if (!p) return  // guard: profile not yet loaded
     await saveProfileToDb(p)
     setSavedToast(true); setEditMode(false)
     setTimeout(() => setSavedToast(false), 2000)

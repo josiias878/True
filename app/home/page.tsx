@@ -15,6 +15,7 @@ import { guessEmoji, guessCategory } from "@/lib/productDetection"
 import { supabase } from "@/lib/supabase"
 import ProductScore from "@/components/ProductScore"
 import { NutritionCoachChat } from "@/components/NutritionCoach"
+import { calcScoreFromSeverity, type ProductScoreResult } from "@/lib/productScore"
 
 const WorldMap = dynamic(() => import("@/components/WorldMap"), { ssr: false })
 
@@ -474,6 +475,47 @@ function ProductDetailModal({ product, onClose }: { product: Product; onClose: (
   const [imgError, setImgError] = useState(false)
   const hasImg = product.img && !imgError
 
+  // Try to find a matching scan in local history and use the API-based score
+  const scoreOverride = React.useMemo<ProductScoreResult | undefined>(() => {
+    try {
+      const raw = localStorage.getItem("true-scan-history")
+      if (!raw) return undefined
+      const history: Array<{
+        query?: string; corpName?: string; result?: {
+          found?: boolean
+          corporation?: { name: string; severity: string; aliases: string[] }
+          categories?: { id: string; name: string }[]
+          evidence?: { level?: string }[]
+        }
+      }> = JSON.parse(raw)
+
+      const needle = [product.name, product.brand].map(s => s.toLowerCase())
+
+      const match = history.find(h => {
+        if (!h.result?.found) return false
+        const haystack = [
+          h.query ?? "",
+          h.corpName ?? "",
+          h.result?.corporation?.name ?? "",
+          ...(h.result?.corporation?.aliases ?? []),
+        ].map(s => s.toLowerCase())
+        return needle.some(n => haystack.some(hay => hay.includes(n) || n.includes(hay)))
+      })
+
+      if (!match?.result?.corporation) return undefined
+      const { corporation, categories = [], evidence = [] } = match.result
+      return calcScoreFromSeverity(
+        corporation.severity,
+        corporation.aliases ?? [],
+        categories,
+        evidence,
+        [],
+      )
+    } catch {
+      return undefined
+    }
+  }, [product.name, product.brand])
+
   return (
     <div
       onClick={onClose}
@@ -542,7 +584,7 @@ function ProductDetailModal({ product, onClose }: { product: Product; onClose: (
           {/* Safety Score */}
           <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "14px", padding: "0.9rem 1rem", marginBottom: "1.25rem" }}>
             <div style={{ fontSize: "0.62rem", fontWeight: 800, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "0.6rem" }}>TRUE Sicherheits-Score</div>
-            <ProductScore issues={product.issues} size="md" showTip isPremium={false} />
+            <ProductScore issues={product.issues} size="md" showTip isPremium={false} scoreOverride={scoreOverride} />
           </div>
 
           {/* Ingredient deep-dive */}
@@ -807,7 +849,7 @@ const CAT_STYLE: Record<string, { bg: string; color: string; border: string }> =
 export default function HomePage() {
   const [greeting, setGreeting]       = useState("Guten Tag")
   const [modal, setModal]             = useState<string | null>(null)
-  const [productModal] = useState<Product | null>(null)
+  const [productModal, setProductModal] = useState<Product | null>(null)
   const [listItems, setListItems]     = useState<{ id: number|string; name: string; emoji: string; brand?: string; severity?: string; issue?: string; alternative?: { name: string }; checked: boolean; personId?: string; category?: string }[]>([])
   const [severityModal, setSeverityModal] = useState<typeof listItems[0] | null>(null)
   const [familyMembers, setFamilyMembers] = useState<{ id: string; name: string; age: string; emoji: string }[]>([])
@@ -822,6 +864,8 @@ export default function HomePage() {
   const [tagMessages, setTagMessages] = useState<Record<number|string, { from: string; msg: string; reply?: string }[]>>({})
   const [commentModal, setCommentModal] = useState<typeof listItems[0] | null>(null)
   const [altModal, setAltModal]         = useState<{ name: string; productName: string; productEmoji: string; price?: string } | null>(null)
+  const [showWelcome, setShowWelcome]   = useState(false)
+  const [showCommunityCard, setShowCommunityCard] = useState(true)
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([])
   const [mapOpen, setMapOpen]         = useState(false)
   const [userGoals, setUserGoals]     = useState<string[]>([])
@@ -862,6 +906,18 @@ export default function HomePage() {
     else if (h < 17) setGreeting("Guten Tag")
     else setGreeting("Guten Abend")
     setIsPremium(localStorage.getItem("true-premium") === "1")
+    if (localStorage.getItem("true-community-card-dismissed") === "1") setShowCommunityCard(false)
+    // Auto-follow the official TRUE channel for every user
+    try {
+      const fc = localStorage.getItem("true-followed-channels")
+      const arr: string[] = fc ? JSON.parse(fc) : []
+      if (!arr.includes("true")) {
+        arr.push("true")
+        localStorage.setItem("true-followed-channels", JSON.stringify(arr))
+      }
+    } catch {}
+    // First-login welcome card
+    if (!localStorage.getItem("true-welcome-seen")) setShowWelcome(true)
     // Dark mode detection
     setIsDark(document.documentElement.classList.contains("dark"))
     const obs = new MutationObserver(() => setIsDark(document.documentElement.classList.contains("dark")))
@@ -1333,8 +1389,30 @@ export default function HomePage() {
 
       <div style={{ maxWidth: "520px", margin: "0 auto", padding: "1rem 1rem 0.5rem" }}>
 
+        {/* ── FIRST-LOGIN WELCOME CARD ── */}
+        {showWelcome && (
+          <div style={{ background: "linear-gradient(135deg, rgba(46,204,138,0.12), rgba(46,204,138,0.04))", border: "1.5px solid rgba(46,204,138,0.3)", borderRadius: 18, padding: "18px 18px 16px", marginBottom: 16, position: "relative", animation: "fadeUp 0.4s ease" }}>
+            <button onClick={() => { setShowWelcome(false); localStorage.setItem("true-welcome-seen", "1") }} style={{ position: "absolute", top: 12, right: 12, background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1 }}>✕</button>
+            <div style={{ fontSize: "2rem", marginBottom: 10 }}>👋</div>
+            <div style={{ fontWeight: 900, fontSize: "1.05rem", marginBottom: 6, color: "var(--text)" }}>
+              Willkommen{userName ? `, ${userName}` : ""}!
+            </div>
+            <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", lineHeight: 1.6, marginBottom: 14 }}>
+              Scanne dein erstes Produkt und sieh sofort, welcher Konzern dahintersteckt — und welche Schäden belegt sind.
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <a href="/scan" style={{ flex: 1, background: "var(--accent)", color: "#000", borderRadius: 10, padding: "10px 0", fontWeight: 800, fontSize: "0.88rem", textDecoration: "none", textAlign: "center", display: "block" }}>
+                📷 Jetzt scannen
+              </a>
+              <button onClick={() => { setShowWelcome(false); localStorage.setItem("true-welcome-seen", "1") }} style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 14px", color: "var(--text-dim)", cursor: "pointer", fontSize: "0.82rem" }}>
+                Später
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* ── GREETING ── */}
-        {userName ? (
+        {userName && !showWelcome ? (
           <div style={{ marginBottom: "0.85rem" }}>
             <h1 style={{ fontSize: "1.3rem", fontWeight: 900, letterSpacing: "-0.025em", margin: 0 }}>
               Hey, {userName} 👋
@@ -1350,13 +1428,6 @@ export default function HomePage() {
             <div style={{ width: 52, height: 52, borderRadius: "50%", background: activeListPerson === "all" ? "var(--accent)" : "var(--surface)", border: `2.5px solid ${activeListPerson === "all" ? "var(--accent)" : "var(--border)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", transition: "all 0.15s" }}>🛒</div>
             <span style={{ fontSize: "0.65rem", fontWeight: activeListPerson === "all" ? 800 : 500, color: activeListPerson === "all" ? "var(--accent)" : "var(--text-dim)", whiteSpace: "nowrap" }}>Alle</span>
             <span style={{ fontSize: "0.58rem", color: "var(--text-dim)" }}>{listItems.filter(i => !i.checked).length} offen</span>
-          </button>
-          {/* Meine */}
-          <button onClick={() => setActiveListPerson("mine")}
-            style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>
-            <div style={{ width: 52, height: 52, borderRadius: "50%", background: activeListPerson === "mine" ? "var(--accent)" : "var(--surface)", border: `2.5px solid ${activeListPerson === "mine" ? "var(--accent)" : "var(--border)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", transition: "all 0.15s" }}>🙋</div>
-            <span style={{ fontSize: "0.65rem", fontWeight: activeListPerson === "mine" ? 800 : 500, color: activeListPerson === "mine" ? "var(--accent)" : "var(--text-dim)", whiteSpace: "nowrap" }}>Meine</span>
-            <span style={{ fontSize: "0.58rem", color: "var(--text-dim)" }}>{listItems.filter(i => !i.personId && !i.checked).length} offen</span>
           </button>
           {/* Familienmitglieder */}
           {familyMembers.map(m => {
@@ -1562,16 +1633,24 @@ export default function HomePage() {
                 )}
 
                 {/* ── Community ── */}
-                <Link href="/community" style={{ marginTop: 24, display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: "14px 16px", textDecoration: "none", gap: 12 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <span style={{ fontSize: "1.6rem" }}>💬</span>
-                    <div>
-                      <div style={{ fontWeight: 800, fontSize: "0.92rem", color: "var(--text)" }}>Community</div>
-                      <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 2 }}>Was kaufen andere? Scans teilen & diskutieren</div>
-                    </div>
+                {showCommunityCard && (
+                  <div style={{ marginTop: 24, position: "relative" }}>
+                    <Link href="/community" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: "14px 16px", textDecoration: "none", gap: 12 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <span style={{ fontSize: "1.6rem" }}>💬</span>
+                        <div>
+                          <div style={{ fontWeight: 800, fontSize: "0.92rem", color: "var(--text)" }}>Community</div>
+                          <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 2 }}>Was kaufen andere? Scans teilen & diskutieren</div>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: "1rem", color: "var(--text-dim)", flexShrink: 0 }}>›</span>
+                    </Link>
+                    <button
+                      onClick={() => { setShowCommunityCard(false); localStorage.setItem("true-community-card-dismissed", "1") }}
+                      style={{ position: "absolute", top: 8, right: 8, background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: "1rem", lineHeight: 1, padding: 4 }}
+                    >×</button>
                   </div>
-                  <span style={{ fontSize: "1rem", color: "var(--text-dim)", flexShrink: 0 }}>›</span>
-                </Link>
+                )}
 
                 {/* ── Feed-Vorschau (täglicher Beitrag) ── */}
                 {(() => {
@@ -1679,7 +1758,7 @@ export default function HomePage() {
 
       {/* ── MODALS ── */}
       {modal && <IngredientModal issue={modal} onClose={() => setModal(null)} />}
-      {productModal && <ProductDetailModal product={productModal} onClose={() => {}} />}
+      {productModal && <ProductDetailModal product={productModal} onClose={() => setProductModal(null)} />}
 
       {/* ── PRODUKT-MENÜ BOTTOM SHEET ── */}
       {menuSheetItem && (() => {

@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase"
 export default function ResetPasswordPage() {
   const router = useRouter()
 
+  const [from, setFrom]         = useState<string | null>(null)
   const [status, setStatus]     = useState<"loading" | "ready" | "success" | "error">("loading")
   const [password, setPassword] = useState("")
   const [password2, setPassword2] = useState("")
@@ -20,6 +21,7 @@ export default function ResetPasswordPage() {
       try {
         // ── PKCE flow: token_hash in query params ──────────────────────
         const params    = new URLSearchParams(window.location.search)
+        setFrom(params.get("from"))
         const tokenHash = params.get("token_hash")
         const type      = params.get("type")
 
@@ -64,7 +66,7 @@ export default function ResetPasswordPage() {
     setSaving(false)
     if (error) { setErr("Fehler: " + error.message); return }
     setStatus("success")
-    setTimeout(() => router.replace("/home"), 1800)
+    setTimeout(() => router.replace(from === "admin" ? "/admin" : "/home"), 1800)
   }
 
   const strength = password.length >= 12 ? 4 : password.length >= 8 ? 3 : password.length >= 6 ? 2 : password.length > 0 ? 1 : 0

@@ -381,11 +381,13 @@ function AppFeatureCard({ color, icon, label, tagline, imgId, visible, index }: 
   useEffect(() => {
     if (!visible) return
     setPulse(true)
-    const t = setTimeout(() => setPulse(false), 650)
+    const t = setTimeout(() => setPulse(false), 750)
     return () => clearTimeout(t)
   }, [visible])
 
   const active = hovered || pulse
+  // Linke Karte (index 0, 2) fliegt sofort rein — rechte (index 1, 3) mit 110ms Verzögerung
+  const stagger = (index % 2 === 1) ? "110ms" : "0ms"
 
   return (
     <div
@@ -400,7 +402,7 @@ function AppFeatureCard({ color, icon, label, tagline, imgId, visible, index }: 
         transform: visible
           ? active ? "translate(0,0) rotate(0deg) scale(1.05)" : "translate(0,0) rotate(0deg) scale(1)"
           : CARD_ORIGINS[index],
-        transition: "opacity 0.5s ease, transform 0.65s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s ease",
+        transition: `opacity 0.55s ease ${stagger}, transform 0.7s cubic-bezier(0.34,1.56,0.64,1) ${stagger}, box-shadow 0.3s ease`,
         cursor: "pointer",
       }}>
       <div style={{ height: 170, position: "relative" }}>
@@ -458,17 +460,17 @@ function AppFeatureBlocks() {
       if (!lockedRef.current || cooldownRef.current) return
       cooldownRef.current = true
       setVisibleCount(prev => {
-        const next = Math.min(4, prev + 1)
+        const next = Math.min(4, prev + 2)
         if (next >= 4) {
           setTimeout(() => {
             lockedRef.current = false
             doneRef.current   = true
             unlockBody()
-          }, 700)
+          }, 800)
         }
         return next
       })
-      setTimeout(() => { cooldownRef.current = false }, 650)
+      setTimeout(() => { cooldownRef.current = false }, 800)
     }
 
     const handleWheel = (e: WheelEvent) => {
@@ -548,7 +550,7 @@ function AppFeatureBlocks() {
         pointerEvents: "none",
       }}>
         <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "#64748b", letterSpacing: "0.12em", textTransform: "uppercase" }}>
-          {visibleCount === 0 ? "Scroll für mehr" : `${visibleCount} von 4`}
+          {visibleCount === 0 ? "Scroll für mehr" : visibleCount < 4 ? "Weiter scrollen" : ""}
         </span>
         <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style={{ animation: "scrollBounce 1.3s ease-in-out infinite" }}>
           <circle cx="20" cy="20" r="19" stroke="#cbd5e1" strokeWidth="1.5" />
@@ -611,8 +613,10 @@ function LandingInner() {
     return () => window.removeEventListener("scroll", fn)
   }, [])
   useEffect(() => { if (searchParams.get("login") === "1") setAuthMode("login") }, [searchParams])
-  // Logged-in users skip landing and go straight to the app
-  useEffect(() => { if (user) router.replace("/home") }, [user, router])
+  // Logged-in users skip landing — but NOT during registration (authMode is open)
+  useEffect(() => {
+    if (user && !authMode) router.replace("/home")
+  }, [user, router, authMode])
   // Guest CTA — no login required
   const goToApp = useCallback(() => router.push("/scan"), [router])
   const openRegister = useCallback(() => setAuthMode("register"), [])

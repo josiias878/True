@@ -85,6 +85,11 @@ export default function AdminPage() {
   const [loginPw, setLoginPw]         = useState("")
   const [loginError, setLoginError]   = useState("")
   const [loginLoading, setLoginLoading] = useState(false)
+  const [forgotMode, setForgotMode]   = useState(false)
+  const [forgotEmail, setForgotEmail] = useState("")
+  const [forgotSent, setForgotSent]   = useState(false)
+  const [forgotError, setForgotError] = useState("")
+  const [forgotLoading, setForgotLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>("overview")
   const [loading, setLoading]   = useState(false)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
@@ -94,6 +99,10 @@ export default function AdminPage() {
   const [actionMsg, setActionMsg] = useState("")
   const [actionLoading, setActionLoading] = useState(false)
   const [actionDone, setActionDone] = useState<string | null>(null)
+
+  // User deletion
+  const [deleteUserConfirm, setDeleteUserConfirm] = useState<DbUser | null>(null)
+  const [deletingUser, setDeletingUser] = useState(false)
 
   // Data
   const [users, setUsers]       = useState<DbUser[]>([])
@@ -146,17 +155,18 @@ export default function AdminPage() {
   const [activityData, setActivityData]   = useState<{hour: number; count: number}[]>([])
   const [cronBusy, setCronBusy]           = useState<string | null>(null)
 
-  // ── Auth: check Supabase session email against admin whitelist ───────────────
+  // ── Auth: always verify Supabase session — sessionStorage is not trusted ─────
   useEffect(() => {
     async function checkAuth() {
-      // Fast path: already authed this session
-      if (sessionStorage.getItem(AUTH_KEY) === "1") { setAuthed(true); return }
       if (!supabase) return
       const { data } = await supabase.auth.getSession()
       const email = data.session?.user?.email ?? ""
       if (ADMIN_EMAILS.includes(email)) {
         setAuthed(true)
         sessionStorage.setItem(AUTH_KEY, "1")
+      } else {
+        sessionStorage.removeItem(AUTH_KEY)
+        setAuthed(false)
       }
     }
     checkAuth()
@@ -181,7 +191,7 @@ export default function AdminPage() {
       if (postsData) setPosts(postsData as DbPost[])
       // Use service-role API to get all auth users (bypasses RLS)
       try {
-        const usersRes = await fetch("/api/admin-users?secret=true2026admin")
+        const usersRes = await fetch("/api/admin-users?secret=${process.env.NEXT_PUBLIC_ADMIN_SECRET}")
         if (usersRes.ok) {
           const usersJson = await usersRes.json()
           if (usersJson.users) setUsers(usersJson.users as DbUser[])
@@ -236,10 +246,28 @@ export default function AdminPage() {
     sessionStorage.setItem(AUTH_KEY, "1")
   }
 
+  async function handleForgotPassword(e: React.FormEvent) {
+    e.preventDefault()
+    setForgotError("")
+    const email = forgotEmail.trim().toLowerCase()
+    if (!ADMIN_EMAILS.map(e => e.toLowerCase()).includes(email)) {
+      setForgotError("Diese E-Mail hat keinen Admin-Zugang.")
+      return
+    }
+    if (!supabase) return
+    setForgotLoading(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: "https://get-true.de/auth/reset-password?from=admin",
+    })
+    setForgotLoading(false)
+    if (error) { setForgotError("Fehler: " + error.message); return }
+    setForgotSent(true)
+  }
+
   async function deletePost(postId: number) {
     setDeleting(true)
     try {
-      const res = await fetch("/api/admin-posts?secret=true2026admin", {
+      const res = await fetch("/api/admin-posts?secret=${process.env.NEXT_PUBLIC_ADMIN_SECRET}", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: [postId] }),
@@ -261,7 +289,7 @@ export default function AdminPage() {
     if (ids.length === 0) return
     setDeleting(true)
     try {
-      const res = await fetch("/api/admin-posts?secret=true2026admin", {
+      const res = await fetch("/api/admin-posts?secret=${process.env.NEXT_PUBLIC_ADMIN_SECRET}", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids }),
@@ -330,7 +358,7 @@ export default function AdminPage() {
   async function loadPartnerLeads() {
     setPartnerLoading(true)
     try {
-      const res = await fetch("/api/partner-contact?secret=true2026admin")
+      const res = await fetch("/api/partner-contact?secret=${process.env.NEXT_PUBLIC_ADMIN_SECRET}")
       const json = await res.json()
       setPartnerLeads(json.leads ?? [])
     } catch {}
@@ -338,7 +366,7 @@ export default function AdminPage() {
   }
 
   async function updateLeadStatus(id: string, status: string, notes: string) {
-    await fetch("/api/partner-contact?secret=true2026admin", {
+    await fetch("/api/partner-contact?secret=${process.env.NEXT_PUBLIC_ADMIN_SECRET}", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, status, notes }),
@@ -353,7 +381,7 @@ export default function AdminPage() {
       await fetch("/api/admin-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ secret: "true2026admin", to: emailTarget.email, subject: emailSubject, body: emailBody }),
+        body: JSON.stringify({ secret: process.env.NEXT_PUBLIC_ADMIN_SECRET, to: emailTarget.email, subject: emailSubject, body: emailBody }),
       })
       setEmailSent(true)
       setTimeout(() => { setEmailSent(false); setEmailTarget(null); setEmailSubject(""); setEmailBody("") }, 2500)
@@ -419,7 +447,7 @@ export default function AdminPage() {
     if (!actionModal) return
     setActionLoading(true)
     try {
-      const res = await fetch("/api/admin-ban?secret=true2026admin", {
+      const res = await fetch("/api/admin-ban?secret=${process.env.NEXT_PUBLIC_ADMIN_SECRET}", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: actionModal.user.id, action: actionModal.type, message: actionMsg }),
@@ -441,6 +469,21 @@ export default function AdminPage() {
     setActionLoading(false)
   }
 
+  async function handleDeleteUser(user: DbUser) {
+    setDeletingUser(true)
+    try {
+      const res = await fetch(`/api/admin-delete-user?secret=${process.env.NEXT_PUBLIC_ADMIN_SECRET}&userId=${user.id}`, { method: "DELETE" })
+      const data = await res.json()
+      if (data.success) {
+        setUsers(u => u.filter(x => x.id !== user.id))
+        setDeleteUserConfirm(null)
+      } else {
+        alert("Fehler: " + (data.error ?? "Unbekannt"))
+      }
+    } catch { alert("Netzwerkfehler") }
+    setDeletingUser(false)
+  }
+
   // ── Login screen ────────────────────────────────────────────────────────────
   if (!authed) {
     return (
@@ -451,43 +494,98 @@ export default function AdminPage() {
           <p style={{ color: "var(--text-dim)", fontSize: "0.8rem", marginBottom: "1.5rem" }}>
             Nur für autorisierte TRUE-Konten zugänglich.
           </p>
-          <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "0.75rem", textAlign: "left" }}>
-            <div>
-              <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-dim)", display: "block", marginBottom: 4 }}>E-Mail</label>
-              <input
-                type="email"
-                value={loginEmail}
-                onChange={e => setLoginEmail(e.target.value)}
-                placeholder="admin@get-true.de"
-                required
-                style={{ width: "100%", background: "var(--background)", border: "1px solid var(--border)", borderRadius: 10, padding: "0.7rem 0.9rem", color: "var(--text)", fontSize: "0.9rem", outline: "none", boxSizing: "border-box" as const }}
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-dim)", display: "block", marginBottom: 4 }}>Passwort</label>
-              <input
-                type="password"
-                value={loginPw}
-                onChange={e => setLoginPw(e.target.value)}
-                placeholder="••••••••"
-                required
-                style={{ width: "100%", background: "var(--background)", border: "1px solid var(--border)", borderRadius: 10, padding: "0.7rem 0.9rem", color: "var(--text)", fontSize: "0.9rem", outline: "none", boxSizing: "border-box" as const }}
-              />
-            </div>
-            {loginError && (
-              <div style={{ background: "rgba(255,68,85,0.1)", border: "1px solid rgba(255,68,85,0.3)", borderRadius: 8, padding: "0.5rem 0.75rem", fontSize: "0.78rem", color: "#ff4455" }}>
-                {loginError}
-              </div>
-            )}
-            <button
-              type="submit"
-              disabled={loginLoading}
-              style={{ background: "var(--accent)", color: "#000", border: "none", borderRadius: 12, padding: "0.85rem", fontWeight: 800, cursor: loginLoading ? "not-allowed" : "pointer", fontSize: "1rem", opacity: loginLoading ? 0.7 : 1, marginTop: 4 }}
-            >
-              {loginLoading ? "Wird geprüft…" : "Anmelden →"}
-            </button>
-          </form>
-          <Link href="/" style={{ display: "block", marginTop: "1.25rem", fontSize: "0.8rem", color: "var(--text-dim)", textDecoration: "none" }}>← Zurück zur Startseite</Link>
+          {!forgotMode ? (
+            <>
+              <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "0.75rem", textAlign: "left" }}>
+                <div>
+                  <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-dim)", display: "block", marginBottom: 4 }}>E-Mail</label>
+                  <input
+                    type="email"
+                    value={loginEmail}
+                    onChange={e => setLoginEmail(e.target.value)}
+                    placeholder="admin@get-true.de"
+                    required
+                    style={{ width: "100%", background: "var(--background)", border: "1px solid var(--border)", borderRadius: 10, padding: "0.7rem 0.9rem", color: "var(--text)", fontSize: "0.9rem", outline: "none", boxSizing: "border-box" as const }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-dim)", display: "block", marginBottom: 4 }}>Passwort</label>
+                  <input
+                    type="password"
+                    value={loginPw}
+                    onChange={e => setLoginPw(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    style={{ width: "100%", background: "var(--background)", border: "1px solid var(--border)", borderRadius: 10, padding: "0.7rem 0.9rem", color: "var(--text)", fontSize: "0.9rem", outline: "none", boxSizing: "border-box" as const }}
+                  />
+                </div>
+                {loginError && (
+                  <div style={{ background: "rgba(255,68,85,0.1)", border: "1px solid rgba(255,68,85,0.3)", borderRadius: 8, padding: "0.5rem 0.75rem", fontSize: "0.78rem", color: "#ff4455" }}>
+                    {loginError}
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  disabled={loginLoading}
+                  style={{ background: "var(--accent)", color: "#000", border: "none", borderRadius: 12, padding: "0.85rem", fontWeight: 800, cursor: loginLoading ? "not-allowed" : "pointer", fontSize: "1rem", opacity: loginLoading ? 0.7 : 1, marginTop: 4 }}
+                >
+                  {loginLoading ? "Wird geprüft…" : "Anmelden →"}
+                </button>
+              </form>
+              <button
+                onClick={() => { setForgotMode(true); setForgotEmail(loginEmail); setForgotSent(false); setForgotError("") }}
+                style={{ display: "block", width: "100%", marginTop: "0.75rem", background: "none", border: "none", color: "var(--text-dim)", fontSize: "0.8rem", cursor: "pointer", textAlign: "center", textDecoration: "underline" }}
+              >
+                Passwort vergessen?
+              </button>
+            </>
+          ) : (
+            <>
+              {!forgotSent ? (
+                <form onSubmit={handleForgotPassword} style={{ display: "flex", flexDirection: "column", gap: "0.75rem", textAlign: "left" }}>
+                  <p style={{ fontSize: "0.82rem", color: "var(--text-dim)", margin: "0 0 4px", textAlign: "center" }}>
+                    Gib deine Admin-E-Mail ein. Du erhältst einen Reset-Link.
+                  </p>
+                  <input
+                    type="email"
+                    value={forgotEmail}
+                    onChange={e => setForgotEmail(e.target.value)}
+                    placeholder="admin@get-true.de"
+                    required
+                    autoFocus
+                    style={{ width: "100%", background: "var(--background)", border: "1px solid var(--border)", borderRadius: 10, padding: "0.7rem 0.9rem", color: "var(--text)", fontSize: "0.9rem", outline: "none", boxSizing: "border-box" as const }}
+                  />
+                  {forgotError && (
+                    <div style={{ background: "rgba(255,68,85,0.1)", border: "1px solid rgba(255,68,85,0.3)", borderRadius: 8, padding: "0.5rem 0.75rem", fontSize: "0.78rem", color: "#ff4455" }}>
+                      {forgotError}
+                    </div>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={forgotLoading}
+                    style={{ background: "var(--accent)", color: "#000", border: "none", borderRadius: 12, padding: "0.85rem", fontWeight: 800, cursor: forgotLoading ? "not-allowed" : "pointer", fontSize: "1rem", opacity: forgotLoading ? 0.7 : 1 }}
+                  >
+                    {forgotLoading ? "Wird gesendet…" : "Reset-Link senden →"}
+                  </button>
+                </form>
+              ) : (
+                <div style={{ textAlign: "center", padding: "1rem 0" }}>
+                  <div style={{ fontSize: "2.5rem", marginBottom: 10 }}>📧</div>
+                  <div style={{ fontWeight: 700, fontSize: "0.95rem", marginBottom: 6 }}>E-Mail gesendet!</div>
+                  <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", lineHeight: 1.5 }}>
+                    Prüfe dein Postfach und klicke auf den Link, um dein Passwort zurückzusetzen.
+                  </div>
+                </div>
+              )}
+              <button
+                onClick={() => { setForgotMode(false); setForgotSent(false); setForgotError("") }}
+                style={{ display: "block", width: "100%", marginTop: "0.75rem", background: "none", border: "none", color: "var(--text-dim)", fontSize: "0.8rem", cursor: "pointer", textAlign: "center" }}
+              >
+                ← Zurück zum Login
+              </button>
+            </>
+          )}
+          <Link href="/" style={{ display: "block", marginTop: "1rem", fontSize: "0.8rem", color: "var(--text-dim)", textDecoration: "none", textAlign: "center" }}>← Zurück zur Startseite</Link>
         </div>
       </div>
     )
@@ -883,6 +981,10 @@ export default function AdminPage() {
                             🚫 Sperren
                           </button>
                         )}
+                        <button onClick={() => setDeleteUserConfirm(u)}
+                          style={{ background: "rgba(255,68,85,0.12)", border: "1px solid rgba(255,68,85,0.3)", color: "#ff4455", borderRadius: "8px", padding: "5px 10px", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer" }}>
+                          🗑️
+                        </button>
                       </div>
                     </div>
                   )
@@ -1119,6 +1221,33 @@ export default function AdminPage() {
                 </div>
               )}
             </div>
+
+            {/* TRUE Kanal — manueller Post-Trigger */}
+            <div style={{ background: "var(--surface)", border: "1px solid rgba(46,204,138,0.3)", borderRadius: "14px", padding: "14px", marginTop: "1.25rem" }}>
+              <div style={{ fontWeight: 800, fontSize: "0.9rem", marginBottom: "4px", color: "var(--accent)" }}>📡 TRUE Kanal posten</div>
+              <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginBottom: "14px", lineHeight: 1.5 }}>
+                Postet sofort einen neuen täglichen Beitrag in den offiziellen TRUE Kanal (app-intern, sichtbar für alle Nutzer).
+              </div>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                {([
+                  { type: "bot",   label: "📰 TRUE Bot",    color: "#44aaff" },
+                  { type: "eva",   label: "✍️ Eva Müller",  color: "#ffcc00" },
+                  { type: "coach", label: "🥗 Coach",       color: "#2ECC8A" },
+                ] as { type: string; label: string; color: string }[]).map(({ type, label, color }) => (
+                  <button
+                    key={type}
+                    onClick={async () => {
+                      const res = await fetch(`/api/cron?secret=${process.env.NEXT_PUBLIC_ADMIN_SECRET}&type=${type}`)
+                      const json = await res.json()
+                      alert(json.ok ? `✅ ${label} gepostet (ID ${json.id})` : `❌ Fehler: ${json.error}`)
+                    }}
+                    style={{ background: color + "15", color, border: `1px solid ${color}44`, borderRadius: "10px", padding: "8px 16px", fontWeight: 700, cursor: "pointer", fontSize: "0.82rem" }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
@@ -1271,6 +1400,32 @@ export default function AdminPage() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── User-Löschen Bestätigungs-Modal ───────────────────────────────────── */}
+      {deleteUserConfirm && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "1.5rem" }}>
+          <div style={{ background: "var(--surface)", borderRadius: "20px", padding: "1.5rem", maxWidth: "340px", width: "100%", border: "1px solid rgba(255,68,85,0.4)" }}>
+            <div style={{ fontSize: "2rem", textAlign: "center", marginBottom: "0.5rem" }}>🗑️</div>
+            <h3 style={{ textAlign: "center", fontWeight: 800, fontSize: "1.05rem", margin: "0 0 0.4rem" }}>Account endgültig löschen?</h3>
+            <p style={{ textAlign: "center", fontSize: "0.8rem", color: "var(--text-dim)", margin: "0 0 1rem" }}>
+              <strong style={{ color: "var(--text)" }}>{deleteUserConfirm.vorname || deleteUserConfirm.email?.split("@")[0] || "Nutzer"}</strong>
+              {deleteUserConfirm.email && <><br />{deleteUserConfirm.email}</>}
+              <br /><br />
+              Dieser Account wird aus Supabase Auth und dem Profil dauerhaft entfernt. Diese Aktion kann nicht rückgängig gemacht werden.
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setDeleteUserConfirm(null)}
+                style={{ flex: 1, background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "12px", padding: "11px", fontWeight: 700, cursor: "pointer", color: "var(--text-dim)", fontSize: "0.85rem" }}>
+                Abbrechen
+              </button>
+              <button onClick={() => handleDeleteUser(deleteUserConfirm)} disabled={deletingUser}
+                style={{ flex: 2, background: "#ff4455", border: "none", borderRadius: "12px", padding: "11px", fontWeight: 800, cursor: "pointer", color: "#fff", fontSize: "0.85rem", opacity: deletingUser ? 0.6 : 1 }}>
+                {deletingUser ? "⏳ Läuft…" : "Ja, löschen"}
+              </button>
+            </div>
           </div>
         </div>
       )}

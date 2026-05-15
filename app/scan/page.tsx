@@ -19,6 +19,8 @@ interface ScanResult {
   corporation?: { name: string; severity: string; aliases: string[] }
   categories?: { id: string; name: string; icon: string; description: string }[]
   evidence?: { id: string; title: string; source: string; date: string; level: string; status?: string }[]
+  imageUrl?: string | null
+  source?: string
 }
 
 interface HistoryEntry {
@@ -479,7 +481,6 @@ export default function ScanPage() {
   const [expandedCat, setExpandedCat] = useState<string | null>(null)
   const [userGoals, setUserGoals]       = useState<string[]>([])
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([])
-  const [meidliste, setMeidliste]       = useState<string[]>([])
   const [facingMode, setFacingMode]     = useState<"environment"|"user">("environment")
   const [ingredientData, setIngredientData] = useState<{
     found: boolean; productName?: string; nutriScore?: string | null
@@ -500,10 +501,6 @@ export default function ScanPage() {
     try {
       const fm = localStorage.getItem("true-family-members")
       if (fm) setFamilyMembers(JSON.parse(fm))
-    } catch {}
-    try {
-      const ml = localStorage.getItem("true-meidliste")
-      if (ml) setMeidliste(JSON.parse(ml))
     } catch {}
   }, [])
 
@@ -575,14 +572,14 @@ export default function ScanPage() {
       // Optimierte Kamera-Einstellungen für schnelles Barcode-Lesen
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: { exact: "environment" },
+          facingMode: { exact: f },
           width:  { ideal: 1280 },
           height: { ideal: 720 },
           frameRate: { ideal: 30, min: 15 },
         }
       }).catch(() => navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: { ideal: "environment" },
+          facingMode: { ideal: f },
           width:  { ideal: 1280 },
           height: { ideal: 720 },
         }
@@ -627,7 +624,7 @@ export default function ScanPage() {
       setCameraError(true)
       setMode("manual")
     }
-  }, [stopCamera])
+  }, [stopCamera, facingMode, canScan])
 
   async function lookup(q: string) {
     if (!canScan) { setShowPremiumGate(true); return }
@@ -823,7 +820,7 @@ export default function ScanPage() {
                       {isLimitHit ? "Tageslimit erreicht" : `${scansLeft} von ${FREE_DAILY_LIMIT} Scans übrig`}
                     </div>
                     <div style={{ fontSize: "0.68rem", color: "var(--text-dim)", marginTop: "1px" }}>
-                      {isLimitHit ? "Morgen wieder verfügbar — oder jetzt upgraden" : "Kostenlos · Setzt täglich um Mitternacht zurück"}
+                      {isLimitHit ? "Setzt sich täglich zurück — oder jetzt upgraden" : "Kostenlos · Setzt sich täglich zurück"}
                     </div>
                   </div>
                 </div>
@@ -942,12 +939,22 @@ export default function ScanPage() {
 
                   {/* Konzern / Produktname */}
                   {result.corporation && (
-                    <div>
-                      <div style={{ fontWeight: 800, fontSize: "1rem", color: "var(--text)", lineHeight: 1.2 }}>{result.corporation.name}</div>
-                      {result.corporation.aliases.length > 0 && (
-                        <div style={{ fontSize: "0.68rem", color: "var(--text-dim)", marginTop: 3 }}>
-                          {result.corporation.aliases.slice(0, 3).join(" · ")}
-                        </div>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, fontSize: "1rem", color: "var(--text)", lineHeight: 1.2 }}>{result.corporation.name}</div>
+                        {result.corporation.aliases.length > 0 && (
+                          <div style={{ fontSize: "0.68rem", color: "var(--text-dim)", marginTop: 3 }}>
+                            {result.corporation.aliases.slice(0, 3).join(" · ")}
+                          </div>
+                        )}
+                      </div>
+                      {result.imageUrl && (
+                        <img
+                          src={result.imageUrl}
+                          alt={result.corporation.name}
+                          style={{ width: 56, height: 56, objectFit: "contain", borderRadius: 10, background: "#fff", flexShrink: 0, border: "1px solid var(--border)", padding: 4 }}
+                          onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
+                        />
                       )}
                     </div>
                   )}
@@ -974,22 +981,44 @@ export default function ScanPage() {
                 </div>
               </div>
 
-              {/* Dummy-Wrapper für Meidliste — außerhalb der Zeile */}
-              <div style={{ padding: "0 18px 8px" }}>
-                {/* Meidliste-Warnung inline */}
-                {(() => {
-                  if (!result.corporation || meidliste.length === 0) return null
-                  const corp = result.corporation.name.toLowerCase()
-                  const matched = meidliste.find(m => corp.includes(m.toLowerCase()) || m.toLowerCase().includes(corp))
-                  if (!matched) return null
-                  return (
-                    <div style={{ width: "100%", background: "rgba(255,68,85,0.12)", border: "1.5px solid rgba(255,68,85,0.4)", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ fontSize: "1.3rem", flexShrink: 0 }}>🚫</span>
-                      <div style={{ fontSize: "0.78rem", color: "#ff4455", fontWeight: 700 }}>Auf deiner Meide-Liste: <span style={{ color: "var(--text)" }}>{matched}</span></div>
+              {/* Konzern-Schäden — kostenlos für alle sichtbar */}
+              {result.corporation && (() => {
+                const damageCats = (result.categories ?? []).filter(c =>
+                  !c.id.startsWith("nova-") && !c.id.startsWith("ecoscore-")
+                )
+                if (damageCats.length === 0) return null
+                const sev = result.corporation.severity
+                const chipStyle =
+                  sev === "critical" ? { bg: "rgba(255,34,51,0.1)",  border: "rgba(255,34,51,0.3)",  text: "#ff2233" } :
+                  sev === "high"     ? { bg: "rgba(255,119,0,0.1)",  border: "rgba(255,119,0,0.3)",  text: "#ff7700" } :
+                  sev === "medium"   ? { bg: "rgba(255,195,0,0.1)",  border: "rgba(255,195,0,0.3)",  text: "#cc9900" } :
+                                       { bg: "rgba(46,204,138,0.1)", border: "rgba(46,204,138,0.3)", text: "#2ECC8A" }
+                return (
+                  <div style={{ padding: "0 18px 16px" }}>
+                    <div style={{ fontSize: "0.62rem", color: "var(--text-dim)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>
+                      Dokumentierte Schäden
                     </div>
-                  )
-                })()}
-              </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {damageCats.slice(0, 6).map(cat => (
+                        <span key={cat.id} style={{
+                          background: chipStyle.bg,
+                          border: `1px solid ${chipStyle.border}`,
+                          borderRadius: 99,
+                          padding: "5px 12px",
+                          fontSize: "0.74rem",
+                          fontWeight: 700,
+                          color: chipStyle.text,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 5,
+                        }}>
+                          {cat.icon} {cat.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })()}
 
               {/* Aktions-Buttons */}
               <div style={{ padding: "0 16px 20px", display: "flex", gap: 10 }}>
@@ -1003,6 +1032,22 @@ export default function ScanPage() {
                     {showDetails ? "↑ Weniger" : "Details ↓"}
                   </button>
                 )}
+                {/* Share */}
+                <button
+                  onClick={() => {
+                    const corp = result.corporation?.name ?? result.query ?? "Produkt"
+                    const sev  = result.corporation?.severity
+                    const verdict = sev === "critical" ? "🚫 Nicht empfohlen" : sev === "high" ? "⚠️ Mit Bedacht" : sev === "medium" ? "🔶 Okay" : "✅ Bedenkenlos"
+                    const cats = (result.categories ?? []).filter(c => !c.id.startsWith("nova-") && !c.id.startsWith("ecoscore-")).slice(0,3).map(c => c.name).join(", ")
+                    const text = `${verdict}: ${corp}${cats ? `\n📋 ${cats}` : ""}\n\nGescannt mit TRUE — get-true.de`
+                    if (navigator.share) navigator.share({ title: `TRUE: ${corp}`, text })
+                  }}
+                  style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "11px 12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ color: "var(--text-dim)" }}>
+                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+                  </svg>
+                </button>
               </div>
             </div>
 
@@ -1018,9 +1063,9 @@ export default function ScanPage() {
                     <span style={{ fontSize: "1.1rem" }}>🧪</span>
                     <span style={{ flex: 1, fontWeight: 800, fontSize: "0.88rem", color: "var(--text)" }}>Inhaltsstoffe</span>
                     {!isPremium && <span style={{ background: "linear-gradient(135deg,#ffd700,#ffaa00)", color: "#000", borderRadius: 6, padding: "1px 7px", fontSize: "0.58rem", fontWeight: 800 }}>👑 Premium</span>}
-                    {ingredientData?.nutriScore && isPremium && (
+                    {ingredientData?.nutriScore && (
                       <span style={{ background: NUTRI_COLOR[ingredientData.nutriScore] ?? "var(--surface-2)", color: "#000", fontWeight: 900, fontSize: "0.78rem", borderRadius: 7, padding: "2px 9px" }}>
-                        {ingredientData.nutriScore}
+                        Nutri-Score {ingredientData.nutriScore}
                       </span>
                     )}
                   </div>
@@ -1115,12 +1160,11 @@ export default function ScanPage() {
                         style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}>
                         <span style={{ fontSize: "1.1rem" }}>💡</span>
                         <span style={{ flex: 1, fontWeight: 800, fontSize: "0.88rem", color: "var(--text)" }}>Hintergründe</span>
-                        {!isPremium && <span style={{ background: "linear-gradient(135deg,#ffd700,#ffaa00)", color: "#000", borderRadius: 6, padding: "1px 6px", fontSize: "0.58rem", fontWeight: 800 }}>👑</span>}
                         <span style={{ fontSize: "0.7rem", color: "var(--text-dim)", transform: open ? "rotate(180deg)" : "none", display: "inline-block" }}>▼</span>
                       </button>
                       {open && (
                         <div style={{ borderTop: "1px solid var(--border)" }}>
-                          {isPremium ? premiumCats.map(c => {
+                          {premiumCats.map(c => {
                             const catOpen = expandedCat === c.id
                             return (
                               <div key={c.id} style={{ borderBottom: "1px solid var(--border)" }}>
@@ -1137,7 +1181,7 @@ export default function ScanPage() {
                                 )}
                               </div>
                             )
-                          }) : premiumGateBlock}
+                          })}
                         </div>
                       )}
                     </div>
@@ -1351,26 +1395,44 @@ export default function ScanPage() {
               <button onClick={() => { setHistory([]); saveHistory([]) }} style={{ background: "transparent", border: "none", color: "var(--text-dim)", fontSize: "0.75rem", cursor: "pointer" }}>Alle löschen</button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-              {history.map(h => (
-                <div key={h.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "12px", padding: "0.75rem 1rem", display: "flex", alignItems: "center", gap: "0.75rem", cursor: "pointer" }}
-                  onClick={() => showHistoryResult(h)}>
-                  <span style={{ fontSize: "1.1rem" }}>
-                    {!h.found ? "✅" : h.grade ? (h.grade === "A" || h.grade === "B" ? "✅" : h.grade === "C" ? "🔶" : "⚠️") : "🔍"}
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: "0.88rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {h.corpName || h.query}
+              {history.map(h => {
+                const damageCats = (h.result?.categories ?? []).filter(c =>
+                  !c.id.startsWith("nova-") && !c.id.startsWith("ecoscore-")
+                ).slice(0, 3)
+                const sev = h.severity
+                const chipColor = sev === "critical" ? "#ff2233" : sev === "high" ? "#ff7700" : sev === "medium" ? "#cc9900" : "#2ECC8A"
+                return (
+                  <div key={h.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "12px", overflow: "hidden", cursor: "pointer" }}
+                    onClick={() => showHistoryResult(h)}>
+                    <div style={{ padding: "0.75rem 1rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                      <span style={{ fontSize: "1.1rem" }}>
+                        {!h.found ? "✅" : h.grade ? (h.grade === "A" || h.grade === "B" ? "✅" : h.grade === "C" ? "🔶" : "⚠️") : "🔍"}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: "0.88rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {h.corpName || h.query}
+                        </div>
+                        <div style={{ fontSize: "0.68rem", color: "var(--text-dim)", marginTop: "0.1rem" }}>{relTime(h.timestamp)}</div>
+                      </div>
+                      {(h.grade || h.severity) && (
+                        <span style={{ background: (h.grade ? GRADE_COLOR[h.grade] : SEV_COLOR[h.severity!] ?? "#888") + "18", color: h.grade ? GRADE_COLOR[h.grade] : SEV_COLOR[h.severity!] ?? "#888", borderRadius: "6px", padding: "0.15rem 0.5rem", fontSize: "0.65rem", fontWeight: 700, flexShrink: 0 }}>
+                          {h.grade ? GRADE_LABEL[h.grade] : SEV_LABEL[h.severity!] ?? ""}
+                        </span>
+                      )}
+                      <button onClick={e => { e.stopPropagation(); deleteHistory(h.id) }} style={{ background: "transparent", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: "1rem", padding: "0 0.2rem", flexShrink: 0 }}>×</button>
                     </div>
-                    <div style={{ fontSize: "0.68rem", color: "var(--text-dim)", marginTop: "0.1rem" }}>{relTime(h.timestamp)}</div>
+                    {damageCats.length > 0 && (
+                      <div style={{ padding: "0 1rem 0.65rem", display: "flex", flexWrap: "wrap", gap: 5 }}>
+                        {damageCats.map(cat => (
+                          <span key={cat.id} style={{ background: chipColor + "15", border: `1px solid ${chipColor}33`, borderRadius: 99, padding: "3px 9px", fontSize: "0.63rem", fontWeight: 700, color: chipColor, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                            {cat.icon} {cat.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  {(h.grade || h.severity) && (
-                    <span style={{ background: (h.grade ? GRADE_COLOR[h.grade] : SEV_COLOR[h.severity!] ?? "#888") + "18", color: h.grade ? GRADE_COLOR[h.grade] : SEV_COLOR[h.severity!] ?? "#888", borderRadius: "6px", padding: "0.15rem 0.5rem", fontSize: "0.65rem", fontWeight: 700, flexShrink: 0 }}>
-                      {h.grade ? GRADE_LABEL[h.grade] : SEV_LABEL[h.severity!] ?? ""}
-                    </span>
-                  )}
-                  <button onClick={e => { e.stopPropagation(); deleteHistory(h.id) }} style={{ background: "transparent", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: "1rem", padding: "0 0.2rem", flexShrink: 0 }}>×</button>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}

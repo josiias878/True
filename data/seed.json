@@ -14,7 +14,8 @@
     { "id": "tierwohl",     "name": "Tierwohl",             "icon": "🐄", "description": "Dokumentierte Tierschutzmängel in Lieferketten", "createdBy": "manual", "createdAt": "2025-01-01" },
     { "id": "arbeit",       "name": "Arbeitsbedingungen",   "icon": "⚠️", "description": "Überdurchschnittlich hohe Verletzungsraten, Niedriglöhne, Anti-Gewerkschafts-Praktiken", "createdBy": "manual", "createdAt": "2025-01-01" },
     { "id": "co2",          "name": "CO₂ / Klima",          "icon": "🌍", "description": "Hohe CO₂-Emissionen, Blockade von Klimaschutzmaßnahmen", "createdBy": "manual", "createdAt": "2025-01-01" },
-    { "id": "greenwashing", "name": "Greenwashing",         "icon": "🎭", "description": "Irreführende Nachhaltigkeitsversprechen ohne belegte Maßnahmen", "createdBy": "manual", "createdAt": "2025-01-01" }
+    { "id": "greenwashing", "name": "Greenwashing",         "icon": "🎭", "description": "Irreführende Nachhaltigkeitsversprechen ohne belegte Maßnahmen", "createdBy": "manual", "createdAt": "2025-01-01" },
+    { "id": "tabak", "name": "Tabak / Sucht", "icon": "🚬", "description": "Herstellung und Vermarktung von Tabakprodukten, Suchtförderung, Greenwashing-Aktivitäten", "createdBy": "manual", "createdAt": "2025-01-01" }
   ],
   "evidence": [
     { "id": "nestle-palm-1",      "title": "Nestlé Palmöl-Lieferkette zerstört Borneo-Regenwald",              "source": "Rainforest Action Network",     "date": "2020-03-12", "level": "verified" },
@@ -60,7 +61,24 @@
     { "id": "caprisonne-zucker-1","title": "Capri-Sonne enthält bis zu 11g Zucker pro 200ml Portion",         "source": "Öko-Test 2023",                "date": "2023-06-12", "level": "verified" },
     { "id": "reckitt-pfas-1",     "title": "Reckitt Calgon-Produkte: PFAS-Verbindungen im Abwasser",          "source": "ECHA Risikobewertung 2023",    "date": "2023-08-30", "level": "pending"  },
     { "id": "3m-pfas-1",          "title": "3M stellt PFAS-Produktion ein — nach 15 Mrd. USD Klagen",         "source": "US Federal Court / Bloomberg", "date": "2022-12-20", "level": "verified" },
-    { "id": "muller-tierwohl-1",  "title": "Müller Milch: Bezogene Rohmilch aus Haltung unter EU-Mindeststandard","source": "Tierschutzbund 2021",       "date": "2021-11-08", "level": "pending"  }
+    { "id": "muller-tierwohl-1",  "title": "Müller Milch: Bezogene Rohmilch aus Haltung unter EU-Mindeststandard","source": "Tierschutzbund 2021",       "date": "2021-11-08", "level": "pending"  },
+    { "id": "abinbev-co2-1",     "title": "AB InBev verbraucht 300 Mrd. Liter Wasser jährlich in wasserarmen Regionen",    "source": "Water Risk Atlas / Brewery Benchmarking 2023", "date": "2023-05-10", "level": "verified" },
+    { "id": "abinbev-plastic-1", "title": "AB InBev verfehlt eigene Plastik-Reduktionsziele 2025",                           "source": "Plastics Scorecard 2023",                     "date": "2023-04-18", "level": "pending"  },
+    { "id": "heineken-co2-1",    "title": "Heineken: CO₂-Fußabdruck je Liter Bier gestiegen trotz Klimazusagen",            "source": "CDP Climate Disclosure 2023",                 "date": "2023-09-12", "level": "pending"  },
+    { "id": "loreal-micro-1",    "title": "L'Oréal Produkte enthielten Mikroplastik-Partikel vor EU-Verbot 2023",           "source": "BUND / Stiftung Warentest 2022",              "date": "2022-08-15", "level": "verified" },
+    { "id": "loreal-tierwohl-1", "title": "L'Oréal Tierversuche: Ausnahmen für Märkte mit gesetzlicher Pflicht",            "source": "PETA Cosmetica-Ranking 2023",                 "date": "2023-02-01", "level": "verified" },
+    { "id": "colgate-micro-1",   "title": "Colgate Zahnpasta enthielt Mikroplastik-Partikel vor EU-Verbot",                 "source": "BUND Mikroplastik-Report 2022",               "date": "2022-06-08", "level": "verified" },
+    { "id": "colgate-palm-1",    "title": "Colgate-Palmolive nutzt Palmöl aus nicht-zertifizierten Quellen",                "source": "WWF Palmöl-Scorecard 2022",                   "date": "2022-07-19", "level": "pending"  },
+    { "id": "kenvue-baby-1",     "title": "Johnson & Johnson zahlt 9 Mrd. USD für Baby-Talkum Krebsverfahren",              "source": "US Bankruptcy Court / Reuters 2023",          "date": "2023-04-05", "level": "verified" },
+    { "id": "jde-arbeit-1",      "title": "JDE Peet's Kaffeebauern in Äthiopien unter Armutsgrenze entlohnt",              "source": "Oxfam Behind the Brands 2022",                "date": "2022-09-20", "level": "pending"  },
+    { "id": "redbull-zucker-1",  "title": "Red Bull Zuckergehalt: 27g pro 250ml — entspricht 7 Zuckerwürfeln",              "source": "Verbraucherzentrale 2023",                    "date": "2023-03-14", "level": "verified" },
+    { "id": "iglo-tierwohl-1",   "title": "iglo / Birds Eye Fischstäbchen: MSC-Zertifizierung teils umstritten",            "source": "Foodwatch Fischreport 2022",                  "date": "2022-11-17", "level": "pending"  },
+    { "id": "arla-co2-1",        "title": "Arla Foods: Milchproduktion verursacht 4× mehr CO₂ als pflanzliche Alternativen","source": "Poore & Nemecek, Science 2018",               "date": "2018-06-01", "level": "verified" },
+    { "id": "pmi-tabak-1",       "title": "Philip Morris vermarktet IQOS-Produkte als 'rauchfrei' trotz Schadstoffbelastung","source": "WHO Tobacco Control Report 2023",             "date": "2023-07-01", "level": "verified" },
+    { "id": "bat-tabak-1",       "title": "British American Tobacco richtet Marketing gezielt an Jugendliche in Entwicklungsländern","source": "Tobacco Atlas 2022",                   "date": "2022-09-15", "level": "verified" },
+    { "id": "generalmills-palm-1","title": "General Mills verfehlt Palmöl-Nachhaltigkeitsziele seit 2020",                  "source": "Rainforest Action Network 2022",              "date": "2022-10-05", "level": "pending"  },
+    { "id": "beiersdorf-micro-1","title": "Beiersdorf Nivea-Produkte enthielten vor 2023 Mikroplastik-Beads",               "source": "BUND Report 2021",                            "date": "2021-04-22", "level": "verified" },
+    { "id": "mccormick-arbeit-1","title": "McCormick Gewürzlieferketten: Kinderarbeit in Vanille-Anbau dokumentiert",       "source": "Human Rights Watch 2021",                    "date": "2021-09-07", "level": "pending"  }
   ],
   "corporations": [
     {
@@ -419,6 +437,132 @@
       "evidenceIds": ["muller-tierwohl-1"],
       "severity": "low",
       "lastUpdated": "2025-04-01"
+    },
+    {
+      "id": "abinbev",
+      "name": "AB InBev",
+      "aliases": ["ab inbev", "anheuser-busch", "budweiser", "bud", "corona", "beck's", "becks", "stella artois", "hasseröder", "löwenbräu", "loewenbräu", "franziskaner", "jupiler", "leffe", "hoegaarden", "spaten", "goose island", "bass", "boddingtons", "alexander keiths"],
+      "categoryIds": ["wasser", "plastik", "co2", "steuern"],
+      "evidenceIds": ["abinbev-co2-1", "abinbev-plastic-1"],
+      "severity": "medium",
+      "lastUpdated": "2025-01-01"
+    },
+    {
+      "id": "heineken",
+      "name": "Heineken",
+      "aliases": ["heineken", "amstel", "desperados", "birra moretti", "paulaner", "tiger beer", "sol beer", "dos equis", "krušovice", "krusovice", "affligem", "murphy's", "strongbow"],
+      "categoryIds": ["co2", "plastik", "greenwashing"],
+      "evidenceIds": ["heineken-co2-1"],
+      "severity": "medium",
+      "lastUpdated": "2025-01-01"
+    },
+    {
+      "id": "loreal",
+      "name": "L'Oréal",
+      "aliases": ["loreal", "l'oréal", "l oreal", "l'oreal", "garnier", "maybelline", "elvital", "lancôme", "lancome", "kiehl's", "kiehls", "nyx cosmetics", "urban decay", "vichy", "la roche-posay", "la roche posay", "biotherm", "matrix haircare", "redken", "essie", "pureology", "it cosmetics", "cerave", "skinbetter science"],
+      "categoryIds": ["mikroplastik", "tierwohl", "greenwashing"],
+      "evidenceIds": ["loreal-micro-1", "loreal-tierwohl-1"],
+      "severity": "medium",
+      "lastUpdated": "2025-01-01"
+    },
+    {
+      "id": "beiersdorf",
+      "name": "Beiersdorf",
+      "aliases": ["beiersdorf", "nivea", "hansaplast", "labello", "eucerin", "tesa", "la prairie", "coppertone", "8x4", "florena"],
+      "categoryIds": ["mikroplastik"],
+      "evidenceIds": ["beiersdorf-micro-1"],
+      "severity": "low",
+      "lastUpdated": "2025-01-01"
+    },
+    {
+      "id": "colgate",
+      "name": "Colgate-Palmolive",
+      "aliases": ["colgate", "palmolive", "elmex", "aronal", "ajax", "sanex", "speed stick", "lady speed stick", "hills pet nutrition", "hill's", "softsoap", "irish spring", "tom's of maine"],
+      "categoryIds": ["palmoel", "mikroplastik", "tierwohl"],
+      "evidenceIds": ["colgate-micro-1", "colgate-palm-1"],
+      "severity": "medium",
+      "lastUpdated": "2025-01-01"
+    },
+    {
+      "id": "kenvue",
+      "name": "Kenvue (ehem. J&J)",
+      "aliases": ["kenvue", "johnson & johnson", "johnson and johnson", "j&j", "penaten", "o.b.", "ob tampon", "bebe young care", "neutrogena", "listerine", "band-aid", "aveeno", "carefree", "compeed", "nicorette", "rhinocort"],
+      "categoryIds": ["greenwashing", "steuern"],
+      "evidenceIds": ["kenvue-baby-1"],
+      "severity": "medium",
+      "lastUpdated": "2025-01-01"
+    },
+    {
+      "id": "jde",
+      "name": "JDE Peet's",
+      "aliases": ["jde", "jde peet's", "jacobs douwe egberts", "jacobs", "senseo", "tassimo", "peet's coffee", "peets coffee", "l'or", "lor espresso", "douwe egberts", "gevalia", "moccona", "carte noire", "kenco", "cafitesse", "maxwell house", "yuban"],
+      "categoryIds": ["co2", "arbeit"],
+      "evidenceIds": ["jde-arbeit-1"],
+      "severity": "medium",
+      "lastUpdated": "2025-01-01"
+    },
+    {
+      "id": "redbull",
+      "name": "Red Bull",
+      "aliases": ["red bull", "red bull energy", "redbull"],
+      "categoryIds": ["zucker", "nova4"],
+      "evidenceIds": ["redbull-zucker-1"],
+      "severity": "medium",
+      "lastUpdated": "2025-01-01"
+    },
+    {
+      "id": "nomad",
+      "name": "iglo / Nomad Foods",
+      "aliases": ["iglo", "birds eye", "findus", "nomad foods", "green cuisine", "captain iglo"],
+      "categoryIds": ["tierwohl", "plastik"],
+      "evidenceIds": ["iglo-tierwohl-1"],
+      "severity": "medium",
+      "lastUpdated": "2025-01-01"
+    },
+    {
+      "id": "arla",
+      "name": "Arla Foods",
+      "aliases": ["arla", "lurpak", "puck", "castello", "arla organic", "arla skyr", "cravendale", "anchor butter", "dano"],
+      "categoryIds": ["co2", "tierwohl"],
+      "evidenceIds": ["arla-co2-1"],
+      "severity": "medium",
+      "lastUpdated": "2025-01-01"
+    },
+    {
+      "id": "pmi",
+      "name": "Philip Morris",
+      "aliases": ["philip morris", "pmi", "marlboro", "l&m", "lm zigaretten", "chesterfield", "parliament cigarettes", "iqos", "heets", "bond street", "next cigarettes"],
+      "categoryIds": ["tabak", "greenwashing", "steuern"],
+      "evidenceIds": ["pmi-tabak-1"],
+      "severity": "critical",
+      "lastUpdated": "2025-01-01"
+    },
+    {
+      "id": "bat",
+      "name": "British American Tobacco",
+      "aliases": ["british american tobacco", "bat", "lucky strike", "pall mall", "dunhill", "kent", "rothmans", "vuse", "vype", "camel"],
+      "categoryIds": ["tabak", "greenwashing", "steuern"],
+      "evidenceIds": ["bat-tabak-1"],
+      "severity": "critical",
+      "lastUpdated": "2025-01-01"
+    },
+    {
+      "id": "generalmills",
+      "name": "General Mills",
+      "aliases": ["general mills", "old el paso", "häagen-dazs", "haagen-dazs", "haagendazs", "green giant", "betty crocker", "yoplait", "pillsbury", "nature valley", "fiber one", "cascadian farm", "cheerios", "lucky charms", "wheaties", "cocoa puffs", "trix", "golden grahams"],
+      "categoryIds": ["palmoel", "zucker", "nova4"],
+      "evidenceIds": ["generalmills-palm-1"],
+      "severity": "medium",
+      "lastUpdated": "2025-01-01"
+    },
+    {
+      "id": "mccormick",
+      "name": "McCormick",
+      "aliases": ["mccormick", "schwartz", "schwartz spices", "club house", "frank's redhot", "franks red hot", "french's mustard", "old bay", "lawry's", "simply asia", "thai kitchen", "gourmet collection"],
+      "categoryIds": ["arbeit"],
+      "evidenceIds": ["mccormick-arbeit-1"],
+      "severity": "low",
+      "lastUpdated": "2025-01-01"
     }
   ]
 }

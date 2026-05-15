@@ -14,7 +14,7 @@ function mapEcoscoreToSeverity(grade?: string): string {
 }
 
 async function lookupOpenFoodFacts(barcode: string) {
-  const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}.json`
+  const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}.json?fields=product_name_de,product_name,brands,nova_group,ecoscore_grade,ingredients_text,additives_tags,image_front_small_url,image_front_url`
   const res = await fetch(url, { next: { revalidate: 3600 } })
   if (!res.ok) return null
   const data = await res.json()
@@ -156,6 +156,7 @@ export async function GET(req: NextRequest) {
         corporation: matchedCorp,
         categories: mergedCategories,
         evidence: [...internalEvidence, ...evidence],
+        imageUrl: product.image_front_small_url || product.image_front_url || null,
       })
     }
 
@@ -177,6 +178,7 @@ export async function GET(req: NextRequest) {
       categories,
       evidence,
       source: "openfoodfacts",
+      imageUrl: product.image_front_small_url || product.image_front_url || null,
     })
   } catch {
     return NextResponse.json({ found: false, query: q })

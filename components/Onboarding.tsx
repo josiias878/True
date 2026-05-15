@@ -34,7 +34,9 @@ export default function Onboarding() {
   const [avatar, setAvatar]   = useState("🧑")
   const [goals, setGoals]     = useState<Set<string>>(new Set())
   const [supermarkets, setSupermarkets] = useState<Set<string>>(new Set())
-  const [regError, setRegError] = useState("")
+  const [regError, setRegError]   = useState("")
+  const [regLoading, setRegLoading] = useState(false)
+  const [emailSent, setEmailSent]   = useState(false)
 
   useEffect(() => {
     async function check() {
@@ -99,7 +101,7 @@ export default function Onboarding() {
     go("supermarkt")
   }
 
-  function submitRegister() {
+  async function submitRegister() {
     if (!name.trim()) { setRegError("Bitte gib deinen Namen ein."); return }
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setRegError("Bitte gib eine gültige E-Mail-Adresse ein.")
@@ -107,6 +109,7 @@ export default function Onboarding() {
     }
 
     setRegError("")
+    setRegLoading(true)
     const profile = {
       name: name.trim(),
       vorname: name.trim(),
@@ -128,6 +131,23 @@ export default function Onboarding() {
     staleKeys.forEach(k => { try { localStorage.removeItem(k) } catch {} })
     localStorage.setItem("true-profile", JSON.stringify(profile))
     localStorage.setItem("true-onboarded-v3", "1")
+
+    // Create real Supabase account via magic-link OTP
+    try {
+      if (supabase) {
+        await supabase.auth.signInWithOtp({
+          email: email.trim(),
+          options: {
+            shouldCreateUser: true,
+            emailRedirectTo: (typeof window !== "undefined" ? window.location.origin : "") + "/auth/callback",
+            data: { vorname: name.trim(), avatar },
+          },
+        })
+        setEmailSent(true)
+      }
+    } catch {}
+
+    setRegLoading(false)
     setStep("done")
     setConfetti(true)
   }
@@ -369,7 +389,9 @@ export default function Onboarding() {
                 </p>
               </div>
 
-              <button onClick={submitRegister} style={btnStyle}>Profil speichern →</button>
+              <button onClick={submitRegister} disabled={regLoading} style={{ ...btnStyle, opacity: regLoading ? 0.7 : 1 }}>
+                {regLoading ? "Wird gespeichert…" : "Profil speichern →"}
+              </button>
               <button onClick={() => {
                 localStorage.setItem("true-onboarded-v3", "skip")
                 setShow(false)
@@ -397,6 +419,11 @@ export default function Onboarding() {
                       </span>
                     ))}
                   </div>
+                </div>
+              )}
+              {emailSent && (
+                <div style={{ background: "rgba(46,204,138,0.08)", border: "1px solid rgba(46,204,138,0.3)", borderRadius: "12px", padding: "0.85rem 1rem", marginBottom: "1.25rem", fontSize: "0.82rem", color: "var(--text-dim)", lineHeight: 1.6 }}>
+                  📧 Wir haben dir einen Bestätigungslink an <strong style={{ color: "var(--text)" }}>{email}</strong> gesendet — klicke darauf, um dein Konto zu aktivieren.
                 </div>
               )}
               <p style={{ color: "var(--accent)", fontSize: "1rem", fontWeight: 700, marginBottom: "1.5rem", fontStyle: "italic" }}>

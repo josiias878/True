@@ -12,7 +12,7 @@ function activatePremium() {
 }
 
 const FEATURES = [
-  { emoji: "📷", label: "Unbegrenzte Scans",            sub: "Statt 10/Tag" },
+  { emoji: "📷", label: "Unbegrenzte Scans",            sub: "Statt 5/Tag" },
   { emoji: "👨‍👩‍👧", label: "Familien-Sicherheits-Score", sub: "Pro Kind personalisiert" },
   { emoji: "🥗", label: "Ernährungscoach",           sub: "Analysiert dein Einkaufsverhalten" },
   { emoji: "🎯", label: "Ziel-Modus",                   sub: "Abnehmen · Muskel · Vegan · Allergiefrei" },
@@ -22,7 +22,7 @@ const FEATURES = [
 
 export default function PremiumGate({ onClose, trigger = "scan" }: Props) {
   const TITLES: Record<string, string> = {
-    scan:   "Du hast deine 10 kostenlosen Scans verbraucht 📷",
+    scan:   "Du hast deine 5 kostenlosen Scans verbraucht 📷",
     list:   "Dein persönlicher Ernährungshelfer wartet auf dich 🥗",
     coach:  "Der Ernährungscoach ist Premium 🥗",
     family: "Familien-Details sind ein Premium-Feature 👨‍👩‍👧",
@@ -97,14 +97,31 @@ export default function PremiumGate({ onClose, trigger = "scan" }: Props) {
             Danach 2,99€ / Monat · jederzeit kündbar
           </div>
 
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <button onClick={onClose} style={{ flex: 1, background: "transparent", border: "1px solid var(--border)", borderRadius: "12px", padding: "0.7rem", color: "var(--text-dim)", cursor: "pointer", fontSize: "0.85rem" }}>
-              Später
-            </button>
-            <Link href="/premium" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.25)", borderRadius: "12px", padding: "0.7rem", color: "#ffd700", cursor: "pointer", fontSize: "0.82rem", fontWeight: 700, textDecoration: "none" }}>
-              Mehr erfahren →
-            </Link>
+          {/* Vergleich Kostenlos vs Premium */}
+          <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, overflow: "hidden", marginBottom: "0.85rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 80px", fontSize: "0.68rem", fontWeight: 700, color: "var(--text-dim)", padding: "8px 12px 6px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <span></span>
+              <span style={{ textAlign: "center" }}>Kostenlos</span>
+              <span style={{ textAlign: "center", color: "#ffd700" }}>Premium</span>
+            </div>
+            {[
+              { label: "Scans pro Tag",        free: "5",      premium: "∞"    },
+              { label: "Konzern-Hintergründe", free: "Basis",  premium: "Voll" },
+              { label: "Ernährungscoach",      free: "—",      premium: "✓"    },
+              { label: "Familien-Score",       free: "—",      premium: "✓"    },
+              { label: "Wochenrückblick",      free: "—",      premium: "✓"    },
+            ].map((row, i) => (
+              <div key={row.label} style={{ display: "grid", gridTemplateColumns: "1fr 80px 80px", padding: "7px 12px", borderBottom: i < 4 ? "1px solid rgba(255,255,255,0.04)" : "none", alignItems: "center" }}>
+                <span style={{ fontSize: "0.75rem", color: "var(--text)" }}>{row.label}</span>
+                <span style={{ textAlign: "center", fontSize: "0.75rem", color: "var(--text-dim)" }}>{row.free}</span>
+                <span style={{ textAlign: "center", fontSize: "0.75rem", color: "#ffd700", fontWeight: 700 }}>{row.premium}</span>
+              </div>
+            ))}
           </div>
+
+          <button onClick={onClose} style={{ width: "100%", background: "transparent", border: "1px solid var(--border)", borderRadius: "12px", padding: "0.7rem", color: "var(--text-dim)", cursor: "pointer", fontSize: "0.85rem" }}>
+            Später
+          </button>
         </div>
       </div>
     </div>

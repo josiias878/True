@@ -93,7 +93,7 @@ export async function POST(req: Request) {
 // GET: all leads (for admin)
 export async function GET(req: Request) {
   const secret = new URL(req.url).searchParams.get("secret")
-  if (secret !== "true2026admin") return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (secret !== process.env.ADMIN_SECRET) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const db = getSupabaseAdmin()
   if (!db) return NextResponse.json({ leads: [] })
@@ -105,7 +105,7 @@ export async function GET(req: Request) {
 // PATCH: update lead status/notes
 export async function PATCH(req: Request) {
   const secret = new URL(req.url).searchParams.get("secret")
-  if (secret !== "true2026admin") return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (secret !== process.env.ADMIN_SECRET) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { id, status, notes } = await req.json()
   const db = getSupabaseAdmin()
