@@ -187,11 +187,16 @@ export default function AdminPage() {
       if (!supabase) { setLoading(false); setLastRefresh(new Date()); return }
       const { error: pingError } = await supabase.from("posts").select("id").limit(1)
       setSupabaseOk(!pingError)
-      const { data: postsData } = await supabase.from("posts").select("id, created_at, author_name, type, tag, text, likes, user_id").order("created_at", { ascending: false }).limit(100)
+      // Exclude comment_notif (notification helper rows) — they're not real content posts
+      const { data: postsData } = await supabase.from("posts")
+        .select("id, created_at, author_name, type, tag, text, likes, user_id")
+        .neq("type", "comment_notif")
+        .order("created_at", { ascending: false })
+        .limit(200)
       if (postsData) setPosts(postsData as DbPost[])
       // Use service-role API to get all auth users (bypasses RLS)
       try {
-        const usersRes = await fetch("/api/admin-users?secret=${process.env.NEXT_PUBLIC_ADMIN_SECRET}")
+        const usersRes = await fetch(`/api/admin-users?secret=${process.env.NEXT_PUBLIC_ADMIN_SECRET}`)
         if (usersRes.ok) {
           const usersJson = await usersRes.json()
           if (usersJson.users) setUsers(usersJson.users as DbUser[])
@@ -267,7 +272,7 @@ export default function AdminPage() {
   async function deletePost(postId: number) {
     setDeleting(true)
     try {
-      const res = await fetch("/api/admin-posts?secret=${process.env.NEXT_PUBLIC_ADMIN_SECRET}", {
+      const res = await fetch(`/api/admin-posts?secret=${process.env.NEXT_PUBLIC_ADMIN_SECRET}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: [postId] }),
@@ -289,7 +294,7 @@ export default function AdminPage() {
     if (ids.length === 0) return
     setDeleting(true)
     try {
-      const res = await fetch("/api/admin-posts?secret=${process.env.NEXT_PUBLIC_ADMIN_SECRET}", {
+      const res = await fetch(`/api/admin-posts?secret=${process.env.NEXT_PUBLIC_ADMIN_SECRET}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids }),
@@ -341,7 +346,7 @@ export default function AdminPage() {
   async function triggerCron(type: "bot" | "eva" | "coach") {
     setCronBusy(type)
     try {
-      const res  = await fetch(`/api/cron?type=${type}&secret=true-cron-2024`)
+      const res  = await fetch(`/api/cron?type=${type}&secret=${process.env.NEXT_PUBLIC_ADMIN_SECRET}`)
       const json = await res.json()
       const entry = { type: `cron/${type}`, time: new Date().toLocaleTimeString("de-DE"), status: json.ok ? `✓ Post erstellt` : `✗ ${json.error ?? "Fehler"}` }
       const updated = [entry, ...cronLog.slice(0, 19)]
@@ -358,7 +363,7 @@ export default function AdminPage() {
   async function loadPartnerLeads() {
     setPartnerLoading(true)
     try {
-      const res = await fetch("/api/partner-contact?secret=${process.env.NEXT_PUBLIC_ADMIN_SECRET}")
+      const res = await fetch(`/api/partner-contact?secret=${process.env.NEXT_PUBLIC_ADMIN_SECRET}`)
       const json = await res.json()
       setPartnerLeads(json.leads ?? [])
     } catch {}
@@ -366,7 +371,7 @@ export default function AdminPage() {
   }
 
   async function updateLeadStatus(id: string, status: string, notes: string) {
-    await fetch("/api/partner-contact?secret=${process.env.NEXT_PUBLIC_ADMIN_SECRET}", {
+    await fetch(`/api/partner-contact?secret=${process.env.NEXT_PUBLIC_ADMIN_SECRET}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, status, notes }),
@@ -447,7 +452,7 @@ export default function AdminPage() {
     if (!actionModal) return
     setActionLoading(true)
     try {
-      const res = await fetch("/api/admin-ban?secret=${process.env.NEXT_PUBLIC_ADMIN_SECRET}", {
+      const res = await fetch(`/api/admin-ban?secret=${process.env.NEXT_PUBLIC_ADMIN_SECRET}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: actionModal.user.id, action: actionModal.type, message: actionMsg }),
@@ -1333,8 +1338,8 @@ export default function AdminPage() {
               <h3 style={{ margin: "0 0 10px", fontSize: "0.88rem", fontWeight: 700 }}>🖥 Server Crontab</h3>
               <div style={{ background: "var(--background)", borderRadius: "10px", padding: "12px", fontFamily: "monospace", fontSize: "0.7rem", color: "#2ECC8A", lineHeight: 2, overflowX: "auto" }}>
                 <div style={{ color: "var(--text-dim)", marginBottom: "2px" }}># TRUE Bot Posts</div>
-                <div>0 8 * * * curl "https://get-true.de/api/cron?type=bot&secret=true-cron-2024"</div>
-                <div>0 20 * * * curl "https://get-true.de/api/cron?type=bot&secret=true-cron-2024"</div>
+                <div>0 8 * * * curl "https://get-true.de/api/cron?type=bot&secret=${process.env.NEXT_PUBLIC_ADMIN_SECRET}"</div>
+                <div>0 20 * * * curl "https://get-true.de/api/cron?type=bot&secret=${process.env.NEXT_PUBLIC_ADMIN_SECRET}"</div>
                 <div style={{ color: "var(--text-dim)", marginTop: "6px", marginBottom: "2px" }}># Social Media Bot</div>
                 <div>{`0 8 * * * curl -X POST https://get-true.de/api/social -H "Content-Type: application/json" -d '{"type":"daily","secret":"true-cron-2024"}'`}</div>
               </div>
