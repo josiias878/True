@@ -14,14 +14,15 @@ export default function BottomNav() {
   const path = usePathname()
   return (
     <>
-      <div style={{ height: "60px" }} />
+      <div style={{ height: "calc(60px + env(safe-area-inset-bottom))" }} />
       <nav style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
         background: "var(--nav-bg)",
         backdropFilter: "blur(20px)",
         borderTop: "1px solid var(--border)",
         display: "flex", alignItems: "stretch",
-        height: "60px",
+        // Höhe wächst mit Safe-Area damit Labels über dem Home-Indikator bleiben
+        height: "calc(60px + env(safe-area-inset-bottom))",
         paddingBottom: "env(safe-area-inset-bottom)",
       }}>
         {ITEMS.map(item => {

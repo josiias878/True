@@ -1686,8 +1686,11 @@ export default function HomePage() {
                         <div style={{ marginTop: 8, fontSize: "0.62rem", color: "var(--text-dim)" }}>📋 {post.source}</div>
                       </div>
                       {/* Footer */}
-                      <div style={{ borderTop: "1px solid var(--border)", padding: "8px 14px", display: "flex", justifyContent: "flex-end" }}>
-                        <Link href="/community" style={{ fontSize: "0.72rem", color: "var(--accent)", fontWeight: 700, textDecoration: "none" }}>Zur Community →</Link>
+                      <div style={{ borderTop: "1px solid var(--border)", padding: "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <Link href="/channel/true" style={{ fontSize: "0.72rem", color: "var(--accent)", fontWeight: 700, textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
+                          📡 TRUE-Kanal
+                        </Link>
+                        <Link href="/community" style={{ fontSize: "0.72rem", color: "var(--text-dim)", fontWeight: 700, textDecoration: "none" }}>Community →</Link>
                       </div>
                     </div>
                   )

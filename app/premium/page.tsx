@@ -62,11 +62,107 @@ function ConfettiOverlay() {
   )
 }
 
+// ─── Preis-Slider Konfiguration ───────────────────────────────────────────────
+// Stufen: 0.99 → 1.99 → 2.99 → 4.99 → 9.99
+const PRICE_STEPS = [0.99, 1.99, 2.99, 4.99, 9.99]
+const PRICE_LABELS = [
+  { emoji: "🌱", label: "Starter",   sub: "Ich möchte TRUE unterstützen" },
+  { emoji: "💚", label: "Supporter", sub: "Ich helfe die Community zu wachsen" },
+  { emoji: "🔥", label: "Champion",  sub: "Ich kämpfe für Transparenz" },
+  { emoji: "⭐", label: "Hero",      sub: "Ich gestalte TRUE aktiv mit" },
+  { emoji: "👑", label: "Founder",   sub: "Ich bin ein echter TRUE-Gründer" },
+]
+
+function PriceSlider({ value, onChange }: { value: number; onChange: (i: number) => void }) {
+  const step = PRICE_STEPS[value]
+  const info = PRICE_LABELS[value]
+  const pct  = (value / (PRICE_STEPS.length - 1)) * 100
+
+  return (
+    <div style={{ width: "100%", userSelect: "none" }}>
+      {/* Price display */}
+      <div style={{ textAlign: "center", marginBottom: "1.25rem" }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: "0.25rem" }}>
+          <span style={{ fontWeight: 900, fontSize: "3.5rem", color: "#ffd700", letterSpacing: "-0.04em", lineHeight: 1, transition: "all 0.25s" }}>
+            {step.toFixed(2).replace(".", ",")}€
+          </span>
+          <span style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>/Monat</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", marginTop: "0.4rem" }}>
+          <span style={{ fontSize: "1.4rem" }}>{info.emoji}</span>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: "0.9rem", color: "#ffd700" }}>{info.label}</div>
+            <div style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>{info.sub}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Slider track */}
+      <div style={{ position: "relative", padding: "0.75rem 0 1.5rem" }}>
+        <div style={{
+          height: 8, borderRadius: 4,
+          background: `linear-gradient(90deg, #ffd700 ${pct}%, rgba(255,215,0,0.15) ${pct}%)`,
+          transition: "background 0.2s",
+        }} />
+        {/* Step dots */}
+        <div style={{ position: "absolute", top: "0.75rem", left: 0, right: 0, display: "flex", justifyContent: "space-between", pointerEvents: "none" }}>
+          {PRICE_STEPS.map((_, i) => (
+            <div key={i} style={{
+              width: 16, height: 16, borderRadius: "50%",
+              background: i <= value ? "#ffd700" : "rgba(255,215,0,0.2)",
+              border: `2px solid ${i <= value ? "#ffd700" : "rgba(255,215,0,0.35)"}`,
+              transform: "translateY(-4px)",
+              boxShadow: i === value ? "0 0 12px rgba(255,215,0,0.6)" : "none",
+              transition: "all 0.2s",
+            }} />
+          ))}
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={PRICE_STEPS.length - 1}
+          step={1}
+          value={value}
+          onChange={e => onChange(Number(e.target.value))}
+          style={{
+            position: "absolute", top: "0.5rem", left: 0, right: 0, width: "100%",
+            opacity: 0, cursor: "pointer", height: 24, margin: 0,
+            WebkitAppearance: "none",
+          }}
+        />
+        {/* Price labels below track */}
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "0.25rem" }}>
+          {PRICE_STEPS.map((p, i) => (
+            <span key={i} style={{
+              fontSize: "0.6rem", fontWeight: i === value ? 800 : 400,
+              color: i <= value ? "#ffd700" : "rgba(255,215,0,0.4)",
+              transition: "all 0.2s",
+              textAlign: "center", width: 32,
+            }}>
+              {p.toFixed(2).replace(".", ",")}€
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Mission message */}
+      <div style={{ background: "rgba(255,215,0,0.06)", border: "1px solid rgba(255,215,0,0.18)", borderRadius: 14, padding: "0.9rem 1rem", textAlign: "left", marginTop: "0.5rem" }}>
+        <div style={{ fontSize: "0.75rem", color: "var(--text)", lineHeight: 1.6 }}>
+          <strong style={{ color: "#ffd700" }}>TRUE lebt von dir.</strong> Wir sind unabhängig, werbefrei und gehören keinem Konzern.
+          {value >= 3 && <span style={{ color: "#ffd700" }}> Danke — du bist ein echter TRUE-{info.label}! 🙌</span>}
+          {value < 3 && <span style={{ color: "var(--text-dim)" }}> Du entscheidest selbst, wie viel du beiträgst.</span>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function PremiumPage() {
-  const [email, setEmail] = useState("")
-  const [sent, setSent]   = useState(false)
-  const [isPremium, setIsPremium] = useState(false)
+  const [email, setEmail]       = useState("")
+  const [sent, setSent]         = useState(false)
+  const [isPremium, setIsPremium]   = useState(false)
   const [showCelebration, setShowCelebration] = useState(false)
+  const [priceStep, setPriceStep]   = useState(0)   // 0 = 0.99€ Minimum
 
   useEffect(() => {
     setIsPremium(localStorage.getItem("true-premium") === "1")
@@ -210,9 +306,9 @@ export default function PremiumPage() {
           <p style={{ fontSize: "0.75rem", color: "var(--text-dim)", margin: "0.75rem 0 0" }}>— Marvin, Gründer TRUE</p>
         </section>
 
-        {/* PRICE + CTA */}
+        {/* PRICE + CTA — Yuka-Style Slider */}
         <section style={{ marginBottom: "2rem" }}>
-          {/* Social proof strip */}
+          {/* Social proof */}
           <div style={{ display: "flex", justifyContent: "center", gap: "1.5rem", marginBottom: "1.25rem" }}>
             {[
               { icon: "👥", label: "1.200+", sub: "auf der Warteliste" },
@@ -227,29 +323,28 @@ export default function PremiumPage() {
             ))}
           </div>
 
-          <div style={{ background: "linear-gradient(135deg, rgba(255,215,0,0.1), rgba(255,170,0,0.05))", border: "1px solid rgba(255,215,0,0.25)", borderRadius: 20, padding: "1.5rem", textAlign: "center", marginBottom: "1rem" }}>
+          {/* Slider Card */}
+          <div style={{ background: "linear-gradient(135deg, rgba(255,215,0,0.1), rgba(255,170,0,0.04))", border: "1px solid rgba(255,215,0,0.25)", borderRadius: 20, padding: "1.5rem", marginBottom: "1rem" }}>
+            <div style={{ fontSize: "0.7rem", fontWeight: 800, color: "rgba(255,215,0,0.6)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.75rem", textAlign: "center" }}>
+              Du entscheidest — ab 0,99€ im Monat
+            </div>
 
-            {/* Price */}
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: "0.3rem", marginBottom: 2 }}>
-              <span style={{ fontWeight: 900, fontSize: "3rem", color: "#ffd700", letterSpacing: "-0.04em", lineHeight: 1 }}>2,99€</span>
-              <span style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>/Monat</span>
-            </div>
-            <div style={{ color: "var(--text-dim)", fontSize: "0.75rem", marginBottom: "1.5rem" }}>
-              Jederzeit kündbar · Keine versteckten Kosten · 14 Tage gratis
-            </div>
+            <PriceSlider value={priceStep} onChange={setPriceStep} />
+
+            <div style={{ height: "1px", background: "rgba(255,215,0,0.15)", margin: "1.25rem 0" }} />
 
             {/* Founder Test Button */}
-            {!isPremium ? (
+            {isPremium ? (
+              <div style={{ background: "rgba(46,204,138,0.1)", border: "1px solid rgba(46,204,138,0.3)", borderRadius: 12, padding: "0.75rem", color: "var(--accent)", fontWeight: 700, fontSize: "0.85rem", marginBottom: "0.75rem", textAlign: "center" }}>
+                ✅ Premium ist aktiv — bereits freigeschaltet
+              </div>
+            ) : (
               <button
                 onClick={activateFreeTrial}
                 style={{ width: "100%", background: "transparent", border: "1px solid rgba(255,215,0,0.35)", borderRadius: 12, padding: "0.75rem", color: "#ffd700", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", marginBottom: "0.75rem" }}
               >
                 🧪 Kostenlos testen (Founder-Zugang)
               </button>
-            ) : (
-              <div style={{ background: "rgba(46,204,138,0.1)", border: "1px solid rgba(46,204,138,0.3)", borderRadius: 12, padding: "0.75rem", color: "var(--accent)", fontWeight: 700, fontSize: "0.85rem", marginBottom: "0.75rem", textAlign: "center" }}>
-                ✅ Premium ist aktiv — bereits freigeschaltet
-              </div>
             )}
 
             {/* Primary CTA */}
@@ -265,10 +360,10 @@ export default function PremiumPage() {
                   padding: "1rem", fontWeight: 900, fontSize: "1.1rem",
                   cursor: "pointer", boxShadow: "0 4px 28px rgba(255,215,0,0.35)",
                   textDecoration: "none", marginBottom: "0.6rem",
-                  boxSizing: "border-box",
+                  boxSizing: "border-box", textAlign: "center",
                 }}
               >
-                👑 Jetzt Premium kaufen
+                👑 Jetzt für {PRICE_STEPS[priceStep].toFixed(2).replace(".", ",")}€ / Monat unterstützen
               </a>
             ) : (
               <>
@@ -300,14 +395,14 @@ export default function PremiumPage() {
                         transition: "all 0.2s", marginBottom: "0.6rem",
                       }}
                     >
-                      👑 Früh-Zugang sichern
+                      👑 Früh-Zugang sichern — ab {PRICE_STEPS[priceStep].toFixed(2).replace(".", ",")}€
                     </button>
                     <div style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>
-                      Du erhältst eine E-Mail, sobald Premium verfügbar ist — zum Einführungspreis.
+                      Du erhältst eine E-Mail sobald Premium verfügbar ist — zum Einführungspreis.
                     </div>
                   </>
                 ) : (
-                  <div style={{ padding: "0.75rem 0" }}>
+                  <div style={{ padding: "0.75rem 0", textAlign: "center" }}>
                     <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>🎉</div>
                     <div style={{ fontWeight: 900, fontSize: "1.05rem", color: "#ffd700", marginBottom: "0.4rem" }}>Du bist dabei!</div>
                     <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", lineHeight: 1.6 }}>

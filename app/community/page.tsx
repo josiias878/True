@@ -661,6 +661,28 @@ export default function CommunityPage() {
         </div>
       )}
 
+      {/* ── TRUE-Kanal Banner ── */}
+      <div style={{ padding: "10px 16px 0", maxWidth: 640, margin: "0 auto" }}>
+        <Link href="/channel/true" style={{
+          display: "flex", alignItems: "center", gap: 12,
+          background: "linear-gradient(135deg, rgba(46,204,138,0.1), rgba(46,204,138,0.04))",
+          border: "1px solid rgba(46,204,138,0.3)",
+          borderRadius: 14, padding: "10px 14px",
+          textDecoration: "none", marginBottom: 10,
+        }}>
+          <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(46,204,138,0.15)", border: "1.5px solid rgba(46,204,138,0.4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0 }}>
+            📡
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 800, fontSize: "0.88rem", color: "var(--accent)" }}>TRUE Offiziell</div>
+            <div style={{ fontSize: "0.7rem", color: "var(--text-dim)" }}>Tägl. Aufdeckungen · Bot · Journalistin · Coach</div>
+          </div>
+          <span style={{ background: "rgba(46,204,138,0.15)", color: "var(--accent)", border: "1px solid rgba(46,204,138,0.3)", borderRadius: 99, padding: "3px 10px", fontSize: "0.62rem", fontWeight: 800, flexShrink: 0 }}>
+            ✓ OFFIZIELL
+          </span>
+        </Link>
+      </div>
+
       {/* Topic filter pills — horizontal scroll */}
       <div ref={scrollRef} style={{ display: "flex", gap: 8, padding: "12px 16px", overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", position: "sticky", top: 56, zIndex: 50, background: "var(--nav-bg)", borderBottom: "1px solid var(--border)", backdropFilter: "blur(12px)" }}>
         {allTopics.map(t => {
@@ -866,12 +888,16 @@ export default function CommunityPage() {
 
                   {/* Meta row */}
                   <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 12px 4px", flexWrap: "wrap" }}>
-                    <span style={{ background: `${topic.color}14`, color: topic.color, borderRadius: 99, padding: "2px 8px", fontSize: "0.62rem", fontWeight: 800 }}>
+                    {/* Topic-Badge → klickbar, filtert Community zur Gruppe */}
+                    <button
+                      onClick={e => { e.stopPropagation(); setActiveTopic(post.topic); scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" }) }}
+                      style={{ background: `${topic.color}14`, color: topic.color, borderRadius: 99, padding: "2px 8px", fontSize: "0.62rem", fontWeight: 800, border: "none", cursor: "pointer" }}
+                    >
                       {topic.icon} {topic.name}
-                    </span>
+                    </button>
                     <span style={{ fontSize: "0.7rem", color: "var(--text-dim)" }}>· von</span>
                     {post.userId && !post.isExample ? (
-                      <a href={`/user/${post.userId}`} style={{ fontWeight: 700, fontSize: "0.75rem", color: "var(--text)", textDecoration: "none" }} onClick={e => e.stopPropagation()}>
+                      <a href={`/user/${post.userId}`} style={{ fontWeight: 700, fontSize: "0.75rem", color: "var(--accent)", textDecoration: "none" }} onClick={e => e.stopPropagation()}>
                         {post.author}
                       </a>
                     ) : (
