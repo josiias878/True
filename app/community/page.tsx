@@ -904,7 +904,8 @@ export default function CommunityPage() {
                       <span style={{ fontWeight: 700, fontSize: "0.75rem" }}>{post.author}</span>
                     )}
                     <span style={{ fontSize: "0.68rem", color: "var(--text-dim)" }}>{post.time}</span>
-                    {!post.isExample && (post.userId ? post.userId === user?.id : post.author === myName) && (
+                    {/* Löschen/Bearbeiten nur wenn user_id übereinstimmt — nie fremde Posts */}
+                    {!post.isExample && user && post.userId && post.userId === user.id && (
                       <div style={{ marginLeft: "auto", display: "flex", gap: 2 }}>
                         <button onClick={() => editingPostId === post.id ? setEditingPostId(null) : startEdit(post)} style={{ background: "none", border: "none", color: editingPostId === post.id ? "var(--accent)" : "var(--text-dim)", cursor: "pointer", fontSize: "0.8rem", padding: "0 5px", lineHeight: 1 }}>✏️</button>
                         <button onClick={() => deletePost(post.id)} style={{ background: "none", border: "none", color: "rgba(255,68,85,0.45)", cursor: "pointer", fontSize: "0.9rem", padding: "0 4px", lineHeight: 1 }}>×</button>

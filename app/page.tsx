@@ -602,8 +602,8 @@ function LandingInner() {
   const [slide,     setSlide]     = useState(0)
   const [scrollY,   setScrollY]   = useState(0)
   const [authMode, setAuthMode] = useState<"login" | "register" | null>(null)
-  // Cinematic reveal: 0=bilder only · 1=pill · 2=headline · 3=cta+dots
-  const [textPhase, setTextPhase] = useState(0)
+  // Alles sofort sichtbar — kein Cinematic Delay
+  const [textPhase, setTextPhase] = useState(3)
 
   const router       = useRouter()
   const searchParams = useSearchParams()
@@ -621,16 +621,7 @@ function LandingInner() {
     if (user && !authMode) router.replace("/home")
   }, [user, router, authMode])
 
-  // Cinematic reveal on first visit — instant for returning visitors
-  useEffect(() => {
-    const returning = typeof window !== "undefined" && localStorage.getItem("true-landing-seen")
-    if (returning) { setTextPhase(3); return }
-    const t1 = setTimeout(() => setTextPhase(1), 2400)   // pill fades in
-    const t2 = setTimeout(() => setTextPhase(2), 3200)   // headline slides up
-    const t3 = setTimeout(() => setTextPhase(3), 3900)   // CTA + dots appear
-    const t4 = setTimeout(() => localStorage.setItem("true-landing-seen", "1"), 5000)
-    return () => [t1, t2, t3, t4].forEach(clearTimeout)
-  }, [])
+  // (cinematic reveal entfernt — alles sofort sichtbar)
 
   // Guest CTA — no login required
   const goToApp = useCallback(() => router.push("/scan"), [router])

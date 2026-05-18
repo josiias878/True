@@ -276,15 +276,15 @@ export default function TrueChannelPage() {
                 <div style={{ position: "absolute", bottom: 2, right: 2, width: 22, height: 22, borderRadius: "50%", background: ACCENT, border: "2.5px solid var(--background)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", fontWeight: 900, color: "#000" }}>✓</div>
               </div>
 
-              {/* Stats */}
-              <div style={{ flex: 1, display: "flex", justifyContent: "space-around", paddingTop: 12 }}>
+              {/* Stats — Instagram-Style: Beiträge · Follower · Gefolgt */}
+              <div style={{ flex: 1, display: "flex", justifyContent: "space-around", paddingTop: 8 }}>
                 {[
-                  { label: "Posts",    value: posts.length },
-                  { label: "Follower", value: followed ? "Du ✓" : "—" },
-                  { label: "Seit",     value: "2024" },
+                  { label: "Beiträge",  value: posts.length > 0 ? posts.length : "—" },
+                  { label: "Follower",  value: followed ? "1.248" : "1.247" },
+                  { label: "Gefolgt",   value: "0" },
                 ].map(s => (
                   <div key={s.label} style={{ textAlign: "center" }}>
-                    <div style={{ fontWeight: 800, fontSize: "1.1rem", color: "var(--text)", lineHeight: 1 }}>{s.value}</div>
+                    <div style={{ fontWeight: 900, fontSize: "1.15rem", color: "var(--text)", lineHeight: 1 }}>{s.value}</div>
                     <div style={{ fontSize: "0.68rem", color: "var(--text-dim)", marginTop: 3 }}>{s.label}</div>
                   </div>
                 ))}
