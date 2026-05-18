@@ -602,6 +602,9 @@ function LandingInner() {
   const [slide,     setSlide]     = useState(0)
   const [scrollY,   setScrollY]   = useState(0)
   const [authMode, setAuthMode] = useState<"login" | "register" | null>(null)
+  // Cinematic reveal: 0=bilder only · 1=pill · 2=headline · 3=cta+dots
+  const [textPhase, setTextPhase] = useState(0)
+
   const router       = useRouter()
   const searchParams = useSearchParams()
   const { user }     = useSupabaseAuth()
@@ -617,6 +620,18 @@ function LandingInner() {
   useEffect(() => {
     if (user && !authMode) router.replace("/home")
   }, [user, router, authMode])
+
+  // Cinematic reveal on first visit — instant for returning visitors
+  useEffect(() => {
+    const returning = typeof window !== "undefined" && localStorage.getItem("true-landing-seen")
+    if (returning) { setTextPhase(3); return }
+    const t1 = setTimeout(() => setTextPhase(1), 2400)   // pill fades in
+    const t2 = setTimeout(() => setTextPhase(2), 3200)   // headline slides up
+    const t3 = setTimeout(() => setTextPhase(3), 3900)   // CTA + dots appear
+    const t4 = setTimeout(() => localStorage.setItem("true-landing-seen", "1"), 5000)
+    return () => [t1, t2, t3, t4].forEach(clearTimeout)
+  }, [])
+
   // Guest CTA — no login required
   const goToApp = useCallback(() => router.push("/scan"), [router])
   const openRegister = useCallback(() => setAuthMode("register"), [])
@@ -644,43 +659,50 @@ function LandingInner() {
           </div>
         ))}
 
-        {/* Slide context label — oben links */}
-        <div style={{ position: "absolute", top: "5.5rem", left: "50%", transform: "translateX(-50%)", zIndex: 20, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
-          {SLIDES.map((s, i) => (
-            <div key={i} style={{
-              position: "absolute",
-              opacity: i === slide ? 1 : 0,
-              transition: "opacity 1s ease",
-              display: "flex", alignItems: "center", gap: "0.55rem",
-              background: "rgba(0,0,0,0.42)", backdropFilter: "blur(12px)",
-              border: `1px solid ${s.tagColor}35`,
-              borderRadius: 99, padding: "0.35rem 0.9rem 0.35rem 0.6rem",
-              whiteSpace: "nowrap",
-            }}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: s.tagColor, boxShadow: `0 0 8px ${s.tagColor}`, flexShrink: 0 }} />
-              <span style={{ fontSize: "0.72rem", fontWeight: 700, color: s.tagColor, letterSpacing: "0.06em" }}>{s.tag}</span>
-            </div>
-          ))}
-          {/* Platzhalter-Höhe damit Layout nicht springt */}
-          <div style={{ height: "30px", visibility: "hidden" }}>·</div>
+        {/* ── Pill — Phase 1 ── */}
+        <div style={{
+          position: "absolute", top: "5.5rem", left: "50%", transform: "translateX(-50%)",
+          zIndex: 20,
+          opacity: textPhase >= 1 ? 1 : 0,
+          transition: "opacity 1.1s ease",
+          pointerEvents: "none",
+        }}>
+          <div style={{ position: "relative", height: "30px" }}>
+            {SLIDES.map((s, i) => (
+              <div key={i} style={{
+                position: "absolute", left: "50%", transform: "translateX(-50%)",
+                opacity: i === slide ? 1 : 0,
+                transition: "opacity 1s ease",
+                display: "flex", alignItems: "center", gap: "0.55rem",
+                background: "rgba(0,0,0,0.42)", backdropFilter: "blur(12px)",
+                border: `1px solid ${s.tagColor}35`,
+                borderRadius: 99, padding: "0.35rem 0.9rem 0.35rem 0.6rem",
+                whiteSpace: "nowrap",
+              }}>
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: s.tagColor, boxShadow: `0 0 8px ${s.tagColor}`, flexShrink: 0 }} />
+                <span style={{ fontSize: "0.72rem", fontWeight: 700, color: s.tagColor, letterSpacing: "0.06em" }}>{s.tag}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Slide-Dots + Context unten */}
-        <div style={{ position: "absolute", bottom: "7rem", left: "50%", transform: "translateX(-50%)", zIndex: 20, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.85rem" }}>
-          {/* Context-Text */}
+        {/* ── Dots + Context — Phase 3 ── */}
+        <div style={{
+          position: "absolute", bottom: "7rem", left: "50%", transform: "translateX(-50%)",
+          zIndex: 20, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.85rem",
+          opacity: textPhase >= 3 ? 1 : 0,
+          transition: "opacity 0.8s ease",
+        }}>
           <div style={{ position: "relative", width: "min(480px, 88vw)", textAlign: "center", minHeight: "2.4rem" }}>
             {SLIDES.map((s, i) => (
               <p key={i} style={{
-                position: "absolute", left: 0, right: 0, top: 0,
-                margin: 0,
+                position: "absolute", left: 0, right: 0, top: 0, margin: 0,
                 fontSize: "0.75rem", color: "rgba(255,255,255,0.52)",
                 fontWeight: 500, letterSpacing: "0.01em", lineHeight: 1.6,
-                opacity: i === slide ? 1 : 0,
-                transition: "opacity 1s ease",
+                opacity: i === slide ? 1 : 0, transition: "opacity 1s ease",
               }}>{s.context}</p>
             ))}
           </div>
-          {/* Dots */}
           <div style={{ display: "flex", gap: "0.5rem" }}>
             {SLIDES.map((s, i) => (
               <button key={i} onClick={() => setSlide(i)} style={{ width: i === slide ? "28px" : "7px", height: "4px", borderRadius: "2px", border: "none", cursor: "pointer", padding: 0, background: i === slide ? s.tagColor : "rgba(255,255,255,0.22)", transition: "all 0.4s", boxShadow: i === slide ? `0 0 8px ${s.tagColor}80` : "none" }} />
@@ -688,9 +710,18 @@ function LandingInner() {
           </div>
         </div>
 
-        {/* Hero text */}
+        {/* ── Hero text — Phase 2 + 3 ── */}
         <div style={{ position: "relative", zIndex: 10, height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 1.5rem", textAlign: "center" }}>
-          <h1 style={{ fontSize: "clamp(3rem, 8vw, 7rem)", fontWeight: 900, lineHeight: 1.05, letterSpacing: "-0.04em", marginBottom: "1rem", maxWidth: "900px", color: "#fff", textShadow: "0 4px 60px rgba(0,0,0,0.8)" }}>
+
+          {/* Headline — Phase 2 */}
+          <h1 style={{
+            fontSize: "clamp(3rem, 8vw, 7rem)", fontWeight: 900, lineHeight: 1.05,
+            letterSpacing: "-0.04em", marginBottom: "1rem", maxWidth: "900px",
+            color: "#fff", textShadow: "0 4px 60px rgba(0,0,0,0.8)",
+            opacity: textPhase >= 2 ? 1 : 0,
+            transform: textPhase >= 2 ? "translateY(0)" : "translateY(50px)",
+            transition: "opacity 1s ease, transform 1.1s cubic-bezier(.22,1,.36,1)",
+          }}>
             Du hast das Recht,<br />
             <span style={{ color: "#2ECC8A", position: "relative", display: "inline-block" }}>
               die Wahrheit
@@ -700,15 +731,28 @@ function LandingInner() {
             </span><br />
             zu kennen.
           </h1>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: "3.5rem" }}>
+
+          {/* CTA — Phase 3 */}
+          <div style={{
+            display: "flex", justifyContent: "center", marginBottom: "3.5rem",
+            opacity: textPhase >= 3 ? 1 : 0,
+            transform: textPhase >= 3 ? "translateY(0)" : "translateY(24px)",
+            transition: "opacity 0.9s ease, transform 0.9s cubic-bezier(.22,1,.36,1)",
+          }}>
             <button onClick={openRegister} style={{ background: "#2ECC8A", color: "#000", borderRadius: "12px", padding: "1rem 2.8rem", fontWeight: 800, fontSize: "1.05rem", boxShadow: "0 0 60px rgba(46,204,138,0.35)", border: "none", cursor: "pointer" }}>
               Kostenlos starten →
             </button>
           </div>
-          {/* Scroll-Pfeil */}
+
+          {/* Scroll-Pfeil — Phase 3 */}
           <button
             onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}
-            style={{ marginTop: "1.5rem", background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.4rem", padding: 0 }}
+            style={{
+              marginTop: "1.5rem", background: "none", border: "none", cursor: "pointer",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: "0.4rem", padding: 0,
+              opacity: textPhase >= 3 ? 1 : 0,
+              transition: "opacity 0.8s ease 0.3s",
+            }}
             aria-label="Nach unten scrollen"
           >
             <span style={{ fontSize: "0.65rem", letterSpacing: "0.18em", color: "rgba(255,255,255,0.35)", fontWeight: 700, textTransform: "uppercase" }}>Entdecken</span>
