@@ -259,6 +259,10 @@ export default function CommunityPage() {
         return
       }
 
+      // Supabase hat erfolgreich geantwortet → alten localStorage leeren
+      // (verhindert dass Posts vom alten Account / ohne Login-Session auftauchen)
+      try { localStorage.removeItem(USER_POSTS_KEY) } catch {}
+
       const remotePosts: Post[] = postsResult.data
         .filter(row => !deleted.includes(row.id))
         .map(row => ({
