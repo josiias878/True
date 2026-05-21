@@ -66,7 +66,7 @@ export default function ResetPasswordPage() {
     setSaving(false)
     if (error) { setErr("Fehler: " + error.message); return }
     setStatus("success")
-    setTimeout(() => router.replace(from === "admin" ? "/admin" : "/home"), 1800)
+    setTimeout(() => router.replace(from === "admin" ? "/admin" : from === "partner" ? "/partner-login" : "/home"), 1800)
   }
 
   const strength = password.length >= 12 ? 4 : password.length >= 8 ? 3 : password.length >= 6 ? 2 : password.length > 0 ? 1 : 0
@@ -183,10 +183,15 @@ export default function ResetPasswordPage() {
             <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.82rem", marginBottom: 20 }}>
               Bitte fordere einen neuen Reset-Link an.
             </p>
-            <button onClick={() => router.replace("/login")}
-              style={{ background: "#2ECC8A", color: "#000", border: "none", borderRadius: 12, padding: "12px 28px", fontWeight: 800, cursor: "pointer" }}>
-              Zurück zum Login →
-            </button>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", alignItems: "center" }}>
+              <button onClick={() => router.replace("/partner-forgot-password")}
+                style={{ background: "#2ECC8A", color: "#000", border: "none", borderRadius: 12, padding: "12px 28px", fontWeight: 800, cursor: "pointer" }}>
+                Neuen Link anfordern →
+              </button>
+              <a href="/partner-login" style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.78rem", textDecoration: "none" }}>
+                Zurück zum Partner-Login
+              </a>
+            </div>
           </>
         )}
       </div>

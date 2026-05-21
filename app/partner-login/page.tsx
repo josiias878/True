@@ -135,7 +135,7 @@ function PartnerLoginInner() {
                 Registrieren
               </a>
             </span>
-            <a href="/partner-dashboard" style={{ color: "rgba(255,255,255,0.25)", textDecoration: "none" }}>
+            <a href="/partner-forgot-password" style={{ color: "rgba(255,255,255,0.25)", textDecoration: "none" }}>
               Passwort vergessen
             </a>
           </div>
