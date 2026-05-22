@@ -113,7 +113,14 @@ export default function PartnerDashboardPage() {
     setEditWebsite(profileData.website ?? "")
     setEditDescription(profileData.description ?? "")
     setEditContactEmail(profileData.contact_email ?? "")
-    // Show onboarding if company name looks like an email prefix (= newly registered)
+    // Redirect to onboarding on first visit
+    try {
+      if (!localStorage.getItem("true-onboarding-done")) {
+        router.push("/partner-dashboard/onboarding")
+        return
+      }
+    } catch {}
+    // Legacy: show inline onboarding modal if company name looks like email prefix
     const looksLikePlaceholder = !profileData.company_name.includes(" ") && !profileData.company_name.match(/[A-Z]/) && profileData.company_name === profileData.contact_email?.split("@")[0]
     if (looksLikePlaceholder) setShowOnboarding(true)
 
