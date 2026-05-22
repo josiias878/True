@@ -11,29 +11,30 @@ function px(id: number, w = 1920, h = 1080) {
 
 const SLIDES = [
   {
-    id: 3523455,       // Abgeholzter Regenwald
-    tint: "rgba(100,20,0,0.3)",
-    context: "Jeden Tag brennt ein Wald, damit du Schokolade kaufen kannst.",
-    tag: "🔥 Brennende Wälder",
-    tagColor: "#ff6b6b",
+    id: 0,
+    url: "https://images.pexels.com/photos/31028648/pexels-photo-31028648.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop",
+    tint: "rgba(80,10,10,0.25)",
+    context: "Täglich sterben 3 Mio. Tiere in deutschen Schlachthöfen — unsichtbar, systemisch, legal.",
+    tag: "🐷 Massentierhaltung",
+    tagColor: "#f97316",
   },
   {
-    id: 4996765,       // Plastikmüll
-    tint: "rgba(0,20,60,0.28)",
+    id: 802221,        // Plastikflaschen im Meer — klar erkennbar
+    tint: "rgba(0,30,80,0.22)",
     context: "74 Mio. Tonnen Plastik — Jahr für Jahr. TRUE zeigt, wer dahinter steckt.",
     tag: "🌊 Plastikmüll",
     tagColor: "#38BDF8",
   },
   {
-    id: 2280571,       // Pillen / Giftstoffe
-    tint: "rgba(80,20,0,0.26)",
+    id: 2280571,       // Giftstoffe / Chemie
+    tint: "rgba(80,20,0,0.18)",
     context: "Glyphosat, Palmöl, PFAS — in Produkten, die du täglich kaufst.",
     tag: "☠️ Giftstoffe",
     tagColor: "#fb923c",
   },
   {
     id: 164527,        // Geldscheine — Konzernmacht
-    tint: "rgba(10,30,10,0.3)",
+    tint: "rgba(10,30,10,0.18)",
     context: "10 Konzerne kontrollieren fast alles, was du im Supermarkt siehst.",
     tag: "💰 Konzernmacht",
     tagColor: "#a78bfa",
@@ -643,10 +644,10 @@ function LandingInner() {
       <section style={{ position: "relative", height: "100vh", overflow: "hidden" }}>
         {SLIDES.map((s, i) => (
           <div key={i} style={{ position: "absolute", inset: 0, opacity: i === slide ? 1 : 0, transition: "opacity 1.8s ease-in-out" }}>
-            <div style={{ position: "absolute", inset: "-5%", backgroundImage: `url(${px(s.id, 1920, 1080)})`, backgroundSize: "cover", backgroundPosition: "center", filter: "brightness(0.68) saturate(0.85) contrast(1.05)", animation: i === slide ? "kb 14s ease-out forwards" : "none" }} />
+            <div style={{ position: "absolute", inset: "-5%", backgroundImage: `url(${'url' in s && s.url ? s.url : px(s.id, 1920, 1080)})`, backgroundSize: "cover", backgroundPosition: "center", filter: "brightness(0.85) saturate(1.15) contrast(1.1)", animation: i === slide ? "kb 14s ease-out forwards" : "none" }} />
             <div style={{ position: "absolute", inset: 0, background: s.tint }} />
-            <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at center, transparent 25%, rgba(5,5,10,0.88) 100%)" }} />
-            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 45%, rgba(5,5,10,1) 100%)" }} />
+            <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at center, transparent 40%, rgba(5,5,10,0.62) 100%)" }} />
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 55%, rgba(5,5,10,0.95) 100%)" }} />
           </div>
         ))}
 

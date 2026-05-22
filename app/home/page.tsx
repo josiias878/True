@@ -6,8 +6,8 @@ import Link from "next/link"
 import dynamic from "next/dynamic"
 import { ThemeToggle, ThemeIcon } from "@/components/ThemeProvider"
 import BottomNav from "@/components/BottomNav"
-import Onboarding from "@/components/Onboarding"
 import NotificationBell from "@/components/NotificationBell"
+import FloatingAssistant from "@/components/FloatingAssistant"
 import RatingBlock from "@/components/RatingBlock"
 import InstallButton from "@/components/InstallButton"
 import type { Product } from "@/data/products"
@@ -852,8 +852,15 @@ export default function HomePage() {
   const [productModal, setProductModal] = useState<Product | null>(null)
   const [listItems, setListItems]     = useState<{ id: number|string; name: string; emoji: string; brand?: string; severity?: string; issue?: string; alternative?: { name: string }; checked: boolean; personId?: string; category?: string }[]>([])
   const [severityModal, setSeverityModal] = useState<typeof listItems[0] | null>(null)
-  const [familyMembers, setFamilyMembers] = useState<{ id: string; name: string; age: string; emoji: string }[]>([])
+  const [familyMembers, setFamilyMembers] = useState<{ id: string; name: string; age: string; emoji: string; avatarUrl?: string }[]>([])
   const [activeListPerson, setActiveListPerson] = useState<string>("all")
+  const [inviteMember, setInviteMember] = useState<{ id: string; name: string; emoji: string } | null>(null)
+  const [inviteCopied, setInviteCopied] = useState(false)
+  const [personSheetTab, setPersonSheetTab] = useState<"manual" | "invite">("manual")
+  const [inviteName, setInviteName]   = useState("")
+  const [inviteEmoji, setInviteEmoji] = useState("👤")
+  const [inviteLinkCopied, setInviteLinkCopied] = useState(false)
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null)
   const [listSearch, setListSearch]   = useState("")
   const [listExpanded, setListExpanded] = useState(false)
   const [openMenu, setOpenMenu]       = useState<number|string|null>(null)
@@ -880,6 +887,7 @@ export default function HomePage() {
   const [viewMode, setViewMode]       = useState<"list" | "grid">("list")
   const [showSortSheet, setShowSortSheet] = useState(false)
   const [showPersonSheet, setShowPersonSheet] = useState(false)
+  const [showFeedSection, setShowFeedSection] = useState(true)
   const [newPersonName, setNewPersonName]     = useState("")
   const [newPersonAge, setNewPersonAge]       = useState("")
   const [newPersonEmoji, setNewPersonEmoji]   = useState("🧒")
@@ -916,8 +924,11 @@ export default function HomePage() {
         localStorage.setItem("true-followed-channels", JSON.stringify(arr))
       }
     } catch {}
-    // First-login welcome card
-    if (!localStorage.getItem("true-welcome-seen")) setShowWelcome(true)
+    // First-login welcome card — auto-dismiss after 7s
+    if (!localStorage.getItem("true-welcome-seen")) {
+      setShowWelcome(true)
+      setTimeout(() => { setShowWelcome(false); localStorage.setItem("true-welcome-seen", "1") }, 7000)
+    }
     // Dark mode detection
     setIsDark(document.documentElement.classList.contains("dark"))
     const obs = new MutationObserver(() => setIsDark(document.documentElement.classList.contains("dark")))
@@ -960,7 +971,21 @@ export default function HomePage() {
     } catch {}
     try {
       const fm = localStorage.getItem("true-family-members")
-      if (fm) setFamilyMembers(JSON.parse(fm))
+      if (fm) {
+        const members = JSON.parse(fm)
+        // Sync own avatar into any member that matches the current profile
+        const myPhoto = localStorage.getItem("true-profile-photo")
+        const myProfile = JSON.parse(localStorage.getItem("true-profile") || "{}")
+        const myName = myProfile.vorname || myProfile.name || ""
+        if (myPhoto && myName) {
+          const updated = members.map((m: any) =>
+            m.name === myName ? { ...m, avatarUrl: myPhoto } : m
+          )
+          setFamilyMembers(updated)
+        } else {
+          setFamilyMembers(members)
+        }
+      }
     } catch {}
     try {
       const tm = localStorage.getItem("true-tag-messages")
@@ -1145,8 +1170,6 @@ export default function HomePage() {
   return (
     <AuthGuard>
     <div style={{ minHeight: "100vh", background: "var(--background)", color: "var(--text)", fontFamily: "system-ui,-apple-system,sans-serif", paddingBottom: "140px" }}>
-      <Onboarding />
-
       {/* ── ALTERNATIVE BOTTOM SHEET ── */}
       {altModal && (() => {
         // Preis nach Original-Produktname → realistische Marktpreise
@@ -1434,16 +1457,27 @@ export default function HomePage() {
             const count = listItems.filter(i => i.personId === m.id && !i.checked).length
             const isActive = activeListPerson === m.id
             const pet = isPetMember(m)
+            const accentColor = pet ? "#ff8833" : "var(--accent)"
             return (
-              <button key={m.id} onClick={() => setActiveListPerson(isActive ? "all" : m.id)}
-                style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>
-                <div style={{ width: 52, height: 52, borderRadius: "50%", background: isActive ? (pet ? "#ff8833" : "var(--accent)") : "var(--surface)", border: `2.5px solid ${isActive ? (pet ? "#ff8833" : "var(--accent)") : "var(--border)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", transition: "all 0.15s", position: "relative" }}>
-                  {m.emoji}
+              <div key={m.id} style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                <div style={{ position: "relative" }}>
+                  <button onClick={() => setActiveListPerson(isActive ? "all" : m.id)}
+                    style={{ width: 52, height: 52, borderRadius: "50%", background: isActive ? accentColor : "var(--surface)", border: `2.5px solid ${isActive ? accentColor : "var(--border)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: m.avatarUrl ? 0 : "1.4rem", transition: "all 0.15s", cursor: "pointer", overflow: "hidden", padding: 0 }}>
+                    {m.avatarUrl
+                      ? <img src={m.avatarUrl} alt={m.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} onError={e => { (e.target as HTMLImageElement).style.display = "none" }} />
+                      : m.emoji}
+                  </button>
                   {count > 0 && <div style={{ position: "absolute", top: -3, right: -3, background: pet ? "#ff8833" : "#ff4455", color: "#fff", borderRadius: "50%", width: 18, height: 18, fontSize: "0.6rem", fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid var(--background)" }}>{count}</div>}
+                  {/* Invite button */}
+                  <button
+                    onClick={() => { setInviteMember(m); setInviteCopied(false) }}
+                    title="Einladen"
+                    style={{ position: "absolute", bottom: -4, right: -4, width: 18, height: 18, borderRadius: "50%", background: "var(--surface)", border: "1.5px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.55rem", cursor: "pointer", padding: 0 }}
+                  >🔗</button>
                 </div>
-                <span style={{ fontSize: "0.65rem", fontWeight: isActive ? 800 : 500, color: isActive ? (pet ? "#ff8833" : "var(--accent)") : "var(--text-dim)", whiteSpace: "nowrap", maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis" }}>{m.name}</span>
+                <span style={{ fontSize: "0.65rem", fontWeight: isActive ? 800 : 500, color: isActive ? accentColor : "var(--text-dim)", whiteSpace: "nowrap", maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis" }}>{m.name}</span>
                 <span style={{ fontSize: "0.58rem", color: "var(--text-dim)" }}>{count} offen</span>
-              </button>
+              </div>
             )
           })}
           {/* Person hinzufügen — immer sichtbar */}
@@ -1632,9 +1666,22 @@ export default function HomePage() {
                   </div>
                 )}
 
+                {/* ── Trennlinie + Aufdeckungen Toggle ── */}
+                <div style={{ marginTop: 28, marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+                  <button
+                    onClick={() => setShowFeedSection(v => !v)}
+                    style={{ display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "1px solid var(--border)", borderRadius: 99, padding: "4px 12px", cursor: "pointer", fontSize: "0.72rem", fontWeight: 700, color: "var(--text-dim)" }}
+                  >
+                    📡 Aufdeckungen {showFeedSection ? "▲" : "▼"}
+                  </button>
+                  <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+                </div>
+
+                {showFeedSection && <>
                 {/* ── Community ── */}
                 {showCommunityCard && (
-                  <div style={{ marginTop: 24, position: "relative" }}>
+                  <div style={{ marginBottom: 12, position: "relative" }}>
                     <Link href="/community" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: "14px 16px", textDecoration: "none", gap: 12 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                         <span style={{ fontSize: "1.6rem" }}>💬</span>
@@ -1695,6 +1742,8 @@ export default function HomePage() {
                     </div>
                   )
                 })()}
+
+                </>}
 
                 {/* ── Sort / View-Modus Sheet ── */}
                 {showSortSheet && (
@@ -2182,6 +2231,12 @@ export default function HomePage() {
         onClose={() => setCoachOpen(false)}
       />
 
+      <FloatingAssistant page="home" tips={[
+        { icon: "📷", text: "Tippe auf Scanner und halte die Kamera an einen Barcode — siehst sofort, welcher Konzern dahintersteckt." },
+        { icon: "🛒", text: "Nach dem Scan kannst du Produkte auf deine Einkaufsliste setzen und später abhaken." },
+        { icon: "👥", text: "In der Community tauscht du dich mit anderen aus — Alternativen, Tipps und tägliche Aufdeckungen." },
+        { icon: "🎯", text: "Lege im Profil deine Ziele fest — der Scanner bewertet dann nach deinen Prioritäten." },
+      ]} />
       {!showQuickAdd && <BottomNav />}
 
       {/* ── Person hinzufügen Sheet ── */}
@@ -2197,73 +2252,199 @@ export default function HomePage() {
           savePeople([...familyMembers, { id: Date.now().toString(), name, age: newPersonAge.trim(), emoji: newPersonEmoji }])
           setNewPersonName(""); setNewPersonAge(""); setNewPersonEmoji("🧒")
         }
+        function getListId() {
+          try {
+            let id = localStorage.getItem("true-list-id")
+            if (!id) { id = Math.random().toString(36).slice(2, 10); localStorage.setItem("true-list-id", id) }
+            return id
+          } catch { return "shared" }
+        }
+        function generateInviteLink() {
+          const name = inviteName.trim() || "Einladung"
+          const myProfile = (() => { try { return JSON.parse(localStorage.getItem("true-profile") || "{}") } catch { return {} } })()
+          const myName = myProfile.vorname || myProfile.name || "Jemand"
+          const myPhoto = localStorage.getItem("true-profile-photo") || ""
+          const listId = getListId()
+          const itemCount = listItems.filter(i => !i.checked).length
+          const link = `https://get-true.de/join?list=${listId}&from=${encodeURIComponent(myName)}&fromPhoto=${encodeURIComponent(myPhoto)}&name=${encodeURIComponent(name)}&emoji=${encodeURIComponent(inviteEmoji)}&items=${itemCount}`
+          setGeneratedLink(link)
+          // pre-add the person locally so they appear immediately
+          if (!familyMembers.find(m => m.name === name)) {
+            savePeople([...familyMembers, { id: `inv-${listId}-${Date.now()}`, name, age: "", emoji: inviteEmoji }])
+          }
+        }
         return (
           <>
-            <div onClick={() => setShowPersonSheet(false)} style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.5)" }} />
-            <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 301, background: "var(--surface)", borderRadius: "20px 20px 0 0", padding: "0 0 env(safe-area-inset-bottom,20px)", boxShadow: "0 -8px 40px rgba(0,0,0,0.35)", animation: "slideUp 0.22s ease", maxHeight: "85vh", overflowY: "auto" }}>
+            <div onClick={() => { setShowPersonSheet(false); setGeneratedLink(null); setInviteLinkCopied(false) }} style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.5)" }} />
+            <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 301, background: "var(--surface)", borderRadius: "20px 20px 0 0", padding: "0 0 env(safe-area-inset-bottom,20px)", boxShadow: "0 -8px 40px rgba(0,0,0,0.35)", animation: "slideUp 0.22s ease", maxHeight: "88vh", overflowY: "auto" }}>
               {/* Handle */}
               <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 4px" }}>
                 <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--border)" }} />
               </div>
               {/* Header */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 20px 14px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 20px 12px" }}>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: "1rem" }}>👨‍👩‍👧 Meine Liste</div>
                   <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 2 }}>Für wen kaufst du ein?</div>
                 </div>
-                <button onClick={() => setShowPersonSheet(false)} style={{ background: "var(--surface-2)", border: "none", borderRadius: "50%", width: 30, height: 30, cursor: "pointer", fontSize: "0.9rem", color: "var(--text-dim)" }}>✕</button>
+                <button onClick={() => { setShowPersonSheet(false); setGeneratedLink(null); setInviteLinkCopied(false) }} style={{ background: "var(--surface-2)", border: "none", borderRadius: "50%", width: 30, height: 30, cursor: "pointer", fontSize: "0.9rem", color: "var(--text-dim)" }}>✕</button>
               </div>
-              <div style={{ borderTop: "1px solid var(--border)", margin: "0 20px" }} />
 
-              <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
-                {/* Bestehende Mitglieder */}
-                {familyMembers.length > 0 && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {familyMembers.map(m => (
-                      <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--background)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 14px" }}>
-                        <span style={{ fontSize: "1.5rem" }}>{m.emoji}</span>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>{m.name}</div>
-                          {m.age && <div style={{ fontSize: "0.7rem", color: "var(--text-dim)" }}>{m.age} Jahre</div>}
-                        </div>
-                        <button onClick={() => savePeople(familyMembers.filter(x => x.id !== m.id))} style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: "1.2rem", padding: "0 4px" }}>×</button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {familyMembers.length === 0 && (
-                  <div style={{ textAlign: "center", color: "var(--text-dim)", fontSize: "0.82rem", padding: "8px 0" }}>Noch niemand hinzugefügt.<br/>Füge z.B. dein Kind, deinen Hund oder deinen Partner hinzu.</div>
-                )}
-
-                {/* Neues Mitglied */}
-                <div style={{ background: "var(--background)", border: "1px solid var(--border)", borderRadius: 14, padding: 14 }}>
-                  <div style={{ fontSize: "0.65rem", fontWeight: 800, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>Person hinzufügen</div>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-                    {PERSON_EMOJIS.map(em => (
-                      <button key={em} onClick={() => setNewPersonEmoji(em)} style={{ background: newPersonEmoji === em ? "var(--accent)" : "var(--surface)", border: `1.5px solid ${newPersonEmoji === em ? "var(--accent)" : "var(--border)"}`, borderRadius: 8, padding: "5px 8px", fontSize: "1.1rem", cursor: "pointer" }}>{em}</button>
-                    ))}
-                  </div>
-                  <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-                    <input
-                      value={newPersonName} onChange={e => setNewPersonName(e.target.value)}
-                      onKeyDown={e => e.key === "Enter" && addPerson()}
-                      placeholder="Name (z.B. Lena, Hund …)"
-                      style={{ flex: 1, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px", color: "var(--text)", fontSize: "0.88rem", outline: "none" }}
-                    />
-                    <input
-                      value={newPersonAge} onChange={e => setNewPersonAge(e.target.value)}
-                      placeholder="Alter"
-                      type="number" min="0" max="120"
-                      style={{ width: 70, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 8px", color: "var(--text)", fontSize: "0.88rem", outline: "none" }}
-                    />
-                  </div>
-                  <button onClick={addPerson} style={{ width: "100%", background: "var(--accent)", color: "#000", border: "none", borderRadius: 10, padding: "11px", fontWeight: 800, fontSize: "0.9rem", cursor: "pointer" }}>
-                    ✓ Hinzufügen
+              {/* Tabs */}
+              <div style={{ display: "flex", margin: "0 20px 0", background: "var(--background)", borderRadius: 10, padding: 4, gap: 4 }}>
+                {([["manual","👤 Manuell"],["invite","🔗 Einladen"]] as const).map(([tab, label]) => (
+                  <button key={tab} onClick={() => { setPersonSheetTab(tab); setGeneratedLink(null); setInviteLinkCopied(false) }}
+                    style={{ flex: 1, background: personSheetTab === tab ? "var(--surface)" : "transparent", border: "none", borderRadius: 8, padding: "8px", fontWeight: personSheetTab === tab ? 700 : 500, fontSize: "0.82rem", color: personSheetTab === tab ? "var(--text)" : "var(--text-dim)", cursor: "pointer", transition: "all 0.15s" }}>
+                    {label}
                   </button>
-                </div>
+                ))}
+              </div>
+
+              <div style={{ padding: "14px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+
+                {/* ── TAB: Manuell ── */}
+                {personSheetTab === "manual" && (
+                  <>
+                    {familyMembers.length > 0 && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {familyMembers.map(m => (
+                          <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--background)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 14px" }}>
+                            {m.avatarUrl
+                              ? <img src={m.avatarUrl} alt={m.name} style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                              : <span style={{ fontSize: "1.5rem" }}>{m.emoji}</span>}
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>{m.name}</div>
+                              {m.age && <div style={{ fontSize: "0.7rem", color: "var(--text-dim)" }}>{m.age} Jahre</div>}
+                            </div>
+                            <button onClick={() => { setInviteMember(m); setInviteCopied(false) }} style={{ background: "none", border: "none", fontSize: "0.9rem", cursor: "pointer", padding: "0 6px", color: "var(--text-dim)" }} title="Einladen">🔗</button>
+                            <button onClick={() => savePeople(familyMembers.filter(x => x.id !== m.id))} style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: "1.2rem", padding: "0 4px" }}>×</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {familyMembers.length === 0 && (
+                      <div style={{ textAlign: "center", color: "var(--text-dim)", fontSize: "0.82rem", padding: "4px 0" }}>Noch niemand hinzugefügt.</div>
+                    )}
+                    <div style={{ background: "var(--background)", border: "1px solid var(--border)", borderRadius: 14, padding: 14 }}>
+                      <div style={{ fontSize: "0.65rem", fontWeight: 800, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>Person hinzufügen</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                        {PERSON_EMOJIS.map(em => (
+                          <button key={em} onClick={() => setNewPersonEmoji(em)} style={{ background: newPersonEmoji === em ? "var(--accent)" : "var(--surface)", border: `1.5px solid ${newPersonEmoji === em ? "var(--accent)" : "var(--border)"}`, borderRadius: 8, padding: "5px 8px", fontSize: "1.1rem", cursor: "pointer" }}>{em}</button>
+                        ))}
+                      </div>
+                      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                        <input value={newPersonName} onChange={e => setNewPersonName(e.target.value)} onKeyDown={e => e.key === "Enter" && addPerson()} placeholder="Name (z.B. Lena, Hund …)"
+                          style={{ flex: 1, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px", color: "var(--text)", fontSize: "0.88rem", outline: "none" }} />
+                        <input value={newPersonAge} onChange={e => setNewPersonAge(e.target.value)} placeholder="Alter" type="number" min="0" max="120"
+                          style={{ width: 70, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 8px", color: "var(--text)", fontSize: "0.88rem", outline: "none" }} />
+                      </div>
+                      <button onClick={addPerson} style={{ width: "100%", background: "var(--accent)", color: "#000", border: "none", borderRadius: 10, padding: "11px", fontWeight: 800, fontSize: "0.9rem", cursor: "pointer" }}>
+                        ✓ Hinzufügen
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {/* ── TAB: Einladen ── */}
+                {personSheetTab === "invite" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    <p style={{ fontSize: "0.82rem", color: "var(--text-dim)", lineHeight: 1.55, margin: 0 }}>
+                      Generiere einen persönlichen Einlade-Link. Die Person sieht deine Liste und kann sich registrieren, um mitzumachen.
+                    </p>
+
+                    {/* Emoji picker */}
+                    <div>
+                      <div style={{ fontSize: "0.65rem", fontWeight: 800, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>Emoji</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {PERSON_EMOJIS.map(em => (
+                          <button key={em} onClick={() => setInviteEmoji(em)} style={{ background: inviteEmoji === em ? "var(--accent)" : "var(--surface)", border: `1.5px solid ${inviteEmoji === em ? "var(--accent)" : "var(--border)"}`, borderRadius: 8, padding: "5px 8px", fontSize: "1.1rem", cursor: "pointer" }}>{em}</button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Name */}
+                    <input value={inviteName} onChange={e => { setInviteName(e.target.value); setGeneratedLink(null) }}
+                      placeholder="Name der eingeladenen Person…"
+                      style={{ background: "var(--background)", border: "1px solid var(--border)", borderRadius: 10, padding: "11px 14px", color: "var(--text)", fontSize: "0.9rem", outline: "none" }} />
+
+                    {!generatedLink ? (
+                      <button onClick={generateInviteLink} disabled={!inviteName.trim()}
+                        style={{ width: "100%", background: inviteName.trim() ? "var(--accent)" : "var(--surface)", color: inviteName.trim() ? "#000" : "var(--text-dim)", border: "none", borderRadius: 12, padding: "13px", fontWeight: 800, fontSize: "0.9rem", cursor: inviteName.trim() ? "pointer" : "not-allowed" }}>
+                        🔗 Einlade-Link erstellen
+                      </button>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        <div style={{ background: "var(--background)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 14px", fontSize: "0.72rem", color: "var(--text-dim)", wordBreak: "break-all", fontFamily: "monospace" }}>
+                          {generatedLink}
+                        </div>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button
+                            onClick={() => { navigator.clipboard.writeText(generatedLink).then(() => { setInviteLinkCopied(true); setTimeout(() => setInviteLinkCopied(false), 2500) }) }}
+                            style={{ flex: 1, background: inviteLinkCopied ? "rgba(46,204,138,0.15)" : "var(--accent)", color: inviteLinkCopied ? "var(--accent)" : "#000", border: inviteLinkCopied ? "1px solid var(--accent)" : "none", borderRadius: 12, padding: "12px", fontWeight: 800, fontSize: "0.88rem", cursor: "pointer" }}>
+                            {inviteLinkCopied ? "✓ Kopiert!" : "📋 Kopieren"}
+                          </button>
+                          {typeof navigator !== "undefined" && navigator.share && (
+                            <button onClick={() => navigator.share({ title: `${inviteName} zu TRUE einladen`, url: generatedLink })}
+                              style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "12px 18px", fontSize: "1.1rem", cursor: "pointer" }}>↗</button>
+                          )}
+                        </div>
+                        <button onClick={() => { setGeneratedLink(null); setInviteName(""); setInviteEmoji("👤") }}
+                          style={{ background: "none", border: "none", color: "var(--text-dim)", fontSize: "0.78rem", cursor: "pointer", padding: "4px" }}>
+                          Neuen Link erstellen
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </>
+        )
+      })()}
+
+      {/* ── Einlade-Modal ── */}
+      {inviteMember && (() => {
+        const listId = (() => {
+          try {
+            let id = localStorage.getItem("true-list-id")
+            if (!id) { id = Math.random().toString(36).slice(2, 10); localStorage.setItem("true-list-id", id) }
+            return id
+          } catch { return "shared" }
+        })()
+        const link = `https://get-true.de/join?list=${listId}&name=${encodeURIComponent(inviteMember.name)}&emoji=${encodeURIComponent(inviteMember.emoji)}`
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", zIndex: 300, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+            onClick={e => { if (e.target === e.currentTarget) setInviteMember(null) }}>
+            <div style={{ background: "var(--surface)", borderRadius: "20px 20px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 480 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+                <span style={{ fontWeight: 800, fontSize: "1rem" }}>{inviteMember.emoji} {inviteMember.name} einladen</span>
+                <button onClick={() => setInviteMember(null)} style={{ background: "none", border: "none", fontSize: "1.3rem", color: "var(--text-dim)", cursor: "pointer", padding: 4 }}>✕</button>
+              </div>
+              <p style={{ fontSize: "0.82rem", color: "var(--text-dim)", marginBottom: 16, lineHeight: 1.5 }}>
+                Teile diesen Link mit <strong style={{ color: "var(--text)" }}>{inviteMember.name}</strong>. Sobald die Person TRUE installiert und den Link öffnet, wird sie zur Einkaufsliste hinzugefügt.
+              </p>
+              {/* Link box */}
+              <div style={{ background: "var(--background)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 14px", fontSize: "0.75rem", color: "var(--text-dim)", wordBreak: "break-all", marginBottom: 14, fontFamily: "monospace" }}>
+                {link}
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => { navigator.clipboard.writeText(link).then(() => { setInviteCopied(true); setTimeout(() => setInviteCopied(false), 2000) }) }}
+                  style={{ flex: 1, background: inviteCopied ? "rgba(46,204,138,0.15)" : "var(--accent)", color: inviteCopied ? "var(--accent)" : "#000", border: inviteCopied ? "1px solid var(--accent)" : "none", borderRadius: 12, padding: "12px", fontWeight: 800, fontSize: "0.9rem", cursor: "pointer" }}
+                >
+                  {inviteCopied ? "✓ Kopiert!" : "🔗 Link kopieren"}
+                </button>
+                {typeof navigator !== "undefined" && navigator.share && (
+                  <button
+                    onClick={() => navigator.share({ title: `${inviteMember.name} zu TRUE einladen`, url: link })}
+                    style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "12px 16px", fontSize: "1.1rem", cursor: "pointer" }}
+                  >
+                    ↗
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         )
       })()}
 

@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ThemeToggle } from "@/components/ThemeProvider"
 import BottomNav from "@/components/BottomNav"
+import FloatingAssistant from "@/components/FloatingAssistant"
 import NotificationBell from "@/components/NotificationBell"
 import AuthModal from "@/components/AuthModal"
 import { useSupabaseAuth } from "@/lib/useSupabaseAuth"
@@ -196,6 +197,7 @@ export default function ProfilePage() {
   const [pushStatus, setPushStatus]       = useState<"idle" | "requesting" | "granted" | "denied">("idle")
   const [rings, setRings]                 = useState({ totalScans: 0, totalAvoided: 0, streak: 0 })
   const [following, setFollowing]         = useState<Set<string>>(new Set())
+  const [followedChannels, setFollowedChannels] = useState<string[]>([])
   const [showSearch, setShowSearch]       = useState(false)
   const [searchQuery, setSearchQuery]     = useState("")
   const [showSupport, setShowSupport]     = useState(false)
@@ -353,6 +355,10 @@ export default function ProfilePage() {
       const fw = localStorage.getItem("true-following")
       if (fw) setFollowing(new Set(JSON.parse(fw)))
     } catch (e) { console.error("[Profile] true-following load failed:", e) }
+    try {
+      const fc = localStorage.getItem("true-followed-channels")
+      if (fc) setFollowedChannels(JSON.parse(fc))
+    } catch {}
     try {
       const ph = localStorage.getItem("true-profile-photo")
       if (ph) setPhotoUrl(ph)
@@ -560,7 +566,7 @@ export default function ProfilePage() {
 
   const displayName = profile.vorname || "Dein Profil"
   const handle      = profile.vorname ? `@${profile.vorname.toLowerCase().replace(/\s/g, ".")}` : ""
-  const followingCount = following.size
+  const followingCount = following.size + followedChannels.length
   const savedCount  = savedPosts.length
 
   const filteredSuggested = searchQuery.trim()
@@ -1409,6 +1415,11 @@ export default function ProfilePage() {
         <AuthModal onClose={() => setShowAuthModal(false)} onSuccess={() => { setSavedToast(true); setTimeout(() => setSavedToast(false), 2000) }} />
       )}
 
+      <FloatingAssistant page="profile" tips={[
+        { icon: "🎯", text: "Stelle deine Ziele ein (z.B. palmölfrei, vegan) — der Scanner bewertet dann gezielt danach." },
+        { icon: "👨‍👩‍👧", text: "Füge Familienmitglieder hinzu — jeder bekommt eine eigene Einkaufsliste im Home-Menü." },
+        { icon: "🔔", text: "Aktiviere Benachrichtigungen um täglich neue Aufdeckungen zu erhalten." },
+      ]} />
       <BottomNav />
     </div>
     </AuthGuard>

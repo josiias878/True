@@ -29,12 +29,14 @@ function timeAgo(ms: number): string {
   return `Vor ${Math.floor(diff / 86_400_000)} Tag${Math.floor(diff / 86_400_000) === 1 ? "" : "en"}`
 }
 
-function postAvatar(type: string) {
-  return type === "bot" ? "📰" : type === "eva" ? "✍️" : "🥗"
+const AUTHOR_META: Record<string, { name: string; emoji: string; color: string }> = {
+  bot:   { name: "TRUE Bot",    emoji: "📰", color: "#2ECC8A" },
+  eva:   { name: "Eva Müller",  emoji: "✍️", color: "#ffaa00" },
+  coach: { name: "Coach",       emoji: "🥗", color: "#44aaff" },
 }
-function postName(type: string) {
-  return type === "bot" ? "TRUE Bot" : type === "eva" ? "Eva Müller" : "Coach"
-}
+function postAvatar(type: string) { return AUTHOR_META[type]?.emoji ?? "📡" }
+function postName(type: string)   { return AUTHOR_META[type]?.name ?? "TRUE" }
+function postColor(type: string)  { return AUTHOR_META[type]?.color ?? ACCENT }
 
 // ── Instagram-style vertical post viewer ─────────────────────────────────────
 function PostFeed({
@@ -79,11 +81,11 @@ function PostFeed({
           <div key={post.id} style={{ maxWidth: 480, margin: "0 auto", borderBottom: "8px solid var(--surface-2)" }}>
             {/* Author row */}
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px 10px" }}>
-              <div style={{ width: 36, height: 36, borderRadius: "50%", background: ACCENT + "18", border: `1.5px solid ${ACCENT}55`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0 }}>
+              <div style={{ width: 36, height: 36, borderRadius: "50%", background: postColor(post.type) + "20", border: `1.5px solid ${postColor(post.type)}55`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0 }}>
                 {postAvatar(post.type)}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: "0.88rem", color: "var(--text)" }}>{postName(post.type)}</div>
+                <div style={{ fontWeight: 800, fontSize: "0.88rem", color: "var(--text)" }}>{postName(post.type)}</div>
                 <div style={{ fontSize: "0.68rem", color: "var(--text-dim)" }}>{timeAgo(post.createdAt)}</div>
               </div>
               <span style={{ background: post.tagColor + "18", color: post.tagColor, border: `1px solid ${post.tagColor}33`, borderRadius: 20, padding: "3px 10px", fontSize: "0.68rem", fontWeight: 700 }}>{post.tag}</span>
@@ -169,6 +171,7 @@ export default function TrueChannelPage() {
   const [posts, setPosts]               = useState<TruePost[]>([])
   const [loading, setLoading]           = useState(true)
   const [followed, setFollowed]         = useState(false)
+  const [followerCount, setFollowerCount] = useState<number | null>(null)
   const [openPostIndex, setOpenPostIndex] = useState<number | null>(null)
   const [liked, setLiked]               = useState<Set<number>>(new Set())
   const [comments, setComments]         = useState<Record<number, { text: string; time: number }[]>>({})
@@ -193,6 +196,12 @@ export default function TrueChannelPage() {
       const cm = localStorage.getItem(`channel-comments-${TRUE_CHANNEL_ID}`)
       if (cm) setComments(JSON.parse(cm))
     } catch {}
+
+    // Echte Follower-Zahl von API holen
+    fetch("/api/channel-follow?channel=true")
+      .then(r => r.json())
+      .then(d => { if (d.followers) setFollowerCount(d.followers) })
+      .catch(() => {})
 
     if (!supabase) { setLoading(false); return }
     supabase
@@ -229,6 +238,20 @@ export default function TrueChannelPage() {
         const updated = next ? [...new Set([...arr, TRUE_CHANNEL_ID])] : arr.filter(c => c !== TRUE_CHANNEL_ID)
         localStorage.setItem("true-followed-channels", JSON.stringify(updated))
       } catch {}
+      // Follower-Zahl sofort anpassen + Supabase sync (fire-and-forget)
+      setFollowerCount(prev => (prev ?? 1200) + (next ? 1 : -1))
+      if (supabase) {
+        supabase.auth.getSession().then(({ data }) => {
+          const uid = data.session?.user?.id
+          if (uid) {
+            fetch("/api/channel-follow", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ channel: TRUE_CHANNEL_ID, userId: uid, action: next ? "follow" : "unfollow" }),
+            }).catch(() => {})
+          }
+        })
+      }
       return next
     })
   }
@@ -268,10 +291,10 @@ export default function TrueChannelPage() {
             <div style={{ height: 4, background: `linear-gradient(90deg, ${ACCENT}, ${ACCENT}44)`, borderRadius: 2, marginBottom: 20 }} />
 
             <div style={{ display: "flex", alignItems: "flex-start", gap: 16, marginBottom: 16 }}>
-              {/* Avatar with verified badge */}
+              {/* Avatar — TRUE Logo */}
               <div style={{ position: "relative", flexShrink: 0 }}>
-                <div style={{ width: 80, height: 80, borderRadius: "50%", background: ACCENT + "18", border: `3px solid ${ACCENT}55`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "2.2rem", boxShadow: `0 0 20px ${ACCENT}22` }}>
-                  📡
+                <div style={{ width: 80, height: 80, borderRadius: "50%", border: `3px solid ${ACCENT}`, overflow: "hidden", boxShadow: `0 0 24px ${ACCENT}33`, background: "#000" }}>
+                  <img src="/true-logo.jpg" alt="TRUE" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                 </div>
                 <div style={{ position: "absolute", bottom: 2, right: 2, width: 22, height: 22, borderRadius: "50%", background: ACCENT, border: "2.5px solid var(--background)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", fontWeight: 900, color: "#000" }}>✓</div>
               </div>
@@ -279,8 +302,8 @@ export default function TrueChannelPage() {
               {/* Stats — Instagram-Style: Beiträge · Follower · Gefolgt */}
               <div style={{ flex: 1, display: "flex", justifyContent: "space-around", paddingTop: 8 }}>
                 {[
-                  { label: "Beiträge",  value: posts.length > 0 ? posts.length : "—" },
-                  { label: "Follower",  value: followed ? "1.248" : "1.247" },
+                  { label: "Beiträge",  value: posts.length > 0 ? posts.length.toString() : (loading ? "…" : "0") },
+                  { label: "Follower",  value: followerCount !== null ? followerCount.toLocaleString("de-DE") : "…" },
                   { label: "Gefolgt",   value: "0" },
                 ].map(s => (
                   <div key={s.label} style={{ textAlign: "center" }}>

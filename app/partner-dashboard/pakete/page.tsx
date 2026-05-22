@@ -122,7 +122,7 @@ export default function PaketePage() {
   const currentTier = profile?.tier ?? "trial"
 
   return (
-    <div style={{ minHeight: "100dvh", background: "#0b1a10", color: "#fff", fontFamily: "system-ui,-apple-system,sans-serif" }}>
+    <div style={{ color: "#fff", fontFamily: "system-ui,-apple-system,sans-serif" }}>
       <style>{`
         .tier-card { transition: transform 0.15s, box-shadow 0.15s; }
         .tier-card:hover { transform: translateY(-4px); }
@@ -130,22 +130,7 @@ export default function PaketePage() {
         .choose-btn:hover { filter: brightness(1.08); }
       `}</style>
 
-      {/* Nav */}
-      <nav style={{
-        position: "sticky", top: 0, zIndex: 50,
-        background: "rgba(11,26,16,0.95)", backdropFilter: "blur(20px)",
-        borderBottom: "1px solid rgba(46,204,138,0.12)",
-        padding: "0 1.5rem", height: "60px",
-        display: "flex", alignItems: "center", gap: "1rem",
-      }}>
-        <Link href="/partner-dashboard" style={{ color: "rgba(255,255,255,0.4)", textDecoration: "none", fontSize: "0.82rem" }}>
-          ← Dashboard
-        </Link>
-        <span style={{ color: "rgba(255,255,255,0.15)" }}>|</span>
-        <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#fff" }}>Pakete & Preise</span>
-      </nav>
-
-      <div style={{ maxWidth: "900px", margin: "0 auto", padding: "3rem 1.25rem 4rem" }}>
+      <div style={{ maxWidth: "860px", margin: "0 auto", padding: "2rem 1.5rem 4rem" }}>
 
         {/* Hero */}
         <div style={{ textAlign: "center", marginBottom: "3rem" }}>

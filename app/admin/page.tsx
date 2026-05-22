@@ -139,6 +139,28 @@ export default function AdminPage() {
   const [leadNoteEdit, setLeadNoteEdit]   = useState<string | null>(null)
   const [leadNoteText, setLeadNoteText]   = useState("")
 
+  // Verification queue
+  interface VerifProduct {
+    id: number; name: string; barcode: string | null; category: string | null
+    tags: string[] | null; certifications: string[] | null; cert_numbers: string | null
+    quality_claim: string | null; off_data: any; needs_review: boolean
+    verified: boolean; verified_by: string | null; review_notes: string | null
+    created_at: string; partner_id: string
+    partner_profiles: { company_name: string; contact_email: string; tier: string } | null
+  }
+  interface VerifStats {
+    total_products: number; verified_auto: number; verified_admin: number
+    needs_review: number; rejected: number; total_partners: number
+    partners_by_tier: { basic: number; growth: number; enterprise: number }
+    mrr_estimate: number
+  }
+  const [verifQueue, setVerifQueue]       = useState<VerifProduct[]>([])
+  const [verifStats, setVerifStats]       = useState<VerifStats | null>(null)
+  const [verifLoading, setVerifLoading]   = useState(false)
+  const [verifAction, setVerifAction]     = useState<{ product: VerifProduct; type: "approve" | "reject" } | null>(null)
+  const [verifNote, setVerifNote]         = useState("")
+  const [verifDoing, setVerifDoing]       = useState(false)
+
   // Bot manager
   const [twitterKey, setTwitterKey]       = useState("")
   const [twitterSecret, setTwitterSecret] = useState("")
@@ -360,6 +382,40 @@ export default function AdminPage() {
     setCronBusy(null)
   }
 
+  async function loadVerifQueue() {
+    if (!supabase) return
+    setVerifLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) return
+      const res = await fetch("/api/admin/verification", { headers: { Authorization: `Bearer ${token}` } })
+      const json = await res.json()
+      setVerifQueue(json.queue ?? [])
+      setVerifStats(json.stats ?? null)
+    } catch {}
+    setVerifLoading(false)
+  }
+
+  async function handleVerifAction(action: "approve" | "reject") {
+    if (!verifAction || !supabase) return
+    setVerifDoing(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      await fetch("/api/admin/verification", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ productId: verifAction.product.id, action, notes: verifNote }),
+      })
+      setVerifQueue(q => q.filter(p => p.id !== verifAction.product.id))
+      setVerifStats(s => s ? { ...s, needs_review: s.needs_review - 1, [action === "approve" ? "verified_admin" : "rejected"]: (s as any)[action === "approve" ? "verified_admin" : "rejected"] + 1 } : s)
+    } catch {}
+    setVerifDoing(false)
+    setVerifAction(null)
+    setVerifNote("")
+  }
+
   async function loadPartnerLeads() {
     setPartnerLoading(true)
     try {
@@ -397,6 +453,7 @@ export default function AdminPage() {
   function switchTab(tab: Tab) {
     setActiveTab(tab)
     if (tab === "partner" && partnerLeads.length === 0) loadPartnerLeads()
+    if (tab === "partner" && verifStats === null) loadVerifQueue()
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
@@ -659,11 +716,12 @@ export default function AdminPage() {
                 { label: "Nutzer", value: users.length, color: "#2ECC8A" },
                 { label: "Posts gesamt", value: posts.length, color: "#44aaff" },
                 { label: "Community", value: posts.filter(p => p.type === "community").length, color: "#A78BFA" },
-                { label: "Bot-Posts", value: posts.filter(p => p.type === "bot" || p.type === "eva" || p.type === "coach").length, color: "#ff6633" },
-                { label: "Likes gesamt", value: posts.reduce((s, p) => s + (p.likes || 0), 0), color: "#ff4455" },
-                { label: "Bot aktiv", value: botEnabled ? "JA" : "NEIN", color: botEnabled ? "#2ECC8A" : "#ff4455" },
+                { label: "Partner", value: verifStats?.total_partners ?? "–", color: "#ffd700" },
+                { label: "MRR (est.)", value: verifStats ? `${verifStats.mrr_estimate}€` : "–", color: "#2ECC8A" },
+                { label: "Queue offen", value: verifStats?.needs_review ?? "–", color: verifStats?.needs_review ? "#ffc107" : "#2ECC8A" },
               ].map(s => (
-                <div key={s.label} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "12px", padding: "12px 10px", textAlign: "center" }}>
+                <div key={s.label} onClick={() => s.label.includes("Queue") || s.label === "Partner" || s.label === "MRR" ? switchTab("partner") : null}
+                  style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "12px", padding: "12px 10px", textAlign: "center", cursor: s.label.includes("Queue") || s.label === "Partner" || s.label === "MRR" ? "pointer" : "default" }}>
                   <div style={{ fontWeight: 900, fontSize: "1.4rem", color: s.color, lineHeight: 1 }}>{loading ? "…" : s.value}</div>
                   <div style={{ fontSize: "0.62rem", color: "var(--text-dim)", marginTop: "4px" }}>{s.label}</div>
                 </div>
@@ -747,8 +805,202 @@ export default function AdminPage() {
         {/* ── PARTNER ── */}
         {activeTab === "partner" && (
           <div>
+            {/* ── Partner KPI Stats ── */}
+            {verifStats && (
+              <div style={{ marginBottom: "1.25rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.55rem", marginBottom: "0.55rem" }}>
+                  {[
+                    { label: "Partner gesamt", value: verifStats.total_partners, color: "#2ECC8A", icon: "🤝" },
+                    { label: "Produkte gesamt", value: verifStats.total_products, color: "#44aaff", icon: "📦" },
+                    { label: "MRR (est.)", value: `${verifStats.mrr_estimate}€`, color: "#ffd700", icon: "💰" },
+                  ].map(s => (
+                    <div key={s.label} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "12px", padding: "12px 10px", textAlign: "center" }}>
+                      <div style={{ fontSize: "1rem", marginBottom: "2px" }}>{s.icon}</div>
+                      <div style={{ fontWeight: 900, fontSize: "1.3rem", color: s.color, lineHeight: 1 }}>{s.value}</div>
+                      <div style={{ fontSize: "0.58rem", color: "var(--text-dim)", marginTop: "4px" }}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.55rem", marginBottom: "0.55rem" }}>
+                  {[
+                    { label: "Auto-verifiziert", value: verifStats.verified_auto, color: "#2ECC8A" },
+                    { label: "Admin-verifiziert", value: verifStats.verified_admin, color: "#44aaff" },
+                    { label: "In Queue", value: verifStats.needs_review, color: "#ffc107" },
+                    { label: "Abgelehnt", value: verifStats.rejected, color: "#ff4455" },
+                  ].map(s => (
+                    <div key={s.label} style={{ background: "var(--surface)", border: `1px solid ${s.value > 0 && s.label === "In Queue" ? "rgba(255,193,7,0.3)" : "var(--border)"}`, borderRadius: "10px", padding: "10px 8px", textAlign: "center" }}>
+                      <div style={{ fontWeight: 900, fontSize: "1.2rem", color: s.color, lineHeight: 1 }}>{s.value}</div>
+                      <div style={{ fontSize: "0.58rem", color: "var(--text-dim)", marginTop: "3px" }}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* Tier-Verteilung */}
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "12px", padding: "12px 14px", display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "0.72rem", color: "var(--text-dim)", fontWeight: 600 }}>Tier-Verteilung:</span>
+                  {[
+                    { label: "🌱 Starter", value: verifStats.partners_by_tier.basic, color: "#2ECC8A" },
+                    { label: "🚀 Wachstum", value: verifStats.partners_by_tier.growth, color: "#4488ff" },
+                    { label: "👑 Enterprise", value: verifStats.partners_by_tier.enterprise, color: "#ffd700" },
+                  ].map(t => (
+                    <div key={t.label} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ fontWeight: 800, color: t.color, fontSize: "1rem" }}>{t.value}</span>
+                      <span style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>{t.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── Verifikations-Queue ── */}
+            <div style={{ marginBottom: "1.5rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.85rem" }}>
+                <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 800 }}>
+                  🔍 Verifikations-Queue
+                  {verifStats && verifStats.needs_review > 0 && (
+                    <span style={{ marginLeft: 8, background: "#ffc10718", border: "1px solid #ffc10740", color: "#ffc107", borderRadius: 99, padding: "1px 9px", fontSize: "0.65rem", fontWeight: 800 }}>
+                      {verifStats.needs_review} offen
+                    </span>
+                  )}
+                </h2>
+                <button onClick={loadVerifQueue} disabled={verifLoading}
+                  style={{ marginLeft: "auto", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", padding: "4px 10px", color: "var(--text-dim)", cursor: "pointer", fontSize: "0.75rem" }}>
+                  {verifLoading ? "⏳" : "↺"}
+                </button>
+              </div>
+
+              {verifQueue.length === 0 ? (
+                <div style={{ background: "rgba(46,204,138,0.05)", border: "1px solid rgba(46,204,138,0.15)", borderRadius: "14px", padding: "1.5rem", textAlign: "center" }}>
+                  <div style={{ fontSize: "1.8rem", marginBottom: "6px" }}>✅</div>
+                  <div style={{ fontWeight: 700, fontSize: "0.88rem", color: "#2ECC8A" }}>Queue leer</div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-dim)", marginTop: "4px" }}>Alle Produkte geprüft.</div>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
+                  {verifQueue.map(p => (
+                    <div key={p.id} style={{ background: "var(--surface)", border: "1px solid rgba(255,193,7,0.2)", borderRadius: "14px", padding: "14px 16px" }}>
+                      {/* Header */}
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", marginBottom: "10px" }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: "0.92rem" }}>{p.name}</div>
+                          <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginTop: "2px" }}>
+                            von <b style={{ color: "var(--text)" }}>{p.partner_profiles?.company_name ?? "Unbekannt"}</b>
+                            {p.partner_profiles?.tier && <span style={{ marginLeft: 6, color: "#2ECC8A", fontWeight: 700 }}>{p.partner_profiles.tier}</span>}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: "0.62rem", color: "var(--text-dim)", flexShrink: 0, fontFamily: "monospace" }}>
+                          {new Date(p.created_at).toLocaleDateString("de-DE")}
+                        </span>
+                      </div>
+
+                      {/* Details */}
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", marginBottom: "10px" }}>
+                        {p.barcode && (
+                          <span style={{ background: "rgba(255,255,255,0.06)", borderRadius: "6px", padding: "2px 8px", fontSize: "0.68rem", fontFamily: "monospace", color: "var(--text-dim)" }}>
+                            EAN: {p.barcode}
+                          </span>
+                        )}
+                        {p.category && (
+                          <span style={{ background: "rgba(255,255,255,0.06)", borderRadius: "6px", padding: "2px 8px", fontSize: "0.68rem", color: "var(--text-dim)" }}>{p.category}</span>
+                        )}
+                        {(p.tags ?? []).map(t => (
+                          <span key={t} style={{ background: "rgba(46,204,138,0.08)", border: "1px solid rgba(46,204,138,0.2)", borderRadius: "6px", padding: "2px 8px", fontSize: "0.68rem", color: "#2ECC8A" }}>{t}</span>
+                        ))}
+                        {(p.certifications ?? []).map(c => (
+                          <span key={c} style={{ background: "rgba(68,136,255,0.08)", border: "1px solid rgba(68,136,255,0.2)", borderRadius: "6px", padding: "2px 8px", fontSize: "0.68rem", color: "#4488ff" }}>{c}</span>
+                        ))}
+                      </div>
+
+                      {/* OpenFoodFacts Match */}
+                      <div style={{ background: p.off_data ? "rgba(46,204,138,0.05)" : "rgba(255,193,7,0.05)", border: `1px solid ${p.off_data ? "rgba(46,204,138,0.15)" : "rgba(255,193,7,0.15)"}`, borderRadius: "8px", padding: "8px 10px", marginBottom: "10px", fontSize: "0.72rem" }}>
+                        {p.off_data ? (
+                          <span style={{ color: "#2ECC8A" }}>
+                            ✓ Barcode in OpenFoodFacts gefunden — Name stimmt nicht exakt überein (manuelle Prüfung)
+                            {p.off_data.product_name_de && <> · OFF-Name: <b>{p.off_data.product_name_de}</b></>}
+                            {p.off_data.nutriscore_grade && <> · Nutri-Score: <b style={{ textTransform: "uppercase" }}>{p.off_data.nutriscore_grade}</b></>}
+                          </span>
+                        ) : (
+                          <span style={{ color: "#ffc107" }}>⚠️ Barcode nicht in OpenFoodFacts — nur mit Zertifikat prüfbar</span>
+                        )}
+                      </div>
+
+                      {p.quality_claim && (
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-dim)", fontStyle: "italic", marginBottom: "10px" }}>
+                          „{p.quality_claim}"
+                        </div>
+                      )}
+
+                      {p.cert_numbers && (
+                        <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginBottom: "10px" }}>
+                          🏅 Zertifikat-Nr.: <span style={{ color: "var(--text)", fontFamily: "monospace" }}>{p.cert_numbers}</span>
+                        </div>
+                      )}
+
+                      {/* Action buttons */}
+                      <div style={{ display: "flex", gap: "0.5rem" }}>
+                        <button
+                          onClick={() => { setVerifAction({ product: p, type: "approve" }); setVerifNote("") }}
+                          style={{ flex: 1, background: "rgba(46,204,138,0.1)", border: "1px solid rgba(46,204,138,0.3)", borderRadius: "8px", padding: "7px", fontSize: "0.78rem", fontWeight: 700, color: "#2ECC8A", cursor: "pointer" }}>
+                          ✓ Genehmigen
+                        </button>
+                        <button
+                          onClick={() => { setVerifAction({ product: p, type: "reject" }); setVerifNote("") }}
+                          style={{ flex: 1, background: "rgba(255,68,85,0.06)", border: "1px solid rgba(255,68,85,0.2)", borderRadius: "8px", padding: "7px", fontSize: "0.78rem", fontWeight: 700, color: "#ff7788", cursor: "pointer" }}>
+                          ✗ Ablehnen
+                        </button>
+                        {p.off_data?.shop_url && (
+                          <a href={p.off_data.shop_url} target="_blank" rel="noreferrer"
+                            style={{ background: "var(--background)", border: "1px solid var(--border)", borderRadius: "8px", padding: "7px 12px", fontSize: "0.78rem", color: "var(--text-dim)", textDecoration: "none", cursor: "pointer" }}>
+                            🌐
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Confirm Modal */}
+              {verifAction && (
+                <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+                  <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "20px", padding: "1.5rem", width: "100%", maxWidth: "380px" }}>
+                    <h3 style={{ margin: "0 0 0.75rem", fontWeight: 800 }}>
+                      {verifAction.type === "approve" ? "✓ Produkt genehmigen?" : "✗ Produkt ablehnen?"}
+                    </h3>
+                    <p style={{ margin: "0 0 1rem", fontSize: "0.85rem", color: "var(--text-dim)" }}>
+                      <b style={{ color: "var(--text)" }}>{verifAction.product.name}</b> von {verifAction.product.partner_profiles?.company_name}
+                    </p>
+                    <div style={{ marginBottom: "1rem" }}>
+                      <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-dim)", display: "block", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        Notiz / Begründung {verifAction.type === "reject" ? "(Pflicht)" : "(optional)"}
+                      </label>
+                      <textarea
+                        value={verifNote}
+                        onChange={e => setVerifNote(e.target.value)}
+                        rows={3}
+                        placeholder={verifAction.type === "approve" ? "z.B. Zertifikat geprüft ✓" : "z.B. Barcode stimmt nicht mit Produktname überein"}
+                        style={{ width: "100%", boxSizing: "border-box", background: "var(--background)", border: "1px solid var(--border)", borderRadius: "10px", padding: "0.7rem", color: "var(--text)", fontSize: "0.82rem", outline: "none", resize: "vertical" }}
+                      />
+                    </div>
+                    <div style={{ display: "flex", gap: "0.6rem" }}>
+                      <button onClick={() => setVerifAction(null)}
+                        style={{ flex: 1, background: "var(--background)", border: "1px solid var(--border)", borderRadius: "10px", padding: "0.75rem", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", color: "var(--text-dim)" }}>
+                        Abbrechen
+                      </button>
+                      <button
+                        onClick={() => handleVerifAction(verifAction.type)}
+                        disabled={verifDoing || (verifAction.type === "reject" && !verifNote.trim())}
+                        style={{ flex: 1, background: verifAction.type === "approve" ? "linear-gradient(135deg,#2ECC8A,#1aaa6e)" : "rgba(255,68,85,0.15)", border: verifAction.type === "reject" ? "1px solid rgba(255,68,85,0.4)" : "none", borderRadius: "10px", padding: "0.75rem", fontWeight: 800, fontSize: "0.85rem", cursor: verifDoing ? "not-allowed" : "pointer", color: verifAction.type === "approve" ? "#000" : "#ff7788", opacity: verifDoing ? 0.7 : 1 }}>
+                        {verifDoing ? "…" : verifAction.type === "approve" ? "Genehmigen" : "Ablehnen"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Partner-Leads (CRM) ── */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
-              <h2 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800 }}>🤝 Partner-Anfragen</h2>
+              <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 800 }}>🤝 Partner-Anfragen (CRM)</h2>
               <button onClick={loadPartnerLeads} disabled={partnerLoading} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", padding: "5px 12px", color: "var(--text-dim)", cursor: "pointer", fontSize: "0.78rem" }}>
                 {partnerLoading ? "⏳" : "↺ Laden"}
               </button>

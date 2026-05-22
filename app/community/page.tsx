@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { ThemeToggle, ThemeIcon } from "@/components/ThemeProvider"
 import BottomNav from "@/components/BottomNav"
+import FloatingAssistant from "@/components/FloatingAssistant"
 import NotificationBell from "@/components/NotificationBell"
 import AuthModal from "@/components/AuthModal"
 import { useSupabaseAuth } from "@/lib/useSupabaseAuth"
@@ -184,6 +185,8 @@ export default function CommunityPage() {
   const [editBody, setEditBody]           = useState("")
   const [searchQuery, setSearchQuery]     = useState("")
   const [showSearch, setShowSearch]       = useState(false)
+  const [searchMode, setSearchMode]       = useState<"posts" | "profiles">("posts")
+  const [profileResults, setProfileResults] = useState<{id: string; name: string; avatar: string}[]>([])
   const [customTopics, setCustomTopics]   = useState<CustomTopic[]>([])
   const [showNewCommunity, setShowNewCommunity] = useState(false)
   const [newCommunityName, setNewCommunityName] = useState("")
@@ -344,8 +347,18 @@ export default function CommunityPage() {
     : posts
   // Topics that already have real user posts — example posts for those topics are hidden
   const realPostTopics = new Set(posts.filter(p => !p.isExample).map(p => p.topic))
-  const filtered = (activeTopic === "all" ? searched : searched.filter(p => p.topic === activeTopic))
+  const baseFiltered = (activeTopic === "all" ? searched : searched.filter(p => p.topic === activeTopic))
     .filter(p => !p.isExample || !realPostTopics.has(p.topic))
+  // Im "Alle"-View maximal 2 Beispiel-Posts zeigen (damit nicht 12 Seed-Posts alles überschwemmen)
+  const filtered = (() => {
+    if (activeTopic !== "all") return baseFiltered
+    let seedCount = 0
+    return baseFiltered.filter(p => {
+      if (!p.isExample) return true
+      seedCount++
+      return seedCount <= 2
+    })
+  })()
   const sorted   = [...filtered].sort((a, b) =>
     sortMode === "beliebt"
       ? b.likes - a.likes
@@ -615,6 +628,30 @@ export default function CommunityPage() {
     setActiveTopic(id)
   }
 
+  // Profile search
+  async function searchProfiles(q: string) {
+    if (!q.trim() || !supabase) { setProfileResults([]); return }
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, vorname, name, avatar")
+      .or(`vorname.ilike.%${q}%,name.ilike.%${q}%`)
+      .limit(10)
+    if (data) {
+      setProfileResults(data.map((r: any) => ({
+        id: r.id,
+        name: [r.vorname, r.name].filter(Boolean).join(" ") || "Nutzer",
+        avatar: r.avatar || r.vorname?.[0]?.toUpperCase() || "?",
+      })))
+    }
+  }
+
+  // Avatar color based on first letter (deterministic)
+  function avatarColor(letter: string): string {
+    const palette = ["#2ECC8A","#44aaff","#ff7700","#cc66ff","#ff6b6b","#ffcc00","#66ccff","#ff9500","#a8e6cf","#f7797d"]
+    const idx = (letter.toUpperCase().charCodeAt(0) - 65) % palette.length
+    return palette[Math.max(0, idx)]
+  }
+
   // All topics (built-in + user-created)
   const allTopics = [
     ...TOPICS,
@@ -649,17 +686,51 @@ export default function CommunityPage() {
 
       {/* Search bar */}
       {showSearch && (
-        <div style={{ padding: "8px 16px", background: "var(--nav-bg)", borderBottom: "1px solid var(--border)", position: "sticky", top: 56, zIndex: 49 }}>
+        <div style={{ padding: "8px 16px 10px", background: "var(--nav-bg)", borderBottom: "1px solid var(--border)", position: "sticky", top: 56, zIndex: 49 }}>
+          {/* Mode toggle */}
+          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+            {(["posts", "profiles"] as const).map(m => (
+              <button key={m} onClick={() => { setSearchMode(m); setSearchQuery(""); setProfileResults([]) }}
+                style={{ flex: 1, background: searchMode === m ? "var(--accent)" : "var(--surface)", color: searchMode === m ? "#000" : "var(--text-dim)", border: `1px solid ${searchMode === m ? "var(--accent)" : "var(--border)"}`, borderRadius: 8, padding: "6px", fontSize: "0.75rem", fontWeight: searchMode === m ? 700 : 500, cursor: "pointer" }}>
+                {m === "posts" ? "📝 Beiträge" : "👤 Profile"}
+              </button>
+            ))}
+          </div>
           <input
             autoFocus
             value={searchQuery}
-            onChange={e => { setSearchQuery(e.target.value); setVisibleCount(20) }}
-            placeholder="Beiträge suchen…"
+            onChange={e => {
+              setSearchQuery(e.target.value)
+              setVisibleCount(20)
+              if (searchMode === "profiles") searchProfiles(e.target.value)
+            }}
+            placeholder={searchMode === "posts" ? "Beiträge suchen…" : "Nutzername suchen…"}
             style={{ width: "100%", boxSizing: "border-box", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "9px 14px", color: "var(--text)", fontSize: "0.88rem", outline: "none" }}
           />
-          {searchQuery && (
+          {/* Post search results count */}
+          {searchMode === "posts" && searchQuery && (
             <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 5 }}>
               {sorted.length} Ergebnis{sorted.length !== 1 ? "se" : ""} für „{searchQuery}"
+            </div>
+          )}
+          {/* Profile search results */}
+          {searchMode === "profiles" && searchQuery && (
+            <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+              {profileResults.length === 0 && (
+                <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", textAlign: "center", padding: "8px 0" }}>Keine Profile gefunden.</div>
+              )}
+              {profileResults.map(p => {
+                const av = avatarColor(p.avatar[0] || "?")
+                return (
+                  <Link key={p.id} href={`/user/${p.id}`} style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "8px 12px", textDecoration: "none" }}>
+                    <div style={{ width: 34, height: 34, borderRadius: "50%", background: av + "22", border: `1.5px solid ${av}55`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", fontWeight: 800, color: av, flexShrink: 0 }}>
+                      {p.avatar[0]?.toUpperCase() || "?"}
+                    </div>
+                    <span style={{ fontWeight: 600, fontSize: "0.88rem", color: "var(--text)" }}>{p.name}</span>
+                    <span style={{ marginLeft: "auto", fontSize: "0.72rem", color: "var(--accent)" }}>Profil →</span>
+                  </Link>
+                )
+              })}
             </div>
           )}
         </div>
@@ -718,12 +789,17 @@ export default function CommunityPage() {
             </button>
           )
         })}
-        {/* Create new community */}
+      </div>
+
+      {/* Community eröffnen — always visible below pills */}
+      <div style={{ padding: "8px 16px 0", maxWidth: 640, margin: "0 auto" }}>
         <button
           onClick={() => setShowNewCommunity(true)}
-          style={{ flexShrink: 0, background: "var(--surface)", color: "var(--accent)", border: "1px dashed var(--accent)", borderRadius: 99, padding: "6px 14px", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.15s" }}
+          style={{ display: "flex", alignItems: "center", gap: 7, background: "transparent", color: "var(--accent)", border: "1.5px dashed rgba(46,204,138,0.5)", borderRadius: 10, padding: "7px 16px", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", width: "100%" }}
         >
-          + Neu
+          <span style={{ fontSize: "1rem" }}>🏠</span>
+          <span>Community eröffnen</span>
+          <span style={{ marginLeft: "auto", fontSize: "0.7rem", color: "var(--text-dim)", fontWeight: 500 }}>Eigene Gruppe erstellen</span>
         </button>
       </div>
 
@@ -786,31 +862,21 @@ export default function CommunityPage() {
       <div style={{ maxWidth: 640, margin: "0 auto", padding: "16px 16px 0" }}>
 
         {/* New post button + sort toggle */}
-        <div style={{ display: "flex", gap: 10, marginBottom: 16, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "center" }}>
           <button
             onClick={() => user ? setShowNew(v => !v) : setShowLogin(true)}
-            style={{ flex: 1, background: showNew ? "var(--surface)" : "var(--accent)", color: showNew ? "var(--text-dim)" : "#000", border: `1px solid ${showNew ? "var(--border)" : "var(--accent)"}`, borderRadius: 12, padding: "10px 16px", fontWeight: 700, fontSize: "0.9rem", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}
+            style={{ background: showNew ? "var(--surface)" : "var(--accent)", color: showNew ? "var(--text-dim)" : "#000", border: `1px solid ${showNew ? "var(--border)" : "var(--accent)"}`, borderRadius: 10, padding: "7px 13px", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}
           >
-            {showNew ? "✕ Abbrechen" : "✏️ Beitrag schreiben"}
+            {showNew ? "✕" : "✏️ Schreiben"}
           </button>
           {/* Sort toggle */}
           <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden", flexShrink: 0 }}>
             {(["neu", "beliebt"] as const).map(m => (
-              <button key={m} onClick={() => { setSortMode(m); setVisibleCount(20) }} style={{ padding: "8px 12px", fontSize: "0.75rem", fontWeight: sortMode === m ? 700 : 500, background: sortMode === m ? "var(--accent)" : "transparent", color: sortMode === m ? "#000" : "var(--text-dim)", border: "none", cursor: "pointer", transition: "all 0.15s" }}>
+              <button key={m} onClick={() => { setSortMode(m); setVisibleCount(20) }} style={{ padding: "7px 11px", fontSize: "0.75rem", fontWeight: sortMode === m ? 700 : 500, background: sortMode === m ? "var(--accent)" : "transparent", color: sortMode === m ? "#000" : "var(--text-dim)", border: "none", cursor: "pointer", transition: "all 0.15s" }}>
                 {m === "neu" ? "🕐 Neu" : "🔥 Top"}
               </button>
             ))}
           </div>
-
-          {/* Join current topic */}
-          {activeTopic !== "all" && (
-            <button
-              onClick={() => toggleJoin(activeTopic)}
-              style={{ background: joined.has(activeTopic) ? `${activeTopic_?.color}18` : "var(--surface)", border: `1px solid ${joined.has(activeTopic) ? `${activeTopic_?.color}40` : "var(--border)"}`, borderRadius: 12, padding: "10px 14px", color: joined.has(activeTopic) ? activeTopic_?.color : "var(--text-dim)", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", whiteSpace: "nowrap" }}
-            >
-              {joined.has(activeTopic) ? "✓ Dabei" : "+ Folgen"}
-            </button>
-          )}
         </div>
 
         {/* New post form */}
@@ -876,12 +942,13 @@ export default function CommunityPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {visible.map(post => {
             const topic = allTopics.find(t => t.id === post.topic) ?? allTopics[0]
+            const avColor = avatarColor(post.avatar)
             return (
-              <article key={post.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
+              <article key={post.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", borderLeft: `3px solid ${topic.color}55` }}>
                   {/* Beispiel banner */}
                   {post.isExample && (
-                    <div style={{ background: "rgba(255,204,0,0.07)", borderBottom: "1px solid rgba(255,204,0,0.18)", padding: "4px 12px", display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ fontSize: "0.6rem", color: "#ffcc00", fontWeight: 700 }}>📌 BEISPIEL</span>
+                    <div style={{ background: "rgba(255,204,0,0.06)", borderBottom: "1px solid rgba(255,204,0,0.15)", padding: "4px 14px", display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: "0.6rem", color: "#cc9900", fontWeight: 700, letterSpacing: "0.06em" }}>📌 BEISPIEL</span>
                       <span style={{ fontSize: "0.6rem", color: "var(--text-dim)" }}>Schreib deinen ersten Beitrag!</span>
                       <button
                         onClick={e => { e.stopPropagation(); deletePost(post.id) }}
@@ -890,27 +957,35 @@ export default function CommunityPage() {
                     </div>
                   )}
 
-                  {/* Meta row */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 12px 4px", flexWrap: "wrap" }}>
-                    {/* Topic-Badge → klickbar, filtert Community zur Gruppe */}
-                    <button
-                      onClick={e => { e.stopPropagation(); setActiveTopic(post.topic); scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" }) }}
-                      style={{ background: `${topic.color}14`, color: topic.color, borderRadius: 99, padding: "2px 8px", fontSize: "0.62rem", fontWeight: 800, border: "none", cursor: "pointer" }}
-                    >
-                      {topic.icon} {topic.name}
-                    </button>
-                    <span style={{ fontSize: "0.7rem", color: "var(--text-dim)" }}>· von</span>
-                    {post.userId && !post.isExample ? (
-                      <a href={`/user/${post.userId}`} style={{ fontWeight: 700, fontSize: "0.75rem", color: "var(--accent)", textDecoration: "none" }} onClick={e => e.stopPropagation()}>
-                        {post.author}
-                      </a>
-                    ) : (
-                      <span style={{ fontWeight: 700, fontSize: "0.75rem" }}>{post.author}</span>
-                    )}
-                    <span style={{ fontSize: "0.68rem", color: "var(--text-dim)" }}>{post.time}</span>
-                    {/* Löschen/Bearbeiten nur wenn user_id übereinstimmt — nie fremde Posts */}
+                  {/* Meta row — Avatar + Author + Topic chip */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "12px 14px 6px" }}>
+                    {/* Avatar */}
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: avColor + "22", border: `1.5px solid ${avColor}55`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.78rem", fontWeight: 800, color: avColor, flexShrink: 0 }}>
+                      {post.avatar}
+                    </div>
+                    {/* Author + time */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        {post.userId && !post.isExample ? (
+                          <a href={`/user/${post.userId}`} style={{ fontWeight: 700, fontSize: "0.8rem", color: "var(--text)", textDecoration: "none" }} onClick={e => e.stopPropagation()}>
+                            {post.author}
+                          </a>
+                        ) : (
+                          <span style={{ fontWeight: 700, fontSize: "0.8rem", color: "var(--text)" }}>{post.author}</span>
+                        )}
+                        <span style={{ fontSize: "0.65rem", color: "var(--text-dim)" }}>{post.time}</span>
+                        {/* Topic badge */}
+                        <button
+                          onClick={e => { e.stopPropagation(); setActiveTopic(post.topic); scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" }) }}
+                          style={{ background: `${topic.color}14`, color: topic.color, borderRadius: 99, padding: "1px 8px", fontSize: "0.6rem", fontWeight: 700, border: `1px solid ${topic.color}30`, cursor: "pointer" }}
+                        >
+                          {topic.icon} {topic.name}
+                        </button>
+                      </div>
+                    </div>
+                    {/* Löschen/Bearbeiten nur wenn user_id übereinstimmt */}
                     {!post.isExample && user && post.userId && post.userId === user.id && (
-                      <div style={{ marginLeft: "auto", display: "flex", gap: 2 }}>
+                      <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
                         <button onClick={() => editingPostId === post.id ? setEditingPostId(null) : startEdit(post)} style={{ background: "none", border: "none", color: editingPostId === post.id ? "var(--accent)" : "var(--text-dim)", cursor: "pointer", fontSize: "0.8rem", padding: "0 5px", lineHeight: 1 }}>✏️</button>
                         <button onClick={() => deletePost(post.id)} style={{ background: "none", border: "none", color: "rgba(255,68,85,0.45)", cursor: "pointer", fontSize: "0.9rem", padding: "0 4px", lineHeight: 1 }}>×</button>
                       </div>
@@ -918,7 +993,7 @@ export default function CommunityPage() {
                   </div>
 
                   {/* Content */}
-                  <div style={{ padding: "0 12px 8px" }}>
+                  <div style={{ padding: "0 14px 10px" }}>
                     {editingPostId === post.id ? (
                       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 }}>
                         <input value={editTitle} onChange={e => setEditTitle(e.target.value)} style={{ background: "var(--background)", border: "1px solid var(--accent)", borderRadius: 8, padding: "7px 10px", color: "var(--text)", fontSize: "0.88rem", outline: "none", fontWeight: 700 }} />
@@ -930,8 +1005,8 @@ export default function CommunityPage() {
                       </div>
                     ) : (
                       <>
-                        <h3 style={{ fontWeight: 700, fontSize: "0.92rem", margin: "0 0 5px", lineHeight: 1.35, color: "var(--text)" }}>{post.title}</h3>
-                        <p style={{ fontSize: "0.82rem", color: "var(--text-dim)", lineHeight: 1.6, margin: "0 0 8px", display: "-webkit-box", WebkitLineClamp: openComments.has(post.id) ? 999 : 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{post.body}</p>
+                        <h3 style={{ fontWeight: 800, fontSize: "0.95rem", margin: "0 0 5px", lineHeight: 1.35, color: "var(--text)" }}>{post.title}</h3>
+                        <p style={{ fontSize: "0.83rem", color: "var(--text-dim)", lineHeight: 1.65, margin: "0 0 8px", display: "-webkit-box", WebkitLineClamp: openComments.has(post.id) ? 999 : 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{post.body}</p>
                         {post.img && <img src={post.img} alt="" style={{ width: "100%", maxHeight: "220px", objectFit: "cover", borderRadius: 10, marginBottom: 4, display: "block" }} />}
                       </>
                     )}
@@ -954,7 +1029,7 @@ export default function CommunityPage() {
                           return (
                             <div key={c.id}>
                               <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--accent)", color: "#000", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.72rem", fontWeight: 800, flexShrink: 0 }}>
+                                <div style={{ width: 28, height: 28, borderRadius: "50%", background: avatarColor(c.avatar) + "22", border: `1.5px solid ${avatarColor(c.avatar)}55`, color: avatarColor(c.avatar), display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.72rem", fontWeight: 800, flexShrink: 0 }}>
                                   {c.avatar}
                                 </div>
                                 <div style={{ flex: 1, background: "var(--background)", borderRadius: "0 12px 12px 12px", padding: "6px 10px" }}>
@@ -1027,29 +1102,30 @@ export default function CommunityPage() {
                   </div>
                 )}
 
-                {/* Actions — Reddit style bottom bar */}
-                <div style={{ display: "flex", gap: 4, alignItems: "center", padding: "0 8px 10px", borderTop: "1px solid var(--border)", paddingTop: 8, marginTop: 4 }}>
+                {/* Actions — modern bottom bar */}
+                <div style={{ display: "flex", gap: 2, alignItems: "center", padding: "6px 10px 10px", borderTop: "1px solid var(--border)" }}>
+                  {/* Like button */}
                   <div style={{ position: "relative" }}>
                     <button
                       onClick={() => like(post.id)}
-                      style={{ background: post.liked ? "rgba(46,204,138,0.12)" : "transparent", border: `1px solid ${post.liked ? "rgba(46,204,138,0.3)" : "transparent"}`, borderRadius: 8, padding: "5px 10px", display: "flex", alignItems: "center", gap: 5, cursor: "pointer", color: post.liked ? "var(--accent)" : "var(--text-dim)", fontSize: "0.78rem", fontWeight: post.liked ? 700 : 500, transition: "all 0.15s" }}
+                      style={{ background: post.liked ? `${topic.color}14` : "transparent", border: `1px solid ${post.liked ? `${topic.color}44` : "transparent"}`, borderRadius: 99, padding: "5px 12px", display: "flex", alignItems: "center", gap: 5, cursor: "pointer", color: post.liked ? topic.color : "var(--text-dim)", fontSize: "0.8rem", fontWeight: post.liked ? 700 : 500, transition: "all 0.15s" }}
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill={post.liked ? "var(--accent)" : "none"} stroke="currentColor" strokeWidth="2">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill={post.liked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                       </svg>
                       {post.likes}
                     </button>
-                    {/* Who liked — show on long press / click count */}
+                    {/* Who liked */}
                     {(postLikes[post.id]?.length ?? 0) > 0 && (
                       <button
                         onClick={() => setShowLikesFor(showLikesFor === post.id ? null : post.id)}
-                        style={{ background: "none", border: "none", fontSize: "0.62rem", color: "var(--text-dim)", cursor: "pointer", padding: "0 0 0 4px", display: "block", marginTop: 2 }}
+                        style={{ background: "none", border: "none", fontSize: "0.6rem", color: "var(--text-dim)", cursor: "pointer", padding: "0 0 0 4px", display: "block", marginTop: 1 }}
                       >
                         {postLikes[post.id].slice(0,2).join(", ")}{postLikes[post.id].length > 2 ? ` +${postLikes[post.id].length - 2}` : ""} ♥
                       </button>
                     )}
                     {showLikesFor === post.id && (postLikes[post.id]?.length ?? 0) > 0 && (
-                      <div style={{ position: "absolute", bottom: "110%", left: 0, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "8px 12px", zIndex: 50, minWidth: 140, boxShadow: "0 4px 20px rgba(0,0,0,0.3)", animation: "dropIn 0.15s ease" }}>
+                      <div style={{ position: "absolute", bottom: "110%", left: 0, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "8px 12px", zIndex: 50, minWidth: 140, boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }}>
                         <div style={{ fontSize: "0.68rem", fontWeight: 700, color: "var(--accent)", marginBottom: 6 }}>❤️ Gefällt</div>
                         {postLikes[post.id].map(name => (
                           <div key={name} style={{ fontSize: "0.78rem", color: "var(--text)", padding: "2px 0" }}>{name}</div>
@@ -1057,9 +1133,10 @@ export default function CommunityPage() {
                       </div>
                     )}
                   </div>
+                  {/* Comment button */}
                   <button
                     onClick={() => toggleComments(post.id)}
-                    style={{ background: openComments.has(post.id) ? "rgba(46,204,138,0.1)" : "var(--background)", border: `1px solid ${openComments.has(post.id) ? "rgba(46,204,138,0.3)" : "var(--border)"}`, borderRadius: 99, padding: "5px 12px", display: "flex", alignItems: "center", gap: 5, cursor: "pointer", color: openComments.has(post.id) ? "var(--accent)" : "var(--text-dim)", fontSize: "0.82rem", transition: "all 0.15s" }}>
+                    style={{ background: openComments.has(post.id) ? `${topic.color}12` : "transparent", border: `1px solid ${openComments.has(post.id) ? `${topic.color}33` : "transparent"}`, borderRadius: 99, padding: "5px 12px", display: "flex", alignItems: "center", gap: 5, cursor: "pointer", color: openComments.has(post.id) ? topic.color : "var(--text-dim)", fontSize: "0.8rem", transition: "all 0.15s" }}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                     </svg>
@@ -1067,10 +1144,12 @@ export default function CommunityPage() {
                       ? postComments[post.id].reduce((acc, c) => acc + 1 + (c.replies?.length ?? 0), 0)
                       : post.comments}
                   </button>
+                  {/* Spacer */}
+                  <div style={{ flex: 1 }} />
                   {/* Bookmark */}
                   <button
                     onClick={() => toggleSave(post)}
-                    style={{ marginLeft: "auto", background: "transparent", border: "none", color: savedPostIds.has(post.id) ? "var(--accent)" : "var(--text-dim)", fontSize: "0.78rem", cursor: "pointer", display: "flex", alignItems: "center", gap: 3, padding: "4px 6px" }}
+                    style={{ background: "transparent", border: "none", color: savedPostIds.has(post.id) ? "var(--accent)" : "var(--text-dim)", cursor: "pointer", display: "flex", alignItems: "center", padding: "5px 8px", borderRadius: 8 }}
                     title={savedPostIds.has(post.id) ? "Gespeichert" : "Speichern"}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill={savedPostIds.has(post.id) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
@@ -1080,12 +1159,11 @@ export default function CommunityPage() {
                   {/* Share */}
                   <button
                     onClick={() => { if (navigator.share) navigator.share({ title: post.title, text: post.body }) }}
-                    style={{ background: "transparent", border: "none", color: "var(--text-dim)", fontSize: "0.78rem", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, padding: "4px 6px" }}
+                    style={{ background: "transparent", border: "none", color: "var(--text-dim)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, padding: "5px 8px", borderRadius: 8 }}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
                     </svg>
-                    Teilen
                   </button>
                 </div>
               </article>
@@ -1134,6 +1212,12 @@ export default function CommunityPage() {
           </div>
         </div>
       )}
+      <FloatingAssistant page="community" tips={[
+        { icon: "📝", text: "Tippe auf ‚Schreiben' um einen Beitrag in einer Community zu erstellen." },
+        { icon: "🏠", text: "Gründe deine eigene Community über den ‚Community eröffnen' Button unter den Filter-Kategorien." },
+        { icon: "👤", text: "Klicke auf einen Autorennamen, um sein Profil zu sehen — oder suche Nutzer über das Lupensymbol." },
+        { icon: "🔥", text: "Wechsle zwischen ‚Neu' und ‚Top', um die beliebtesten Beiträge zu sehen." },
+      ]} />
       <BottomNav />
     </div>
   )

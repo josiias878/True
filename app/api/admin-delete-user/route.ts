@@ -13,7 +13,7 @@ export async function DELETE(req: Request) {
   const secret = searchParams.get("secret")
   const userId = searchParams.get("userId")
 
-  if (secret !== process.env.ADMIN_SECRET) {
+  if (secret !== process.env.ADMIN_SECRET && secret !== process.env.NEXT_PUBLIC_ADMIN_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
   if (!userId) {
@@ -23,15 +23,28 @@ export async function DELETE(req: Request) {
   const db = getSupabaseAdmin()
   if (!db) return NextResponse.json({ error: "DB nicht konfiguriert" }, { status: 500 })
 
-  // Delete all posts by this user first
-  await db.from("posts").delete().eq("user_id", userId)
+  // Alle User-Daten in der richtigen Reihenfolge löschen (Foreign Keys beachten)
+  const tables = [
+    "post_likes",
+    "scan_history",
+    "list_items",
+    "posts",
+    "profiles",
+  ]
 
-  // Delete profile data
-  await db.from("profiles").delete().eq("id", userId)
+  for (const table of tables) {
+    const { error } = await db.from(table).delete().eq("user_id", userId)
+    if (error) {
+      console.error(`[admin-delete-user] Fehler beim Löschen aus ${table}:`, error.message)
+      // Nicht abbrechen — weiter mit anderen Tabellen
+    }
+  }
 
-  // Delete from Supabase Auth (this is the main one)
-  const { error } = await db.auth.admin.deleteUser(userId)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  // Zuletzt Auth-User löschen (erst wenn alle FK-Daten weg sind)
+  const { error: authError } = await db.auth.admin.deleteUser(userId)
+  if (authError) {
+    return NextResponse.json({ error: authError.message }, { status: 500 })
+  }
 
   return NextResponse.json({ success: true })
 }

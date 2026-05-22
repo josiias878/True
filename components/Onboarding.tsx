@@ -4,14 +4,24 @@ import { useRouter } from "next/navigation"
 import Confetti from "./Confetti"
 import { supabase } from "@/lib/supabase"
 
+const GOALS = [
+  { id: "health", icon: "💪", label: "Gesünder" },
+  { id: "env",    icon: "🌱", label: "Umwelt" },
+  { id: "family", icon: "👨‍👩‍👧", label: "Familie" },
+  { id: "truth",  icon: "🔍", label: "Wahrheit" },
+  { id: "budget", icon: "💸", label: "Sparen" },
+  { id: "action", icon: "✊", label: "Handeln" },
+]
+
 export default function Onboarding() {
   const router = useRouter()
   const [show, setShow]         = useState(false)
   const [confetti, setConfetti] = useState(false)
-  const [done, setDone]         = useState(false)
+  const [step, setStep]         = useState<"form" | "goals" | "done">("form")
 
   const [name, setName]     = useState("")
   const [email, setEmail]   = useState("")
+  const [selectedGoals, setSelectedGoals] = useState<string[]>([])
   const [regError, setRegError]   = useState("")
   const [regLoading, setRegLoading] = useState(false)
   const [emailSent, setEmailSent]   = useState(false)
@@ -35,12 +45,22 @@ export default function Onboarding() {
     check()
   }, [])
 
-  async function submit() {
+  function toggleGoal(id: string) {
+    setSelectedGoals(prev => prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id])
+  }
+
+  async function submitForm() {
     if (!name.trim()) { setRegError("Name fehlt."); return }
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setRegError("E-Mail ungültig."); return
     }
-    setRegError(""); setRegLoading(true)
+    setRegError("")
+    // Weiter zu Goal-Auswahl
+    setStep("goals")
+  }
+
+  async function finishRegistration() {
+    setRegLoading(true)
 
     const staleKeys = [
       "shopping-list-items-v1","true-scan-history","true-premium","true-meidliste",
@@ -49,7 +69,14 @@ export default function Onboarding() {
       "true-profile-photo","true-followed-channels","true-community-card-dismissed",
     ]
     staleKeys.forEach(k => { try { localStorage.removeItem(k) } catch {} })
-    localStorage.setItem("true-profile", JSON.stringify({ name: name.trim(), vorname: name.trim(), email: email.trim(), joined: new Date().toISOString() }))
+
+    // Profil inkl. Goals speichern
+    localStorage.setItem("true-profile", JSON.stringify({
+      name: name.trim(), vorname: name.trim(), email: email.trim(),
+      goals: selectedGoals,
+      nutritionGoals: [], allergies: [],
+      joined: new Date().toISOString(),
+    }))
     localStorage.setItem("true-onboarded-v3", "1")
     try { localStorage.setItem("true-followed-channels", JSON.stringify(["true"])) } catch {}
 
@@ -64,13 +91,12 @@ export default function Onboarding() {
     } catch {}
 
     setRegLoading(false)
-    setDone(true)
+    setStep("done")
     setConfetti(true)
   }
 
   function finish() {
     setShow(false)
-    // Scroll nach oben — User landet oben auf dem Home-Screen
     window.scrollTo({ top: 0, behavior: "instant" })
   }
 
@@ -93,9 +119,9 @@ export default function Onboarding() {
           {/* Handle */}
           <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--border)", margin: "0 auto 1.25rem" }} />
 
-          {!done ? (
+          {/* ── SCHRITT 1: Name + E-Mail ── */}
+          {step === "form" && (
             <>
-              {/* Header — ultra kurz */}
               <div style={{ textAlign: "center", marginBottom: "1.25rem" }}>
                 <div style={{ fontSize: "2rem", marginBottom: "0.4rem" }}>🌍</div>
                 <h2 style={{ fontSize: "1.35rem", fontWeight: 900, letterSpacing: "-0.03em", margin: "0 0 0.3rem" }}>
@@ -106,7 +132,6 @@ export default function Onboarding() {
                 </p>
               </div>
 
-              {/* 3 Mini-Punkte — maximal kurz */}
               <div style={{ display: "flex", justifyContent: "space-around", marginBottom: "1.25rem" }}>
                 {[
                   { icon: "📷", label: "Scannen" },
@@ -122,11 +147,11 @@ export default function Onboarding() {
                 ))}
               </div>
 
-              {/* Form — direkt auf einem Screen */}
               <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginBottom: "0.85rem" }}>
                 <input
                   value={name}
                   onChange={e => setName(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && submitForm()}
                   placeholder="Vorname *"
                   style={inputStyle}
                   autoComplete="given-name"
@@ -134,6 +159,7 @@ export default function Onboarding() {
                 <input
                   value={email}
                   onChange={e => setEmail(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && submitForm()}
                   placeholder="E-Mail *"
                   type="email"
                   style={inputStyle}
@@ -143,11 +169,10 @@ export default function Onboarding() {
               </div>
 
               <button
-                onClick={submit}
-                disabled={regLoading}
-                style={{ width: "100%", background: "var(--accent)", color: "#000", border: "none", borderRadius: "14px", padding: "0.95rem", fontWeight: 900, fontSize: "1rem", cursor: regLoading ? "not-allowed" : "pointer", opacity: regLoading ? 0.7 : 1, marginBottom: "0.6rem" }}
+                onClick={submitForm}
+                style={{ width: "100%", background: "var(--accent)", color: "#000", border: "none", borderRadius: "14px", padding: "0.95rem", fontWeight: 900, fontSize: "1rem", cursor: "pointer", marginBottom: "0.6rem" }}
               >
-                {regLoading ? "Wird erstellt…" : "Kostenlos starten →"}
+                Weiter →
               </button>
 
               <button
@@ -157,13 +182,72 @@ export default function Onboarding() {
                 Ohne Konto fortfahren
               </button>
             </>
-          ) : (
-            /* Done-Screen */
+          )}
+
+          {/* ── SCHRITT 2: Ziele wählen ── */}
+          {step === "goals" && (
+            <>
+              <div style={{ textAlign: "center", marginBottom: "1.1rem" }}>
+                <div style={{ fontSize: "1.8rem", marginBottom: "0.35rem" }}>🎯</div>
+                <h2 style={{ fontSize: "1.2rem", fontWeight: 900, letterSpacing: "-0.03em", margin: "0 0 0.25rem" }}>
+                  Was ist dir wichtig?
+                </h2>
+                <p style={{ color: "var(--text-dim)", fontSize: "0.76rem", margin: 0 }}>
+                  Wähle 1–3 Ziele. TRUE passt deine Tipps daran an.
+                </p>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: "1.1rem" }}>
+                {GOALS.map(g => {
+                  const active = selectedGoals.includes(g.id)
+                  return (
+                    <button
+                      key={g.id}
+                      onClick={() => toggleGoal(g.id)}
+                      style={{
+                        display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+                        background: active ? "rgba(46,204,138,0.12)" : "var(--background)",
+                        border: `2px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                        borderRadius: 14, padding: "14px 8px", cursor: "pointer",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      <span style={{ fontSize: "1.6rem" }}>{g.icon}</span>
+                      <span style={{ fontSize: "0.7rem", fontWeight: 700, color: active ? "var(--accent)" : "var(--text-dim)" }}>{g.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <button
+                onClick={finishRegistration}
+                disabled={regLoading}
+                style={{ width: "100%", background: "var(--accent)", color: "#000", border: "none", borderRadius: "14px", padding: "0.95rem", fontWeight: 900, fontSize: "1rem", cursor: regLoading ? "not-allowed" : "pointer", opacity: regLoading ? 0.7 : 1, marginBottom: "0.6rem" }}
+              >
+                {regLoading ? "Wird erstellt…" : selectedGoals.length > 0 ? `Starten mit ${selectedGoals.length} Ziel${selectedGoals.length > 1 ? "en" : ""} →` : "Überspringen →"}
+              </button>
+            </>
+          )}
+
+          {/* ── SCHRITT 3: Done ── */}
+          {step === "done" && (
             <div style={{ textAlign: "center", padding: "0.5rem 0 1rem" }}>
               <div style={{ fontSize: "3.5rem", marginBottom: "0.6rem" }}>🎉</div>
               <h2 style={{ fontSize: "1.6rem", fontWeight: 900, color: "var(--accent)", letterSpacing: "-0.03em", marginBottom: "0.4rem" }}>
                 {name ? `Hey ${name}!` : "Willkommen!"}
               </h2>
+              {selectedGoals.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 6, margin: "0.6rem 0" }}>
+                  {selectedGoals.map(id => {
+                    const g = GOALS.find(x => x.id === id)
+                    return g ? (
+                      <span key={id} style={{ background: "rgba(46,204,138,0.12)", border: "1px solid rgba(46,204,138,0.3)", borderRadius: 99, padding: "3px 10px", fontSize: "0.72rem", fontWeight: 700, color: "var(--accent)" }}>
+                        {g.icon} {g.label}
+                      </span>
+                    ) : null
+                  })}
+                </div>
+              )}
               {emailSent && (
                 <div style={{ background: "rgba(46,204,138,0.08)", border: "1px solid rgba(46,204,138,0.3)", borderRadius: "12px", padding: "0.75rem 1rem", margin: "0.75rem 0", textAlign: "left" }}>
                   <div style={{ fontWeight: 800, fontSize: "0.85rem", marginBottom: "0.2rem" }}>📧 Bestätigungslink gesendet</div>

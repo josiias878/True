@@ -248,38 +248,14 @@ export default function PartnerDashboardPage() {
   const isTrial = tier === "trial"
 
   return (
-    <div style={{ minHeight: "100dvh", background: "#0b1a10", color: "#fff", fontFamily: "system-ui,-apple-system,sans-serif" }}>
+    <div style={{ color: "#fff", fontFamily: "system-ui,-apple-system,sans-serif" }}>
       <style>{`
-        .dash-nav-btn:hover { background: rgba(255,255,255,0.08) !important; }
         .dash-card-link:hover { transform: translateY(-3px); border-color: #2ECC8A !important; }
         .dash-stat-card { transition: transform 0.15s; }
         .dash-stat-card:hover { transform: translateY(-3px); }
-        .dash-logout:hover { background: rgba(255,68,85,0.15) !important; }
       `}</style>
 
-      {/* NAV */}
-      <nav style={{
-        position: "sticky", top: 0, zIndex: 50,
-        background: "rgba(11,26,16,0.95)", backdropFilter: "blur(20px)",
-        borderBottom: "1px solid rgba(46,204,138,0.12)",
-        padding: "0 1.5rem", height: "60px",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <span style={{ fontSize: "1.1rem", fontWeight: 900, letterSpacing: "-0.04em", color: "#2ECC8A" }}>TRUE</span>
-          <span style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.3)", fontWeight: 600 }}>Partner</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          <span style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.55)", fontWeight: 600, display: "none" }}
-            className="nav-company">{profile.company_name}</span>
-          <button onClick={handleLogout} className="dash-logout"
-            style={{ background: "rgba(255,68,85,0.08)", border: "1px solid rgba(255,68,85,0.2)", borderRadius: "10px", padding: "6px 14px", color: "#ff7788", fontWeight: 700, fontSize: "0.78rem", cursor: "pointer" }}>
-            Abmelden
-          </button>
-        </div>
-      </nav>
-
-      <div style={{ maxWidth: "900px", margin: "0 auto", padding: "2rem 1.25rem" }}>
+      <div style={{ maxWidth: "860px", margin: "0 auto", padding: "2rem 1.5rem" }}>
 
         {/* Header */}
         <div style={{ marginBottom: "2rem" }}>

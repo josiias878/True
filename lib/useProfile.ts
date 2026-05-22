@@ -12,6 +12,8 @@ export interface Profile {
   preferences: string[]
   supermarkets: string[]
   goals: string[]
+  nutritionGoals: string[]
+  allergies: string[]
   pushNotifications: boolean
   weeklyReport: boolean
   birthDay: string
@@ -21,6 +23,7 @@ export interface Profile {
 export const DEFAULT_PROFILE: Profile = {
   vorname: "", telefon: "", stadt: "", avatar: "🧑", bio: "",
   preferences: [], supermarkets: [], goals: [],
+  nutritionGoals: [], allergies: [],
   pushNotifications: false, weeklyReport: false,
   birthDay: "", birthMonth: "",
 }
@@ -147,7 +150,13 @@ export function useProfile(user: User | null) {
 
   async function saveProfile(next: Profile): Promise<void> {
     setProfileState(next)
-    localStorage.setItem(LS_KEY, JSON.stringify(next))
+    // Merge mit bestehenden localStorage-Daten — bewahrt Felder wie nutritionGoals, allergies
+    try {
+      const existing = JSON.parse(localStorage.getItem(LS_KEY) || "{}")
+      localStorage.setItem(LS_KEY, JSON.stringify({ ...existing, ...next }))
+    } catch {
+      localStorage.setItem(LS_KEY, JSON.stringify(next))
+    }
     if (!user || !supabase) return
     setSaving(true)
     try {

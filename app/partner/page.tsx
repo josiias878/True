@@ -22,67 +22,87 @@ const RAIN_DROPS = [
 const TIERS = [
   {
     id: "basic", name: "Starter", price: "29€", sub: "/ Monat",
-    color: "#2ECC8A", emoji: "🌱", highlight: false,
+    color: "#2ECC8A", emoji: "🧪", highlight: false,
+    badge: "14 Tage gratis testen",
+    tagline: "Zum Reinschnuppern & Testen",
     features: [
-      "Profil-Eintrag im TRUE Marktplatz",
-      "Verifiziertes ✓ Label in Suchergebnissen",
-      "1 Produkt listen",
-      "Als empfohlene Alternative erscheinen",
-      "30 Tage kostenlos testen — ohne Risiko",
+      "1 Produkt einreichen & verifizieren lassen",
+      "Als Alternative bei passenden Scans erscheinen",
+      "Verifiziertes ✓ Label in der App",
+      "Basis-Statistiken (Impressionen, Klicks)",
+      "14 Tage kostenlos testen — jederzeit kündbar",
     ],
     missing: [
-      "Insights-Dashboard (Klicks, Impressionen)",
-      "Push-Benachrichtigung an Nutzer",
-      "Hervorgehobene Platzierung",
-      "Bis zu 10 Produkte listen",
+      "Priorisierte Platzierung bei Scans",
+      "Bis zu 5 Produkte listen",
+      "CSV-Export der Auswertungen",
+      "Erwähnung im TRUE-Kanal",
     ],
-    cta: "30 Tage kostenlos starten",
+    cta: "14 Tage kostenlos starten",
   },
   {
-    id: "growth", name: "Wachstum", price: "69€", sub: "/ Monat",
+    id: "growth", name: "Wachstum", price: "79€", sub: "/ Monat",
     color: "#4488ff", emoji: "🚀", highlight: true,
+    badge: "BELIEBT",
+    tagline: "Für aktive Marken die wachsen",
     features: [
       "Alles aus Starter",
-      "Bis zu 10 Produkte listen",
-      "Hervorgehobene Platzierung bei Scan-Ergebnissen",
-      "Monatliches Insights-Dashboard",
-      "Push-Benachrichtigung an Nutzer die scannen",
+      "Bis zu 5 Produkte listen & verwalten",
+      "Vollständiges Insights-Dashboard",
+      "Priorisierte Platzierung bei Scan-Ergebnissen",
+      "CSV-Export aller Statistiken",
+      "14 Tage kostenlos testen",
     ],
     missing: [
-      "Exklusiver 'TRUE-Empfohlen' Badge",
-      "Eigene Kampagnen-Seite in der App",
-      "Direktes Nutzer-Feedback",
-      "Co-Marketing & Beratung",
+      "Top-Platzierung (immer erste Alternative)",
+      "Unbegrenzte Produkte",
+      "Erwähnung im TRUE-Kanal",
     ],
     cta: "Jetzt wachsen",
   },
   {
-    id: "enterprise", name: "Enterprise", price: "Auf Anfrage", sub: "",
+    id: "enterprise", name: "Premium", price: "149€", sub: "/ Monat",
     color: "#ffd700", emoji: "👑", highlight: false,
+    badge: "All-Inclusive",
+    tagline: "Für ernsthafte Marken mit Reichweite",
     features: [
       "Alles aus Wachstum",
-      "Exklusiver 'TRUE-Empfohlen' Badge",
-      "Eigene Kampagnen-Seite in der TRUE App",
-      "Direkter Zugang zu Nutzer-Feedback",
-      "Co-Marketing & gemeinsame Posts",
-      "Strategische Beratung",
+      "Unbegrenzte Produkte",
+      "Top-Platzierung bei Scans (immer erste Alternative)",
+      "Erwähnung im TRUE-Kanal (Posts & Stories)",
+      "Eigene Kampagnenseite in der App",
+      "Direktes Nutzer-Feedback & Beratung",
+      "14 Tage kostenlos testen",
     ],
     missing: [],
-    cta: "Gespräch anfragen",
+    cta: "Premium starten",
   },
 ]
 
 const HOW_IT_WORKS = [
-  { step: "01", emoji: "📋", title: "Produkt anmelden", desc: "Wir prüfen Transparenz, Zutaten und Lieferkette. Dauert 3–5 Werktage." },
-  { step: "02", emoji: "🎯", title: "Als Alternative erscheinen", desc: "Nutzer scannt Konkurrenzprodukt — du erscheinst sofort als empfohlene Alternative." },
-  { step: "03", emoji: "📈", title: "Wachsen & messen", desc: "Monatliche Reports: Impressionen, Klicks, Conversions — transparent & ohne Bullshit." },
+  {
+    step: "01", emoji: "✍️", title: "Registrieren & Produkt einreichen",
+    desc: "Erstelle deinen Partner-Account, gib dein Produkt ein (Barcode, Foto, Beschreibung) und lade deinen Qualitätsnachweis hoch — z.B. Bio-Zertifikat, Rainforest Alliance oder Fairtrade-ID.",
+  },
+  {
+    step: "02", emoji: "🔍", title: "TRUE prüft & verifiziert",
+    desc: "Wir gleichen deinen Barcode automatisch mit Open Food Facts ab und prüfen deine Nachweise. Nach Freigabe (i.d.R. 3–5 Werktage) erscheint dein Produkt mit dem ✓ Verifiziert-Label.",
+  },
+  {
+    step: "03", emoji: "🎯", title: "Als Alternative erscheinen",
+    desc: "Nutzer scannt ein Konkurrenzprodukt in deiner Kategorie — dein Produkt erscheint sofort als empfohlene Alternative mit Foto, Preis und direktem Link.",
+  },
+  {
+    step: "04", emoji: "📈", title: "Wachsen & messen",
+    desc: "Dein Dashboard zeigt Impressionen, Klicks und Einkaufslisten-Adds in Echtzeit — transparent, ohne versteckte Kosten.",
+  },
 ]
 
 const WHY_TRUE = [
   { emoji: "🎯", title: "Perfektes Timing", desc: "Du erscheinst exakt wenn ein Nutzer ein Problem-Produkt scannt — höchste Kaufabsicht, kein Cold-Traffic." },
-  { emoji: "💚", title: "Vertrauenskontext", desc: "TRUE-Nutzer suchen aktiv nach ethischen Alternativen — motivierte Käufer, keine zufälligen Impressionen." },
-  { emoji: "📊", title: "Messbare Wirkung", desc: "Transparente Dashboards. Keine versteckten Kosten, kein Bullshit — nur echte Zahlen." },
-  { emoji: "🌱", title: "Gemeinsam wachsen", desc: "Echte Nachhaltigkeit wird belohnt. Je transparenter dein Unternehmen, desto besser dein Ranking." },
+  { emoji: "🔍", title: "Unabhängige Verifikation", desc: "Jedes Produkt wird gegen Open Food Facts geprüft. Nur verifizierte Produkte erscheinen als Alternative — das schafft echtes Vertrauen bei Nutzern." },
+  { emoji: "📊", title: "Messbare Wirkung", desc: "Transparente Dashboards: Impressionen, Klicks, Einkaufslisten-Adds. Keine versteckten Kosten — nur echte Zahlen." },
+  { emoji: "🌱", title: "Gemeinsam wachsen", desc: "TRUE-Nutzer suchen aktiv nach ethischen Alternativen. Du erreichst Menschen mit echter Kaufabsicht — keine zufälligen Impressionen." },
 ]
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -232,7 +252,7 @@ export default function PartnerPage() {
           </p>
 
           <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", flexWrap: "wrap" }}>
-            <a href="#tiers" className="hero-cta" style={{ display: "inline-block", background: "linear-gradient(135deg,#2ECC8A,#1aaa6e)", color: "#000", borderRadius: "14px", padding: "1rem 2.2rem", fontWeight: 900, fontSize: "1rem", textDecoration: "none", boxShadow: "0 0 28px rgba(46,204,138,0.35)" }}>
+            <a href="/partner-register" className="hero-cta" style={{ display: "inline-block", background: "linear-gradient(135deg,#2ECC8A,#1aaa6e)", color: "#000", borderRadius: "14px", padding: "1rem 2.2rem", fontWeight: 900, fontSize: "1rem", textDecoration: "none", boxShadow: "0 0 28px rgba(46,204,138,0.35)" }}>
               Partnerschaft starten →
             </a>
             <a href="#how" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "1rem 1.5rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.6)", fontSize: "0.88rem", fontWeight: 600, textDecoration: "none" }}>
@@ -531,7 +551,9 @@ export default function PartnerPage() {
                   ))}
                 </ul>
 
-                <a href="#contact" onClick={() => setSelectedTier(tier.name)} className="tier-cta"
+                <a href={tier.id === "enterprise" ? "#contact" : `/partner-register?tier=${tier.id}`}
+                  onClick={() => { if (tier.id === "enterprise") setSelectedTier(tier.name) }}
+                  className="tier-cta"
                   style={{ display: "block", textAlign: "center", background: tier.highlight ? `linear-gradient(135deg, ${tier.color}, ${tier.color}cc)` : "transparent", color: tier.highlight ? "#fff" : tier.color, border: `1.5px solid ${tier.color}`, borderRadius: "12px", padding: "0.9rem", fontWeight: 800, fontSize: "0.9rem", textDecoration: "none", cursor: "pointer" }}>
                   {tier.cta}
                 </a>

@@ -9,6 +9,7 @@ import { useScanLimit } from "@/lib/useScanLimit"
 import { useSupabaseAuth } from "@/lib/useSupabaseAuth"
 import { supabase } from "@/lib/supabase"
 import PremiumGate from "@/components/PremiumGate"
+import FloatingAssistant from "@/components/FloatingAssistant"
 import ProductScore from "@/components/ProductScore"
 import { calcScoreFromSeverity } from "@/lib/productScore"
 // ZXing is lazy-loaded inside startCamera() — never runs during SSR/build
@@ -33,6 +34,17 @@ interface HistoryEntry {
   grade?: string   // A B C D F — computed score grade
   score?: number
   result: ScanResult
+}
+
+interface PartnerAlt {
+  id: number
+  partner_id: string
+  name: string
+  description: string | null
+  category: string | null
+  image_url: string | null
+  shop_url: string | null
+  price_hint: string | null
 }
 
 const HISTORY_KEY = "true-scan-history"
@@ -165,42 +177,100 @@ function VertikalScore({ score }: { score: number }) {
   )
 }
 
+// ── Circular score ring (Yuka-style) ─────────────────────────────────────
+function CircleScore({ score }: { score: number }) {
+  const col = scoreToColor(score)
+  const lbl = scoreToLabel(score)
+  const r = 36
+  const circ = 2 * Math.PI * r
+  const dash = circ * (score / 100)
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, userSelect: "none" }}>
+      <div style={{ position: "relative", width: 96, height: 96 }}>
+        <svg width="96" height="96" viewBox="0 0 96 96" style={{ transform: "rotate(-90deg)" }}>
+          <circle cx="48" cy="48" r={r} fill="none" stroke="var(--surface-2)" strokeWidth="7" />
+          <circle cx="48" cy="48" r={r} fill="none" stroke={col} strokeWidth="7"
+            strokeDasharray={`${dash} ${circ - dash}`}
+            strokeLinecap="round"
+            style={{ transition: "stroke-dasharray 1s cubic-bezier(.16,1,.3,1)", filter: `drop-shadow(0 0 6px ${col}88)` }}
+          />
+        </svg>
+        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1 }}>
+          <span style={{ fontSize: "1.65rem", fontWeight: 900, color: col, lineHeight: 1 }}>{score}</span>
+          <span style={{ fontSize: "0.5rem", fontWeight: 700, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.04em" }}>/100</span>
+        </div>
+      </div>
+      <span style={{ fontSize: "0.65rem", fontWeight: 800, color: col, textTransform: "uppercase", letterSpacing: "0.07em" }}>{lbl}</span>
+    </div>
+  )
+}
+
 // ── Better alternatives (Premium) ──────────────────────────────────────────
 type Alt = { name: string; brand: string; reason: string; price: string; link: string }
 const ALTERNATIVES: Record<string, Alt[]> = {
-  nestle:     [{ name: "Nocciolata Bio", brand: "Rigoni di Asiago", reason: "Ohne Palmöl, fair produziert", price: "~4,50€", link: "https://www.rewe.de/suche/?search=nocciolata" },
-               { name: "Zotter Schokolade", brand: "Zotter", reason: "Fairtrade, Bio, familiengeführt", price: "~3,80€", link: "https://www.zotter.at/shop" }],
-  unilever:   [{ name: "Frosch Spülmittel", brand: "Werner & Mertz", reason: "Ohne Mikroplastik, biologisch abbaubar", price: "~2,20€", link: "https://www.frosch.de/produkte/geschirrspuelen/" },
-               { name: "Sonett Waschmittel", brand: "Sonett", reason: "100% biologisch abbaubar", price: "~8,90€", link: "https://www.sonett.eu/produkte/waschmittel/" }],
-  cocacola:   [{ name: "Bionade", brand: "Bionade GmbH", reason: "Organisch gebraut, keine Konzernzugehörigkeit", price: "~1,20€", link: "https://www.bionade.de/produkte/" },
-               { name: "Voelkel Direktsaft", brand: "Voelkel", reason: "Bio, familiengeführt seit 1936", price: "~2,50€", link: "https://www.voelkeljuice.de/produkte/" }],
-  pepsi:      [{ name: "Fritz Kola", brand: "fritz-kola", reason: "Unabhängig, nachhaltigere Produktion", price: "~1,50€", link: "https://www.fritz-kola.de/produkte/" },
-               { name: "Bionade", brand: "Bionade GmbH", reason: "Organisch gebraut, fair", price: "~1,20€", link: "https://www.bionade.de/produkte/" }],
-  procter:    [{ name: "Alverde Naturkosmetik", brand: "dm Alverde", reason: "Naturkosmetik, kein Mikroplastik", price: "~2,95€", link: "https://www.dm.de/marken/alverde-naturkosmetik/" }],
-  pg:         [{ name: "Alverde Naturkosmetik", brand: "dm Alverde", reason: "Naturkosmetik, kein Mikroplastik", price: "~2,95€", link: "https://www.dm.de/marken/alverde-naturkosmetik/" }],
-  kraft:      [{ name: "Alnatura Produkte", brand: "Alnatura", reason: "Bio, fair, ohne Zusatzstoffe", price: "ab 1,99€", link: "https://www.alnatura.de/de-de/produkte/" }],
-  mondelez:   [{ name: "Zotter Schokolade", brand: "Zotter", reason: "Fairtrade, Bio, ohne Palmöl", price: "~3,80€", link: "https://www.zotter.at/shop" },
-               { name: "Vivani Bio-Schokolade", brand: "Vivani", reason: "Bio-Kakao, Fairtrade", price: "~2,50€", link: "https://www.rewe.de/suche/?search=vivani" }],
-  mars:       [{ name: "Vivani Schokolade", brand: "Vivani", reason: "Bio-Kakao, fairer Handel", price: "~2,50€", link: "https://www.rewe.de/suche/?search=vivani+schokolade" }],
-  ferrero:    [{ name: "Nocciolata Bio", brand: "Rigoni di Asiago", reason: "Ohne Palmöl, Bio-zertifiziert", price: "~4,50€", link: "https://www.rewe.de/suche/?search=nocciolata" }],
-  danone:     [{ name: "Andechser Bio-Joghurt", brand: "Andechser Natur", reason: "Bio, bayerische Molkerei", price: "~0,99€", link: "https://www.andechser-natur.de/produkte/" },
-               { name: "Alnatura Bio-Joghurt", brand: "Alnatura", reason: "Bio, fair, regional", price: "~0,89€", link: "https://www.alnatura.de/de-de/produkte/milchprodukte/" }],
+  nestle:     [{ name: "Nocciolata Bio Nusscreme", brand: "Rigoni di Asiago", reason: "Ohne Palmöl, Bio-zertifiziert, familiengeführt", price: "~4,50€", link: "https://www.rewe.de/suche/?search=nocciolata" },
+               { name: "Zotter Labooko Schokolade", brand: "Zotter", reason: "100% Fairtrade, Bio, österreichische Manufaktur", price: "~3,80€", link: "https://www.zotter.at/shop" },
+               { name: "AlnaturA Instant-Brühe", brand: "Alnatura", reason: "Bio, ohne Glutamat & Geschmacksverstärker", price: "~2,99€", link: "https://www.alnatura.de/de-de/produkte/" }],
+  unilever:   [{ name: "Frosch Spülmittel Zitrone", brand: "Werner & Mertz", reason: "Ohne Mikroplastik, 100% biologisch abbaubar", price: "~2,20€", link: "https://www.frosch.de/produkte/geschirrspuelen/" },
+               { name: "Sonett Waschmittel", brand: "Sonett", reason: "Zertifiziert biologisch abbaubar, vegan", price: "~8,90€", link: "https://www.sonett.eu/produkte/waschmittel/" },
+               { name: "Logona Körperpflege", brand: "Logona", reason: "NATRUE-zertifiziert, kein Mikroplastik", price: "~5,50€", link: "https://www.logona.de/produkte/" }],
+  cocacola:   [{ name: "Bionade Holunder", brand: "Bionade GmbH", reason: "Organisch gebraut, keine Konzernzugehörigkeit", price: "~1,20€", link: "https://www.bionade.de/produkte/" },
+               { name: "Voelkel Bio-Direktsaft", brand: "Voelkel", reason: "Bio, familiengeführt seit 1936", price: "~2,50€", link: "https://www.voelkeljuice.de/produkte/" },
+               { name: "Lemonaid Bio-Limonade", brand: "Lemonaid", reason: "Fairtrade, soziales Unternehmen", price: "~1,49€", link: "https://www.lemonaid.de/produkte/" }],
+  pepsi:      [{ name: "Fritz Kola", brand: "fritz-kola GmbH", reason: "Unabhängig, nachhaltigere Produktion", price: "~1,50€", link: "https://www.fritz-kola.de/produkte/" },
+               { name: "Bionade Holunder", brand: "Bionade GmbH", reason: "Organisch gebraut, kein Konzern", price: "~1,20€", link: "https://www.bionade.de/produkte/" },
+               { name: "True Fruits Smoothie", brand: "true fruits", reason: "Unabhängig, kein Konzern", price: "~2,99€", link: "https://www.true-fruits.com/produkte/" }],
+  procter:    [{ name: "Alverde Naturkosmetik", brand: "dm Alverde", reason: "Naturkosmetik, kein Mikroplastik, erschwinglich", price: "~2,95€", link: "https://www.dm.de/marken/alverde-naturkosmetik/" },
+               { name: "Lavera Naturkosmetik", brand: "Laverana", reason: "NATRUE-zertifiziert, ohne Parabene", price: "~4,50€", link: "https://www.lavera.de/produkte/" }],
+  kraft:      [{ name: "Alnatura Produkte", brand: "Alnatura", reason: "Bio, fair, ohne künstliche Zusatzstoffe", price: "ab 1,99€", link: "https://www.alnatura.de/de-de/produkte/" },
+               { name: "Byodo Bio-Saucen", brand: "Byodo", reason: "Bio, ohne Geschmacksverstärker", price: "~3,49€", link: "https://www.rewe.de/suche/?search=byodo" }],
+  mondelez:   [{ name: "Zotter Labooko", brand: "Zotter", reason: "100% Fairtrade, Bio, ohne Palmöl", price: "~3,80€", link: "https://www.zotter.at/shop" },
+               { name: "Vivani Bio-Schokolade", brand: "Vivani", reason: "Bio-Kakao, Fairtrade-zertifiziert", price: "~2,50€", link: "https://www.rewe.de/suche/?search=vivani" },
+               { name: "iChoc Bio-Schokolade", brand: "iChoc", reason: "Vegan, Bio, Fairtrade", price: "~2,79€", link: "https://www.rewe.de/suche/?search=ichoc+schokolade" }],
+  mars:       [{ name: "Vivani Schoko-Riegel", brand: "Vivani", reason: "Bio-Kakao, fairer Handel", price: "~1,99€", link: "https://www.rewe.de/suche/?search=vivani+schokolade" },
+               { name: "Ritter Sport Bio", brand: "Ritter Sport", reason: "Familienunternehmen, eigene Kakaoplantagenn", price: "~1,59€", link: "https://www.ritter-sport.de/de/schokolade/bio-schokolade" }],
+  ferrero:    [{ name: "Nocciolata Bio Nusscreme", brand: "Rigoni di Asiago", reason: "Ohne Palmöl, Bio-zertifiziert", price: "~4,50€", link: "https://www.rewe.de/suche/?search=nocciolata" },
+               { name: "SunButter Sonnenblumenkernmus", brand: "SunButter", reason: "Palmölfrei, nussallergiegeeignet", price: "~5,99€", link: "https://www.rewe.de/suche/?search=sonnenblumenkernmus" }],
+  danone:     [{ name: "Andechser Bio-Joghurt", brand: "Andechser Natur", reason: "Bio, bayerische Molkerei, familiengeführt", price: "~0,99€", link: "https://www.andechser-natur.de/produkte/" },
+               { name: "Alnatura Bio-Joghurt", brand: "Alnatura", reason: "Bio, fair, regional bezogen", price: "~0,89€", link: "https://www.alnatura.de/de-de/produkte/milchprodukte/" },
+               { name: "Söbbeke Bio-Joghurt", brand: "Söbbeke", reason: "Familiengeführte Bio-Molkerei", price: "~1,19€", link: "https://www.rewe.de/suche/?search=soebbeke+joghurt" }],
   henkel:     [{ name: "Ecover Waschmittel", brand: "Ecover", reason: "Pflanzliche Inhaltsstoffe, biologisch abbaubar", price: "~7,50€", link: "https://www.ecover.com/de/produkte/" },
-               { name: "Frosch Waschmittel", brand: "Werner & Mertz", reason: "Biologisch abbaubar, ohne Mikroplastik", price: "~5,50€", link: "https://www.frosch.de/produkte/waschmittel/" }],
-  bayer:      [{ name: "Naturheilmittel", brand: "Alnatura / Weleda", reason: "Pflanzliche Alternativen wo möglich", price: "variiert", link: "https://www.weleda.de/produkte" }],
+               { name: "Frosch Waschmittel", brand: "Werner & Mertz", reason: "Biologisch abbaubar, ohne Mikroplastik", price: "~5,50€", link: "https://www.frosch.de/produkte/waschmittel/" },
+               { name: "Sodasan Waschmittel", brand: "Sodasan", reason: "Öko-zertifiziert, vegan, phosphatfrei", price: "~6,99€", link: "https://www.rewe.de/suche/?search=sodasan+waschmittel" }],
+  bayer:      [{ name: "Weleda Naturheilmittel", brand: "Weleda", reason: "Pflanzliche Wirkstoffe, nachhaltig produziert", price: "variiert", link: "https://www.weleda.de/produkte" },
+               { name: "Dr. Hauschka Pflege", brand: "Dr. Hauschka", reason: "Biodynamische Inhaltsstoffe", price: "variiert", link: "https://www.drhauschka.de/naturkosmetik/" }],
+  redbull:    [{ name: "Voelkel Ingwer-Shots", brand: "Voelkel", reason: "Bio, natürlicher Energielieferant", price: "~1,49€", link: "https://www.voelkeljuice.de/produkte/" },
+               { name: "Lemonaid Mate", brand: "Lemonaid", reason: "Fairtrade, natürliches Koffein aus Mate", price: "~1,49€", link: "https://www.lemonaid.de/produkte/" },
+               { name: "Premium Cola", brand: "Premium Cola", reason: "Unabhängig, fair gehandelt", price: "~1,20€", link: "https://www.premium-cola.de/" }],
+  "red bull": [{ name: "Voelkel Ingwer-Shots", brand: "Voelkel", reason: "Bio, natürlicher Energielieferant", price: "~1,49€", link: "https://www.voelkeljuice.de/produkte/" },
+               { name: "Lemonaid Mate", brand: "Lemonaid", reason: "Fairtrade, natürliches Koffein aus Mate", price: "~1,49€", link: "https://www.lemonaid.de/produkte/" }],
+  kellogg:    [{ name: "Barnhouse Bio-Müsli", brand: "Barnhouse", reason: "Bio-zertifiziert, ohne Palmöl", price: "~3,99€", link: "https://www.rewe.de/suche/?search=barnhouse+muesli" },
+               { name: "Alnatura Müsli", brand: "Alnatura", reason: "Bio, fair, ohne künstliche Aromen", price: "~2,99€", link: "https://www.alnatura.de/de-de/produkte/getreide-brot/" }],
   "noe-quelle": [{ name: "BRITA Wasserfilter", brand: "BRITA", reason: "Kein Plastikmüll, günstigste Dauerlösung", price: "~30€ einmalig", link: "https://www.brita.de/wasserfilter/" },
                   { name: "Regionales Mineralwasser", brand: "Lokale Quelle", reason: "Kürzere Transportwege, weniger CO₂", price: "~0,30€", link: "https://www.rewe.de/suche/?search=mineralwasser+regional" }],
-  "noe":      [{ name: "BRITA Wasserfilter", brand: "BRITA", reason: "Kein Plastikmüll, günstigste Dauerlösung", price: "~30€ einmalig", link: "https://www.brita.de/wasserfilter/" }],
+  "noe":      [{ name: "BRITA Wasserfilter", brand: "BRITA", reason: "Kein Plastikmüll, günstigste Dauerlösung", price: "~30€ einmalig", link: "https://www.brita.de/wasserfilter/" },
+               { name: "Regionales Mineralwasser", brand: "Lokale Quelle", reason: "Kürzere Transportwege", price: "~0,30€", link: "https://www.rewe.de/suche/?search=mineralwasser+regional" }],
+  beiersdorf: [{ name: "Lavera Naturkosmetik", brand: "Laverana", reason: "NATRUE-zertifiziert, ohne Parabene", price: "~4,50€", link: "https://www.lavera.de/produkte/" },
+               { name: "Weleda Pflegeprodukte", brand: "Weleda", reason: "Biodynamische Zutaten, ohne Mineralöle", price: "~5,99€", link: "https://www.weleda.de/produkte" }],
+  reckitt:    [{ name: "Frosch Reiniger", brand: "Werner & Mertz", reason: "Biologisch abbaubar, kein Chlor", price: "~2,49€", link: "https://www.frosch.de/produkte/" },
+               { name: "Sodasan Reinigungsmittel", brand: "Sodasan", reason: "Vegan, öko-zertifiziert", price: "~3,99€", link: "https://www.rewe.de/suche/?search=sodasan" }],
+}
+
+// Accent-normalisierung für zuverlässiges Matching (z.B. "Nestlé" → "Nestle")
+function normalizeStr(s: string): string {
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
 }
 
 function getAlternatives(corpName: string): Alt[] {
-  const key = corpName.toLowerCase()
+  const key = normalizeStr(corpName)
   for (const [k, v] of Object.entries(ALTERNATIVES)) {
-    if (key.includes(k)) return v
+    if (key.includes(normalizeStr(k))) return v
   }
-  // Dynamic fallback: Google-Suche nach fairer Alternative
-  const encoded = encodeURIComponent(`faire Alternative zu ${corpName}`)
-  return [{ name: `Faire Alternative zu ${corpName}`, brand: "Suche starten", reason: "Unabhängige Produkte ohne Konzernbindung", price: "variiert", link: `https://www.google.de/search?q=${encoded}` }]
+  // Kein Google-Fallback mehr — stattdessen Alnatura als universelle Alternative
+  return [
+    { name: "Alnatura Produkte", brand: "Alnatura", reason: "Bio, fair, ohne Konzernzugehörigkeit", price: "ab 0,99€", link: "https://www.alnatura.de/de-de/produkte/" },
+    { name: "Regionaler Markt / Wochenmarkt", brand: "Lokal & unabhängig", reason: "Direkt vom Erzeuger — kein Konzern dazwischen", price: "variiert", link: "https://www.regional-einkaufen.de/" },
+  ]
 }
 
 // ── Familienmitglied ──────────────────────────────────────────────────────
@@ -480,6 +550,7 @@ export default function ScanPage() {
   const [expandedDetail, setExpandedDetail] = useState<string | null>(null)
   const [expandedCat, setExpandedCat] = useState<string | null>(null)
   const [userGoals, setUserGoals]       = useState<string[]>([])
+  const [userAllergies, setUserAllergies] = useState<string[]>([])
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([])
   const [facingMode, setFacingMode]     = useState<"environment"|"user">("environment")
   const [ingredientData, setIngredientData] = useState<{
@@ -490,12 +561,57 @@ export default function ScanPage() {
   const [ingredientLoading, setIngredientLoading] = useState(false)
   const [lookupError, setLookupError] = useState(false)
 
+  // ── Partner alternatives ──────────────────────────────────────────────────
+  const [partnerAlts, setPartnerAlts]         = useState<PartnerAlt[]>([])
+  const [partnerAltsLoading, setPartnerAltsLoading] = useState(false)
+
+  // Map scan categories to partner product categories
+  function mapToPartnerCategory(result: ScanResult | null): string | null {
+    if (!result) return null
+    const q = (result.query ?? "").toLowerCase()
+    const corp = (result.corporation?.name ?? "").toLowerCase()
+    const text = `${q} ${corp}`
+    if (/milch|joghurt|käse|butter|dairy|quark/.test(text)) return "Milch"
+    if (/schoko|nutella|nuss|aufstrich|chocolate/.test(text)) return "Schokolade"
+    if (/reiniger|wasch|spül|clean|detergent/.test(text)) return "Reinigung"
+    if (/snack|chip|cracker|keks|cookie|riegel/.test(text)) return "Snacks"
+    if (/saft|cola|bier|wein|wasser|getränk|drink|limon|bionade/.test(text)) return "Getränke"
+    return null
+  }
+
+  async function fetchPartnerAlts(scanResult: ScanResult) {
+    if (!supabase) return
+    const category = mapToPartnerCategory(scanResult)
+    if (!category) return
+    setPartnerAltsLoading(true)
+    try {
+      const { data } = await supabase
+        .from("partner_products")
+        .select("id,partner_id,name,description,category,image_url,shop_url,price_hint")
+        .eq("category", category)
+        .eq("active", true)
+        .limit(2)
+      const alts = (data ?? []) as PartnerAlt[]
+      setPartnerAlts(alts)
+      // Track impressions
+      alts.forEach(a => {
+        fetch("/api/partner/track", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ productId: a.id, partnerId: a.partner_id, eventType: "impression", metadata: { scannedQuery: scanResult.query } }),
+        }).catch(() => {})
+      })
+    } catch {}
+    setPartnerAltsLoading(false)
+  }
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem("true-profile")
       if (raw) {
         const p = JSON.parse(raw)
         if (Array.isArray(p.goals) && p.goals.length > 0) setUserGoals(p.goals)
+        if (Array.isArray(p.allergies) && p.allergies.length > 0) setUserAllergies(p.allergies)
       }
     } catch {}
     try {
@@ -598,13 +714,16 @@ export default function ScanPage() {
       streamRef.current = stream
 
       const hints = new Map()
-      const { BarcodeFormat } = await import("@zxing/library")
-      hints.set(2, [ // DecodeHintType.POSSIBLE_FORMATS
+      const { BarcodeFormat, DecodeHintType } = await import("@zxing/library")
+      hints.set(DecodeHintType.POSSIBLE_FORMATS, [
         BarcodeFormat.EAN_13, BarcodeFormat.EAN_8,
         BarcodeFormat.CODE_128, BarcodeFormat.QR_CODE,
         BarcodeFormat.UPC_A, BarcodeFormat.UPC_E,
-        BarcodeFormat.DATA_MATRIX,
+        BarcodeFormat.DATA_MATRIX, BarcodeFormat.ITF,
+        BarcodeFormat.CODE_39, BarcodeFormat.RSS_14,
       ])
+      // Alle Orientierungen + aggressiverer Scan-Modus
+      hints.set(DecodeHintType.TRY_HARDER, true)
 
       const reader = new BrowserMultiFormatReader(hints)
       readerRef.current = reader
@@ -644,7 +763,10 @@ export default function ScanPage() {
       return
     }
     setResult(data)
+    setPartnerAlts([])
     setAddedToList(false)
+    // Fetch partner alternatives
+    fetchPartnerAlts(data)
     // Auto-fetch ingredient data from Open Food Facts (independent of TRUE DB)
     fetch(`/api/ingredients?q=${encodeURIComponent(q)}&goals=${userGoals.join(",")}`)
       .then(r => r.json())
@@ -751,6 +873,7 @@ export default function ScanPage() {
     stopCamera()
     setMode("idle"); setResult(null); setManualInput(""); setAddedToList(false); setShowDetails(false)
     setIngredientData(null); setIngredientLoading(false); setLookupError(false)
+    setPartnerAlts([]); setPartnerAltsLoading(false)
   }
 
   function showHistoryResult(entry: HistoryEntry) {
@@ -808,7 +931,6 @@ export default function ScanPage() {
             <h1 style={{ fontSize: "1.45rem", fontWeight: 900, letterSpacing: "-0.02em", marginBottom: "0.2rem" }}>Produkt scannen</h1>
             <p style={{ color: "var(--text-dim)", fontSize: "0.85rem", marginBottom: "0.5rem" }}>Kamera auf Barcode richten oder Produktname eingeben.</p>
 
-            {/* Ziel-Block entfernt — Ziele werden beim Onboarding / Profil gesetzt */}
 
             {/* Scan-Limit-Anzeige */}
             {!isPremium && (
@@ -914,74 +1036,70 @@ export default function ScanPage() {
         {mode === "result" && result && rec && (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
 
-            {/* ── YUKA-STIL HAUPTKARTE ── */}
-            <div style={{ background: "var(--surface)", borderRadius: 24, border: `2px solid ${rec.color}44`, overflow: "hidden" }}>
+            {/* ── NEUE HAUPTKARTE (Yuka-Stil, CircleScore) ── */}
+            <div style={{ background: "var(--surface)", borderRadius: 24, border: `1.5px solid ${rec.color}33`, overflow: "hidden", boxShadow: `0 4px 32px ${rec.color}14` }}>
 
               {/* Farbstreifen oben */}
-              <div style={{ height: 5, background: `linear-gradient(90deg, ${rec.color}, ${rec.color}55)` }} />
+              <div style={{ height: 6, background: `linear-gradient(90deg, ${rec.color}, ${rec.color}66)` }} />
 
-              {/* Hauptinhalt: VertikalScore links + Content rechts */}
-              <div style={{ padding: "20px 18px 16px", display: "flex", gap: 16, alignItems: "flex-start" }}>
-
-                {/* Linke Seite: Vertikale Score-Skala */}
-                {konzernScore
-                  ? <VertikalScore score={konzernScore.score} />
-                  : <div style={{ width: 48 }} />
-                }
-
-                {/* Rechte Seite: Urteil + Name + Punkte */}
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
-
-                  {/* Urteil-Badge */}
-                  <div style={{ background: rec.color + "18", border: `1.5px solid ${rec.color}55`, borderRadius: 99, padding: "5px 14px", alignSelf: "flex-start" }}>
-                    <span style={{ fontWeight: 900, fontSize: "0.92rem", color: rec.color }}>{rec.emoji} {rec.verdict}</span>
-                  </div>
-
-                  {/* Konzern / Produktname */}
-                  {result.corporation && (
-                    <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 800, fontSize: "1rem", color: "var(--text)", lineHeight: 1.2 }}>{result.corporation.name}</div>
-                        {result.corporation.aliases.length > 0 && (
-                          <div style={{ fontSize: "0.68rem", color: "var(--text-dim)", marginTop: 3 }}>
-                            {result.corporation.aliases.slice(0, 3).join(" · ")}
-                          </div>
-                        )}
-                      </div>
-                      {result.imageUrl && (
-                        <img
-                          src={result.imageUrl}
-                          alt={result.corporation.name}
-                          style={{ width: 56, height: 56, objectFit: "contain", borderRadius: 10, background: "#fff", flexShrink: 0, border: "1px solid var(--border)", padding: 4 }}
-                          onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
-                        />
-                      )}
-                    </div>
-                  )}
-                  {!result.found && (
-                    <div style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>Produkt nicht gefunden</div>
-                  )}
-
-                  {/* Bullet Points — kostenlos direkt sichtbar */}
-                  {result.found && result.corporation && konzernScore && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {getVerdictPoints(result).map((point, i) => {
-                        const isGood = konzernScore.score >= 65
-                        const dotColor = isGood ? "#2ECC8A" : rec.color
-                        return (
-                          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                            <span style={{ color: dotColor, fontSize: "0.5rem", marginTop: 5, flexShrink: 0 }}>●</span>
-                            <span style={{ fontSize: "0.8rem", color: "var(--text)", lineHeight: 1.45, fontWeight: 500 }}>{point}</span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-
+              {/* Verdict-Banner */}
+              <div style={{ padding: "14px 18px 0", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ background: rec.color + "15", border: `1.5px solid ${rec.color}44`, borderRadius: 99, padding: "6px 20px" }}>
+                  <span style={{ fontWeight: 900, fontSize: "1rem", color: rec.color, letterSpacing: "-0.01em" }}>
+                    {rec.emoji} {rec.verdict}
+                  </span>
                 </div>
               </div>
 
-              {/* Konzern-Schäden — kostenlos für alle sichtbar */}
+              {/* Score-Ring + Corp-Info nebeneinander */}
+              <div style={{ padding: "16px 18px", display: "flex", gap: 18, alignItems: "center" }}>
+                {/* Score-Ring */}
+                {konzernScore
+                  ? <CircleScore score={konzernScore.score} />
+                  : <div style={{ width: 96 }} />
+                }
+
+                {/* Name + Aliases + Bullet Points */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {result.corporation ? (
+                    <>
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 900, fontSize: "1.05rem", color: "var(--text)", lineHeight: 1.2 }}>{result.corporation.name}</div>
+                          {result.corporation.aliases.length > 0 && (
+                            <div style={{ fontSize: "0.66rem", color: "var(--text-dim)", marginTop: 3, lineHeight: 1.4 }}>
+                              {result.corporation.aliases.slice(0, 4).join(" · ")}
+                            </div>
+                          )}
+                        </div>
+                        {result.imageUrl && (
+                          <img
+                            src={result.imageUrl}
+                            alt={result.corporation.name}
+                            style={{ width: 44, height: 44, objectFit: "contain", borderRadius: 10, background: "#fff", flexShrink: 0, border: "1px solid var(--border)", padding: 3 }}
+                            onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
+                          />
+                        )}
+                      </div>
+                      {/* Bullet points */}
+                      {konzernScore && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          {getVerdictPoints(result).map((point, i) => (
+                            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
+                              <span style={{ color: rec.color, fontSize: "0.48rem", marginTop: 4, flexShrink: 0 }}>●</span>
+                              <span style={{ fontSize: "0.76rem", color: "var(--text)", lineHeight: 1.45, fontWeight: 500 }}>{point}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div style={{ color: "var(--text-dim)", fontSize: "0.85rem", marginTop: 8 }}>Produkt nicht in der TRUE-Datenbank</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Damage-Chips — kostenlos sichtbar */}
               {result.corporation && (() => {
                 const damageCats = (result.categories ?? []).filter(c =>
                   !c.id.startsWith("nova-") && !c.id.startsWith("ecoscore-")
@@ -991,12 +1109,13 @@ export default function ScanPage() {
                 const chipStyle =
                   sev === "critical" ? { bg: "rgba(255,34,51,0.1)",  border: "rgba(255,34,51,0.3)",  text: "#ff2233" } :
                   sev === "high"     ? { bg: "rgba(255,119,0,0.1)",  border: "rgba(255,119,0,0.3)",  text: "#ff7700" } :
-                  sev === "medium"   ? { bg: "rgba(255,195,0,0.1)",  border: "rgba(255,195,0,0.3)",  text: "#cc9900" } :
+                  sev === "medium"   ? { bg: "rgba(255,170,0,0.1)",  border: "rgba(255,170,0,0.3)",  text: "var(--warning)" } :
                                        { bg: "rgba(46,204,138,0.1)", border: "rgba(46,204,138,0.3)", text: "#2ECC8A" }
                 return (
-                  <div style={{ padding: "0 18px 16px" }}>
-                    <div style={{ fontSize: "0.62rem", color: "var(--text-dim)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>
-                      Dokumentierte Schäden
+                  <div style={{ padding: "0 18px 14px" }}>
+                    <div style={{ height: 1, background: "var(--border)", marginBottom: 12 }} />
+                    <div style={{ fontSize: "0.6rem", color: "var(--text-dim)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>
+                      Dokumentierte Probleme
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                       {damageCats.slice(0, 6).map(cat => (
@@ -1004,13 +1123,13 @@ export default function ScanPage() {
                           background: chipStyle.bg,
                           border: `1px solid ${chipStyle.border}`,
                           borderRadius: 99,
-                          padding: "5px 12px",
-                          fontSize: "0.74rem",
+                          padding: "4px 11px",
+                          fontSize: "0.72rem",
                           fontWeight: 700,
                           color: chipStyle.text,
                           display: "inline-flex",
                           alignItems: "center",
-                          gap: 5,
+                          gap: 4,
                         }}>
                           {cat.icon} {cat.name}
                         </span>
@@ -1021,15 +1140,16 @@ export default function ScanPage() {
               })()}
 
               {/* Aktions-Buttons */}
-              <div style={{ padding: "0 16px 20px", display: "flex", gap: 10 }}>
+              <div style={{ padding: "0 14px 16px", display: "flex", gap: 8 }}>
                 <button onClick={addToShoppingList} disabled={addedToList}
-                  style={{ flex: 1, background: addedToList ? "rgba(46,204,138,0.12)" : "var(--accent)", color: addedToList ? "var(--accent)" : "#000", border: `1px solid ${addedToList ? "rgba(46,204,138,0.4)" : "var(--accent)"}`, borderRadius: 12, padding: "11px 0", fontWeight: 700, cursor: addedToList ? "default" : "pointer", fontSize: "0.85rem" }}>
-                  {addedToList ? "✓ In Liste" : "🛒 Zur Liste"}
+                  style={{ flex: 1, background: addedToList ? "rgba(46,204,138,0.12)" : "var(--accent)", color: addedToList ? "var(--accent)" : "#000", border: `1.5px solid ${addedToList ? "rgba(46,204,138,0.4)" : "transparent"}`, borderRadius: 12, padding: "10px 0", fontWeight: 700, cursor: addedToList ? "default" : "pointer", fontSize: "0.83rem", transition: "all 0.18s" }}>
+                  {addedToList ? "✓ In Liste" : "🛒 Merken"}
                 </button>
                 {result.found && (
                   <button onClick={() => { setShowDetails(v => !v); setExpandedDetail(null); setExpandedCat(null) }}
-                    style={{ flex: 1, background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 12, padding: "11px 0", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem", color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                    {showDetails ? "↑ Weniger" : "Details ↓"}
+                    style={{ flex: 1, background: showDetails ? "var(--surface-2)" : "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 0", fontWeight: 700, cursor: "pointer", fontSize: "0.83rem", color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+                    <span>{showDetails ? "Weniger" : "Details"}</span>
+                    <span style={{ fontSize: "0.6rem", transform: showDetails ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.18s" }}>▼</span>
                   </button>
                 )}
                 {/* Share */}
@@ -1042,9 +1162,9 @@ export default function ScanPage() {
                     const text = `${verdict}: ${corp}${cats ? `\n📋 ${cats}` : ""}\n\nGescannt mit TRUE — get-true.de`
                     if (navigator.share) navigator.share({ title: `TRUE: ${corp}`, text })
                   }}
-                  style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "11px 12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                  style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 13px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ color: "var(--text-dim)" }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ color: "var(--text-dim)" }}>
                     <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
                   </svg>
                 </button>
@@ -1056,6 +1176,30 @@ export default function ScanPage() {
               const NUTRI_COLOR: Record<string,string> = { A:"#2ECC8A", B:"#88cc44", C:"#ffcc00", D:"#ff7700", E:"#ff2233" }
               const hasFlags = (ingredientData?.flags?.length ?? 0) > 0
               const showContent = isPremium
+              // Allergie-Check: welche der User-Allergien passen zum Produkt?
+              const ALLERGIE_KEYWORDS: Record<string, string[]> = {
+                gluten:        ["gluten","weizen","gerste","roggen","hafer","dinkel","wheat","barley","rye","oat"],
+                laktose:       ["milch","molke","laktose","butter","sahne","käse","joghurt","milk","lactose","dairy","whey"],
+                nuesse:        ["nuss","nüsse","mandel","haselnuss","cashew","walnuss","pistazie","nut","almond","hazelnut"],
+                eier:          ["ei","eier","eigelb","eiweiß","egg","yolk"],
+                soja:          ["soja","soy","tofu","edamame","miso"],
+                fisch:         ["fisch","lachs","thunfisch","kabeljau","fish","salmon","tuna","cod","anchovy"],
+                meeresfrüchte: ["garnele","shrimp","krebs","muschel","tintenfisch","seafood","prawn","crab","lobster"],
+                sellerie:      ["sellerie","celery"],
+                sesam:         ["sesam","tahini","sesame"],
+                palmöl:        ["palmöl","palm","palm oil","palmin"],
+              }
+              const allergyWarnings: { id: string; label: string }[] = []
+              if (userAllergies.length > 0 && result?.query) {
+                const searchText = (result.query + " " + (ingredientData?.productName ?? "")).toLowerCase()
+                userAllergies.forEach(allergyId => {
+                  const keywords = ALLERGIE_KEYWORDS[allergyId] ?? []
+                  if (keywords.some(kw => searchText.includes(kw))) {
+                    const LABELS: Record<string,string> = { gluten:"Gluten", laktose:"Laktose", nuesse:"Nüsse", eier:"Eier", soja:"Soja", fisch:"Fisch", meeresfrüchte:"Meeresfrüchte", sellerie:"Sellerie", sesam:"Sesam", palmöl:"Palmöl" }
+                    allergyWarnings.push({ id: allergyId, label: LABELS[allergyId] ?? allergyId })
+                  }
+                })
+              }
               return (
                 <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
                   {/* Header */}
@@ -1071,23 +1215,28 @@ export default function ScanPage() {
                   </div>
                   {/* Body */}
                   <div style={{ padding: "0 14px 14px", position: "relative" }}>
+                    {/* Allergie-Warnung — IMMER sichtbar, kein Premium nötig */}
+                    {allergyWarnings.length > 0 && (
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 10, background: "rgba(255,68,85,0.1)", border: "1.5px solid rgba(255,68,85,0.4)", borderRadius: 12, padding: "10px 13px", marginBottom: 10 }}>
+                        <span style={{ fontSize: "1.1rem", flexShrink: 0 }}>⚠️</span>
+                        <div>
+                          <div style={{ fontWeight: 800, fontSize: "0.82rem", color: "#ff4455", marginBottom: 2 }}>Deine Allergien erkannt</div>
+                          <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", lineHeight: 1.5 }}>
+                            Produkt enthält möglicherweise: <strong style={{ color: "var(--text)" }}>{allergyWarnings.map(a => a.label).join(", ")}</strong>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     {showContent ? (
                       ingredientLoading ? (
                         <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                           {[1,2].map(i => <div key={i} style={{ height: 38, borderRadius: 10, background: "var(--surface-2)", opacity: 0.55, animation: "pulse 1.4s ease-in-out infinite" }} />)}
                         </div>
                       ) : !ingredientData?.found ? (
-                        <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 14, padding: "14px 16px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                            <span style={{ fontSize: "1.2rem" }}>🔍</span>
-                            <span style={{ fontWeight: 800, fontSize: "0.85rem", color: "var(--text)" }}>Keine Nährwertdaten gefunden</span>
-                          </div>
-                          <div style={{ fontSize: "0.77rem", color: "var(--text-dim)", lineHeight: 1.55, marginBottom: 10 }}>
-                            Für dieses Produkt liegen in Open Food Facts noch keine Inhaltsstoffe vor. Du kannst helfen, die Datenbank zu verbessern!
-                          </div>
-                          <a href={`https://www.openfoodfacts.org/product/add`} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--accent-dim)", border: "1px solid var(--accent)", borderRadius: 10, padding: "7px 14px", fontSize: "0.75rem", fontWeight: 700, color: "var(--accent)", textDecoration: "none" }}>
-                            📝 Produkt eintragen →
-                          </a>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0" }}>
+                          <span style={{ fontSize: "0.85rem" }}>🔍</span>
+                          <span style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>Keine Nährwertdaten in Open Food Facts</span>
+                          <a href="https://www.openfoodfacts.org/product/add" target="_blank" rel="noopener noreferrer" style={{ fontSize: "0.7rem", color: "var(--accent)", textDecoration: "none", fontWeight: 700, marginLeft: "auto", flexShrink: 0 }}>Eintragen →</a>
                         </div>
                       ) : ingredientData.clean || !hasFlags ? (
                         <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(46,204,138,0.08)", border: "1px solid rgba(46,204,138,0.2)", borderRadius: 12, padding: "10px 14px" }}>
@@ -1193,7 +1342,7 @@ export default function ScanPage() {
                   const open = expandedDetail === "alternativen"
                   return (
                     <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
-                      <button onClick={() => { setExpandedDetail(open ? null : "alternativen"); setExpandedCat(null) }}
+                      <button onClick={() => { if (!isPremium) { setShowPremiumGate(true); return } setExpandedDetail(open ? null : "alternativen"); setExpandedCat(null) }}
                         style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}>
                         <span style={{ fontSize: "1.1rem" }}>🔄</span>
                         <span style={{ flex: 1, fontWeight: 800, fontSize: "0.88rem", color: "var(--text)" }}>Bessere Alternativen</span>
@@ -1265,7 +1414,7 @@ export default function ScanPage() {
                   }
                   return (
                     <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
-                      <button onClick={() => { setExpandedDetail(open ? null : "coach"); setExpandedCat(null) }}
+                      <button onClick={() => { if (!isPremium) { setShowPremiumGate(true); return } setExpandedDetail(open ? null : "coach"); setExpandedCat(null) }}
                         style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}>
                         <span style={{ fontSize: "1.1rem" }}>🥗</span>
                         <span style={{ flex: 1, fontWeight: 800, fontSize: "0.88rem", color: "var(--text)" }}>Ernährungscoach</span>
@@ -1275,43 +1424,74 @@ export default function ScanPage() {
                       {open && (
                         <div style={{ borderTop: "1px solid var(--border)" }}>
                           {isPremium ? (
-                            <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+                            <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
 
-                              {/* Nutri-Score Einordnung */}
+                              {/* Deine Ziele — als Chips oben */}
+                              {userGoals.length > 0 && (
+                                <div>
+                                  <div style={{ fontSize: "0.65rem", fontWeight: 800, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Deine Ziele</div>
+                                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                    {userGoals.map(g => {
+                                      const gm = GOAL_META[g]
+                                      if (!gm) return null
+                                      return (
+                                        <span key={g} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: gm.color + "18", border: `1px solid ${gm.color}44`, borderRadius: 99, padding: "3px 10px", fontSize: "0.72rem", fontWeight: 700, color: gm.color }}>
+                                          {gm.icon} {gm.label}
+                                        </span>
+                                      )
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Trennlinie */}
+                              {userGoals.length > 0 && <div style={{ height: 1, background: "var(--border)" }} />}
+
+                              {/* Bewertung für jedes Ziel */}
+                              {userGoals.map(g => {
+                                const ingrTip = GOAL_INGR_TIPS[g]
+                                const gm = GOAL_META[g]
+                                const konzernHint = GOAL_SCAN_HINT[g]?.[result.corporation?.severity ?? "low"]
+                                if (!gm) return null
+                                return (
+                                  <div key={g} style={{ display: "flex", gap: 10, alignItems: "flex-start", background: gm.color + "0d", border: `1px solid ${gm.color}22`, borderRadius: 12, padding: "10px 12px" }}>
+                                    <span style={{ fontSize: "1.1rem", flexShrink: 0, marginTop: 1 }}>{gm.icon}</span>
+                                    <div>
+                                      <div style={{ fontWeight: 800, fontSize: "0.8rem", marginBottom: 3, color: gm.color }}>{gm.label}</div>
+                                      <div style={{ fontSize: "0.76rem", color: "var(--text-dim)", lineHeight: 1.55 }}>
+                                        {ingrTip || konzernHint || "Keine spezifischen Daten für dieses Produkt."}
+                                      </div>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+
+                              {/* Nutri-Score */}
                               {nutriScore && NUTRI_TIPS[nutriScore] && (
                                 <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                                  <span style={{ fontSize: "1.2rem", flexShrink: 0, marginTop: 1 }}>📊</span>
+                                  <span style={{ fontSize: "1.1rem", flexShrink: 0, marginTop: 1 }}>📊</span>
                                   <div>
-                                    <div style={{ fontWeight: 700, fontSize: "0.82rem", marginBottom: 2 }}>Nährwertbilanz</div>
-                                    <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", lineHeight: 1.55 }}>{NUTRI_TIPS[nutriScore]}</div>
+                                    <div style={{ fontWeight: 700, fontSize: "0.8rem", marginBottom: 2 }}>Nährwertbilanz</div>
+                                    <div style={{ fontSize: "0.76rem", color: "var(--text-dim)", lineHeight: 1.55 }}>{NUTRI_TIPS[nutriScore]}</div>
                                   </div>
                                 </div>
                               )}
 
                               {/* Häufigkeitsempfehlung */}
                               <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                                <span style={{ fontSize: "1.2rem", flexShrink: 0, marginTop: 1 }}>{freqIcon}</span>
+                                <span style={{ fontSize: "1.1rem", flexShrink: 0, marginTop: 1 }}>{freqIcon}</span>
                                 <div>
-                                  <div style={{ fontWeight: 700, fontSize: "0.82rem", marginBottom: 2 }}>{freqLabel}</div>
-                                  <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", lineHeight: 1.55 }}>{freqTip}</div>
+                                  <div style={{ fontWeight: 700, fontSize: "0.8rem", marginBottom: 2 }}>{freqLabel}</div>
+                                  <div style={{ fontSize: "0.76rem", color: "var(--text-dim)", lineHeight: 1.55 }}>{freqTip}</div>
                                 </div>
                               </div>
 
-                              {/* Ziel-spezifischer Inhaltsstoff-Tipp */}
-                              {userGoals[0] && !(productType === "water" && konzernScore.score >= 65) && (() => {
-                                const ingrTip = GOAL_INGR_TIPS[userGoals[0]]
-                                const gm = GOAL_META[userGoals[0]]
-                                if (!ingrTip) return null
-                                return (
-                                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "var(--surface-2)", borderRadius: 12, padding: "10px 12px" }}>
-                                    <span style={{ fontSize: "1.2rem", flexShrink: 0, marginTop: 1 }}>{gm?.icon ?? "🎯"}</span>
-                                    <div>
-                                      <div style={{ fontWeight: 700, fontSize: "0.82rem", marginBottom: 2, color: gm?.color ?? "var(--accent)" }}>Für dein Ziel: {gm?.label}</div>
-                                      <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", lineHeight: 1.55 }}>{ingrTip}</div>
-                                    </div>
-                                  </div>
-                                )
-                              })()}
+                              {/* Kein Ziel gesetzt */}
+                              {userGoals.length === 0 && (
+                                <div style={{ textAlign: "center", padding: "8px 0", fontSize: "0.78rem", color: "var(--text-dim)" }}>
+                                  Keine Ziele gesetzt — geh in dein <strong>Profil</strong> und wähle deine Ziele für personalisierte Tipps.
+                                </div>
+                              )}
 
                             </div>
                           ) : premiumGateBlock}
@@ -1326,7 +1506,7 @@ export default function ScanPage() {
                   const open = expandedDetail === "familie"
                   return (
                     <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
-                      <button onClick={() => { setExpandedDetail(open ? null : "familie"); setExpandedCat(null) }}
+                      <button onClick={() => { if (!isPremium) { setShowPremiumGate(true); return } setExpandedDetail(open ? null : "familie"); setExpandedCat(null) }}
                         style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}>
                         <span style={{ fontSize: "1.1rem" }}>👨‍👩‍👧</span>
                         <span style={{ flex: 1, fontWeight: 800, fontSize: "0.88rem", color: "var(--text)" }}>Familien-Score</span>
@@ -1366,13 +1546,58 @@ export default function ScanPage() {
               )
             })()}
 
+            {/* ── TRUE EMPFOHLEN — Partner Alternativen ─────────────────── */}
+            {(partnerAltsLoading || partnerAlts.length > 0) && (
+              <div style={{ background: "var(--surface)", border: "1px solid rgba(46,204,138,0.22)", borderRadius: "16px", overflow: "hidden", marginTop: "0.5rem" }}>
+                <div style={{ padding: "12px 16px 10px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ fontSize: "1rem" }}>💚</span>
+                  <span style={{ fontWeight: 800, fontSize: "0.88rem", color: "var(--text)", flex: 1 }}>TRUE Empfohlen</span>
+                  <span style={{ fontSize: "0.58rem", color: "var(--text-dim)", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "5px", padding: "1px 6px" }}>Gesponsert</span>
+                </div>
+                {partnerAltsLoading ? (
+                  <div style={{ padding: "1rem 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+                    {[1,2].map(i => <div key={i} style={{ height: 60, borderRadius: 10, background: "var(--surface-2)", opacity: 0.4 }} />)}
+                  </div>
+                ) : (
+                  <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {partnerAlts.map(alt => (
+                      <div key={alt.id} style={{ display: "flex", alignItems: "center", gap: "10px", background: "rgba(46,204,138,0.04)", border: "1px solid rgba(46,204,138,0.12)", borderRadius: "12px", padding: "10px 12px" }}>
+                        {alt.image_url && (
+                          <img src={alt.image_url} alt={alt.name}
+                            style={{ width: 44, height: 44, borderRadius: 9, objectFit: "cover", flexShrink: 0, border: "1px solid rgba(46,204,138,0.2)" }} />
+                        )}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: "0.85rem", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{alt.name}</div>
+                          {alt.price_hint && <div style={{ fontSize: "0.68rem", color: "var(--accent)", fontWeight: 600, marginTop: "1px" }}>{alt.price_hint}</div>}
+                          {alt.description && <div style={{ fontSize: "0.65rem", color: "var(--text-dim)", marginTop: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{alt.description}</div>}
+                        </div>
+                        {alt.shop_url && (
+                          <a href={alt.shop_url} target="_blank" rel="noopener noreferrer"
+                            onClick={() => {
+                              fetch("/api/partner/track", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ productId: alt.id, partnerId: alt.partner_id, eventType: "click" }),
+                              }).catch(() => {})
+                            }}
+                            style={{ background: "var(--accent)", color: "#000", borderRadius: "9px", padding: "6px 12px", fontSize: "0.7rem", fontWeight: 800, textDecoration: "none", flexShrink: 0, display: "inline-block", whiteSpace: "nowrap" }}>
+                            Im Shop →
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem" }}>
+              <button onClick={reset} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "12px", padding: "0.85rem 1.1rem", fontWeight: 600, cursor: "pointer", fontSize: "0.9rem", color: "var(--text)" }}>
+                ← Zurück
+              </button>
               <button onClick={() => { reset(); setTimeout(() => startCamera(), 80) }} style={{ flex: 1, background: "var(--accent)", color: "#000", border: "none", borderRadius: "12px", padding: "0.85rem", fontWeight: 700, cursor: "pointer", fontSize: "0.9rem" }}>
                 📷 Nochmal scannen
               </button>
-              <Link href="/list" style={{ flex: 1, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "12px", padding: "0.85rem", fontWeight: 600, cursor: "pointer", fontSize: "0.9rem", color: "var(--text)", textDecoration: "none", textAlign: "center" }}>
-                Zur Liste →
-              </Link>
             </div>
           </div>
         )}
@@ -1438,6 +1663,11 @@ export default function ScanPage() {
         )}
 
       </div>
+      <FloatingAssistant page="scan" tips={[
+        { icon: "📷", text: "Halte den Barcode ruhig in den Rahmen — alle Winkel funktionieren." },
+        { icon: "✏️", text: "Kein Barcode? Tippe einfach den Produktnamen ein — TRUE kennt über 100 Marken." },
+        { icon: "🎯", text: "Lege im Profil Ziele fest (z.B. palmölfrei) — der Scanner bewertet dann gezielt danach." },
+      ]} />
       <BottomNav />
       {showPremiumGate && <PremiumGate trigger="scan" onClose={() => setShowPremiumGate(false)} />}
     </div>
