@@ -209,21 +209,18 @@ export default function PartnerDashboardPage() {
     setProfileSaving(false)
   }
 
-  // Auto-open tier modal for trial users + handle pre-selected tier from URL
+  // Handle pre-selected tier from URL param — no auto-open, user decides
   useEffect(() => {
     if (!profile) return
-    if (profile.tier === "trial") {
-      setShowTierModal(true)
-      try {
-        const preselect = sessionStorage.getItem("true-preselect-tier")
-        if (preselect) {
-          const id = preselect === "starter" ? "basic" : preselect === "wachstum" ? "growth" : preselect === "premium" ? "enterprise" : null
-          if (id) setSelectedTier(id)
-          sessionStorage.removeItem("true-preselect-tier")
-        }
-      } catch {}
-    }
-  }, [profile?.tier])
+    try {
+      const preselect = sessionStorage.getItem("true-preselect-tier")
+      if (preselect) {
+        const id = preselect === "starter" ? "basic" : preselect === "wachstum" ? "growth" : preselect === "premium" ? "enterprise" : null
+        if (id) { setSelectedTier(id); setShowTierModal(true) }
+        sessionStorage.removeItem("true-preselect-tier")
+      }
+    } catch {}
+  }, [profile?.id])
 
   if (loading) {
     return (
@@ -323,7 +320,7 @@ export default function PartnerDashboardPage() {
         </div>
 
         {/* Quick links */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem", marginBottom: "2rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.85rem", marginBottom: "2rem" }}>
           <Link href="/partner-dashboard/products" className="dash-card-link"
             style={{
               display: "block", textDecoration: "none",
@@ -333,7 +330,7 @@ export default function PartnerDashboardPage() {
             }}>
             <div style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>📦</div>
             <div style={{ fontWeight: 800, fontSize: "0.92rem", color: "#fff", marginBottom: "0.25rem" }}>Produkte</div>
-            <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.4)" }}>Produkte verwalten und hinzufügen</div>
+            <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.4)" }}>Produkte verwalten</div>
           </Link>
           <Link href="/partner-dashboard/analytics" className="dash-card-link"
             style={{
@@ -344,7 +341,18 @@ export default function PartnerDashboardPage() {
             }}>
             <div style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>📊</div>
             <div style={{ fontWeight: 800, fontSize: "0.92rem", color: "#fff", marginBottom: "0.25rem" }}>Analytics</div>
-            <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.4)" }}>Statistiken der letzten 30 Tage</div>
+            <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.4)" }}>Statistiken & Klicks</div>
+          </Link>
+          <Link href="/partner-dashboard/pakete" className="dash-card-link"
+            style={{
+              display: "block", textDecoration: "none",
+              background: "rgba(255,215,0,0.05)", border: "1px solid rgba(255,215,0,0.12)",
+              borderRadius: "16px", padding: "1.25rem",
+              transition: "transform 0.15s, border-color 0.15s",
+            }}>
+            <div style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>✨</div>
+            <div style={{ fontWeight: 800, fontSize: "0.92rem", color: "#fff", marginBottom: "0.25rem" }}>Pakete</div>
+            <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.4)" }}>Preise & Funktionen</div>
           </Link>
         </div>
 
@@ -440,17 +448,18 @@ export default function PartnerDashboardPage() {
           </div>
         </div>
 
-        {/* Upgrade hint for basic tier */}
-        {tier === "basic" && (
-          <div style={{ marginTop: "1.5rem", background: "rgba(68,136,255,0.06)", border: "1px solid rgba(68,136,255,0.2)", borderRadius: "16px", padding: "1.25rem", display: "flex", alignItems: "center", gap: "1rem" }}>
-            <span style={{ fontSize: "1.25rem" }}>🚀</span>
+        {/* Soft info for trial users — no pressure */}
+        {isTrial && (
+          <div style={{ marginTop: "1.5rem", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "16px", padding: "1.25rem", display: "flex", alignItems: "center", gap: "1rem" }}>
+            <span style={{ fontSize: "1.25rem" }}>💡</span>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 800, fontSize: "0.88rem", marginBottom: "0.2rem" }}>Auf Wachstum upgraden</div>
-              <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.4)" }}>Bis zu 5 Produkte, Insights-Dashboard und priorisierte Platzierung für 79€/Monat.</div>
+              <div style={{ fontWeight: 700, fontSize: "0.85rem", marginBottom: "0.2rem", color: "rgba(255,255,255,0.7)" }}>Wenn du bereit bist, Produkte einzustellen</div>
+              <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.35)", lineHeight: 1.5 }}>Schau dir in Ruhe unsere Pakete an — ab 29€/Monat, 14 Tage kostenlos testen, jederzeit kündbar.</div>
             </div>
-            <button onClick={() => setShowTierModal(true)} style={{ background: "linear-gradient(135deg,#4488ff,#2266cc)", color: "#fff", border: "none", borderRadius: "10px", padding: "7px 16px", fontSize: "0.78rem", fontWeight: 800, cursor: "pointer", flexShrink: 0 }}>
-              Upgraden →
-            </button>
+            <Link href="/partner-dashboard/pakete"
+              style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)", borderRadius: "10px", padding: "7px 16px", fontSize: "0.78rem", fontWeight: 700, cursor: "pointer", flexShrink: 0, textDecoration: "none", display: "block" }}>
+              Pakete ansehen
+            </Link>
           </div>
         )}
       </div>
