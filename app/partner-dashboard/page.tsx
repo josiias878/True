@@ -72,6 +72,11 @@ export default function PartnerDashboardPage() {
   const [showTierModal, setShowTierModal] = useState(false)
   const [selectedTier, setSelectedTier]   = useState<string | null>(null)
   const [tierSaving, setTierSaving]       = useState(false)
+  // Onboarding (company name setup)
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [onboardingName, setOnboardingName] = useState("")
+  const [onboardingSaving, setOnboardingSaving] = useState(false)
+  const [onboardingErr, setOnboardingErr]   = useState("")
   // Profile edit
   const [editingProfile, setEditingProfile] = useState(false)
   const [editWebsite, setEditWebsite]       = useState("")
@@ -108,6 +113,9 @@ export default function PartnerDashboardPage() {
     setEditWebsite(profileData.website ?? "")
     setEditDescription(profileData.description ?? "")
     setEditContactEmail(profileData.contact_email ?? "")
+    // Show onboarding if company name looks like an email prefix (= newly registered)
+    const looksLikePlaceholder = !profileData.company_name.includes(" ") && !profileData.company_name.match(/[A-Z]/) && profileData.company_name === profileData.contact_email?.split("@")[0]
+    if (looksLikePlaceholder) setShowOnboarding(true)
 
     // Load stats
     const { data: eventsData } = await supabase
@@ -152,6 +160,25 @@ export default function PartnerDashboardPage() {
       alert("Fehler beim Speichern: " + (err?.message ?? "Unbekannt"))
     }
     setTierSaving(false)
+  }
+
+  async function saveOnboarding() {
+    if (!supabase || !profile) return
+    if (!onboardingName.trim()) { setOnboardingErr("Bitte Firmennamen eingeben."); return }
+    setOnboardingSaving(true)
+    setOnboardingErr("")
+    try {
+      const { error } = await supabase
+        .from("partner_profiles")
+        .update({ company_name: onboardingName.trim() })
+        .eq("id", profile.id)
+      if (error) throw error
+      setProfile({ ...profile, company_name: onboardingName.trim() })
+      setShowOnboarding(false)
+    } catch (err: any) {
+      setOnboardingErr(err?.message ?? "Fehler beim Speichern.")
+    }
+    setOnboardingSaving(false)
   }
 
   async function saveProfile() {
@@ -427,6 +454,64 @@ export default function PartnerDashboardPage() {
           </div>
         )}
       </div>
+
+      {/* ── Onboarding Modal: Firmenname eingeben ── */}
+      {showOnboarding && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 300,
+          background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "1.25rem",
+        }}>
+          <div style={{
+            background: "linear-gradient(180deg, #0d1f15 0%, #0b1a10 100%)",
+            border: "1px solid rgba(46,204,138,0.3)",
+            borderRadius: "24px", padding: "2.25rem 2rem",
+            width: "100%", maxWidth: "440px",
+            textAlign: "center",
+          }}>
+            <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>👋</div>
+            <h2 style={{ fontWeight: 900, fontSize: "1.35rem", marginBottom: "0.5rem" }}>Willkommen bei TRUE!</h2>
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.88rem", lineHeight: 1.6, marginBottom: "1.75rem" }}>
+              Wie heißt dein Unternehmen?
+            </p>
+            <input
+              type="text"
+              autoFocus
+              value={onboardingName}
+              onChange={e => { setOnboardingName(e.target.value); setOnboardingErr("") }}
+              onKeyDown={e => e.key === "Enter" && saveOnboarding()}
+              placeholder="Meine GmbH"
+              style={{
+                width: "100%", boxSizing: "border-box",
+                background: "rgba(255,255,255,0.06)", border: "1.5px solid rgba(46,204,138,0.4)",
+                borderRadius: "14px", padding: "1rem 1.1rem",
+                color: "#fff", fontSize: "1.05rem", outline: "none",
+                fontFamily: "inherit", marginBottom: "0.75rem", textAlign: "center",
+              }}
+            />
+            {onboardingErr && (
+              <div style={{ fontSize: "0.8rem", color: "#ff7788", marginBottom: "0.75rem" }}>{onboardingErr}</div>
+            )}
+            <button
+              onClick={saveOnboarding}
+              disabled={onboardingSaving || !onboardingName.trim()}
+              style={{
+                width: "100%",
+                background: onboardingName.trim() ? "linear-gradient(135deg,#2ECC8A,#1aaa6e)" : "rgba(255,255,255,0.06)",
+                color: onboardingName.trim() ? "#000" : "rgba(255,255,255,0.3)",
+                border: "none", borderRadius: "14px", padding: "1rem",
+                fontWeight: 900, fontSize: "1rem",
+                cursor: onboardingSaving || !onboardingName.trim() ? "not-allowed" : "pointer",
+                opacity: onboardingSaving ? 0.7 : 1,
+                transition: "all 0.15s",
+              }}
+            >
+              {onboardingSaving ? "Speichern…" : "Los geht's →"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Tier-Auswahl Modal (für Trial-Nutzer auto-open, sonst manuell) ── */}
       {showTierModal && (

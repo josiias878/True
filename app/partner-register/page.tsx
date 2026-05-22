@@ -9,7 +9,6 @@ function PartnerRegisterInner() {
   const [email, setEmail]             = useState("")
   const [password, setPassword]       = useState("")
   const [password2, setPassword2]     = useState("")
-  const [companyName, setCompanyName] = useState("")
   const [loading, setLoading]         = useState(false)
   const [error, setError]             = useState("")
 
@@ -18,10 +17,11 @@ function PartnerRegisterInner() {
     if (!supabase) { setError("Supabase nicht konfiguriert."); return }
     if (password !== password2) { setError("Passwörter stimmen nicht überein."); return }
     if (password.length < 8) { setError("Passwort muss mindestens 8 Zeichen haben."); return }
-    if (!companyName.trim()) { setError("Firmenname erforderlich."); return }
     setError("")
     setLoading(true)
     try {
+      // Company name placeholder — user sets it in dashboard onboarding
+      const placeholderName = email.trim().split("@")[0]
       // 1. Server-side: create user + partner profile (bypasses RLS, auto-confirms email)
       const res = await fetch("/api/partner-register", {
         method: "POST",
@@ -29,7 +29,7 @@ function PartnerRegisterInner() {
         body: JSON.stringify({
           email: email.trim(),
           password,
-          companyName: companyName.trim(),
+          companyName: placeholderName,
           contactEmail: email.trim(),
           tier: "trial",
         }),
@@ -96,17 +96,8 @@ function PartnerRegisterInner() {
           <div>
             <h2 style={{ fontWeight: 900, fontSize: "1.2rem", margin: "0 0 0.35rem" }}>Account erstellen</h2>
             <p style={{ color: "rgba(255,255,255,0.38)", fontSize: "0.82rem", margin: 0 }}>
-              In 30 Sekunden startklar — kein Abo nötig.
+              In 20 Sekunden startklar — kein Abo nötig.
             </p>
-          </div>
-
-          <div>
-            <label style={labelStyle}>Firmenname</label>
-            <input
-              type="text" required autoComplete="organization"
-              value={companyName} onChange={e => setCompanyName(e.target.value)}
-              placeholder="Meine GmbH" style={inputStyle}
-            />
           </div>
 
           <div>
