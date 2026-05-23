@@ -192,7 +192,10 @@ export default function PartnerPage() {
       <nav style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(6,20,16,0.92)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(46,204,138,0.12)", padding: "0 1.25rem", height: "56px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Link href="/home" style={{ fontSize: "1.2rem", fontWeight: 900, letterSpacing: "-0.05em", color: "#2ECC8A", textDecoration: "none" }}>TRUE</Link>
         <span style={{ fontWeight: 700, fontSize: "0.82rem", color: "rgba(255,255,255,0.45)", letterSpacing: "0.01em" }}>Für Marken & Hersteller</span>
-        <a href="#contact" style={{ background: "linear-gradient(135deg,#2ECC8A,#1aaa6e)", color: "#000", borderRadius: "10px", padding: "6px 16px", fontWeight: 800, fontSize: "0.82rem", textDecoration: "none" }}>Kontakt →</a>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+          <a href="/partner-login" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.65)", borderRadius: "10px", padding: "6px 16px", fontWeight: 700, fontSize: "0.82rem", textDecoration: "none" }}>Anmelden</a>
+          <a href="/partner-register" style={{ background: "linear-gradient(135deg,#2ECC8A,#1aaa6e)", color: "#000", borderRadius: "10px", padding: "6px 16px", fontWeight: 800, fontSize: "0.82rem", textDecoration: "none" }}>Kostenlos starten →</a>
+        </div>
       </nav>
 
       {/* ── HERO ─────────────────────────────────────────────────────────────── */}
