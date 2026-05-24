@@ -11,13 +11,18 @@ export interface SyncItem {
   emoji: string
   severity: string
   issue: string
-  category: string   // stored as-is in Supabase note field
+  category: string
   checked: boolean
   addedAt: number
   personId?: string
 }
 
 const TABLE = "list_items"
+
+// IDs of default placeholder items — never sync these to Supabase
+const DEFAULT_ITEM_IDS = new Set([
+  "nutella","cocacola","milram","toast","bananen","ariel","kitkat","danone","wasa"
+])
 
 function toRow(item: SyncItem, userId: string) {
   return {
@@ -29,7 +34,6 @@ function toRow(item: SyncItem, userId: string) {
     product_brand: item.brand,
     product_emoji: item.emoji,
     severity: item.severity,
-    // encode category in issue field so we don't need extra column
     issue: `${item.category}||${item.issue}`,
     checked: item.checked,
     added_at: new Date(item.addedAt).toISOString(),
@@ -63,13 +67,12 @@ export function useListSync(
   setItems: (fn: (prev: SyncItem[]) => SyncItem[]) => void,
   hydrated: boolean,
 ) {
-  // Track which userId we've already synced — resets when user changes
   const syncedUserRef = useRef<string | null>(null)
 
-  // On login / mount: fetch remote items and merge
+  // ── On login: fetch from Supabase — Supabase is ALWAYS the source of truth ──
   useEffect(() => {
     if (!user || !supabase || !hydrated) return
-    if (syncedUserRef.current === user.id) return  // already synced for this user
+    if (syncedUserRef.current === user.id) return
     syncedUserRef.current = user.id
 
     async function fetchAndMerge() {
@@ -79,35 +82,73 @@ export function useListSync(
           .select("*")
           .eq("user_id", user!.id)
           .order("added_at", { ascending: false })
-          .limit(100)
+          .limit(200)
 
-        if (error || !data) return
+        if (error) {
+          console.warn("[useListSync] fetch error:", error.message)
+          return
+        }
 
-        const remote: SyncItem[] = data.map(fromRow)
+        const remote: SyncItem[] = (data ?? []).map(fromRow)
+
+        // Remove any default placeholder items that were accidentally pushed before
+        const contaminated = remote.filter(r => DEFAULT_ITEM_IDS.has(r.id))
+        if (contaminated.length > 0) {
+          contaminated.forEach(item => {
+            supabase!.from(TABLE)
+              .delete()
+              .eq("product_id", item.id)
+              .eq("user_id", user!.id)
+              .then(() => {})
+          })
+        }
+        const cleanRemote = remote.filter(r => !DEFAULT_ITEM_IDS.has(r.id))
 
         setItems(localItems => {
-          // Items only in local → push to Supabase
-          const remoteIds = new Set(remote.map(r => r.id))
-          const onlyLocal = localItems.filter(l => !remoteIds.has(l.id))
-          if (onlyLocal.length > 0) {
-            onlyLocal.forEach(item => {
-              supabase!.from(TABLE).upsert(toRow(item, user!.id)).then(() => {})
-            })
+          // Real local items = anything NOT in the default placeholder set
+          const realLocal = localItems.filter(l => !DEFAULT_ITEM_IDS.has(l.id))
+
+          if (cleanRemote.length > 0) {
+            // ── SUPABASE HAS DATA → it is the source of truth ──
+            // Only add local items that genuinely don't exist in Supabase yet
+            // (e.g. items added offline before login)
+            const remoteIds = new Set(cleanRemote.map(r => r.id))
+            const offlineOnly = realLocal.filter(l => !remoteIds.has(l.id))
+
+            // Push offline-only items up to Supabase
+            if (offlineOnly.length > 0) {
+              offlineOnly.forEach(item => {
+                supabase!.from(TABLE).upsert(toRow(item, user!.id)).then(() => {})
+              })
+            }
+
+            // Final list: Supabase data + any offline additions
+            const merged = new Map<string, SyncItem>()
+            cleanRemote.forEach(r => merged.set(r.id, r))
+            offlineOnly.forEach(l => merged.set(l.id, l))
+            return Array.from(merged.values()).sort((a, b) => b.addedAt - a.addedAt)
           }
 
-          // Merge: remote wins, keep local-only items too
-          const merged = new Map<string, SyncItem>()
-          remote.forEach(r => merged.set(r.id, r))
-          onlyLocal.forEach(l => merged.set(l.id, l))
-          return Array.from(merged.values()).sort((a, b) => b.addedAt - a.addedAt)
+          // ── SUPABASE IS EMPTY → push real local items up ──
+          if (realLocal.length > 0) {
+            realLocal.forEach(item => {
+              supabase!.from(TABLE).upsert(toRow(item, user!.id)).then(() => {})
+            })
+            return realLocal.sort((a, b) => b.addedAt - a.addedAt)
+          }
+
+          // Both empty — nothing to do
+          return localItems
         })
-      } catch {}
+      } catch (e) {
+        console.warn("[useListSync] unexpected error:", e)
+      }
     }
 
     fetchAndMerge()
   }, [user?.id, hydrated])
 
-  // Realtime: Liste live aktualisieren wenn ein anderes Gerät / Familienmitglied etwas ändert
+  // ── Realtime: live updates from other devices ──
   useEffect(() => {
     if (!user || !supabase) return
 
@@ -118,6 +159,7 @@ export function useListSync(
         { event: "INSERT", schema: "public", table: TABLE, filter: `user_id=eq.${user.id}` },
         (payload) => {
           const newItem = fromRow(payload.new)
+          if (DEFAULT_ITEM_IDS.has(newItem.id)) return
           setItems(prev => prev.some(i => i.id === newItem.id) ? prev : [newItem, ...prev])
         }
       )
@@ -142,19 +184,23 @@ export function useListSync(
     return () => { supabase?.removeChannel(channel) }
   }, [user?.id])
 
-  // Push a new item to Supabase
+  // ── Push new item to Supabase ──
   const syncAdd = useCallback((item: SyncItem) => {
-    if (!user || !supabase) return
+    if (!user || !supabase || DEFAULT_ITEM_IDS.has(item.id)) return
     supabase.from(TABLE).upsert(toRow(item, user.id)).then(() => {})
   }, [user])
 
-  // Remove an item from Supabase
+  // ── Remove item from Supabase (use product_id for consistency) ──
   const syncRemove = useCallback((itemId: string) => {
     if (!user || !supabase) return
-    supabase.from(TABLE).delete().eq("id", itemId).eq("user_id", user.id).then(() => {})
+    supabase.from(TABLE)
+      .delete()
+      .eq("product_id", itemId)
+      .eq("user_id", user.id)
+      .then(() => {})
   }, [user])
 
-  // Update checked state in Supabase
+  // ── Update checked state ──
   const syncToggle = useCallback((itemId: string, checked: boolean) => {
     if (!user || !supabase) return
     supabase.from(TABLE)
