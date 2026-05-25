@@ -2,17 +2,19 @@
 import AuthGuard from "@/components/AuthGuard"
 import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
+import { supabase } from "@/lib/supabase"
 
 const STRIPE_LINK = process.env.NEXT_PUBLIC_STRIPE_LINK ?? ""
 
 // ─── Vergleichstabelle ─────────────────────────────────────────────────────────
 const ROWS = [
-  { label: "Scans pro Tag",         free: "5 Scans",    premium: "Unbegrenzt"           },
-  { label: "Konzern-Infos",         free: "Basis",      premium: "Vollständig + Quellen" },
-  { label: "Ernährungscoach",       free: false,        premium: true                    },
-  { label: "Inhaltsstoffe",         free: false,        premium: "Ziel-angepasst"        },
-  { label: "Einkaufslisten",        free: "1 Liste",    premium: "Familie & Haustier"    },
-  { label: "Community-Badge",       free: false,        premium: "👑 Premium-Mitglied"  },
+  { label: "Scans pro Tag",              free: "5 Scans",    premium: "Unbegrenzt"           },
+  { label: "Konzern-Infos",             free: "Basis",      premium: "Vollständig + Quellen" },
+  { label: "Ernährungscoach",           free: false,        premium: true                    },
+  { label: "Inhaltsstoffe",             free: false,        premium: "Ziel-angepasst"        },
+  { label: "Einkaufslisten",            free: "1 Liste",    premium: "Familie & Haustier"    },
+  { label: "Community-Badge",           free: false,        premium: "👑 Premium-Mitglied"  },
+  { label: "Personensuche — Vorschläge",free: false,        premium: "Wirst zuerst angezeigt"},
 ]
 
 // ─── Konfetti ─────────────────────────────────────────────────────────────────
@@ -155,10 +157,19 @@ export default function PremiumPage() {
     setIsPremium(localStorage.getItem("true-premium") === "1")
   }, [])
 
-  function activateFreeTrial() {
+  async function activateFreeTrial() {
     localStorage.setItem("true-premium", "1")
     setIsPremium(true)
     setShowCelebration(true)
+    // Sync is_premium to Supabase so profile search shows user first
+    try {
+      if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          await supabase.from("profiles").update({ is_premium: true }).eq("id", session.user.id)
+        }
+      }
+    } catch {}
     setTimeout(() => { window.location.href = "/home" }, 2600)
   }
 

@@ -165,7 +165,6 @@ export default function ProfilePage() {
       "true-onboarded-v3",
       "true-premium",
       "true-community-card-dismissed",
-      "true-meidliste",
       "true-saved-posts-v2",
       "true-support-messages",
       "true-following",
@@ -211,10 +210,6 @@ export default function ProfilePage() {
   const [selectedStores, setSelectedStores] = useState<string[]>([])
   const [customStore, setCustomStore]     = useState("")
   const [isPremium, setIsPremium]         = useState(false)
-  const [meidliste, setMeidliste]         = useState<string[]>([])
-  const [meidInput, setMeidInput]         = useState("")
-  const [meidExpanded, setMeidExpanded]   = useState(false)
-  const [meidError, setMeidError]         = useState("")
   const [openSetting, setOpenSetting]     = useState<string | null>(null)
 
   const KONZERNE_OPTIONS = [
@@ -234,33 +229,6 @@ export default function ProfilePage() {
     { name: "Shell",            badge: "KRITISCH", color: "#ff3b30" },
   ]
 
-  function syncMeidToDb(next: string[]) {
-    if (!user || !supabase) return
-    supabase.from("profiles").update({ meidliste: next }).eq("id", user.id).then(() => {})
-  }
-
-  function toggleMeid(name: string) {
-    setMeidliste(prev => {
-      const next = prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
-      try { localStorage.setItem("true-meidliste", JSON.stringify(next)) } catch (e) { console.error("[Profile] toggleMeid save failed:", e) }
-      syncMeidToDb(next)
-      return next
-    })
-  }
-
-  function addCustomMeid() {
-    const v = meidInput.trim()
-    if (!v) { setMeidError("Bitte einen Namen eingeben."); return }
-    if (v.length > 50) { setMeidError("Maximal 50 Zeichen erlaubt."); return }
-    if (meidliste.includes(v)) { setMeidError(`"${v}" ist bereits auf der Meidliste.`); return }
-    setMeidError("")
-    const next = [...meidliste, v]
-    setMeidliste(next)
-    try { localStorage.setItem("true-meidliste", JSON.stringify(next)) } catch (e) { console.error("[Profile] addCustomMeid save failed:", e) }
-    syncMeidToDb(next)
-    setMeidInput("")
-  }
-
   const STORE_OPTIONS = ["Rewe", "Edeka", "Lidl", "Aldi", "dm", "Alnatura", "Bio Company", "Kaufland", "Netto", "Penny", "Rossmann"]
 
   useEffect(() => {
@@ -278,25 +246,22 @@ export default function ProfilePage() {
     try {
       setIsPremium(localStorage.getItem("true-premium") === "1")
     } catch (e) { console.error("[Profile] true-premium load failed:", e) }
-    try {
-      const ml = localStorage.getItem("true-meidliste")
-      if (ml) setMeidliste(JSON.parse(ml))
-    } catch (e) { console.error("[Profile] true-meidliste load failed:", e) }
+    // Also sync from Supabase in case user is on a fresh device
+    ;(async () => {
+      try {
+        if (supabase) {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session?.user) {
+            const { data: pData } = await supabase.from("profiles").select("is_premium").eq("id", session.user.id).single()
+            if (pData?.is_premium) {
+              localStorage.setItem("true-premium", "1")
+              setIsPremium(true)
+            }
+          }
+        }
+      } catch {}
+    })()
   }, [])
-
-  // Meidliste von Supabase laden und mit localStorage mergen (Geräte-Sync)
-  useEffect(() => {
-    if (!user || !supabase) return
-    supabase.from("profiles").select("meidliste").eq("id", user.id).single()
-      .then(({ data }) => {
-        if (!data?.meidliste || data.meidliste.length === 0) return
-        setMeidliste(prev => {
-          const merged = Array.from(new Set([...data.meidliste, ...prev]))
-          try { localStorage.setItem("true-meidliste", JSON.stringify(merged)) } catch {}
-          return merged
-        })
-      })
-  }, [user?.id])
 
   // Eigene Community-Posts laden
   useEffect(() => {
@@ -996,7 +961,7 @@ export default function ProfilePage() {
                             </div>
                           ))}
                         </div>
-                        <button onClick={() => { localStorage.setItem("true-premium","0"); setIsPremium(false) }}
+                        <button onClick={async () => { localStorage.setItem("true-premium","0"); setIsPremium(false); try { if (supabase) { const { data: { session } } = await supabase.auth.getSession(); if (session?.user) { supabase.from("profiles").update({ is_premium: false }).eq("id", session.user.id).then(() => {}) } } } catch {} }}
                           style={{ width: "100%", background: "transparent", border: "1px solid rgba(255,215,0,0.2)", borderRadius: 10, padding: "8px", color: "var(--text-dim)", fontSize: "0.72rem", cursor: "pointer" }}>
                           Premium deaktivieren
                         </button>
