@@ -1,9 +1,10 @@
 "use client"
-import AuthGuard from "@/components/AuthGuard"
 import React, { useEffect, useState } from "react"
 import BottomNav from "@/components/BottomNav"
 import Link from "next/link"
 import type { CoachItem } from "@/components/NutritionCoach"
+import { useSupabaseAuth } from "@/lib/useSupabaseAuth"
+import AuthModal from "@/components/AuthModal"
 
 // ── Coach-Setup Wizard ─────────────────────────────────────────────────────────
 
@@ -30,51 +31,30 @@ const ONBOARDING_ALLERGIES = [
 const ONBOARDING_VALUES = [
   { id: "gesundheit", emoji: "🏥", label: "Gesundheit",     desc: "Kritische Inhaltsstoffe erkennen" },
   { id: "umwelt",     emoji: "🌍", label: "Umwelt",         desc: "Palmöl, Plastik, CO₂ im Blick" },
-  { id: "konzerne",   emoji: "🏭", label: "Konzerne meiden", desc: "Problematische Hersteller filtern" },
   { id: "preis",      emoji: "💡", label: "Preis-Leistung", desc: "Faire Alternativen finden" },
-]
-
-const AVOID_KONZERNE = [
-  { id: "nestle",   emoji: "💧", label: "Nestlé",    desc: "Wasser, Kinderarbeit, Greenwashing" },
-  { id: "cocacola", emoji: "🥤", label: "Coca-Cola", desc: "Plastik, Grundwasser, Zuckersteuer" },
-  { id: "ferrero",  emoji: "🍫", label: "Ferrero",   desc: "Palmöl, Kakaolieferketten" },
-  { id: "mondelez", emoji: "🍪", label: "Mondelez",  desc: "Zucker, Palmöl, Verpackung" },
-  { id: "unilever", emoji: "🧴", label: "Unilever",  desc: "Palmöl, Plastik, Greenwashing" },
-  { id: "bayer",    emoji: "☠️", label: "Bayer/Monsanto", desc: "Glyphosat, Krebsklagen" },
-  { id: "pepsi",    emoji: "🌽", label: "PepsiCo",   desc: "Plastik, Kindermarketing" },
-  { id: "mcdonalds",emoji: "🍔", label: "McDonald's", desc: "Tierwohl, Umwelt, Verarbeitung" },
 ]
 
 interface CoachSetup {
   goals: string[]
   allergies: string[]
   values: string[]
-  avoidKonzerne: string[]
 }
 
 function CoachOnboarding({ onDone }: { onDone: (setup: CoachSetup) => void }) {
-  const [step, setStep] = useState(0) // 0=goals, 1=allergies, 2=values, 3=konzerne (optional)
+  const [step, setStep] = useState(0) // 0=goals, 1=allergies, 2=values
   const [goals, setGoals] = useState<string[]>([])
   const [allergies, setAllergies] = useState<string[]>([])
   const [values, setValues] = useState<string[]>([])
-  const [avoidKonzerne, setAvoidKonzerne] = useState<string[]>([])
 
-  const totalSteps = values.includes("konzerne") ? 4 : 3
+  const totalSteps = 3
 
   function toggle<T>(arr: T[], val: T): T[] {
     return arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val]
   }
 
   function next() {
-    if (step === 2 && !values.includes("konzerne")) {
-      // Skip Konzerne step
-      const setup: CoachSetup = { goals, allergies, values, avoidKonzerne: [] }
-      localStorage.setItem("true-coach-setup", JSON.stringify(setup))
-      onDone(setup)
-    } else if (step === 2) {
-      setStep(3)
-    } else if (step === 3) {
-      const setup: CoachSetup = { goals, allergies, values, avoidKonzerne }
+    if (step === 2) {
+      const setup: CoachSetup = { goals, allergies, values }
       localStorage.setItem("true-coach-setup", JSON.stringify(setup))
       onDone(setup)
     } else {
@@ -82,8 +62,8 @@ function CoachOnboarding({ onDone }: { onDone: (setup: CoachSetup) => void }) {
     }
   }
 
-  const STEPS = ["Mein Ziel", "Unverträglichkeiten", "Meine Werte", "Konzerne meiden"]
-  const canNext = step === 1 || (step === 0 && goals.length > 0) || (step === 2 && values.length > 0) || step === 3
+  const STEPS = ["Mein Ziel", "Unverträglichkeiten", "Meine Werte"]
+  const canNext = step === 1 || (step === 0 && goals.length > 0) || (step === 2 && values.length > 0)
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--background)", color: "var(--text)", display: "flex", flexDirection: "column" }}>
@@ -186,36 +166,6 @@ function CoachOnboarding({ onDone }: { onDone: (setup: CoachSetup) => void }) {
           </>
         )}
 
-        {/* Step 3: Konzerne (only if "konzerne" selected) */}
-        {step === 3 && (
-          <>
-            <div style={{ marginBottom: 24 }}>
-              <h2 style={{ fontSize: "1.5rem", fontWeight: 900, letterSpacing: "-0.03em", margin: "0 0 8px" }}>
-                Welche Konzerne meiden? 🏭
-              </h2>
-              <p style={{ fontSize: "0.85rem", color: "var(--text-dim)", margin: 0, lineHeight: 1.6 }}>
-                Der Coach warnt dich bei Produkten dieser Hersteller — oder überspringe.
-              </p>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {AVOID_KONZERNE.map(k => {
-                const sel = avoidKonzerne.includes(k.id)
-                return (
-                  <button key={k.id} onClick={() => setAvoidKonzerne(prev => toggle(prev, k.id))}
-                    style={{ background: sel ? "rgba(212,48,64,0.10)" : "var(--surface)", border: `2px solid ${sel ? "#d43040" : "var(--border)"}`, borderRadius: 14, padding: "13px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, textAlign: "left", transition: "all 0.15s" }}>
-                    <span style={{ fontSize: "1.4rem", flexShrink: 0 }}>{k.emoji}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 800, fontSize: "0.85rem", color: sel ? "#d43040" : "var(--text)", marginBottom: 1 }}>{k.label}</div>
-                      <div style={{ fontSize: "0.68rem", color: "var(--text-dim)" }}>{k.desc}</div>
-                    </div>
-                    <div style={{ width: 22, height: 22, borderRadius: "50%", background: sel ? "#d43040" : "var(--border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", color: sel ? "#fff" : "transparent", fontWeight: 900, flexShrink: 0, transition: "all 0.15s" }}>✕</div>
-                  </button>
-                )
-              })}
-            </div>
-          </>
-        )}
-
         {/* Nav Buttons */}
         <div style={{ marginTop: 24, display: "flex", gap: 10 }}>
           {step > 0 && (
@@ -226,16 +176,6 @@ function CoachOnboarding({ onDone }: { onDone: (setup: CoachSetup) => void }) {
           )}
           {step === 1 && (
             <button onClick={() => setStep(2)}
-              style={{ flex: 1, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "14px", fontWeight: 600, fontSize: "0.85rem", color: "var(--text-dim)", cursor: "pointer" }}>
-              Überspringen
-            </button>
-          )}
-          {step === 3 && (
-            <button onClick={() => {
-              const setup: CoachSetup = { goals, allergies, values, avoidKonzerne: [] }
-              localStorage.setItem("true-coach-setup", JSON.stringify(setup))
-              onDone(setup)
-            }}
               style={{ flex: 1, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "14px", fontWeight: 600, fontSize: "0.85rem", color: "var(--text-dim)", cursor: "pointer" }}>
               Überspringen
             </button>
@@ -420,6 +360,8 @@ function findKonzern(itemName: string): string | undefined {
 }
 
 export default function CoachPage() {
+  const { user } = useSupabaseAuth()
+  const [authModal, setAuthModal] = useState(false)
   const [listItems, setListItems] = useState<CoachItem[]>([])
   const [userGoals, setUserGoals] = useState<string[]>([])
   const [isPremium, setIsPremium] = useState(false)
@@ -458,12 +400,42 @@ export default function CoachPage() {
 
   // Show onboarding if setup not done yet
   if (coachSetup === "loading") return null
+
+  // Soft gate: no Supabase user → show teaser
+  if (!user) {
+    return (
+      <>
+        <div style={{ minHeight: "100vh", background: "var(--background)", color: "var(--text)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem 1.5rem", textAlign: "center", fontFamily: "system-ui,-apple-system,sans-serif" }}>
+          <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🥗</div>
+          <h1 style={{ fontSize: "1.6rem", fontWeight: 900, letterSpacing: "-0.03em", marginBottom: "0.75rem" }}>TRUE Coach</h1>
+          <p style={{ fontSize: "1rem", color: "var(--text-dim)", lineHeight: 1.7, maxWidth: 360, marginBottom: "0.5rem" }}>
+            Dein persönlicher KI-Ernährungscoach — analysiert deine Einkaufsliste, erkennt kritische Inhaltsstoffe und schlägt bessere Alternativen vor.
+          </p>
+          <ul style={{ listStyle: "none", padding: 0, margin: "0 0 2rem", display: "flex", flexDirection: "column", gap: "0.55rem", maxWidth: 320 }}>
+            {["🎯 Persönliche Ernährungsziele", "⚠️ Warnungen bei Glyphosat & Palmöl", "✅ Bessere Alternativen im Supermarkt", "🛒 Direkte Analyse deiner Einkaufsliste"].map(f => (
+              <li key={f} style={{ fontSize: "0.9rem", color: "var(--text-dim)", textAlign: "left" }}>{f}</li>
+            ))}
+          </ul>
+          <button
+            onClick={() => setAuthModal(true)}
+            style={{ background: "#2ECC8A", color: "#000", borderRadius: "12px", padding: "1rem 2.5rem", fontWeight: 800, fontSize: "1rem", border: "none", cursor: "pointer", boxShadow: "0 0 40px rgba(46,204,138,0.3)" }}
+          >
+            Jetzt anmelden →
+          </button>
+          <p style={{ marginTop: "0.75rem", fontSize: "0.78rem", color: "rgba(128,128,128,0.7)" }}>Kostenlos · Kein Abo nötig</p>
+          <BottomNav />
+        </div>
+        {authModal && <AuthModal defaultMode="register" onClose={() => setAuthModal(false)} onSuccess={() => setAuthModal(false)} />}
+      </>
+    )
+  }
+
   if (coachSetup === null) {
     return (
-      <AuthGuard>
+      <>
         <CoachOnboarding onDone={(setup) => setCoachSetup(setup)} />
         <BottomNav />
-      </AuthGuard>
+      </>
     )
   }
 
@@ -486,8 +458,7 @@ export default function CoachPage() {
   const unmatchedAlts = itemsWithAlts.filter(x => x.alts === null)
 
   return (
-    <AuthGuard>
-      <div style={{ background: "var(--background)", minHeight: "100vh", color: "var(--text)" }}>
+    <div style={{ background: "var(--background)", minHeight: "100vh", color: "var(--text)" }}>
 
         {/* Header */}
         <header style={{ position: "sticky", top: 0, zIndex: 100, background: "var(--nav-bg)", backdropFilter: "blur(20px)", borderBottom: "1px solid var(--border)", padding: "0 1.25rem", height: "56px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -682,6 +653,5 @@ export default function CoachPage() {
 
         <BottomNav />
       </div>
-    </AuthGuard>
   )
 }

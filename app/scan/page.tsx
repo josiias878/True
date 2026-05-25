@@ -1,5 +1,4 @@
 "use client"
-import AuthGuard from "@/components/AuthGuard"
 import React, { useEffect, useRef, useState, useCallback } from "react"
 import Link from "next/link"
 import { ThemeToggle } from "@/components/ThemeProvider"
@@ -970,7 +969,6 @@ export default function ScanPage() {
     : null
 
   return (
-    <AuthGuard>
     <div style={{ minHeight: "100dvh", background: "var(--background)", color: "var(--text)", fontFamily: "system-ui,-apple-system,sans-serif", paddingBottom: 90 }}>
       {/* NAV */}
       <nav style={{ borderBottom: "1px solid var(--border)", background: "var(--nav-bg)", backdropFilter: "blur(20px)", padding: "0 1.25rem", height: "56px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100 }}>
@@ -1724,6 +1722,5 @@ export default function ScanPage() {
       <BottomNav />
       {showPremiumGate && <PremiumGate trigger="scan" onClose={() => setShowPremiumGate(false)} />}
     </div>
-    </AuthGuard>
   )
 }

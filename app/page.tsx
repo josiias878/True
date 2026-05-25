@@ -11,15 +11,7 @@ function px(id: number, w = 1920, h = 1080) {
 
 const SLIDES = [
   {
-    id: 0,
-    url: "https://images.pexels.com/photos/31028648/pexels-photo-31028648.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop",
-    tint: "rgba(80,10,10,0.25)",
-    context: "Täglich sterben 3 Mio. Tiere in deutschen Schlachthöfen — unsichtbar, systemisch, legal.",
-    tag: "🐷 Massentierhaltung",
-    tagColor: "#f97316",
-  },
-  {
-    id: 802221,        // Plastikflaschen im Meer — klar erkennbar
+    id: 802221,        // Plastikflaschen im Meer
     tint: "rgba(0,30,80,0.22)",
     context: "74 Mio. Tonnen Plastik — Jahr für Jahr. TRUE zeigt, wer dahinter steckt.",
     tag: "🌊 Plastikmüll",
@@ -436,7 +428,7 @@ function AppFeatureBlocks() {
     { icon: "📷", color: "#38BDF8", label: "Scanner",       tagline: "Scan deinen Einkauf. Erfahre Inhaltsstoffe & Konzern.", imgId: 3962285 },
     { icon: "🛒", color: "#2ECC8A", label: "Einkaufsliste", tagline: "Erstelle Listen & lade deine Familie ein.",             imgId: 3184183 },
     { icon: "👥", color: "#A78BFA", label: "Community",      tagline: "Tausch dich aus. Nimm gemeinsam Einfluss.",            imgId: 1181406 },
-    { icon: "🥗", color: "#4ade80", label: "Coaching",       tagline: "Coaching für deine persönlichen Ernährungsziele.",     imgId: 1640777 },
+    { icon: "🥗", color: "#4ade80", label: "Coaching",       tagline: "Coaching für deine persönlichen Ernährungsziele.",     imgId: 1640470 },
   ]
 
   useEffect(() => {
@@ -603,6 +595,7 @@ function LandingInner() {
   const [slide,     setSlide]     = useState(0)
   const [scrollY,   setScrollY]   = useState(0)
   const [authMode, setAuthMode] = useState<"login" | "register" | null>(null)
+  const [guestName, setGuestName] = useState("")
   // Alles sofort sichtbar — kein Cinematic Delay
   const [textPhase, setTextPhase] = useState(3)
 
@@ -627,6 +620,14 @@ function LandingInner() {
   // Guest CTA — no login required
   const goToApp = useCallback(() => router.push("/scan"), [router])
   const openRegister = useCallback(() => setAuthMode("register"), [])
+  const handleGuestStart = useCallback((e: React.FormEvent) => {
+    e.preventDefault()
+    const name = guestName.trim()
+    if (!name) return
+    localStorage.setItem("true-guest-name", name)
+    localStorage.setItem("true-profile", JSON.stringify({ vorname: name }))
+    router.push("/home")
+  }, [guestName, router])
 
   return (
     <>
@@ -644,7 +645,7 @@ function LandingInner() {
       <section style={{ position: "relative", height: "100vh", overflow: "hidden" }}>
         {SLIDES.map((s, i) => (
           <div key={i} style={{ position: "absolute", inset: 0, opacity: i === slide ? 1 : 0, transition: "opacity 1.8s ease-in-out" }}>
-            <div style={{ position: "absolute", inset: "-5%", backgroundImage: `url(${'url' in s && s.url ? s.url : px(s.id, 1920, 1080)})`, backgroundSize: "cover", backgroundPosition: "center", filter: "brightness(0.85) saturate(1.15) contrast(1.1)", animation: i === slide ? "kb 14s ease-out forwards" : "none" }} />
+            <div style={{ position: "absolute", inset: "-5%", backgroundImage: `url(${px(s.id, 1920, 1080)})`, backgroundSize: "cover", backgroundPosition: "center", filter: i === 0 ? "brightness(0.45) saturate(0.7) contrast(1.05)" : "brightness(0.85) saturate(1.15) contrast(1.1)", animation: i === slide ? "kb 14s ease-out forwards" : "none" }} />
             <div style={{ position: "absolute", inset: 0, background: s.tint }} />
             <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at center, transparent 40%, rgba(5,5,10,0.62) 100%)" }} />
             <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 55%, rgba(5,5,10,0.95) 100%)" }} />
@@ -726,14 +727,23 @@ function LandingInner() {
 
           {/* CTA — Phase 3 */}
           <div style={{
-            display: "flex", justifyContent: "center", marginBottom: "3.5rem",
+            display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "3.5rem",
             opacity: textPhase >= 3 ? 1 : 0,
             transform: textPhase >= 3 ? "translateY(0)" : "translateY(24px)",
             transition: "opacity 0.9s ease, transform 0.9s cubic-bezier(.22,1,.36,1)",
           }}>
-            <button onClick={openRegister} style={{ background: "#2ECC8A", color: "#000", borderRadius: "12px", padding: "1rem 2.8rem", fontWeight: 800, fontSize: "1.05rem", boxShadow: "0 0 60px rgba(46,204,138,0.35)", border: "none", cursor: "pointer" }}>
-              Kostenlos starten →
-            </button>
+            <form onSubmit={handleGuestStart} style={{ display: "flex", gap: "0.6rem", justifyContent: "center", flexWrap: "wrap" }}>
+              <input
+                value={guestName}
+                onChange={e => setGuestName(e.target.value)}
+                placeholder="Wie heißt du?"
+                style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.25)", borderRadius: "12px", padding: "1rem 1.2rem", color: "#fff", fontSize: "1.05rem", outline: "none", minWidth: 180, maxWidth: 220 }}
+              />
+              <button type="submit" disabled={!guestName.trim()} style={{ background: guestName.trim() ? "#2ECC8A" : "rgba(46,204,138,0.4)", color: "#000", borderRadius: "12px", padding: "1rem 2rem", fontWeight: 800, fontSize: "1.05rem", border: "none", cursor: guestName.trim() ? "pointer" : "default", boxShadow: guestName.trim() ? "0 0 60px rgba(46,204,138,0.35)" : "none" }}>
+                Loslegen →
+              </button>
+            </form>
+            <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.72rem", marginTop: "0.5rem" }}>Kein Passwort nötig · Kostenlos</p>
           </div>
 
           {/* Scroll-Pfeil — Phase 3 */}

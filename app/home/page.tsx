@@ -1,5 +1,4 @@
 "use client"
-import AuthGuard from "@/components/AuthGuard"
 import React, { useEffect, useRef, useState } from "react"
 
 import Link from "next/link"
@@ -1168,7 +1167,6 @@ export default function HomePage() {
   }
 
   return (
-    <AuthGuard>
     <div style={{ minHeight: "100vh", background: "var(--background)", color: "var(--text)", fontFamily: "system-ui,-apple-system,sans-serif", paddingBottom: "140px" }}>
       {/* ── ALTERNATIVE BOTTOM SHEET ── */}
       {altModal && (() => {
@@ -2455,6 +2453,5 @@ export default function HomePage() {
         @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
       `}</style>
     </div>
-    </AuthGuard>
   )
 }
