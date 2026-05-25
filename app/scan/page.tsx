@@ -555,6 +555,7 @@ export default function ScanPage() {
   const [facingMode, setFacingMode]     = useState<"environment"|"user">("environment")
   const [torchOn, setTorchOn]           = useState(false)
   const [torchSupported, setTorchSupported] = useState(false)
+  const [scanSeconds, setScanSeconds]   = useState(0)
   const [ingredientData, setIngredientData] = useState<{
     found: boolean; productName?: string; nutriScore?: string | null
     flags?: { icon: string; label: string; detail: string; severity: "red"|"yellow"|"green" }[]
@@ -698,11 +699,12 @@ export default function ScanPage() {
   // Scan line animation
   useEffect(() => {
     if (mode !== "scanning") return
-    let dir = 1, pos = 0
+    setScanSeconds(0)
+    let dir = 1, pos = 0, sec = 0
     const id = setInterval(() => {
       pos += dir * 2
       if (pos >= 100) dir = -1
-      if (pos <= 0) dir = 1
+      if (pos <= 0) { dir = 1; sec++; setScanSeconds(sec) }
       setScanLine(pos)
     }, 16)
     return () => clearInterval(id)
@@ -724,7 +726,11 @@ export default function ScanPage() {
     try {
       await (track as any).applyConstraints({ advanced: [{ torch: next }] })
       setTorchOn(next)
-    } catch {}
+      setTorchSupported(true)
+    } catch {
+      // Torch not supported on this device (e.g. iOS Safari)
+      setTorchSupported(false)
+    }
   }, [torchOn])
 
   const startCamera = useCallback(async (facing?: "environment"|"user") => {
@@ -764,9 +770,10 @@ export default function ScanPage() {
           })
         } catch {}
       }
-      // Check torch support
+      // Check torch support (best-effort — not available on iOS)
       const capabilities = (track as any)?.getCapabilities?.()
-      setTorchSupported(!!(capabilities?.torch))
+      const hasTorch = !!(capabilities?.torch)
+      setTorchSupported(hasTorch)
       setTorchOn(false)
 
       streamRef.current = stream
@@ -1021,24 +1028,37 @@ export default function ScanPage() {
 
         {/* SCANNING */}
         {mode === "scanning" && (
-          <div style={{ position: "relative", borderRadius: "20px", overflow: "hidden", background: "#000", aspectRatio: "1" }}>
-            <video ref={videoRef} autoPlay playsInline muted style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <div style={{ width: "65%", aspectRatio: "1.5", position: "relative" }}>
-                {[["0%","0%","top","left"],["0%","100%","top","right"],["100%","0%","bottom","left"],["100%","100%","bottom","right"]].map(([t,l,v,h]) => (
-                  <div key={`${v}${h}`} style={{ position: "absolute", top: t, left: l, width: "20px", height: "20px", borderTop: v === "top" ? "2px solid var(--accent)" : "none", borderBottom: v === "bottom" ? "2px solid var(--accent)" : "none", borderLeft: h === "left" ? "2px solid var(--accent)" : "none", borderRight: h === "right" ? "2px solid var(--accent)" : "none" }} />
-                ))}
-                <div style={{ position: "absolute", left: 0, right: 0, top: `${scanLine}%`, height: "2px", background: "var(--accent)", boxShadow: "0 0 8px var(--accent)", transition: "top 0.016s linear" }} />
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+            <div style={{ position: "relative", borderRadius: "20px", overflow: "hidden", background: "#000", aspectRatio: "1" }}>
+              <video ref={videoRef} autoPlay playsInline muted style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: "65%", aspectRatio: "1.5", position: "relative" }}>
+                  {[["0%","0%","top","left"],["0%","100%","top","right"],["100%","0%","bottom","left"],["100%","100%","bottom","right"]].map(([t,l,v,h]) => (
+                    <div key={`${v}${h}`} style={{ position: "absolute", top: t, left: l, width: "20px", height: "20px", borderTop: v === "top" ? "2px solid var(--accent)" : "none", borderBottom: v === "bottom" ? "2px solid var(--accent)" : "none", borderLeft: h === "left" ? "2px solid var(--accent)" : "none", borderRight: h === "right" ? "2px solid var(--accent)" : "none" }} />
+                  ))}
+                  <div style={{ position: "absolute", left: 0, right: 0, top: `${scanLine}%`, height: "2px", background: "var(--accent)", boxShadow: "0 0 8px var(--accent)", transition: "top 0.016s linear" }} />
+                </div>
               </div>
-            </div>
-            <div style={{ position: "absolute", bottom: "1rem", left: 0, right: 0, display: "flex", justifyContent: "center", gap: "0.75rem" }}>
-              {torchSupported && (
-                <button onClick={toggleTorch} style={{ background: torchOn ? "rgba(255,215,0,0.85)" : "rgba(0,0,0,0.6)", border: `1px solid ${torchOn ? "rgba(255,215,0,0.8)" : "rgba(255,255,255,0.2)"}`, color: torchOn ? "#000" : "#fff", borderRadius: "8px", padding: "0.5rem 1rem", cursor: "pointer", fontSize: "0.85rem", fontWeight: 600, transition: "all 0.15s" }}>
+              {/* Torch + Abbrechen */}
+              <div style={{ position: "absolute", bottom: "1rem", left: 0, right: 0, display: "flex", justifyContent: "center", gap: "0.75rem" }}>
+                <button onClick={toggleTorch} style={{ background: torchOn ? "rgba(255,215,0,0.9)" : "rgba(0,0,0,0.6)", border: `1px solid ${torchOn ? "rgba(255,215,0,0.8)" : "rgba(255,255,255,0.2)"}`, color: torchOn ? "#000" : "#fff", borderRadius: "8px", padding: "0.5rem 1rem", cursor: "pointer", fontSize: "0.85rem", fontWeight: 600, transition: "all 0.15s" }}>
                   {torchOn ? "🔦 An" : "🔦 Licht"}
                 </button>
-              )}
-              <button onClick={reset} style={{ background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", borderRadius: "8px", padding: "0.5rem 1.2rem", cursor: "pointer", fontSize: "0.85rem" }}>Abbrechen</button>
+                <button onClick={reset} style={{ background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", borderRadius: "8px", padding: "0.5rem 1.2rem", cursor: "pointer", fontSize: "0.85rem" }}>Abbrechen</button>
+              </div>
             </div>
+            {/* Hint after ~6s of scanning */}
+            {scanSeconds >= 6 && (
+              <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)", borderRadius: 14, padding: "0.85rem 1rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                <div>
+                  <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text)" }}>Barcode nicht erkannt?</div>
+                  <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 2 }}>Etikett gerade halten, Licht einschalten oder Name eingeben</div>
+                </div>
+                <button onClick={() => { reset(); setTimeout(() => setMode("manual"), 80) }} style={{ flexShrink: 0, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "0.45rem 0.85rem", color: "var(--text)", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}>
+                  ✏️ Eingeben
+                </button>
+              </div>
+            )}
           </div>
         )}
 
