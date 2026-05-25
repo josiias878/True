@@ -553,6 +553,8 @@ export default function ScanPage() {
   const [userAllergies, setUserAllergies] = useState<string[]>([])
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([])
   const [facingMode, setFacingMode]     = useState<"environment"|"user">("environment")
+  const [torchOn, setTorchOn]           = useState(false)
+  const [torchSupported, setTorchSupported] = useState(false)
   const [ingredientData, setIngredientData] = useState<{
     found: boolean; productName?: string; nutriScore?: string | null
     flags?: { icon: string; label: string; detail: string; severity: "red"|"yellow"|"green" }[]
@@ -560,6 +562,10 @@ export default function ScanPage() {
   } | null>(null)
   const [ingredientLoading, setIngredientLoading] = useState(false)
   const [lookupError, setLookupError] = useState(false)
+
+  // ── KI-Coach ──────────────────────────────────────────────────────────────
+  const [coachReply, setCoachReply]       = useState<string | null>(null)
+  const [coachLoading, setCoachLoading]   = useState(false)
 
   // ── Partner alternatives ──────────────────────────────────────────────────
   const [partnerAlts, setPartnerAlts]         = useState<PartnerAlt[]>([])
@@ -604,6 +610,42 @@ export default function ScanPage() {
     } catch {}
     setPartnerAltsLoading(false)
   }
+
+  async function fetchCoachAnalysis(scanResult: ScanResult, ingData: typeof ingredientData) {
+    setCoachLoading(true)
+    setCoachReply(null)
+    try {
+      const res = await fetch("/api/scan-coach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          product: {
+            name: scanResult.query ?? "unbekannt",
+            corporation: scanResult.corporation?.name,
+            severity: scanResult.corporation?.severity,
+            nutriScore: ingData?.nutriScore,
+            flags: ingData?.flags ?? [],
+            categories: scanResult.categories?.map(c => c.name).join(", "),
+          },
+          goals: userGoals,
+          allergies: userAllergies,
+        }),
+      })
+      const data = await res.json()
+      setCoachReply(data.reply ?? null)
+    } catch {
+      setCoachReply("Analyse konnte nicht geladen werden.")
+    }
+    setCoachLoading(false)
+  }
+
+  // Startet Coach-Analyse sobald Coach offen + Inhaltsstoff-Daten geladen (Race Condition Fix)
+  useEffect(() => {
+    if (expandedDetail === "coach" && !ingredientLoading && !coachReply && !coachLoading && result && isPremium) {
+      fetchCoachAnalysis(result, ingredientData)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandedDetail, ingredientLoading, ingredientData])
 
   useEffect(() => {
     try {
@@ -671,7 +713,19 @@ export default function ScanPage() {
     streamRef.current = null
     try { readerRef.current?.reset() } catch {}
     readerRef.current = null
+    setTorchOn(false)
+    setTorchSupported(false)
   }, [])
+
+  const toggleTorch = useCallback(async () => {
+    const track = streamRef.current?.getVideoTracks()[0]
+    if (!track) return
+    const next = !torchOn
+    try {
+      await (track as any).applyConstraints({ advanced: [{ torch: next }] })
+      setTorchOn(next)
+    } catch {}
+  }, [torchOn])
 
   const startCamera = useCallback(async (facing?: "environment"|"user") => {
     const f = facing ?? facingMode
@@ -701,7 +755,7 @@ export default function ScanPage() {
         }
       }))
 
-      // Continuous autofocus + torch (Taschenlampe) wenn verfügbar
+      // Continuous autofocus + torch-Support prüfen
       const track = stream.getVideoTracks()[0]
       if (track?.applyConstraints) {
         try {
@@ -710,6 +764,10 @@ export default function ScanPage() {
           })
         } catch {}
       }
+      // Check torch support
+      const capabilities = (track as any)?.getCapabilities?.()
+      setTorchSupported(!!(capabilities?.torch))
+      setTorchOn(false)
 
       streamRef.current = stream
 
@@ -765,6 +823,7 @@ export default function ScanPage() {
     setResult(data)
     setPartnerAlts([])
     setAddedToList(false)
+    setCoachReply(null)
     // Fetch partner alternatives
     fetchPartnerAlts(data)
     // Auto-fetch ingredient data from Open Food Facts (independent of TRUE DB)
@@ -802,16 +861,6 @@ export default function ScanPage() {
     setHistory(next)
     if (user) {
       syncScanHistory(user.id, q, data.found, data.corporation?.name, data.corporation?.severity)
-      // Sofort nach Supabase pushen damit History auf allen Geräten aktuell ist
-      supabase?.from("user_profiles").upsert({
-        id: user.id,
-        scan_history: next.slice(0, 50).map(h => ({
-          id: h.id, query: h.query, timestamp: h.timestamp,
-          found: h.found, corpName: h.corpName, severity: h.severity,
-          grade: h.grade, score: h.score,
-        })),
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "id", ignoreDuplicates: false }).then(() => {})
     }
   }
 
@@ -982,7 +1031,12 @@ export default function ScanPage() {
                 <div style={{ position: "absolute", left: 0, right: 0, top: `${scanLine}%`, height: "2px", background: "var(--accent)", boxShadow: "0 0 8px var(--accent)", transition: "top 0.016s linear" }} />
               </div>
             </div>
-            <div style={{ position: "absolute", bottom: "1rem", left: 0, right: 0, display: "flex", justifyContent: "center" }}>
+            <div style={{ position: "absolute", bottom: "1rem", left: 0, right: 0, display: "flex", justifyContent: "center", gap: "0.75rem" }}>
+              {torchSupported && (
+                <button onClick={toggleTorch} style={{ background: torchOn ? "rgba(255,215,0,0.85)" : "rgba(0,0,0,0.6)", border: `1px solid ${torchOn ? "rgba(255,215,0,0.8)" : "rgba(255,255,255,0.2)"}`, color: torchOn ? "#000" : "#fff", borderRadius: "8px", padding: "0.5rem 1rem", cursor: "pointer", fontSize: "0.85rem", fontWeight: 600, transition: "all 0.15s" }}>
+                  {torchOn ? "🔦 An" : "🔦 Licht"}
+                </button>
+              )}
               <button onClick={reset} style={{ background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", borderRadius: "8px", padding: "0.5rem 1.2rem", cursor: "pointer", fontSize: "0.85rem" }}>Abbrechen</button>
             </div>
           </div>
@@ -1301,7 +1355,7 @@ export default function ScanPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", animation: "fadeIn 0.25s ease" }}>
 
                 {/* ── HINTERGRÜNDE ── */}
-                {premiumCats.length > 0 && (() => {
+                {(premiumCats.length > 0 || (result.evidence && result.evidence.length > 0)) && (() => {
                   const open = expandedDetail === "hintergruende"
                   return (
                     <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
@@ -1331,6 +1385,26 @@ export default function ScanPage() {
                               </div>
                             )
                           })}
+                          {/* Evidence / Quellen aus interner DB */}
+                          {(result.evidence ?? []).length > 0 && (
+                            <div style={{ padding: "12px 16px" }}>
+                              <div style={{ fontSize: "0.68rem", fontWeight: 800, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>📋 Quellen & Belege</div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                {(result.evidence ?? []).map(ev => (
+                                  <div key={ev.id} style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px" }}>
+                                    <div style={{ fontWeight: 700, fontSize: "0.8rem", color: "var(--text)", marginBottom: 2 }}>{ev.title}</div>
+                                    <div style={{ fontSize: "0.7rem", color: "var(--text-dim)" }}>{ev.source} · {ev.date}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {/* If both empty, show placeholder */}
+                          {premiumCats.length === 0 && (result.evidence ?? []).length === 0 && (
+                            <div style={{ padding: "16px", fontSize: "0.78rem", color: "var(--text-dim)", textAlign: "center" }}>
+                              Noch keine Hintergrundinformationen für dieses Produkt verfügbar.
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1374,47 +1448,16 @@ export default function ScanPage() {
                   )
                 })()}
 
-                {/* ── ERNÄHRUNGSCOACH ── */}
+                {/* ── ERNÄHRUNGSCOACH (KI-powered) ── */}
                 {(() => {
                   const open = expandedDetail === "coach"
-                  // Ingredient-aware coach hints
-                  const iFlags = ingredientData?.flags ?? []
-                  const hasSugar  = iFlags.some(f => f.label.toLowerCase().includes("zucker"))
-                  const hasPalm   = iFlags.some(f => f.label.toLowerCase().includes("palm"))
-                  const hasAdditives = iFlags.some(f => f.icon === "🔬")
-                  const nutriScore = ingredientData?.nutriScore
-                  const NUTRI_TIPS: Record<string,string> = {
-                    A: "Nutri-Score A — sehr gute Nährwertbilanz für dieses Produkt.",
-                    B: "Nutri-Score B — gute Nährwerte, kann regelmäßig konsumiert werden.",
-                    C: "Nutri-Score C — mittelmäßige Nährwertbilanz, in Maßen okay.",
-                    D: "Nutri-Score D — ungünstige Nährwerte, selten konsumieren.",
-                    E: "Nutri-Score E — sehr ungünstige Nährwertbilanz, besser meiden.",
-                  }
-                  const GOAL_INGR_TIPS: Record<string, string> = {
-                    health: hasSugar && hasPalm
-                      ? "Enthält sowohl viel Zucker als auch Palmöl — für dein Gesundheitsziel klar eine schlechtere Wahl."
-                      : hasSugar
-                      ? "Der Zuckergehalt ist hoch. Für dein Gesundheitsziel: max. 1× pro Woche und auf Zuckerzusatz in anderen Mahlzeiten achten."
-                      : hasPalm
-                      ? "Palmöl erhöht den LDL-Cholesterinspiegel. Für gesündere Alternativen achte auf Produkte mit Raps- oder Olivenöl."
-                      : hasAdditives
-                      ? "Enthält Zusatzstoffe, die bei empfindlichen Personen Reaktionen auslösen können. Im Alltag besser minimieren."
-                      : konzernScore.score >= 72
-                      ? "Aus Gesundheitssicht eine solide Wahl — achte trotzdem auf Portionsgröße und ausgewogene Mahlzeiten."
-                      : "Für dein Gesundheitsziel gibt es bessere Alternativen mit kürzerer Zutatenliste.",
-                    env:    "Wähle ergänzend regionale und saisonale Produkte — das spart CO₂ und unterstützt lokale Bauern.",
-                    family: hasSugar
-                      ? "Für Kinder gilt: max. 25 g freier Zucker pro Tag (WHO). Dieses Produkt kann schnell einen Großteil davon ausmachen."
-                      : hasAdditives
-                      ? "Kinder reagieren empfindlicher auf Farbstoffe und Konservierungsstoffe — lieber auf Produkte ohne E-Nummern achten."
-                      : "Für Familien vertretbar — ergänze mit frischem Gemüse und Vollkornprodukten für eine ausgewogene Ernährung.",
-                    budget: "Faire und gesündere Alternativen sind oft günstiger als Markenprodukte. Eigenmarken von Bio-Supermärkten sind einen Vergleich wert.",
-                    truth:  "Als kritischer Verbraucher: Lies die Zutatenliste — je kürzer, desto transparenter das Produkt.",
-                    action: "Mit bewusstem Einkauf gibst du ein klares Signal. Produkte mit kürzerer Zutatenliste und weniger Verpackung bevorzugen.",
-                  }
                   return (
                     <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
-                      <button onClick={() => { if (!isPremium) { setShowPremiumGate(true); return } setExpandedDetail(open ? null : "coach"); setExpandedCat(null) }}
+                      <button onClick={() => {
+                        if (!isPremium) { setShowPremiumGate(true); return }
+                        setExpandedDetail(open ? null : "coach")
+                        setExpandedCat(null)
+                      }}
                         style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}>
                         <span style={{ fontSize: "1.1rem" }}>🥗</span>
                         <span style={{ flex: 1, fontWeight: 800, fontSize: "0.88rem", color: "var(--text)" }}>Ernährungscoach</span>
@@ -1447,47 +1490,37 @@ export default function ScanPage() {
                               {/* Trennlinie */}
                               {userGoals.length > 0 && <div style={{ height: 1, background: "var(--border)" }} />}
 
-                              {/* Bewertung für jedes Ziel */}
-                              {userGoals.map(g => {
-                                const ingrTip = GOAL_INGR_TIPS[g]
-                                const gm = GOAL_META[g]
-                                const konzernHint = GOAL_SCAN_HINT[g]?.[result.corporation?.severity ?? "low"]
-                                if (!gm) return null
-                                return (
-                                  <div key={g} style={{ display: "flex", gap: 10, alignItems: "flex-start", background: gm.color + "0d", border: `1px solid ${gm.color}22`, borderRadius: 12, padding: "10px 12px" }}>
-                                    <span style={{ fontSize: "1.1rem", flexShrink: 0, marginTop: 1 }}>{gm.icon}</span>
-                                    <div>
-                                      <div style={{ fontWeight: 800, fontSize: "0.8rem", marginBottom: 3, color: gm.color }}>{gm.label}</div>
-                                      <div style={{ fontSize: "0.76rem", color: "var(--text-dim)", lineHeight: 1.55 }}>
-                                        {ingrTip || konzernHint || "Keine spezifischen Daten für dieses Produkt."}
-                                      </div>
-                                    </div>
+                              {/* KI-Coach Analyse */}
+                              {(coachLoading || ingredientLoading) && (
+                                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px", background: "var(--accent)08", borderRadius: 10, border: "1px solid var(--accent)22" }}>
+                                  <div style={{ display: "flex", gap: 3 }}>
+                                    {[0,1,2].map(i => (
+                                      <div key={i} style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--accent)", animation: `pulse 1.2s ease ${i*0.2}s infinite` }} />
+                                    ))}
                                   </div>
-                                )
-                              })}
-
-                              {/* Nutri-Score */}
-                              {nutriScore && NUTRI_TIPS[nutriScore] && (
-                                <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                                  <span style={{ fontSize: "1.1rem", flexShrink: 0, marginTop: 1 }}>📊</span>
-                                  <div>
-                                    <div style={{ fontWeight: 700, fontSize: "0.8rem", marginBottom: 2 }}>Nährwertbilanz</div>
-                                    <div style={{ fontSize: "0.76rem", color: "var(--text-dim)", lineHeight: 1.55 }}>{NUTRI_TIPS[nutriScore]}</div>
-                                  </div>
+                                  <span style={{ fontSize: "0.75rem", color: "var(--text-dim)", fontWeight: 600 }}>
+                                    {ingredientLoading ? "Lade Inhaltsstoffe …" : "Analysiere mit KI …"}
+                                  </span>
                                 </div>
                               )}
 
-                              {/* Häufigkeitsempfehlung */}
-                              <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                                <span style={{ fontSize: "1.1rem", flexShrink: 0, marginTop: 1 }}>{freqIcon}</span>
-                                <div>
-                                  <div style={{ fontWeight: 700, fontSize: "0.8rem", marginBottom: 2 }}>{freqLabel}</div>
-                                  <div style={{ fontSize: "0.76rem", color: "var(--text-dim)", lineHeight: 1.55 }}>{freqTip}</div>
+                              {coachReply && !coachLoading && (
+                                <div style={{ padding: "12px 14px", background: "var(--accent)0d", borderRadius: 12, border: "1px solid var(--accent)22" }}>
+                                  <div style={{ fontSize: "0.78rem", color: "var(--text)", lineHeight: 1.6 }}>{coachReply}</div>
                                 </div>
-                              </div>
+                              )}
 
-                              {/* Kein Ziel gesetzt */}
-                              {userGoals.length === 0 && (
+                              {!coachLoading && !coachReply && (
+                                <div style={{ textAlign: "center", padding: "16px 12px", color: "var(--text-dim)" }}>
+                                  <div style={{ fontSize: "0.75rem", marginBottom: 8 }}>Klicke nochmal um die KI-Analyse zu laden</div>
+                                  <button onClick={() => fetchCoachAnalysis(result, ingredientData)}
+                                    style={{ background: "var(--accent)", color: "#000", border: "none", borderRadius: 8, padding: "6px 12px", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer" }}>
+                                    Analysieren
+                                  </button>
+                                </div>
+                              )}
+
+                              {userGoals.length === 0 && !coachLoading && !coachReply && (
                                 <div style={{ textAlign: "center", padding: "8px 0", fontSize: "0.78rem", color: "var(--text-dim)" }}>
                                   Keine Ziele gesetzt — geh in dein <strong>Profil</strong> und wähle deine Ziele für personalisierte Tipps.
                                 </div>
