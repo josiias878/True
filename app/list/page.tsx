@@ -709,9 +709,8 @@ export default function ShoppingListPage() {
   const [itemComment, setItemComment]         = useState<Record<string, string>>({})
   const [userName, setUserName]               = useState("")
   const [showPersonSheet, setShowPersonSheet] = useState(false)
-  const [newPersonName, setNewPersonName]     = useState("")
-  const [newPersonAge, setNewPersonAge]       = useState("")
   const [newPersonEmoji, setNewPersonEmoji]   = useState("🧒")
+  const [profilePhoto, setProfilePhoto]       = useState<string | null>(null)
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Load from localStorage
@@ -748,6 +747,11 @@ export default function ShoppingListPage() {
     try {
       const fm = localStorage.getItem("true-family-members")
       if (fm) setFamilyMembers(JSON.parse(fm))
+    } catch {}
+    // Load profile photo
+    try {
+      const ph = localStorage.getItem("true-profile-photo")
+      if (ph) setProfilePhoto(ph)
     } catch {}
     // Load premium status
     try {
@@ -974,38 +978,37 @@ export default function ShoppingListPage() {
         </div>
       </header>
 
-      {/* ── Person tabs ── */}
-      <div style={{ overflowX: "auto", display: "flex", gap: 8, padding: "10px 16px", scrollbarWidth: "none", borderBottom: "1px solid var(--border)", background: "var(--surface)", alignItems: "center" }}>
+      {/* ── Person tabs — circular avatars ── */}
+      <div style={{ overflowX: "auto", display: "flex", gap: 16, padding: "12px 16px 10px", scrollbarWidth: "none", borderBottom: "1px solid var(--border)", background: "var(--surface)", alignItems: "flex-end" }}>
         {/* Alle */}
-        <button
-          onClick={() => setActivePerson("all")}
-          style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 999, border: `1.5px solid ${activePerson === "all" ? "var(--accent)" : "var(--border)"}`, background: activePerson === "all" ? "var(--accent-dim)" : "transparent", color: activePerson === "all" ? "var(--accent)" : "var(--text-dim)", fontSize: "0.78rem", fontWeight: activePerson === "all" ? 700 : 500, cursor: "pointer" }}
-        >
-          🛒 Alle
-        </button>
-        {/* Meine (items ohne personId) */}
-        <button
-          onClick={() => setActivePerson("mine")}
-          style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 999, border: `1.5px solid ${activePerson === "mine" ? "var(--accent)" : "var(--border)"}`, background: activePerson === "mine" ? "var(--accent-dim)" : "transparent", color: activePerson === "mine" ? "var(--accent)" : "var(--text-dim)", fontSize: "0.78rem", fontWeight: activePerson === "mine" ? 700 : 500, cursor: "pointer" }}
-        >
-          👤 Meine
-        </button>
-        {/* Familie */}
-        {familyMembers.map(m => (
-          <button
-            key={m.id}
-            onClick={() => setActivePerson(m.id)}
-            style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 999, border: `1.5px solid ${activePerson === m.id ? "var(--accent)" : "var(--border)"}`, background: activePerson === m.id ? "var(--accent-dim)" : "transparent", color: activePerson === m.id ? "var(--accent)" : "var(--text-dim)", fontSize: "0.78rem", fontWeight: 500, cursor: "pointer" }}
-          >
-            {m.emoji} {m.name}
+        {[{ id: "all", label: "Alle", content: <span style={{ fontSize: "1.1rem" }}>🛒</span> },
+          { id: "mine", label: userName ? userName.split(" ")[0] : "Meine", content: profilePhoto
+            ? <img src={profilePhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+            : <span style={{ fontSize: "1.1rem" }}>👤</span> }
+        ].map(tab => (
+          <button key={tab.id} onClick={() => setActivePerson(tab.id)}
+            style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+            <div style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--surface-2)", border: `2.5px solid ${activePerson === tab.id ? "var(--accent)" : "transparent"}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", transition: "border-color 0.15s", boxShadow: activePerson === tab.id ? "0 0 0 3px rgba(46,204,138,0.15)" : "none" }}>
+              {tab.content}
+            </div>
+            <span style={{ fontSize: "0.62rem", fontWeight: activePerson === tab.id ? 700 : 500, color: activePerson === tab.id ? "var(--accent)" : "var(--text-dim)", whiteSpace: "nowrap" }}>{tab.label}</span>
           </button>
         ))}
-        {/* Person hinzufügen */}
-        <button
-          onClick={() => setShowPersonSheet(true)}
-          style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 999, border: "1.5px dashed var(--border)", background: "transparent", color: "var(--text-dim)", fontSize: "0.78rem", cursor: "pointer" }}
-        >
-          + Person
+        {/* Familie */}
+        {familyMembers.map(m => (
+          <button key={m.id} onClick={() => setActivePerson(m.id)}
+            style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+            <div style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--surface-2)", border: `2.5px solid ${activePerson === m.id ? "var(--accent)" : "transparent"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", transition: "border-color 0.15s", boxShadow: activePerson === m.id ? "0 0 0 3px rgba(46,204,138,0.15)" : "none" }}>
+              {m.emoji}
+            </div>
+            <span style={{ fontSize: "0.62rem", fontWeight: activePerson === m.id ? 700 : 500, color: activePerson === m.id ? "var(--accent)" : "var(--text-dim)", whiteSpace: "nowrap", maxWidth: 52, overflow: "hidden", textOverflow: "ellipsis" }}>{m.name}</span>
+          </button>
+        ))}
+        {/* Person einladen */}
+        <button onClick={() => setShowPersonSheet(true)}
+          style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+          <div style={{ width: 48, height: 48, borderRadius: "50%", border: "2px dashed var(--border)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: "1.3rem" }}>+</div>
+          <span style={{ fontSize: "0.62rem", color: "var(--text-dim)" }}>Einladen</span>
         </button>
       </div>
 
@@ -1459,10 +1462,12 @@ export default function ShoppingListPage() {
           try { localStorage.setItem("true-family-members", JSON.stringify(next)) } catch {}
         }
         function addPerson() {
-          const name = newPersonName.trim()
-          if (!name) return
-          savePeople([...familyMembers, { id: Date.now().toString(), name, age: newPersonAge.trim(), emoji: newPersonEmoji }])
-          setNewPersonName(""); setNewPersonAge(""); setNewPersonEmoji("🧒")
+          const autoName = `Person ${familyMembers.length + 1}`
+          savePeople([...familyMembers, { id: Date.now().toString(), name: autoName, age: "", emoji: newPersonEmoji }])
+          setNewPersonEmoji("🧒")
+          // also generate invite link
+          openShare()
+          setShowPersonSheet(false)
         }
         return (
           <>
@@ -1473,39 +1478,42 @@ export default function ShoppingListPage() {
               </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 20px 14px" }}>
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: "1rem" }}>👨‍👩‍👧 Personen</div>
-                  <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 2 }}>Für wen kaufst du ein?</div>
+                  <div style={{ fontWeight: 800, fontSize: "1rem" }}>Jemanden einladen</div>
+                  <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 2 }}>Die Person trägt ihren Namen selbst ein</div>
                 </div>
                 <button onClick={() => setShowPersonSheet(false)} style={{ background: "var(--surface-2)", border: "none", borderRadius: "50%", width: 30, height: 30, cursor: "pointer", fontSize: "0.9rem", color: "var(--text-dim)" }}>✕</button>
               </div>
               <div style={{ borderTop: "1px solid var(--border)", margin: "0 20px" }} />
-              <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
-                {familyMembers.map(m => (
-                  <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--background)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 14px" }}>
-                    <span style={{ fontSize: "1.5rem" }}>{m.emoji}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>{m.name}</div>
-                      {m.age && <div style={{ fontSize: "0.7rem", color: "var(--text-dim)" }}>{m.age} Jahre</div>}
-                    </div>
-                    <button onClick={() => savePeople(familyMembers.filter(x => x.id !== m.id))} style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: "1.2rem", padding: "0 4px" }}>×</button>
-                  </div>
-                ))}
-                {familyMembers.length === 0 && (
-                  <div style={{ textAlign: "center", color: "var(--text-dim)", fontSize: "0.82rem", padding: "4px 0 8px" }}>Noch niemand hinzugefügt.</div>
-                )}
-                <div style={{ background: "var(--background)", border: "1px solid var(--border)", borderRadius: 14, padding: 14 }}>
-                  <div style={{ fontSize: "0.65rem", fontWeight: 800, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>Person hinzufügen</div>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-                    {PERSON_EMOJIS.map(em => (
-                      <button key={em} onClick={() => setNewPersonEmoji(em)} style={{ background: newPersonEmoji === em ? "var(--accent)" : "var(--surface)", border: `1.5px solid ${newPersonEmoji === em ? "var(--accent)" : "var(--border)"}`, borderRadius: 8, padding: "5px 8px", fontSize: "1.1rem", cursor: "pointer" }}>{em}</button>
+              <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
+
+                {/* Existing members */}
+                {familyMembers.length > 0 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {familyMembers.map(m => (
+                      <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--background)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 14px" }}>
+                        <div style={{ width: 38, height: 38, borderRadius: "50%", background: "var(--surface-2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem" }}>{m.emoji}</div>
+                        <div style={{ flex: 1, fontWeight: 600, fontSize: "0.88rem" }}>{m.name}</div>
+                        <button onClick={() => savePeople(familyMembers.filter(x => x.id !== m.id))} style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: "1.2rem", padding: "0 4px" }}>×</button>
+                      </div>
                     ))}
                   </div>
-                  <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-                    <input value={newPersonName} onChange={e => setNewPersonName(e.target.value)} onKeyDown={e => e.key === "Enter" && addPerson()} placeholder="Name (z.B. Lena, Hund …)" style={{ flex: 1, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px", color: "var(--text)", fontSize: "0.88rem", outline: "none" }} />
-                    <input value={newPersonAge} onChange={e => setNewPersonAge(e.target.value)} placeholder="Alter" type="number" min="0" max="120" style={{ width: 70, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 8px", color: "var(--text)", fontSize: "0.88rem", outline: "none" }} />
+                )}
+
+                {/* Emoji picker */}
+                <div>
+                  <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-dim)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Wer wird eingeladen?</div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {PERSON_EMOJIS.map(em => (
+                      <button key={em} onClick={() => setNewPersonEmoji(em)} style={{ width: 42, height: 42, borderRadius: "50%", background: newPersonEmoji === em ? "var(--accent)" : "var(--surface-2)", border: `2px solid ${newPersonEmoji === em ? "var(--accent)" : "transparent"}`, fontSize: "1.3rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.12s" }}>{em}</button>
+                    ))}
                   </div>
-                  <button onClick={addPerson} style={{ width: "100%", background: "var(--accent)", color: "#000", border: "none", borderRadius: 10, padding: "11px", fontWeight: 800, fontSize: "0.9rem", cursor: "pointer" }}>✓ Hinzufügen</button>
                 </div>
+
+                {/* CTA */}
+                <button onClick={addPerson} style={{ width: "100%", background: "var(--accent)", color: "#000", border: "none", borderRadius: 14, padding: "14px", fontWeight: 800, fontSize: "0.95rem", cursor: "pointer" }}>
+                  📤 Einladungslink erstellen & teilen
+                </button>
+                <p style={{ textAlign: "center", fontSize: "0.72rem", color: "var(--text-dim)", margin: 0 }}>Die Person öffnet den Link und trägt ihren Namen ein</p>
               </div>
             </div>
           </>
