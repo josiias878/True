@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase"
 const ADMIN_EMAILS = ["info@get-true.de", "social@get-true.de", "mgognon99@gmail.com"]
 const AUTH_KEY = "true-admin-authed-v2"
 
-type Tab = "overview" | "users" | "posts" | "support" | "push" | "system" | "content" | "bots" | "partner"
+type Tab = "overview" | "users" | "posts" | "support" | "push" | "system" | "content" | "bots" | "partner" | "social"
 
 // ── Konzerne pool (same as feed) ────────────────────────────────────────────
 const KONZERNE = [
@@ -126,6 +126,23 @@ export default function AdminPage() {
   const [cgKonzern, setCgKonzern] = useState(0)
   const [cgPlatform, setCgPlatform] = useState<"tiktok"|"instagram"|"twitter">("tiktok")
   const [cgCopied, setCgCopied]   = useState<string | null>(null)
+
+  // Social Media
+  interface SocialPost { id: number; platform: string; status: string; content: string; image_url: string | null; post_type: string; platform_url: string | null; posted_at: string | null; scheduled_at: string | null; error_msg: string | null; analytics: Record<string, number>; created_at: string }
+  const [socialPosts, setSocialPosts]         = useState<SocialPost[]>([])
+  const [socialLoading, setSocialLoading]     = useState(false)
+  const [socialPosting, setSocialPosting]     = useState(false)
+  const [socialStats, setSocialStats]         = useState<Record<string, { total: number; posted: number; failed: number; scheduled: number; totalLikes: number; totalComments: number; totalReach: number }>>({})
+  // Composer
+  const [scPlatforms, setScPlatforms]         = useState<string[]>(["instagram", "linkedin"])
+  const [scContent, setScContent]             = useState("")
+  const [scImageUrl, setScImageUrl]           = useState("")
+  const [scPostType, setScPostType]           = useState("general")
+  const [scSchedule, setScSchedule]           = useState("")
+  const [scTopic, setScTopic]                 = useState("")
+  const [scGenerateAI, setScGenerateAI]       = useState(false)
+  const [scGenerating, setScGenerating]       = useState(false)
+  const [scResult, setScResult]               = useState<{ success: boolean; results: Record<string, { success: boolean; url?: string; error?: string }>; content: string } | null>(null)
 
   // Partner leads
   interface PartnerLead { id: string; created_at: string; email: string; company_name: string; tier: string; status: string; notes: string }
@@ -450,10 +467,69 @@ export default function AdminPage() {
     setEmailSending(false)
   }
 
+  async function loadSocialData() {
+    setSocialLoading(true)
+    try {
+      const [postsRes, statsRes] = await Promise.all([
+        fetch("/api/social-post?limit=30"),
+        fetch("/api/social-analytics", { method: "POST" }),
+      ])
+      const postsData = await postsRes.json()
+      const statsData = await statsRes.json()
+      if (postsData.posts) setSocialPosts(postsData.posts)
+      if (statsData.stats) setSocialStats(statsData.stats)
+    } catch {}
+    setSocialLoading(false)
+  }
+
+  async function submitSocialPost() {
+    if (!scContent && !scGenerateAI) return
+    setSocialPosting(true)
+    setScResult(null)
+    try {
+      const res = await fetch("/api/social-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          platforms: scPlatforms,
+          content: scContent,
+          imageUrl: scImageUrl || undefined,
+          postType: scPostType,
+          topic: scTopic,
+          generateAI: scGenerateAI,
+          scheduledAt: scSchedule || undefined,
+        }),
+      })
+      const data = await res.json()
+      setScResult(data)
+      if (data.success) {
+        setScContent(data.content ?? scContent)
+        loadSocialData()
+      }
+    } catch {}
+    setSocialPosting(false)
+  }
+
+  async function generateAICaption() {
+    if (!scTopic) return
+    setScGenerating(true)
+    try {
+      const res = await fetch("/api/social-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platforms: scPlatforms, topic: scTopic, postType: scPostType, generateAI: true, scheduledAt: "preview-only" }),
+      })
+      const data = await res.json()
+      if (data.content) setScContent(data.content)
+    } catch {}
+    setScGenerating(false)
+  }
+
   function switchTab(tab: Tab) {
     setActiveTab(tab)
     if (tab === "partner" && partnerLeads.length === 0) loadPartnerLeads()
     if (tab === "partner" && verifStats === null) loadVerifQueue()
+    if (tab === "social" && socialPosts.length === 0) loadSocialData()
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
@@ -656,6 +732,7 @@ export default function AdminPage() {
   const TABS: [Tab, string][] = [
     ["overview", "📊"],
     ["partner",  "🤝"],
+    ["social",   "📱"],
     ["users",    "👥"],
     ["posts",    "📝"],
     ["content",  "🎬"],
@@ -665,7 +742,7 @@ export default function AdminPage() {
     ["system",   "⚙️"],
   ]
   const TAB_LABELS: Record<Tab, string> = {
-    overview: "Übersicht", partner: "Partner", users: "Nutzer", posts: "Posts",
+    overview: "Übersicht", partner: "Partner", social: "Social", users: "Nutzer", posts: "Posts",
     content: "Content", bots: "Bots", push: "Push", support: "Support", system: "System",
   }
 
@@ -1383,6 +1460,206 @@ export default function AdminPage() {
                 {cgCopied === "all" ? "✓ Alles kopiert!" : "📋 Alles auf einmal kopieren"}
               </button>
             </div>
+          </div>
+        )}
+
+        {/* ── SOCIAL MEDIA ── */}
+        {activeTab === "social" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+            {/* Plattform-Stats */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
+              {(["instagram","linkedin","reddit"] as const).map(p => {
+                const s = socialStats[p]
+                const icons: Record<string,string> = { instagram:"📸", linkedin:"💼", reddit:"🟠" }
+                const colors: Record<string,string> = { instagram:"#e1306c", linkedin:"#0077b5", reddit:"#ff4500" }
+                const configured: Record<string,boolean> = {
+                  instagram: !!(process.env.INSTAGRAM_ACCESS_TOKEN),
+                  linkedin:  !!(process.env.LINKEDIN_ACCESS_TOKEN),
+                  reddit:    !!(process.env.REDDIT_CLIENT_ID),
+                }
+                return (
+                  <div key={p} style={{ background: "var(--surface)", border: `1px solid ${colors[p]}33`, borderRadius: 14, padding: "12px 14px" }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
+                      <span style={{ fontSize:"1.2rem" }}>{icons[p]}</span>
+                      <span style={{ fontWeight:800, fontSize:"0.8rem", textTransform:"capitalize" }}>{p}</span>
+                    </div>
+                    {s ? (
+                      <>
+                        <div style={{ fontSize:"1.4rem", fontWeight:900, color:colors[p] }}>{s.posted}</div>
+                        <div style={{ fontSize:"0.62rem", color:"var(--text-dim)" }}>Posts</div>
+                        <div style={{ marginTop:6, display:"flex", gap:8, fontSize:"0.62rem", color:"var(--text-dim)" }}>
+                          <span>❤️ {s.totalLikes}</span>
+                          <span>💬 {s.totalComments}</span>
+                          {s.totalReach > 0 && <span>👁 {s.totalReach}</span>}
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ fontSize:"0.65rem", color:"var(--text-dim)", marginTop:4 }}>
+                        {socialLoading ? "Lade…" : "Noch keine Posts"}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Post Composer */}
+            <div style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:16, padding:20 }}>
+              <div style={{ fontWeight:900, fontSize:"0.95rem", marginBottom:16 }}>✍️ Neuer Post</div>
+
+              {/* Plattform-Auswahl */}
+              <div style={{ marginBottom:14 }}>
+                <div style={{ fontSize:"0.65rem", fontWeight:700, color:"var(--text-dim)", marginBottom:8, textTransform:"uppercase" }}>Plattformen</div>
+                <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                  {(["instagram","linkedin","reddit"] as const).map(p => {
+                    const icons: Record<string,string> = { instagram:"📸", linkedin:"💼", reddit:"🟠" }
+                    const sel = scPlatforms.includes(p)
+                    return (
+                      <button key={p} onClick={() => setScPlatforms(prev => sel ? prev.filter(x=>x!==p) : [...prev,p])}
+                        style={{ padding:"6px 14px", borderRadius:99, border:`2px solid ${sel ? "var(--accent)" : "var(--border)"}`, background: sel ? "rgba(46,204,138,0.12)" : "transparent", cursor:"pointer", fontSize:"0.8rem", fontWeight:700, color: sel ? "var(--accent)" : "var(--text-dim)", display:"flex", alignItems:"center", gap:6 }}>
+                        {icons[p]} {p.charAt(0).toUpperCase()+p.slice(1)}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Post-Typ */}
+              <div style={{ marginBottom:14 }}>
+                <div style={{ fontSize:"0.65rem", fontWeight:700, color:"var(--text-dim)", marginBottom:8, textTransform:"uppercase" }}>Post-Typ</div>
+                <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                  {([["general","💬 Allgemein"],["feature","⭐ Feature"],["fact","📊 Fakt"],["tip","💡 Tipp"],["partner","🤝 Partner"]] as [string,string][]).map(([val,label]) => (
+                    <button key={val} onClick={() => setScPostType(val)}
+                      style={{ padding:"5px 12px", borderRadius:99, border:`1px solid ${scPostType===val ? "var(--accent)" : "var(--border)"}`, background: scPostType===val ? "rgba(46,204,138,0.1)" : "transparent", cursor:"pointer", fontSize:"0.72rem", fontWeight: scPostType===val ? 700 : 500, color: scPostType===val ? "var(--accent)" : "var(--text-dim)" }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* KI-Caption Generator */}
+              <div style={{ marginBottom:14, padding:12, background:"rgba(46,204,138,0.06)", borderRadius:10, border:"1px solid rgba(46,204,138,0.2)" }}>
+                <div style={{ fontSize:"0.65rem", fontWeight:700, color:"var(--accent)", marginBottom:8, textTransform:"uppercase" }}>🤖 KI Caption Generator</div>
+                <div style={{ display:"flex", gap:8 }}>
+                  <input value={scTopic} onChange={e=>setScTopic(e.target.value)}
+                    placeholder="Thema z.B. 'Nestlé Wasserraub' oder 'Barcode Scanner Feature'"
+                    style={{ flex:1, background:"var(--surface-2)", border:"1px solid var(--border)", borderRadius:8, padding:"8px 12px", fontSize:"0.8rem", color:"var(--text)" }} />
+                  <button onClick={generateAICaption} disabled={!scTopic || scGenerating}
+                    style={{ padding:"8px 16px", background: scTopic && !scGenerating ? "var(--accent)" : "var(--border)", color:"#000", border:"none", borderRadius:8, fontWeight:700, cursor: scTopic && !scGenerating ? "pointer" : "default", fontSize:"0.78rem", whiteSpace:"nowrap" }}>
+                    {scGenerating ? "⏳" : "✨ Generieren"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div style={{ marginBottom:14 }}>
+                <div style={{ fontSize:"0.65rem", fontWeight:700, color:"var(--text-dim)", marginBottom:6, textTransform:"uppercase" }}>Post-Text</div>
+                <textarea value={scContent} onChange={e=>setScContent(e.target.value)} rows={5}
+                  placeholder="Post-Text hier eingeben oder oben KI-Caption generieren…"
+                  style={{ width:"100%", background:"var(--surface-2)", border:"1px solid var(--border)", borderRadius:10, padding:"10px 14px", fontSize:"0.82rem", color:"var(--text)", resize:"vertical", boxSizing:"border-box", lineHeight:1.6 }} />
+                <div style={{ fontSize:"0.62rem", color:"var(--text-dim)", marginTop:4 }}>{scContent.length} Zeichen</div>
+              </div>
+
+              {/* Bild-URL */}
+              <div style={{ marginBottom:14 }}>
+                <div style={{ fontSize:"0.65rem", fontWeight:700, color:"var(--text-dim)", marginBottom:6, textTransform:"uppercase" }}>Bild-URL {scPlatforms.includes("instagram") && <span style={{ color:"#e1306c" }}>* (Instagram Pflicht)</span>}</div>
+                <input value={scImageUrl} onChange={e=>setScImageUrl(e.target.value)}
+                  placeholder="https://images.pexels.com/... oder eigene Bild-URL"
+                  style={{ width:"100%", background:"var(--surface-2)", border:"1px solid var(--border)", borderRadius:8, padding:"8px 12px", fontSize:"0.8rem", color:"var(--text)", boxSizing:"border-box" }} />
+                {scImageUrl && (
+                  <img src={scImageUrl} alt="Preview" style={{ marginTop:8, width:"100%", maxHeight:180, objectFit:"cover", borderRadius:8, border:"1px solid var(--border)" }} />
+                )}
+              </div>
+
+              {/* Zeitplanung */}
+              <div style={{ marginBottom:16 }}>
+                <div style={{ fontSize:"0.65rem", fontWeight:700, color:"var(--text-dim)", marginBottom:6, textTransform:"uppercase" }}>Zeitplanung (optional — leer = sofort)</div>
+                <input type="datetime-local" value={scSchedule} onChange={e=>setScSchedule(e.target.value)}
+                  style={{ background:"var(--surface-2)", border:"1px solid var(--border)", borderRadius:8, padding:"8px 12px", fontSize:"0.8rem", color:"var(--text)" }} />
+              </div>
+
+              {/* Post Button */}
+              <button onClick={submitSocialPost} disabled={socialPosting || scPlatforms.length === 0 || (!scContent && !scTopic)}
+                style={{ width:"100%", padding:"13px", background: !socialPosting && scPlatforms.length > 0 && (scContent || scTopic) ? "var(--accent)" : "var(--border)", color:"#000", border:"none", borderRadius:12, fontWeight:900, fontSize:"0.92rem", cursor: !socialPosting ? "pointer" : "default" }}>
+                {socialPosting ? "⏳ Wird gepostet…" : scSchedule ? `📅 Einplanen (${scPlatforms.length} Plattform${scPlatforms.length>1?"en":""})` : `🚀 Jetzt posten (${scPlatforms.length} Plattform${scPlatforms.length>1?"en":""})`}
+              </button>
+
+              {/* Ergebnis */}
+              {scResult && (
+                <div style={{ marginTop:14, padding:14, borderRadius:10, border:`1px solid ${scResult.success ? "rgba(46,204,138,0.4)" : "rgba(255,68,85,0.4)"}`, background: scResult.success ? "rgba(46,204,138,0.07)" : "rgba(255,68,85,0.07)" }}>
+                  {Object.entries(scResult.results ?? {}).map(([platform, r]) => (
+                    <div key={platform} style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6, fontSize:"0.8rem" }}>
+                      <span>{r.success ? "✅" : "❌"}</span>
+                      <span style={{ fontWeight:700, textTransform:"capitalize" }}>{platform}</span>
+                      {r.success && r.url && <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color:"var(--accent)", fontSize:"0.72rem" }}>→ Post ansehen</a>}
+                      {!r.success && r.error && <span style={{ color:"#ff4455", fontSize:"0.7rem" }}>{r.error}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Post-History */}
+            <div style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:16, padding:20 }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+                <div style={{ fontWeight:900, fontSize:"0.95rem" }}>📋 Post-History</div>
+                <button onClick={loadSocialData} style={{ background:"var(--surface-2)", border:"1px solid var(--border)", borderRadius:8, padding:"5px 12px", fontSize:"0.72rem", fontWeight:700, cursor:"pointer", color:"var(--text-dim)" }}>
+                  {socialLoading ? "⏳" : "↻ Refresh"}
+                </button>
+              </div>
+
+              {socialPosts.length === 0 ? (
+                <div style={{ textAlign:"center", padding:"24px 0", color:"var(--text-dim)", fontSize:"0.8rem" }}>
+                  {socialLoading ? "Lade Posts…" : "Noch keine Posts — erstelle deinen ersten Post oben!"}
+                </div>
+              ) : (
+                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  {socialPosts.map(post => {
+                    const icons: Record<string,string> = { instagram:"📸", linkedin:"💼", reddit:"🟠" }
+                    const statusColor: Record<string,string> = { posted:"#2ECC8A", failed:"#ff4455", scheduled:"#ffaa00", draft:"#888" }
+                    const statusLabel: Record<string,string> = { posted:"Gepostet", failed:"Fehler", scheduled:"Geplant", draft:"Entwurf" }
+                    return (
+                      <div key={post.id} style={{ padding:"11px 14px", background:"var(--background)", borderRadius:10, border:"1px solid var(--border)" }}>
+                        <div style={{ display:"flex", alignItems:"flex-start", gap:10 }}>
+                          <span style={{ fontSize:"1.1rem", flexShrink:0 }}>{icons[post.platform] ?? "📱"}</span>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4, flexWrap:"wrap" }}>
+                              <span style={{ fontWeight:700, fontSize:"0.78rem", textTransform:"capitalize" }}>{post.platform}</span>
+                              <span style={{ background: statusColor[post.status]+"22", color: statusColor[post.status], borderRadius:99, padding:"1px 8px", fontSize:"0.6rem", fontWeight:700 }}>{statusLabel[post.status] ?? post.status}</span>
+                              <span style={{ fontSize:"0.62rem", color:"var(--text-dim)" }}>{post.posted_at ? new Date(post.posted_at).toLocaleDateString("de-DE") : post.scheduled_at ? `📅 ${new Date(post.scheduled_at).toLocaleDateString("de-DE")}` : ""}</span>
+                            </div>
+                            <div style={{ fontSize:"0.75rem", color:"var(--text-dim)", lineHeight:1.4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{post.content}</div>
+                            {post.error_msg && <div style={{ fontSize:"0.68rem", color:"#ff4455", marginTop:3 }}>⚠️ {post.error_msg}</div>}
+                            <div style={{ display:"flex", gap:12, marginTop:4, fontSize:"0.65rem", color:"var(--text-dim)" }}>
+                              {post.analytics?.likes > 0 && <span>❤️ {post.analytics.likes}</span>}
+                              {post.analytics?.comments > 0 && <span>💬 {post.analytics.comments}</span>}
+                              {post.analytics?.reach > 0 && <span>👁 {post.analytics.reach}</span>}
+                              {post.platform_url && <a href={post.platform_url} target="_blank" rel="noopener noreferrer" style={{ color:"var(--accent)", fontWeight:600 }}>→ Ansehen</a>}
+                            </div>
+                          </div>
+                          {post.image_url && <img src={post.image_url} alt="" style={{ width:48, height:48, borderRadius:6, objectFit:"cover", flexShrink:0 }} />}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Setup-Anleitung */}
+            <div style={{ background:"rgba(255,170,0,0.06)", border:"1px solid rgba(255,170,0,0.25)", borderRadius:14, padding:16 }}>
+              <div style={{ fontWeight:800, fontSize:"0.88rem", marginBottom:10 }}>🔑 API Keys einrichten</div>
+              <div style={{ display:"flex", flexDirection:"column", gap:8, fontSize:"0.78rem", color:"var(--text-dim)", lineHeight:1.6 }}>
+                <div><strong style={{ color:"var(--text)" }}>📸 Instagram:</strong> Meta Developer → App erstellen → Instagram Basic Display → <code style={{ background:"var(--surface-2)", padding:"1px 5px", borderRadius:4 }}>INSTAGRAM_ACCESS_TOKEN</code> + <code style={{ background:"var(--surface-2)", padding:"1px 5px", borderRadius:4 }}>INSTAGRAM_BUSINESS_ID</code></div>
+                <div><strong style={{ color:"var(--text)" }}>💼 LinkedIn:</strong> linkedin.com/developers → App → Products: Share on LinkedIn → <code style={{ background:"var(--surface-2)", padding:"1px 5px", borderRadius:4 }}>LINKEDIN_ACCESS_TOKEN</code> + <code style={{ background:"var(--surface-2)", padding:"1px 5px", borderRadius:4 }}>LINKEDIN_PERSON_ID</code></div>
+                <div><strong style={{ color:"var(--text)" }}>🟠 Reddit:</strong> reddit.com/prefs/apps → Script App → <code style={{ background:"var(--surface-2)", padding:"1px 5px", borderRadius:4 }}>REDDIT_CLIENT_ID</code> + <code style={{ background:"var(--surface-2)", padding:"1px 5px", borderRadius:4 }}>REDDIT_CLIENT_SECRET</code> + Username + Password</div>
+                <div style={{ marginTop:4, padding:"8px 10px", background:"var(--surface)", borderRadius:8, fontSize:"0.72rem" }}>
+                  ➤ Keys in <strong>.env.local</strong> eintragen → deploy.sh ausführen → fertig
+                </div>
+              </div>
+            </div>
+
           </div>
         )}
 

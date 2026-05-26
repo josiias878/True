@@ -185,7 +185,7 @@ export default function CommunityPage() {
   const [editBody, setEditBody]           = useState("")
   const [searchQuery, setSearchQuery]     = useState("")
   const [showSearch, setShowSearch]       = useState(false)
-  const [searchMode, setSearchMode]       = useState<"posts" | "profiles">("posts")
+  const [searchMode, setSearchMode]       = useState<"profiles" | "communities">("profiles")
   const [profileResults, setProfileResults] = useState<{id: string; name: string; avatar: string}[]>([])
   const [customTopics, setCustomTopics]   = useState<CustomTopic[]>([])
   const [showNewCommunity, setShowNewCommunity] = useState(false)
@@ -338,13 +338,7 @@ export default function CommunityPage() {
 
   const [visibleCount, setVisibleCount] = useState(20)
 
-  const searched = searchQuery.trim()
-    ? posts.filter(p =>
-        p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.body.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.author.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : posts
+  const searched = posts
   // Topics that already have real user posts — example posts for those topics are hidden
   const realPostTopics = new Set(posts.filter(p => !p.isExample).map(p => p.topic))
   const baseFiltered = (activeTopic === "all" ? searched : searched.filter(p => p.topic === activeTopic))
@@ -364,7 +358,7 @@ export default function CommunityPage() {
       ? b.likes - a.likes
       : (b.createdAt ?? b.id) - (a.createdAt ?? a.id)
   )
-  const visible  = sorted.slice(0, visibleCount)
+  const visible  = user ? sorted.slice(0, visibleCount) : sorted.slice(0, 2)
   const hasMore  = sorted.length > visibleCount
 
   function like(id: number) {
@@ -633,15 +627,19 @@ export default function CommunityPage() {
     if (!q.trim() || !supabase) { setProfileResults([]); return }
     const { data } = await supabase
       .from("profiles")
-      .select("id, vorname, name, avatar")
+      .select("id, vorname, name, avatar, is_premium")
       .or(`vorname.ilike.%${q}%,name.ilike.%${q}%`)
-      .limit(10)
+      .limit(20)
     if (data) {
-      setProfileResults(data.map((r: any) => ({
+      const mapped = data.map((r: any) => ({
         id: r.id,
         name: [r.vorname, r.name].filter(Boolean).join(" ") || "Nutzer",
         avatar: r.avatar || r.vorname?.[0]?.toUpperCase() || "?",
-      })))
+        isPremium: !!r.is_premium,
+      }))
+      // Premium users appear first
+      mapped.sort((a: any, b: any) => (b.isPremium ? 1 : 0) - (a.isPremium ? 1 : 0))
+      setProfileResults(mapped.slice(0, 10))
     }
   }
 
@@ -676,141 +674,153 @@ export default function CommunityPage() {
         <Link href="/home" style={{ fontSize: "1.2rem", fontWeight: 900, letterSpacing: "-0.05em", color: "var(--accent)", textDecoration: "none" }}>TRUE</Link>
         <span style={{ fontWeight: 700, fontSize: "1rem", color: "var(--text)" }}>Community</span>
         <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-          <button onClick={() => { setShowSearch(v => !v); if (showSearch) setSearchQuery("") }} style={{ background: showSearch ? "rgba(46,204,138,0.15)" : "transparent", border: "none", borderRadius: 8, padding: "6px 8px", cursor: "pointer", color: showSearch ? "var(--accent)" : "var(--text-dim)", display: "flex", alignItems: "center" }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          </button>
           <ThemeIcon />
           <NotificationBell />
         </div>
       </nav>
 
-      {/* Search bar */}
+      {/* ── Instagram-style Search Overlay ── */}
       {showSearch && (
-        <div style={{ padding: "8px 16px 10px", background: "var(--nav-bg)", borderBottom: "1px solid var(--border)", position: "sticky", top: 56, zIndex: 49 }}>
-          {/* Mode toggle */}
-          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-            {(["posts", "profiles"] as const).map(m => (
+        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "var(--background)", display: "flex", flexDirection: "column" }}>
+          {/* Search header */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderBottom: "1px solid var(--border)", background: "var(--nav-bg)", backdropFilter: "blur(20px)" }}>
+            <button onClick={() => { setShowSearch(false); setSearchQuery(""); setProfileResults([]) }} style={{ background: "none", border: "none", color: "var(--text)", cursor: "pointer", fontSize: "0.88rem", fontWeight: 700, padding: "4px 8px 4px 0", flexShrink: 0 }}>
+              ← Zurück
+            </button>
+            <input autoFocus value={searchQuery}
+              onChange={e => { setSearchQuery(e.target.value); if (searchMode === "profiles") searchProfiles(e.target.value) }}
+              placeholder={searchMode === "profiles" ? "Person suchen…" : "Community suchen…"}
+              style={{ flex: 1, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 22, padding: "9px 16px", color: "var(--text)", fontSize: "0.9rem", outline: "none" }}
+            />
+          </div>
+          {/* Mode tabs */}
+          <div style={{ display: "flex", borderBottom: "1px solid var(--border)" }}>
+            {(["profiles", "communities"] as const).map(m => (
               <button key={m} onClick={() => { setSearchMode(m); setSearchQuery(""); setProfileResults([]) }}
-                style={{ flex: 1, background: searchMode === m ? "var(--accent)" : "var(--surface)", color: searchMode === m ? "#000" : "var(--text-dim)", border: `1px solid ${searchMode === m ? "var(--accent)" : "var(--border)"}`, borderRadius: 8, padding: "6px", fontSize: "0.75rem", fontWeight: searchMode === m ? 700 : 500, cursor: "pointer" }}>
-                {m === "posts" ? "📝 Beiträge" : "👤 Profile"}
+                style={{ flex: 1, background: "transparent", border: "none", borderBottom: `2px solid ${searchMode === m ? "var(--accent)" : "transparent"}`, color: searchMode === m ? "var(--accent)" : "var(--text-dim)", padding: "11px 0", fontSize: "0.82rem", fontWeight: searchMode === m ? 700 : 500, cursor: "pointer", transition: "all 0.15s" }}>
+                {m === "profiles" ? "👤 Profile" : "🏘 Communities"}
               </button>
             ))}
           </div>
-          <input
-            autoFocus
-            value={searchQuery}
-            onChange={e => {
-              setSearchQuery(e.target.value)
-              setVisibleCount(20)
-              if (searchMode === "profiles") searchProfiles(e.target.value)
-            }}
-            placeholder={searchMode === "posts" ? "Beiträge suchen…" : "Nutzername suchen…"}
-            style={{ width: "100%", boxSizing: "border-box", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "9px 14px", color: "var(--text)", fontSize: "0.88rem", outline: "none" }}
-          />
-          {/* Post search results count */}
-          {searchMode === "posts" && searchQuery && (
-            <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 5 }}>
-              {sorted.length} Ergebnis{sorted.length !== 1 ? "se" : ""} für „{searchQuery}"
-            </div>
-          )}
-          {/* Profile search results */}
-          {searchMode === "profiles" && searchQuery && (
-            <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
-              {profileResults.length === 0 && (
-                <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", textAlign: "center", padding: "8px 0" }}>Keine Profile gefunden.</div>
-              )}
-              {profileResults.map(p => {
-                const av = avatarColor(p.avatar[0] || "?")
-                return (
-                  <Link key={p.id} href={`/user/${p.id}`} style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "8px 12px", textDecoration: "none" }}>
-                    <div style={{ width: 34, height: 34, borderRadius: "50%", background: av + "22", border: `1.5px solid ${av}55`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", fontWeight: 800, color: av, flexShrink: 0 }}>
-                      {p.avatar[0]?.toUpperCase() || "?"}
+          {/* Results */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "10px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+            {/* Profile results */}
+            {searchMode === "profiles" && !searchQuery && (
+              <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-dim)", fontSize: "0.82rem" }}>
+                <div style={{ fontSize: "2rem", marginBottom: 8 }}>👤</div>
+                Nutzernamen eingeben zum Suchen
+              </div>
+            )}
+            {searchMode === "profiles" && searchQuery && profileResults.length === 0 && (
+              <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-dim)", fontSize: "0.82rem" }}>Keine Profile gefunden.</div>
+            )}
+            {searchMode === "profiles" && profileResults.map(p => {
+              const av = avatarColor(p.avatar[0] || "?")
+              return (
+                <Link key={p.id} href={`/user/${p.id}`} onClick={() => { setShowSearch(false); setSearchQuery("") }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 12px", textDecoration: "none", borderRadius: 14, background: "var(--surface)", border: "1px solid var(--border)" }}>
+                  <div style={{ width: 44, height: 44, borderRadius: "50%", background: av + "22", border: `2px solid ${av}55`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", fontWeight: 800, color: av, flexShrink: 0 }}>
+                    {p.avatar[0]?.toUpperCase() || "?"}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--text)" }}>{p.name}</span>
+                      {(p as any).isPremium && <span style={{ background: "linear-gradient(135deg,#ffd700,#ffaa00)", color: "#000", borderRadius: 99, padding: "1px 7px", fontSize: "0.6rem", fontWeight: 800 }}>👑</span>}
                     </div>
-                    <span style={{ fontWeight: 600, fontSize: "0.88rem", color: "var(--text)" }}>{p.name}</span>
-                    <span style={{ marginLeft: "auto", fontSize: "0.72rem", color: "var(--accent)" }}>Profil →</span>
-                  </Link>
-                )
-              })}
-            </div>
-          )}
+                    <div style={{ fontSize: "0.7rem", color: "var(--text-dim)" }}>Profil ansehen</div>
+                  </div>
+                  <span style={{ fontSize: "0.72rem", color: "var(--accent)", fontWeight: 700 }}>→</span>
+                </Link>
+              )
+            })}
+            {/* Community results */}
+            {searchMode === "communities" && (
+              <>
+                {!searchQuery && (
+                  <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Alle Communities</div>
+                )}
+                {allTopics.filter(t => t.id !== "all" && (!searchQuery || t.name.toLowerCase().includes(searchQuery.toLowerCase()))).map(t => (
+                  <button key={t.id} onClick={() => { setActiveTopic(t.id); setShowSearch(false); setSearchQuery(""); setVisibleCount(20) }}
+                    style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 12px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, cursor: "pointer", textAlign: "left", width: "100%" }}>
+                    <div style={{ width: 44, height: 44, borderRadius: "50%", background: t.color + "22", border: `2px solid ${t.color}55`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem", flexShrink: 0 }}>
+                      {t.icon}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--text)" }}>{t.name}</div>
+                      {t.desc && <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginTop: 1 }}>{t.desc.length > 55 ? t.desc.slice(0, 55) + "…" : t.desc}</div>}
+                    </div>
+                    <button onClick={e => { e.stopPropagation(); toggleJoin(t.id) }}
+                      style={{ background: joined.has(t.id) ? "transparent" : t.color, color: joined.has(t.id) ? t.color : "#000", border: `1.5px solid ${t.color}`, borderRadius: 99, padding: "5px 12px", fontSize: "0.72rem", fontWeight: 800, cursor: "pointer", flexShrink: 0 }}>
+                      {joined.has(t.id) ? "✓ Dabei" : "+ Folgen"}
+                    </button>
+                  </button>
+                ))}
+                {searchQuery && allTopics.filter(t => t.id !== "all" && t.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+                  <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-dim)", fontSize: "0.82rem" }}>Keine Communities gefunden.</div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       )}
 
-      {/* ── TRUE-Kanal Banner ── */}
-      <div style={{ padding: "10px 16px 0", maxWidth: 640, margin: "0 auto" }}>
-        <Link href="/channel/true" style={{
-          display: "flex", alignItems: "center", gap: 12,
-          background: "linear-gradient(135deg, rgba(46,204,138,0.1), rgba(46,204,138,0.04))",
-          border: "1px solid rgba(46,204,138,0.3)",
-          borderRadius: 14, padding: "10px 14px",
-          textDecoration: "none", marginBottom: 10,
-        }}>
-          <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(46,204,138,0.15)", border: "1.5px solid rgba(46,204,138,0.4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0 }}>
-            📡
+      {/* Topic pills (sticky) — only joined communities shown */}
+      <div style={{ position: "sticky", top: 56, zIndex: 50, background: "var(--nav-bg)", borderBottom: "1px solid var(--border)", backdropFilter: "blur(12px)" }}>
+        <div style={{ display: "flex", alignItems: "center" }}>
+          {/* Scrollable pills */}
+          <div ref={scrollRef} style={{ display: "flex", gap: 7, padding: "8px 12px", overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", flex: 1 }}>
+            {/* "Alle" pill always visible */}
+            {(() => {
+              const t = allTopics[0]
+              const active = activeTopic === "all"
+              return (
+                <button key="all" onClick={() => { setActiveTopic("all"); setVisibleCount(20) }}
+                  style={{ flexShrink: 0, background: active ? t.color : "var(--surface)", color: active ? "#000" : "var(--text-dim)", border: `1px solid ${active ? t.color : "var(--border)"}`, borderRadius: 99, padding: "5px 13px", fontWeight: active ? 700 : 500, fontSize: "0.8rem", cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.15s" }}>
+                  🌐 Alle
+                </button>
+              )
+            })()}
+            {/* Only joined communities */}
+            {allTopics.filter(t => t.id !== "all" && joined.has(t.id)).map(t => {
+              const active = activeTopic === t.id
+              const isTrending = t.id === trendingTopicId
+              const count = topicCounts[t.id] ?? 0
+              return (
+                <button key={t.id} onClick={() => { setActiveTopic(t.id); setVisibleCount(20) }}
+                  style={{ flexShrink: 0, background: active ? t.color : "var(--surface)", color: active ? "#000" : "var(--text-dim)", border: `1px solid ${active ? t.color : isTrending ? "rgba(255,119,0,0.4)" : "var(--border)"}`, borderRadius: 99, padding: "5px 13px", fontWeight: active ? 700 : 500, fontSize: "0.8rem", cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.15s" }}>
+                  {t.icon} {t.name}
+                  {isTrending && <span style={{ marginLeft: 4, fontSize: "0.68rem", fontWeight: 800, color: active ? "#000" : "#ff7700" }}>🔥{count}</span>}
+                </button>
+              )
+            })}
+            {/* Hint if no communities joined yet */}
+            {allTopics.filter(t => t.id !== "all" && joined.has(t.id)).length === 0 && (
+              <button onClick={() => { setShowSearch(true); setSearchMode("communities") }}
+                style={{ flexShrink: 0, background: "transparent", color: "var(--text-dim)", border: "1px dashed var(--border)", borderRadius: 99, padding: "5px 13px", fontWeight: 500, fontSize: "0.78rem", cursor: "pointer", whiteSpace: "nowrap" }}>
+                + Communities folgen
+              </button>
+            )}
           </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 800, fontSize: "0.88rem", color: "var(--accent)" }}>TRUE Offiziell</div>
-            <div style={{ fontSize: "0.7rem", color: "var(--text-dim)" }}>Tägl. Aufdeckungen · Bot · Journalistin · Coach</div>
-          </div>
-          <span style={{ background: "rgba(46,204,138,0.15)", color: "var(--accent)", border: "1px solid rgba(46,204,138,0.3)", borderRadius: 99, padding: "3px 10px", fontSize: "0.62rem", fontWeight: 800, flexShrink: 0 }}>
-            ✓ OFFIZIELL
-          </span>
-        </Link>
-      </div>
-
-      {/* Topic filter pills — horizontal scroll */}
-      <div ref={scrollRef} style={{ display: "flex", gap: 8, padding: "12px 16px", overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", position: "sticky", top: 56, zIndex: 50, background: "var(--nav-bg)", borderBottom: "1px solid var(--border)", backdropFilter: "blur(12px)" }}>
-        {allTopics.map(t => {
-          const active = activeTopic === t.id
-          const isTrending = t.id !== "all" && t.id === trendingTopicId
-          const count = topicCounts[t.id] ?? 0
-          return (
-            <button
-              key={t.id}
-              onClick={() => { setActiveTopic(t.id); setVisibleCount(20) }}
-              style={{
-                flexShrink: 0,
-                background: active ? t.color : "var(--surface)",
-                color: active ? "#000" : "var(--text-dim)",
-                border: `1px solid ${active ? t.color : isTrending ? "rgba(255,119,0,0.4)" : "var(--border)"}`,
-                borderRadius: 99, padding: "6px 14px",
-                fontWeight: active ? 700 : 500, fontSize: "0.82rem",
-                cursor: "pointer", whiteSpace: "nowrap",
-                transition: "all 0.15s",
-                position: "relative",
-              }}
-            >
-              {t.icon} {t.name}
-              {isTrending && (
-                <span style={{ marginLeft: 5, fontSize: "0.7rem", fontWeight: 800, color: active ? "#000" : "#ff7700" }}>
-                  🔥{count}
-                </span>
-              )}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Community eröffnen — always visible below pills */}
-      <div style={{ padding: "8px 16px 0", maxWidth: 640, margin: "0 auto" }}>
-        <button
-          onClick={() => setShowNewCommunity(true)}
-          style={{ display: "flex", alignItems: "center", gap: 7, background: "transparent", color: "var(--accent)", border: "1.5px dashed rgba(46,204,138,0.5)", borderRadius: 10, padding: "7px 16px", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", width: "100%" }}
-        >
-          <span style={{ fontSize: "1rem" }}>🏠</span>
-          <span>Community eröffnen</span>
-          <span style={{ marginLeft: "auto", fontSize: "0.7rem", color: "var(--text-dim)", fontWeight: 500 }}>Eigene Gruppe erstellen</span>
-        </button>
+          {/* Search icon — outside scroll */}
+          <button onClick={() => setShowSearch(true)}
+            style={{ flexShrink: 0, padding: "8px 14px 8px 8px", background: "none", border: "none", cursor: "pointer", color: "var(--text-dim)", display: "flex", alignItems: "center" }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </button>
+        </div>
       </div>
 
       {/* New Community Modal */}
       {showNewCommunity && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={e => { if (e.target === e.currentTarget) setShowNewCommunity(false) }}>
-          <div style={{ background: "var(--surface)", borderRadius: "20px 20px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 480 }}>
+          <div style={{ background: "var(--surface)", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, maxHeight: "90dvh", display: "flex", flexDirection: "column" }}>
+            {/* sticky header */}
+            <div style={{ padding: "20px 20px 0", flexShrink: 0 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
               <span style={{ fontWeight: 800, fontSize: "1rem" }}>🏠 Community gründen</span>
               <button onClick={() => setShowNewCommunity(false)} style={{ background: "none", border: "none", fontSize: "1.3rem", color: "var(--text-dim)", cursor: "pointer", padding: 4 }}>✕</button>
             </div>
+            </div>{/* end sticky header */}
+            {/* scrollable body */}
+            <div style={{ overflowY: "auto", flex: 1, padding: "0 20px" }}>
             {/* Icon picker */}
             <div style={{ marginBottom: 12 }}>
               <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginBottom: 6, fontWeight: 600 }}>Icon wählen</div>
@@ -852,28 +862,39 @@ export default function CommunityPage() {
                 <span style={{ fontWeight: 700, color: newCommunityColor, fontSize: "0.88rem" }}>{newCommunityName}</span>
               </div>
             )}
-            <button onClick={createCommunity} disabled={!newCommunityName.trim()} style={{ width: "100%", background: newCommunityName.trim() ? "var(--accent)" : "var(--surface-2)", color: newCommunityName.trim() ? "#000" : "var(--text-dim)", border: "none", borderRadius: 12, padding: "13px", fontWeight: 800, fontSize: "0.95rem", cursor: newCommunityName.trim() ? "pointer" : "not-allowed" }}>
-              Community erstellen
-            </button>
+            </div>{/* end scrollable body */}
+            {/* sticky footer button */}
+            <div style={{ padding: "14px 20px 32px", flexShrink: 0, borderTop: "1px solid var(--border)" }}>
+              <button onClick={createCommunity} disabled={!newCommunityName.trim()} style={{ width: "100%", background: newCommunityName.trim() ? "var(--accent)" : "var(--surface-2)", color: newCommunityName.trim() ? "#000" : "var(--text-dim)", border: "none", borderRadius: 12, padding: "13px", fontWeight: 800, fontSize: "0.95rem", cursor: newCommunityName.trim() ? "pointer" : "not-allowed" }}>
+                Community erstellen
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       <div style={{ maxWidth: 640, margin: "0 auto", padding: "16px 16px 0" }}>
 
-        {/* New post button + sort toggle */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "center" }}>
+        {/* Action bar: Schreiben · Community · Neu · Top */}
+        <div style={{ display: "flex", gap: 7, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
           <button
             onClick={() => user ? setShowNew(v => !v) : setShowLogin(true)}
-            style={{ background: showNew ? "var(--surface)" : "var(--accent)", color: showNew ? "var(--text-dim)" : "#000", border: `1px solid ${showNew ? "var(--border)" : "var(--accent)"}`, borderRadius: 10, padding: "7px 13px", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}
+            style={{ background: showNew ? "var(--surface)" : "rgba(46,204,138,0.12)", color: showNew ? "var(--text-dim)" : "var(--accent)", border: `1.5px solid ${showNew ? "var(--border)" : "rgba(46,204,138,0.4)"}`, borderRadius: 99, padding: "5px 13px", fontWeight: 700, fontSize: "0.78rem", cursor: "pointer", flexShrink: 0 }}
           >
-            {showNew ? "✕" : "✏️ Schreiben"}
+            {showNew ? "✕ Abbrechen" : "✏️ Schreiben"}
           </button>
+          <button
+            onClick={() => setShowNewCommunity(true)}
+            style={{ background: "transparent", color: "var(--text-dim)", border: "1.5px solid var(--border)", borderRadius: 99, padding: "5px 13px", fontWeight: 600, fontSize: "0.78rem", cursor: "pointer", flexShrink: 0 }}
+          >
+            🏠 Community
+          </button>
+          <div style={{ flex: 1 }} />
           {/* Sort toggle */}
-          <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden", flexShrink: 0 }}>
+          <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 99, overflow: "hidden", flexShrink: 0 }}>
             {(["neu", "beliebt"] as const).map(m => (
-              <button key={m} onClick={() => { setSortMode(m); setVisibleCount(20) }} style={{ padding: "7px 11px", fontSize: "0.75rem", fontWeight: sortMode === m ? 700 : 500, background: sortMode === m ? "var(--accent)" : "transparent", color: sortMode === m ? "#000" : "var(--text-dim)", border: "none", cursor: "pointer", transition: "all 0.15s" }}>
-                {m === "neu" ? "🕐 Neu" : "🔥 Top"}
+              <button key={m} onClick={() => { setSortMode(m); setVisibleCount(20) }} style={{ padding: "5px 12px", fontSize: "0.75rem", fontWeight: sortMode === m ? 700 : 500, background: sortMode === m ? "var(--accent)" : "transparent", color: sortMode === m ? "#000" : "var(--text-dim)", border: "none", cursor: "pointer", transition: "all 0.15s" }}>
+                {m === "neu" ? "✨ Neu" : "🔥 Top"}
               </button>
             ))}
           </div>
@@ -938,6 +959,7 @@ export default function CommunityPage() {
           </div>
         )}
 
+
         {/* Posts */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {visible.map(post => {
@@ -960,9 +982,17 @@ export default function CommunityPage() {
                   {/* Meta row — Avatar + Author + Topic chip */}
                   <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "12px 14px 6px" }}>
                     {/* Avatar */}
-                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: avColor + "22", border: `1.5px solid ${avColor}55`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.78rem", fontWeight: 800, color: avColor, flexShrink: 0 }}>
-                      {post.avatar}
-                    </div>
+                    {post.userId && !post.isExample ? (
+                      <a href={`/user/${post.userId}`} onClick={e => e.stopPropagation()} style={{ textDecoration: "none", flexShrink: 0 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: "50%", background: avColor + "22", border: `1.5px solid ${avColor}55`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.78rem", fontWeight: 800, color: avColor }}>
+                          {post.avatar}
+                        </div>
+                      </a>
+                    ) : (
+                      <div style={{ width: 32, height: 32, borderRadius: "50%", background: avColor + "22", border: `1.5px solid ${avColor}55`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.78rem", fontWeight: 800, color: avColor, flexShrink: 0 }}>
+                        {post.avatar}
+                      </div>
+                    )}
                     {/* Author + time */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
@@ -1194,6 +1224,22 @@ export default function CommunityPage() {
             </div>
           )}
         </div>
+
+        {/* Login gate for non-authenticated users */}
+        {!user && (
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: "28px 20px", textAlign: "center", marginTop: 8 }}>
+            <div style={{ fontSize: "2rem", marginBottom: 10 }}>👥</div>
+            <div style={{ fontWeight: 800, fontSize: "1rem", marginBottom: 6 }}>Werde Teil der Community</div>
+            <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", marginBottom: 18, lineHeight: 1.65 }}>
+              Melde dich kostenlos an um alle Beiträge zu sehen, selbst zu schreiben und Communities beizutreten.
+            </div>
+            <button onClick={() => setShowLogin(true)}
+              style={{ background: "var(--accent)", color: "#000", border: "none", borderRadius: 12, padding: "12px 32px", fontWeight: 800, fontSize: "0.9rem", cursor: "pointer" }}>
+              Kostenlos anmelden →
+            </button>
+            <div style={{ marginTop: 10, fontSize: "0.7rem", color: "var(--text-dim)" }}>Bereits Mitglied? <button onClick={() => setShowLogin(true)} style={{ background: "none", border: "none", color: "var(--accent)", fontWeight: 700, cursor: "pointer", fontSize: "0.7rem" }}>Einloggen</button></div>
+          </div>
+        )}
       </div>
 
       {joined.size > 0 && (

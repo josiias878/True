@@ -1,20 +1,30 @@
 {
-  "name": "TRUE — Transparenz für deine Lebensmittel",
+  "name": "TRUE — Konzerne hinter Produkten",
   "short_name": "TRUE",
-  "description": "Scanne Produkte und erfahre welche Konzerne dahinter stecken.",
+  "description": "Scanne Barcodes und sieh sofort welcher Konzern dahinter steckt. Mit nachhaltigen Alternativen, Community und Einkaufsliste.",
   "start_url": "/home",
   "display": "standalone",
   "background_color": "#08080f",
   "theme_color": "#2ECC8A",
   "orientation": "portrait",
+  "lang": "de",
+  "dir": "ltr",
+  "scope": "/",
+  "id": "de.get-true.app",
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
     { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
   ],
-  "categories": ["food", "health", "lifestyle"],
+  "categories": ["food", "health", "lifestyle", "shopping"],
   "shortcuts": [
-    { "name": "Scannen", "url": "/scan", "description": "Produkt scannen" },
-    { "name": "Einkaufsliste", "url": "/list", "description": "Meine Liste" }
-  ]
+    { "name": "Scannen", "short_name": "Scan", "url": "/scan", "description": "Produkt scannen", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Einkaufsliste", "short_name": "Liste", "url": "/list", "description": "Meine Einkaufsliste", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
+  ],
+  "screenshots": [
+    { "src": "/screenshots/screen-scan.png", "sizes": "390x844", "type": "image/png", "label": "Barcode scannen" },
+    { "src": "/screenshots/screen-home.png", "sizes": "390x844", "type": "image/png", "label": "Dein Dashboard" },
+    { "src": "/screenshots/screen-result.png", "sizes": "390x844", "type": "image/png", "label": "Konzern-Ergebnis" }
+  ],
+  "prefer_related_applications": false
 }

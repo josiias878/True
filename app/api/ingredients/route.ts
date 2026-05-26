@@ -44,23 +44,29 @@ export async function GET(req: NextRequest) {
 
   try {
     let productData: any = null
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 7000)
 
-    // Barcode (rein numerisch)?
-    if (/^\d{8,14}$/.test(q)) {
-      const res = await fetch(
-        `https://world.openfoodfacts.org/api/v2/product/${q}.json?fields=product_name,nutriscore_grade,ingredients_text,additives_tags,nutriments,labels_tags`,
-        { headers: { "User-Agent": "TRUEApp/1.0 (support@get-true.de)" } }
-      )
-      const data = await res.json()
-      if (data.status === 1) productData = data.product
-    } else {
-      // Textsuche
-      const res = await fetch(
-        `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&json=1&page_size=1&fields=product_name,nutriscore_grade,ingredients_text,additives_tags,nutriments,labels_tags`,
-        { headers: { "User-Agent": "TRUEApp/1.0 (support@get-true.de)" } }
-      )
-      const data = await res.json()
-      if (data.products?.length > 0) productData = data.products[0]
+    try {
+      // Barcode (rein numerisch)?
+      if (/^\d{8,14}$/.test(q)) {
+        const res = await fetch(
+          `https://world.openfoodfacts.org/api/v2/product/${q}.json?fields=product_name,nutriscore_grade,ingredients_text,additives_tags,nutriments,labels_tags`,
+          { headers: { "User-Agent": "TRUEApp/1.0 (support@get-true.de)" }, signal: controller.signal }
+        )
+        const data = await res.json()
+        if (data.status === 1) productData = data.product
+      } else {
+        // Textsuche
+        const res = await fetch(
+          `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&json=1&page_size=1&fields=product_name,nutriscore_grade,ingredients_text,additives_tags,nutriments,labels_tags`,
+          { headers: { "User-Agent": "TRUEApp/1.0 (support@get-true.de)" }, signal: controller.signal }
+        )
+        const data = await res.json()
+        if (data.products?.length > 0) productData = data.products[0]
+      }
+    } finally {
+      clearTimeout(timeoutId)
     }
 
     if (!productData) return NextResponse.json({ found: false })

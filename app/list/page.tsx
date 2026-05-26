@@ -1,5 +1,4 @@
 "use client"
-import AuthGuard from "@/components/AuthGuard"
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import BottomNav from "@/components/BottomNav"
@@ -670,9 +669,9 @@ function NutritionCoachChat({ items, goals, allergies, open, onClose }: {
 
 // ─── Default list ─────────────────────────────────────────────────────────────
 
-const DEFAULT_ITEMS: ListItem[] = [
-  "nutella","cocacola","milram","toast","bananen","ariel","kitkat","danone","wasa"
-].map(id => {
+const DEFAULT_ITEM_IDS = new Set(["nutella","cocacola","milram","toast","bananen","ariel","kitkat","danone","wasa"])
+
+const DEFAULT_ITEMS: ListItem[] = Array.from(DEFAULT_ITEM_IDS).map(id => {
   const p = CATALOG.find(c => c.id === id)!
   return { ...p, checked: false, addedAt: Date.now() - Math.random() * 1e6 }
 })
@@ -689,6 +688,8 @@ export default function ShoppingListPage() {
   const [vorschlagItem, setVorschlagItem]   = useState<ListItem | null>(null)
   const [sourceItem, setSourceItem]         = useState<ListItem | null>(null)
   const [showShare, setShowShare]           = useState(false)
+  const [shareUrl, setShareUrl]             = useState<string | null>(null)
+  const [shareLoading, setShareLoading]     = useState(false)
   const [itemComments, setItemComments]     = useState<Record<string, {id:string;author:string;text:string;time:number}[]>>({})
   const [newItemSearch, setNewItemSearch]   = useState("")
   const [doneExpanded, setDoneExpanded]     = useState(false)
@@ -827,15 +828,37 @@ export default function ShoppingListPage() {
     })
   }
 
-  function getShareUrl(): string {
+  async function createShareUrl(): Promise<string> {
     const shareData = items.map(it => ({ id: it.id, name: it.name, brand: it.brand, emoji: it.emoji, checked: it.checked, severity: it.severity, issue: it.issue }))
-    const encoded = btoa(encodeURIComponent(JSON.stringify(shareData)))
-    const base = typeof window !== "undefined" ? window.location.origin : "http://82.165.114.183"
-    return `${base}/list/shared?d=${encoded}`
+    const profileName = (() => { try { const p = localStorage.getItem("true-profile"); if (!p) return "Jemand"; const parsed = JSON.parse(p); return parsed.name || parsed.vorname || "Jemand" } catch { return "Jemand" } })()
+    const res = await fetch("/api/shared-list", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: shareData, ownerName: profileName }),
+    })
+    const data = await res.json()
+    if (!data.code) throw new Error("Kein Code erhalten")
+    const base = typeof window !== "undefined" ? window.location.origin : "https://get-true.de"
+    return `${base}/list/shared?code=${data.code}`
+  }
+
+  async function openShare() {
+    if (shareLoading) return
+    setShareLoading(true)
+    try {
+      const url = await createShareUrl()
+      setShareUrl(url)
+      setShowShare(true)
+    } catch {
+      alert("Teilen fehlgeschlagen. Bitte versuche es erneut.")
+    } finally {
+      setShareLoading(false)
+    }
   }
 
   function shareWhatsApp() {
-    const url = getShareUrl()
+    const url = shareUrl
+    if (!url) return
     const profileName = (() => { try { const p = localStorage.getItem("true-profile"); if (!p) return "Ich"; const parsed = JSON.parse(p); return parsed.name || parsed.vorname || "Ich" } catch { return "Ich" } })()
     const text = `${profileName} hat eine Einkaufsliste mit TRUE geteilt 🛒\n\nÖffne sie hier: ${url}\n\n(TRUE zeigt dir, welche Produkte problematisch sind — und schlägt Alternativen vor)`
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank")
@@ -885,7 +908,6 @@ export default function ShoppingListPage() {
   )
 
   return (
-    <AuthGuard>
     <div style={{ minHeight: "100vh", background: "var(--background)", paddingBottom: 100 }}>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }
@@ -939,11 +961,15 @@ export default function ShoppingListPage() {
 
           {/* Hinzufügen / Teilen */}
           <button
-            onClick={() => setShowShare(true)}
-            style={{ background: "var(--accent)", color: "#000", border: "none", borderRadius: "10px", padding: "6px 12px", fontWeight: 700, cursor: "pointer", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "5px" }}
+            onClick={openShare}
+            disabled={shareLoading}
+            style={{ background: "var(--accent)", color: "#000", border: "none", borderRadius: "10px", padding: "6px 12px", fontWeight: 700, cursor: shareLoading ? "default" : "pointer", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "5px", opacity: shareLoading ? 0.7 : 1 }}
           >
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="6" cy="5" r="2.5"/><path d="M1 13c0-2.5 2.2-4 5-4"/><circle cx="12" cy="9" r="2"/><line x1="12" y1="11" x2="12" y2="14"/><line x1="10.5" y1="12.5" x2="13.5" y2="12.5"/></svg>
-            Hinzufügen
+            {shareLoading
+              ? <span style={{ display: "inline-block", width: 14, height: 14, border: "2px solid #00000044", borderTopColor: "#000", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+              : <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="6" cy="5" r="2.5"/><path d="M1 13c0-2.5 2.2-4 5-4"/><circle cx="12" cy="9" r="2"/><line x1="12" y1="11" x2="12" y2="14"/><line x1="10.5" y1="12.5" x2="13.5" y2="12.5"/></svg>
+            }
+            {shareLoading ? "Erstelle…" : "Hinzufügen"}
           </button>
         </div>
       </header>
@@ -1235,10 +1261,10 @@ export default function ShoppingListPage() {
       )}
 
       {/* ── Share Modal ── */}
-      {showShare && (
+      {showShare && shareUrl && (
         <ShareModal
-          onClose={() => setShowShare(false)}
-          shareUrl={getShareUrl()}
+          onClose={() => { setShowShare(false); setShareUrl(null) }}
+          shareUrl={shareUrl}
           onWhatsApp={shareWhatsApp}
           itemCount={items.length}
         />
@@ -1489,7 +1515,6 @@ export default function ShoppingListPage() {
       <BottomNav />
       {showPremiumGate && <PremiumGate trigger="list" onClose={() => setShowPremiumGate(false)} />}
     </div>
-    </AuthGuard>
   )
 }
 

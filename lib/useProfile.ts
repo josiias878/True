@@ -53,6 +53,7 @@ function fromDbProfile(db: DbProfile): Partial<Profile> {
     telefon: db.telefon,
     supermarkets: db.supermarkets ?? [],
     preferences: db.preferences ?? [],
+    goals: db.goals ?? [],
   }
 }
 
@@ -122,9 +123,15 @@ export function useProfile(user: User | null) {
           // Merge: DB wins for fields it has, localStorage wins for goals/local-only fields
           const merged: Profile = { ...DEFAULT_PROFILE, ...lsParsed, telefon: authPhone || lsParsed.telefon || "" }
           for (const key of Object.keys(dbData) as (keyof typeof dbData)[]) {
-            // Never overwrite goals from localStorage with empty DB value
-            if (key === "goals") continue
             const val = dbData[key]
+            if (key === "goals") {
+              // Merge: DB-Goals + localStorage-Goals (dedupliziert) — Multi-Device Sync
+              const dbGoals = Array.isArray(val) ? val : []
+              const lsGoals = Array.isArray(lsParsed.goals) ? lsParsed.goals : []
+              const mergedGoals = Array.from(new Set([...lsGoals, ...dbGoals]))
+              if (mergedGoals.length > 0) merged.goals = mergedGoals
+              continue
+            }
             if (val !== undefined && val !== null && val !== "" &&
                 !(Array.isArray(val) && val.length === 0)) {
               (merged as any)[key] = val

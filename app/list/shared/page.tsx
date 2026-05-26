@@ -54,22 +54,8 @@ export default function SharedListPage() {
   const [copyToast, setCopyToast]       = useState(false)
   const commentInputRef = useRef<HTMLInputElement>(null)
 
-  // Decode list from URL
+  // Load list from API via short code
   useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search)
-      const d = params.get("d")
-      if (!d) { setError("Kein Listeninhalt gefunden."); setLoading(false); return }
-      const decoded = JSON.parse(decodeURIComponent(atob(d)))
-      setItems(decoded)
-    } catch {
-      setError("Die Liste konnte nicht geladen werden. Der Link ist möglicherweise ungültig.")
-    }
-    // Load comments from localStorage (per device)
-    try {
-      const raw = localStorage.getItem("shared-list-comments-v1")
-      if (raw) setComments(JSON.parse(raw))
-    } catch {}
     // Load author name from profile
     try {
       const p = localStorage.getItem("true-profile")
@@ -79,7 +65,25 @@ export default function SharedListPage() {
         if (name) setAuthorName(name)
       }
     } catch {}
-    setLoading(false)
+    // Load comments from localStorage (per device)
+    try {
+      const raw = localStorage.getItem("shared-list-comments-v1")
+      if (raw) setComments(JSON.parse(raw))
+    } catch {}
+
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get("code")
+    if (!code) { setError("Kein Einladungscode gefunden."); setLoading(false); return }
+
+    fetch(`/api/shared-list?code=${encodeURIComponent(code)}`)
+      .then(async res => {
+        const data = await res.json()
+        if (res.status === 410) { setError("Dieser Link ist abgelaufen (nach 7 Tagen)."); return }
+        if (!res.ok || !data.items) { setError("Liste nicht gefunden. Der Link ist möglicherweise ungültig."); return }
+        setItems(data.items)
+      })
+      .catch(() => setError("Die Liste konnte nicht geladen werden. Bitte versuche es erneut."))
+      .finally(() => setLoading(false))
   }, [])
 
   function toggleCheck(id: string) {

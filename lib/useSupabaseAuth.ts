@@ -17,6 +17,23 @@ export function useSupabaseAuth() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
+      // Auto-follow TRUE channel on first login
+      if (session?.user && (_event === "SIGNED_IN" || _event === "INITIAL_SESSION")) {
+        try {
+          const raw = localStorage.getItem("true-followed-channels")
+          const arr: string[] = raw ? JSON.parse(raw) : []
+          if (!arr.includes("true")) {
+            const updated = [...new Set([...arr, "true"])]
+            localStorage.setItem("true-followed-channels", JSON.stringify(updated))
+            // Sync to Supabase (fire-and-forget)
+            fetch("/api/channel-follow", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ channel: "true", follow: true, userId: session.user.id }),
+            }).catch(() => {})
+          }
+        } catch {}
+      }
     })
 
     return () => subscription.unsubscribe()

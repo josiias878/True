@@ -239,7 +239,7 @@ export default function TrueChannelPage() {
         localStorage.setItem("true-followed-channels", JSON.stringify(updated))
       } catch {}
       // Follower-Zahl sofort anpassen + Supabase sync (fire-and-forget)
-      setFollowerCount(prev => (prev ?? 1200) + (next ? 1 : -1))
+      setFollowerCount(prev => (prev ?? 0) + (next ? 1 : -1))
       if (supabase) {
         supabase.auth.getSession().then(({ data }) => {
           const uid = data.session?.user?.id

@@ -17,7 +17,7 @@ export interface DbProfile {
   telefon: string
   supermarkets: string[]
   preferences: string[]
-  meidliste: string[]
+  goals: string[]
   push_token: string | null
   created_at: string
 }

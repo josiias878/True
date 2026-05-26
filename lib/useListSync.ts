@@ -3,7 +3,6 @@ import { useEffect, useCallback, useRef } from "react"
 import { supabase } from "./supabase"
 import type { User } from "@supabase/supabase-js"
 
-// Minimal item shape we store/sync — kept flat for Supabase compatibility
 export interface SyncItem {
   id: string
   name: string
@@ -19,14 +18,12 @@ export interface SyncItem {
 
 const TABLE = "list_items"
 
-// IDs of default placeholder items — never sync these to Supabase
 const DEFAULT_ITEM_IDS = new Set([
   "nutella","cocacola","milram","toast","bananen","ariel","kitkat","danone","wasa"
 ])
 
 function toRow(item: SyncItem, userId: string) {
   return {
-    id: item.id,
     user_id: userId,
     list_id: item.personId ?? "default",
     product_id: item.id,
@@ -68,85 +65,92 @@ export function useListSync(
   hydrated: boolean,
 ) {
   const syncedUserRef = useRef<string | null>(null)
+  const isFetchingRef = useRef(false)
 
-  // ── On login: fetch from Supabase — Supabase is ALWAYS the source of truth ──
+  // ── Core fetch: Supabase is ALWAYS and ONLY the source of truth ──
+  const fetchFromSupabase = useCallback(async () => {
+    if (!user || !supabase || !hydrated) return
+    if (isFetchingRef.current) return
+    isFetchingRef.current = true
+
+    try {
+      const { data, error } = await supabase
+        .from(TABLE)
+        .select("*")
+        .eq("user_id", user.id)
+        .order("added_at", { ascending: false })
+        .limit(200)
+
+      if (error) {
+        console.warn("[useListSync] fetch error:", error.message)
+        return
+      }
+
+      const remote: SyncItem[] = (data ?? []).map(fromRow)
+
+      // Clean up accidentally synced default placeholder items
+      const contaminated = remote.filter(r => DEFAULT_ITEM_IDS.has(r.id))
+      if (contaminated.length > 0) {
+        contaminated.forEach(item => {
+          supabase!.from(TABLE)
+            .delete()
+            .eq("product_id", item.id)
+            .eq("user_id", user.id)
+            .then(() => {})
+        })
+      }
+      const cleanRemote = remote.filter(r => !DEFAULT_ITEM_IDS.has(r.id))
+
+      setItems(localItems => {
+        if (cleanRemote.length > 0) {
+          // ── SUPABASE HAS DATA → it is the SOLE source of truth ──
+          // Never push local items back — they may have been deleted on another device
+          const deduped = new Map<string, SyncItem>()
+          cleanRemote.forEach(r => deduped.set(r.id, r))
+          return Array.from(deduped.values()).sort((a, b) => b.addedAt - a.addedAt)
+        }
+
+        // ── SUPABASE IS EMPTY → first login, push real local items up ──
+        const realLocal = localItems.filter(l => !DEFAULT_ITEM_IDS.has(l.id))
+        if (realLocal.length > 0) {
+          realLocal.forEach(item => {
+            supabase!.from(TABLE)
+              .upsert(toRow(item, user.id), { onConflict: "product_id,user_id" })
+              .then(() => {})
+          })
+          return realLocal.sort((a, b) => b.addedAt - a.addedAt)
+        }
+
+        return localItems
+      })
+    } catch (e) {
+      console.warn("[useListSync] unexpected error:", e)
+    } finally {
+      isFetchingRef.current = false
+    }
+  }, [user, hydrated, setItems])
+
+  // ── On login / hydration: initial fetch ──
   useEffect(() => {
     if (!user || !supabase || !hydrated) return
     if (syncedUserRef.current === user.id) return
     syncedUserRef.current = user.id
+    fetchFromSupabase()
+  }, [user?.id, hydrated, fetchFromSupabase])
 
-    async function fetchAndMerge() {
-      try {
-        const { data, error } = await supabase!
-          .from(TABLE)
-          .select("*")
-          .eq("user_id", user!.id)
-          .order("added_at", { ascending: false })
-          .limit(200)
+  // ── Re-fetch when app comes back into view (phone ↔ laptop) ──
+  useEffect(() => {
+    if (!user || !supabase) return
 
-        if (error) {
-          console.warn("[useListSync] fetch error:", error.message)
-          return
-        }
-
-        const remote: SyncItem[] = (data ?? []).map(fromRow)
-
-        // Remove any default placeholder items that were accidentally pushed before
-        const contaminated = remote.filter(r => DEFAULT_ITEM_IDS.has(r.id))
-        if (contaminated.length > 0) {
-          contaminated.forEach(item => {
-            supabase!.from(TABLE)
-              .delete()
-              .eq("product_id", item.id)
-              .eq("user_id", user!.id)
-              .then(() => {})
-          })
-        }
-        const cleanRemote = remote.filter(r => !DEFAULT_ITEM_IDS.has(r.id))
-
-        setItems(localItems => {
-          // Real local items = anything NOT in the default placeholder set
-          const realLocal = localItems.filter(l => !DEFAULT_ITEM_IDS.has(l.id))
-
-          if (cleanRemote.length > 0) {
-            // ── SUPABASE HAS DATA → it is the source of truth ──
-            // Only add local items that genuinely don't exist in Supabase yet
-            // (e.g. items added offline before login)
-            const remoteIds = new Set(cleanRemote.map(r => r.id))
-            const offlineOnly = realLocal.filter(l => !remoteIds.has(l.id))
-
-            // Push offline-only items up to Supabase
-            if (offlineOnly.length > 0) {
-              offlineOnly.forEach(item => {
-                supabase!.from(TABLE).upsert(toRow(item, user!.id)).then(() => {})
-              })
-            }
-
-            // Final list: Supabase data + any offline additions
-            const merged = new Map<string, SyncItem>()
-            cleanRemote.forEach(r => merged.set(r.id, r))
-            offlineOnly.forEach(l => merged.set(l.id, l))
-            return Array.from(merged.values()).sort((a, b) => b.addedAt - a.addedAt)
-          }
-
-          // ── SUPABASE IS EMPTY → push real local items up ──
-          if (realLocal.length > 0) {
-            realLocal.forEach(item => {
-              supabase!.from(TABLE).upsert(toRow(item, user!.id)).then(() => {})
-            })
-            return realLocal.sort((a, b) => b.addedAt - a.addedAt)
-          }
-
-          // Both empty — nothing to do
-          return localItems
-        })
-      } catch (e) {
-        console.warn("[useListSync] unexpected error:", e)
+    function handleVisibility() {
+      if (document.visibilityState === "visible") {
+        fetchFromSupabase()
       }
     }
 
-    fetchAndMerge()
-  }, [user?.id, hydrated])
+    document.addEventListener("visibilitychange", handleVisibility)
+    return () => document.removeEventListener("visibilitychange", handleVisibility)
+  }, [user?.id, fetchFromSupabase])
 
   // ── Realtime: live updates from other devices ──
   useEffect(() => {
@@ -187,10 +191,12 @@ export function useListSync(
   // ── Push new item to Supabase ──
   const syncAdd = useCallback((item: SyncItem) => {
     if (!user || !supabase || DEFAULT_ITEM_IDS.has(item.id)) return
-    supabase.from(TABLE).upsert(toRow(item, user.id)).then(() => {})
+    supabase.from(TABLE)
+      .upsert(toRow(item, user.id), { onConflict: "product_id,user_id" })
+      .then(() => {})
   }, [user])
 
-  // ── Remove item from Supabase (use product_id for consistency) ──
+  // ── Remove item from Supabase ──
   const syncRemove = useCallback((itemId: string) => {
     if (!user || !supabase) return
     supabase.from(TABLE)
