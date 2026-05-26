@@ -541,7 +541,7 @@ export default function ProfilePage() {
   const isSaved = savedToast || saving
 
   return (
-    <AuthGuard>
+    <>
     <div style={{ minHeight: "100dvh", background: "var(--background)", color: "var(--text)", fontFamily: "system-ui,-apple-system,sans-serif", paddingBottom: 80 }}>
 
       {/* Header */}
@@ -562,17 +562,48 @@ export default function ProfilePage() {
 
       <div style={{ maxWidth: 480, margin: "0 auto" }}>
 
-        {/* ── Gast-Modus Banner ─────────────────────────────────────────── */}
+        {/* ── Gast-Modus Karte ─────────────────────────────────────────── */}
         {!authLoading && !user && (
-          <div style={{ margin: "12px 20px 0", background: "rgba(255,180,0,0.1)", border: "1px solid rgba(255,180,0,0.35)", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 20 }}>👤</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "var(--text)" }}>Gast-Modus</div>
-              <div style={{ fontSize: "0.75rem", color: "var(--text-dim)", marginTop: 2 }}>Deine Daten sind nur lokal gespeichert — nicht geräteübergreifend.</div>
+          <div style={{ margin: "16px 16px 0" }}>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 18, padding: "20px 18px", display: "flex", flexDirection: "column", gap: 16 }}>
+
+              {/* Headline */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 42, height: 42, borderRadius: "50%", background: "rgba(46,204,138,0.12)", border: "1px solid rgba(46,204,138,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem", flexShrink: 0 }}>👤</div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--text)" }}>Du bist im Gast-Modus</div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-dim)", marginTop: 2 }}>Deine Daten bleiben auf diesem Gerät gespeichert</div>
+                </div>
+              </div>
+
+              {/* Feature list */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                {[
+                  { ok: true,  icon: "📷", label: "Scanner",       sub: "Produkte scannen & prüfen" },
+                  { ok: true,  icon: "🛒", label: "Einkaufsliste", sub: "Listen erstellen & verwalten" },
+                  { ok: true,  icon: "👑", label: "Premium",       sub: "Alle Features freischalten" },
+                  { ok: false, icon: "👥", label: "Community",     sub: "E-Mail-Konto erforderlich" },
+                  { ok: false, icon: "🔄", label: "Geräte-Sync",   sub: "Auf mehreren Geräten nutzen" },
+                ].map(f => (
+                  <div key={f.label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: f.ok ? "rgba(46,204,138,0.1)" : "rgba(255,255,255,0.04)", border: `1px solid ${f.ok ? "rgba(46,204,138,0.25)" : "rgba(255,255,255,0.07)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.9rem", flexShrink: 0 }}>{f.icon}</div>
+                    <div style={{ flex: 1 }}>
+                      <span style={{ fontSize: "0.82rem", fontWeight: 700, color: f.ok ? "var(--text)" : "var(--text-dim)" }}>{f.label}</span>
+                      <span style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginLeft: 6 }}>{f.sub}</span>
+                    </div>
+                    <span style={{ fontSize: "0.85rem", fontWeight: 800, color: f.ok ? "#2ECC8A" : "rgba(255,255,255,0.2)" }}>{f.ok ? "✓" : "✕"}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* CTA */}
+              <button onClick={() => setShowAuthModal(true)} style={{ width: "100%", background: "var(--accent)", border: "none", borderRadius: 12, padding: "13px", color: "#000", fontWeight: 800, fontSize: "0.95rem", cursor: "pointer", boxShadow: "0 0 20px rgba(46,204,138,0.2)" }}>
+                Jetzt mit E-Mail anmelden →
+              </button>
+              <p style={{ textAlign: "center", fontSize: "0.72rem", color: "var(--text-dim)", margin: 0 }}>
+                Kostenlos · Deine bisherigen Daten bleiben erhalten
+              </p>
             </div>
-            <button onClick={() => setShowAuthModal(true)} style={{ background: "var(--accent)", border: "none", borderRadius: 8, padding: "5px 12px", color: "#000", fontWeight: 700, fontSize: "0.75rem", cursor: "pointer", whiteSpace: "nowrap" }}>
-              Anmelden
-            </button>
           </div>
         )}
 
@@ -1387,7 +1418,7 @@ export default function ProfilePage() {
       ]} />
       <BottomNav />
     </div>
-    </AuthGuard>
+    </>
   )
 }
 
