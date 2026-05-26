@@ -596,6 +596,7 @@ function LandingInner() {
   const [scrollY,   setScrollY]   = useState(0)
   const [authMode, setAuthMode] = useState<"login" | "register" | null>(null)
   const [guestName, setGuestName] = useState("")
+  const [showNameInput, setShowNameInput] = useState(false)
   // Alles sofort sichtbar — kein Cinematic Delay
   const [textPhase, setTextPhase] = useState(3)
 
@@ -732,18 +733,27 @@ function LandingInner() {
             transform: textPhase >= 3 ? "translateY(0)" : "translateY(24px)",
             transition: "opacity 0.9s ease, transform 0.9s cubic-bezier(.22,1,.36,1)",
           }}>
-            <form onSubmit={handleGuestStart} style={{ display: "flex", gap: "0.6rem", justifyContent: "center", flexWrap: "wrap" }}>
-              <input
-                value={guestName}
-                onChange={e => setGuestName(e.target.value)}
-                placeholder="Wie heißt du?"
-                style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.25)", borderRadius: "12px", padding: "1rem 1.2rem", color: "#fff", fontSize: "1.05rem", outline: "none", minWidth: 180, maxWidth: 220 }}
-              />
-              <button type="submit" disabled={!guestName.trim()} style={{ background: guestName.trim() ? "#2ECC8A" : "rgba(46,204,138,0.4)", color: "#000", borderRadius: "12px", padding: "1rem 2rem", fontWeight: 800, fontSize: "1.05rem", border: "none", cursor: guestName.trim() ? "pointer" : "default", boxShadow: guestName.trim() ? "0 0 60px rgba(46,204,138,0.35)" : "none" }}>
-                Loslegen →
+            {!showNameInput ? (
+              <button onClick={() => setShowNameInput(true)} style={{ background: "#2ECC8A", color: "#000", borderRadius: "12px", padding: "1rem 2.8rem", fontWeight: 800, fontSize: "1.05rem", boxShadow: "0 0 60px rgba(46,204,138,0.35)", border: "none", cursor: "pointer" }}>
+                Kostenlos starten →
               </button>
-            </form>
-            <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.72rem", marginTop: "0.5rem" }}>Kein Passwort nötig · Kostenlos</p>
+            ) : (
+              <form onSubmit={handleGuestStart} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.6rem" }}>
+                <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", justifyContent: "center" }}>
+                  <input
+                    autoFocus
+                    value={guestName}
+                    onChange={e => setGuestName(e.target.value)}
+                    placeholder="Wie heißt du?"
+                    style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.25)", borderRadius: "12px", padding: "1rem 1.2rem", color: "#fff", fontSize: "1.05rem", outline: "none", minWidth: 180, maxWidth: 220 }}
+                  />
+                  <button type="submit" disabled={!guestName.trim()} style={{ background: guestName.trim() ? "#2ECC8A" : "rgba(46,204,138,0.4)", color: "#000", borderRadius: "12px", padding: "1rem 2rem", fontWeight: 800, fontSize: "1.05rem", border: "none", cursor: guestName.trim() ? "pointer" : "default", boxShadow: guestName.trim() ? "0 0 60px rgba(46,204,138,0.35)" : "none", transition: "all 0.2s" }}>
+                    Loslegen →
+                  </button>
+                </div>
+                <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.72rem", margin: 0 }}>Kein Passwort nötig · Kostenlos</p>
+              </form>
+            )}
           </div>
 
           {/* Scroll-Pfeil — Phase 3 */}
