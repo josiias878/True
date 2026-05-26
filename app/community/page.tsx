@@ -604,6 +604,7 @@ export default function CommunityPage() {
   }
 
   function createCommunity() {
+    if (!user) { setShowNewCommunity(false); setShowLogin(true); return }
     const name = newCommunityName.trim()
     if (!name) return
     const id = `custom-${Date.now()}`
@@ -884,7 +885,7 @@ export default function CommunityPage() {
             {showNew ? "✕ Abbrechen" : "✏️ Schreiben"}
           </button>
           <button
-            onClick={() => setShowNewCommunity(true)}
+            onClick={() => user ? setShowNewCommunity(true) : setShowLogin(true)}
             style={{ background: "transparent", color: "var(--text-dim)", border: "1.5px solid var(--border)", borderRadius: 99, padding: "5px 13px", fontWeight: 600, fontSize: "0.78rem", cursor: "pointer", flexShrink: 0 }}
           >
             🏠 Community
