@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase"
 import PremiumGate from "@/components/PremiumGate"
 import FloatingAssistant from "@/components/FloatingAssistant"
 import ProductScore from "@/components/ProductScore"
+import { guessEmoji, guessCategory } from "@/lib/productDetection"
 import { calcScoreFromSeverity } from "@/lib/productScore"
 // ZXing is lazy-loaded inside startCamera() — never runs during SSR/build
 let BrowserMultiFormatReader: any = null
@@ -897,7 +898,7 @@ export default function ScanPage() {
                result.corporation?.severity === "high"     ? "Problematisch" :
                result.corporation?.severity === "medium"   ? "Mittel" : "—",
         severity: result.corporation?.severity ?? "none",
-        emoji: "🔍",
+        emoji: guessEmoji(detectFrom),
         category,
         checked: false,
         addedAt: Date.now(),
