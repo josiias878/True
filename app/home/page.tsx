@@ -871,6 +871,7 @@ export default function HomePage() {
   const [commentModal, setCommentModal] = useState<typeof listItems[0] | null>(null)
   const [altModal, setAltModal]         = useState<{ name: string; productName: string; productEmoji: string; price?: string } | null>(null)
   const [showWelcome, setShowWelcome]   = useState(false)
+  const [showConfetti, setShowConfetti] = useState(false)
   const [showCommunityCard, setShowCommunityCard] = useState(true)
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([])
   const [mapOpen, setMapOpen]         = useState(false)
@@ -927,6 +928,12 @@ export default function HomePage() {
     if (!localStorage.getItem("true-welcome-seen")) {
       setShowWelcome(true)
       setTimeout(() => { setShowWelcome(false); localStorage.setItem("true-welcome-seen", "1") }, 7000)
+    }
+    // Confetti for brand-new users coming from onboarding
+    if (localStorage.getItem("true-new-user") === "1") {
+      localStorage.removeItem("true-new-user")
+      setShowConfetti(true)
+      setTimeout(() => setShowConfetti(false), 3500)
     }
     // Dark mode detection
     setIsDark(document.documentElement.classList.contains("dark"))
@@ -1167,6 +1174,36 @@ export default function HomePage() {
   }
 
   return (
+    <>
+    {/* ── Konfetti für neue Nutzer ── */}
+    {showConfetti && (
+      <div style={{ position: "fixed", inset: 0, zIndex: 9999, pointerEvents: "none", overflow: "hidden" }}>
+        {Array.from({ length: 60 }).map((_, i) => {
+          const colors = ["#2ECC8A","#ffd700","#ff6b6b","#38BDF8","#a78bfa","#fb923c"]
+          const color  = colors[i % colors.length]
+          const left   = `${Math.random() * 100}%`
+          const delay  = `${Math.random() * 1.2}s`
+          const dur    = `${2.2 + Math.random() * 1.2}s`
+          const size   = `${6 + Math.random() * 8}px`
+          return (
+            <div key={i} style={{
+              position: "absolute", top: "-20px", left,
+              width: size, height: size,
+              background: color, borderRadius: Math.random() > 0.5 ? "50%" : "2px",
+              animation: `confettiFall ${dur} ${delay} ease-in forwards`,
+              opacity: 0.9,
+            }} />
+          )
+        })}
+        <style>{`
+          @keyframes confettiFall {
+            0%   { transform: translateY(0)    rotate(0deg);   opacity: 1 }
+            80%  { opacity: 1 }
+            100% { transform: translateY(105vh) rotate(720deg); opacity: 0 }
+          }
+        `}</style>
+      </div>
+    )}
     <div style={{ minHeight: "100vh", background: "var(--background)", color: "var(--text)", fontFamily: "system-ui,-apple-system,sans-serif", paddingBottom: "140px" }}>
       {/* ── ALTERNATIVE BOTTOM SHEET ── */}
       {altModal && (() => {
@@ -2453,5 +2490,6 @@ export default function HomePage() {
         @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
       `}</style>
     </div>
+    </>
   )
 }

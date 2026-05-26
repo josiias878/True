@@ -596,7 +596,7 @@ function LandingInner() {
   const [scrollY,   setScrollY]   = useState(0)
   const [authMode, setAuthMode] = useState<"login" | "register" | null>(null)
   const [guestName, setGuestName] = useState("")
-  const [showNameInput, setShowNameInput] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
   // Alles sofort sichtbar — kein Cinematic Delay
   const [textPhase, setTextPhase] = useState(3)
 
@@ -627,6 +627,7 @@ function LandingInner() {
     if (!name) return
     localStorage.setItem("true-guest-name", name)
     localStorage.setItem("true-profile", JSON.stringify({ vorname: name }))
+    localStorage.setItem("true-new-user", "1")
     router.push("/home")
   }, [guestName, router])
 
@@ -728,32 +729,14 @@ function LandingInner() {
 
           {/* CTA — Phase 3 */}
           <div style={{
-            display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "3.5rem",
+            display: "flex", justifyContent: "center", marginBottom: "3.5rem",
             opacity: textPhase >= 3 ? 1 : 0,
             transform: textPhase >= 3 ? "translateY(0)" : "translateY(24px)",
             transition: "opacity 0.9s ease, transform 0.9s cubic-bezier(.22,1,.36,1)",
           }}>
-            {!showNameInput ? (
-              <button onClick={() => setShowNameInput(true)} style={{ background: "#2ECC8A", color: "#000", borderRadius: "12px", padding: "1rem 2.8rem", fontWeight: 800, fontSize: "1.05rem", boxShadow: "0 0 60px rgba(46,204,138,0.35)", border: "none", cursor: "pointer" }}>
-                Kostenlos starten →
-              </button>
-            ) : (
-              <form onSubmit={handleGuestStart} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.6rem" }}>
-                <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", justifyContent: "center" }}>
-                  <input
-                    autoFocus
-                    value={guestName}
-                    onChange={e => setGuestName(e.target.value)}
-                    placeholder="Wie heißt du?"
-                    style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.25)", borderRadius: "12px", padding: "1rem 1.2rem", color: "#fff", fontSize: "1.05rem", outline: "none", minWidth: 180, maxWidth: 220 }}
-                  />
-                  <button type="submit" disabled={!guestName.trim()} style={{ background: guestName.trim() ? "#2ECC8A" : "rgba(46,204,138,0.4)", color: "#000", borderRadius: "12px", padding: "1rem 2rem", fontWeight: 800, fontSize: "1.05rem", border: "none", cursor: guestName.trim() ? "pointer" : "default", boxShadow: guestName.trim() ? "0 0 60px rgba(46,204,138,0.35)" : "none", transition: "all 0.2s" }}>
-                    Loslegen →
-                  </button>
-                </div>
-                <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.72rem", margin: 0 }}>Kein Passwort nötig · Kostenlos</p>
-              </form>
-            )}
+            <button onClick={() => setShowOnboarding(true)} style={{ background: "#2ECC8A", color: "#000", borderRadius: "12px", padding: "1rem 2.8rem", fontWeight: 800, fontSize: "1.05rem", boxShadow: "0 0 60px rgba(46,204,138,0.35)", border: "none", cursor: "pointer" }}>
+              Kostenlos starten →
+            </button>
           </div>
 
           {/* Scroll-Pfeil — Phase 3 */}
@@ -847,6 +830,56 @@ function LandingInner() {
 
     {authMode && (
       <AuthModal defaultMode={authMode} onClose={() => setAuthMode(null)} onSuccess={() => router.replace("/home")} onGuest={goToApp} />
+    )}
+
+    {/* ── Onboarding Overlay ── */}
+    {showOnboarding && (
+      <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1.5rem" }}
+        onClick={e => { if (e.target === e.currentTarget) setShowOnboarding(false) }}>
+        <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 24, padding: "2.5rem 2rem", width: "100%", maxWidth: 400, display: "flex", flexDirection: "column", alignItems: "center", gap: "1.5rem", position: "relative" }}>
+
+          {/* Close */}
+          <button onClick={() => setShowOnboarding(false)} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: "1.3rem", cursor: "pointer", lineHeight: 1 }}>✕</button>
+
+          {/* Step indicator */}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <div style={{ width: 28, height: 4, borderRadius: 2, background: "#2ECC8A" }} />
+            <span style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.35)", fontWeight: 600, letterSpacing: "0.08em" }}>SCHRITT 1 VON 1</span>
+          </div>
+
+          {/* Icon + Title */}
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: "2.8rem", marginBottom: "0.6rem" }}>👋</div>
+            <div style={{ fontSize: "1.4rem", fontWeight: 900, color: "#fff", letterSpacing: "-0.03em" }}>Wie heißt du?</div>
+            <div style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.4)", marginTop: "0.35rem" }}>Kein Passwort nötig · Jederzeit upgradebar</div>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleGuestStart} style={{ width: "100%", display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+            <input
+              autoFocus
+              value={guestName}
+              onChange={e => setGuestName(e.target.value)}
+              placeholder="Dein Vorname…"
+              maxLength={30}
+              style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1.5px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: "1rem 1.1rem", color: "#fff", fontSize: "1.05rem", outline: "none", boxSizing: "border-box", transition: "border-color 0.15s" }}
+              onFocus={e => (e.target.style.borderColor = "rgba(46,204,138,0.6)")}
+              onBlur={e  => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+            />
+            <button type="submit" disabled={!guestName.trim()} style={{ width: "100%", background: guestName.trim() ? "#2ECC8A" : "rgba(46,204,138,0.25)", color: guestName.trim() ? "#000" : "rgba(255,255,255,0.3)", border: "none", borderRadius: 14, padding: "1rem", fontWeight: 800, fontSize: "1.05rem", cursor: guestName.trim() ? "pointer" : "default", transition: "all 0.2s", boxShadow: guestName.trim() ? "0 0 40px rgba(46,204,138,0.3)" : "none" }}>
+              Loslegen →
+            </button>
+          </form>
+
+          {/* Login hint */}
+          <p style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.25)", margin: 0, textAlign: "center" }}>
+            Schon ein Konto?{" "}
+            <button onClick={() => { setShowOnboarding(false); setAuthMode("login") }} style={{ background: "none", border: "none", color: "#2ECC8A", fontWeight: 700, cursor: "pointer", fontSize: "0.75rem", padding: 0 }}>
+              Anmelden
+            </button>
+          </p>
+        </div>
+      </div>
     )}
     </>
   )
