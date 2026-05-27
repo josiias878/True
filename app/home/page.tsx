@@ -1675,9 +1675,10 @@ export default function HomePage() {
               <div key={m.id} style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                 <div style={{ position: "relative" }}>
                   <button onClick={() => setActiveListPerson(isActive ? "all" : m.id)}
-                    style={{ width: 52, height: 52, borderRadius: "50%", background: isActive ? accentColor : "var(--surface)", border: `2.5px solid ${isActive ? accentColor : "var(--border)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: m.avatarUrl ? 0 : "1.4rem", transition: "all 0.15s", cursor: "pointer", overflow: "hidden", padding: 0 }}>
+                    style={{ width: 52, height: 52, borderRadius: "50%", background: isActive ? accentColor : "var(--surface)", border: `2.5px solid ${isActive ? accentColor : "var(--border)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", transition: "all 0.15s", cursor: "pointer", overflow: "hidden", padding: 0 }}>
                     {m.avatarUrl
-                      ? <img src={m.avatarUrl} alt={m.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} onError={e => { (e.target as HTMLImageElement).style.display = "none" }} />
+                      ? <img src={m.avatarUrl} alt={m.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
+                          onError={() => setFamilyMembers(prev => prev.map(x => x.id === m.id ? { ...x, avatarUrl: "" } : x))} />
                       : m.emoji}
                   </button>
                   {count > 0 && <div style={{ position: "absolute", top: -3, right: -3, background: pet ? "#ff8833" : "#ff4455", color: "#fff", borderRadius: "50%", width: 18, height: 18, fontSize: "0.6rem", fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid var(--background)" }}>{count}</div>}
