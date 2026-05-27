@@ -972,16 +972,17 @@ export default function HomePage() {
       setShowWelcome(true)
       setTimeout(() => { setShowWelcome(false); localStorage.setItem("true-welcome-seen", "1") }, 7000)
     }
-    // Confetti for brand-new users coming from onboarding
-    if (localStorage.getItem("true-new-user") === "1") {
+    // Photo prompt for new users (shown on top of home)
+    // Confetti fires AFTER photo prompt is dismissed
+    if (localStorage.getItem("true-needs-photo") === "1") {
+      localStorage.removeItem("true-needs-photo")
+      localStorage.removeItem("true-new-user")
+      setShowPhotoPrompt(true)
+    } else if (localStorage.getItem("true-new-user") === "1") {
+      // fallback: no photo prompt, fire confetti directly
       localStorage.removeItem("true-new-user")
       setShowConfetti(true)
       setTimeout(() => setShowConfetti(false), 3500)
-    }
-    // Photo prompt for new users (shown on top of home)
-    if (localStorage.getItem("true-needs-photo") === "1") {
-      localStorage.removeItem("true-needs-photo")
-      setShowPhotoPrompt(true)
     }
     // Dark mode detection
     setIsDark(document.documentElement.classList.contains("dark"))
@@ -1273,11 +1274,17 @@ export default function HomePage() {
             <button onClick={() => {
               if (photoPromptFile) { try { localStorage.setItem("true-profile-photo", photoPromptFile) } catch {} }
               setShowPhotoPrompt(false)
+              setShowConfetti(true)
+              setTimeout(() => setShowConfetti(false), 3500)
             }} style={{ width: "100%", background: "#2ECC8A", color: "#000", border: "none", borderRadius: 14, padding: "15px", fontWeight: 800, fontSize: "1rem", cursor: "pointer", boxShadow: "0 0 30px rgba(46,204,138,0.25)" }}>
               {photoPromptFile ? "Speichern & loslegen →" : "Ohne Foto loslegen →"}
             </button>
             {!photoPromptFile && (
-              <button onClick={() => setShowPhotoPrompt(false)} style={{ background: "none", border: "none", color: "#8b949e", fontSize: "0.78rem", cursor: "pointer", padding: 4 }}>
+              <button onClick={() => {
+                setShowPhotoPrompt(false)
+                setShowConfetti(true)
+                setTimeout(() => setShowConfetti(false), 3500)
+              }} style={{ background: "none", border: "none", color: "#8b949e", fontSize: "0.78rem", cursor: "pointer", padding: 4 }}>
                 Überspringen
               </button>
             )}
