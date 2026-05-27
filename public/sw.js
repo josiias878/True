@@ -1,6 +1,6 @@
 // TRUE Service Worker — Push Notifications + Offline Cache
 
-const CACHE = "true-v2"
+const CACHE = "true-v3"
 const PRECACHE = ["/home", "/scan", "/offline"]
 
 self.addEventListener("install", e => {
