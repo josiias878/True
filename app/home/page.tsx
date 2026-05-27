@@ -851,6 +851,8 @@ export default function HomePage() {
   const [productModal, setProductModal] = useState<Product | null>(null)
   const [listItems, setListItems]     = useState<{ id: number|string; name: string; emoji: string; brand?: string; severity?: string; issue?: string; alternative?: { name: string }; checked: boolean; personId?: string; category?: string }[]>([])
   const [severityModal, setSeverityModal] = useState<typeof listItems[0] | null>(null)
+  const [deleteConfirmItem, setDeleteConfirmItem] = useState<typeof listItems[0] | null>(null)
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [familyMembers, setFamilyMembers] = useState<{ id: string; name: string; age: string; emoji: string; avatarUrl?: string }[]>([])
   const [activeListPerson, setActiveListPerson] = useState<string>("all")
   const [inviteMember, setInviteMember] = useState<{ id: string; name: string; emoji: string } | null>(null)
@@ -1098,6 +1100,23 @@ export default function HomePage() {
       } catch {}
       return next
     })
+  }
+
+  function deleteListItem(id: number|string) {
+    setListItems(prev => {
+      const next = prev.filter(it => it.id !== id)
+      try {
+        const raw = localStorage.getItem("shopping-list-items-v1")
+        if (raw) {
+          const full = JSON.parse(raw)
+          localStorage.setItem("shopping-list-items-v1", JSON.stringify(
+            full.filter((it: { id: number|string }) => it.id !== id)
+          ))
+        }
+      } catch {}
+      return next
+    })
+    setDeleteConfirmItem(null)
   }
 
   // feedPost removed — not rendered anywhere (dead code cleanup)
@@ -1769,6 +1788,11 @@ export default function HomePage() {
               return (
                 <div key={item.id}
                   onClick={() => toggleListItem(item.id)}
+                  onMouseDown={() => { longPressTimerRef.current = setTimeout(() => setDeleteConfirmItem(item), 500) }}
+                  onMouseUp={() => { if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current) }}
+                  onMouseLeave={() => { if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current) }}
+                  onTouchStart={() => { longPressTimerRef.current = setTimeout(() => setDeleteConfirmItem(item), 500) }}
+                  onTouchEnd={() => { if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current) }}
                   style={{ display: "flex", alignItems: "center", gap: 13, ...cardStyle, borderRadius: 14, padding: "14px 11px 14px 14px", marginBottom: 8, cursor: "pointer", opacity: dim ? 0.55 : 1, transition: "opacity 0.15s", WebkitTapHighlightColor: "transparent", userSelect: "none" }}
                 >
                   {/* Großes Emoji */}
@@ -2686,6 +2710,41 @@ export default function HomePage() {
           </div>
         )
       })()}
+
+      {/* ── Löschen-Bestätigung Sheet ── */}
+      {deleteConfirmItem && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 8000, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+          onClick={() => setDeleteConfirmItem(null)}
+        >
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} />
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ position: "relative", width: "100%", maxWidth: 480, background: "var(--surface)", borderRadius: "20px 20px 0 0", padding: "24px 20px 40px", display: "flex", flexDirection: "column", gap: 16 }}
+          >
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--border)", margin: "0 auto" }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: "2rem" }}>{deleteConfirmItem.emoji}</span>
+              <div style={{ fontWeight: 800, fontSize: "1rem" }}>{deleteConfirmItem.name}</div>
+            </div>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-dim)", margin: 0 }}>
+              Diesen Artikel wirklich aus der Liste entfernen?
+            </p>
+            <button
+              onClick={() => deleteListItem(deleteConfirmItem.id)}
+              style={{ width: "100%", background: "#ff4455", color: "#fff", border: "none", borderRadius: 14, padding: "15px", fontWeight: 800, fontSize: "1rem", cursor: "pointer" }}
+            >
+              🗑️ Löschen
+            </button>
+            <button
+              onClick={() => setDeleteConfirmItem(null)}
+              style={{ background: "none", border: "none", color: "var(--text-dim)", fontSize: "0.85rem", cursor: "pointer" }}
+            >
+              Abbrechen
+            </button>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes pulse0 { 0%,100%{opacity:1;transform:translate(-50%,-50%) scale(1)} 50%{opacity:.6;transform:translate(-50%,-50%) scale(1.4)} }
