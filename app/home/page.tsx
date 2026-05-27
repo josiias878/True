@@ -892,7 +892,7 @@ export default function HomePage() {
   const [viewMode, setViewMode]       = useState<"list" | "grid">("list")
   const [showSortSheet, setShowSortSheet] = useState(false)
   const [showPersonSheet, setShowPersonSheet] = useState(false)
-  const [showFeedSection, setShowFeedSection] = useState(true)
+  const [showFeedSection, setShowFeedSection] = useState(false)
   const [newPersonName, setNewPersonName]     = useState("")
   const [newPersonAge, setNewPersonAge]       = useState("")
   const [newPersonEmoji, setNewPersonEmoji]   = useState("🧒")
@@ -1757,14 +1757,14 @@ export default function HomePage() {
                   </div>
                 )}
 
-                {/* ── Trennlinie + Aufdeckungen Toggle ── */}
+                {/* ── Trennlinie + Schlagzeilen Toggle ── */}
                 <div style={{ marginTop: 28, marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
                   <button
                     onClick={() => setShowFeedSection(v => !v)}
                     style={{ display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "1px solid var(--border)", borderRadius: 99, padding: "4px 12px", cursor: "pointer", fontSize: "0.72rem", fontWeight: 700, color: "var(--text-dim)" }}
                   >
-                    📡 Aufdeckungen {showFeedSection ? "▲" : "▼"}
+                    🗞️ Schlagzeilen {showFeedSection ? "▲" : "▼"}
                   </button>
                   <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
                 </div>
@@ -1826,7 +1826,7 @@ export default function HomePage() {
                       {/* Footer */}
                       <div style={{ borderTop: "1px solid var(--border)", padding: "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <Link href="/channel/true" style={{ fontSize: "0.72rem", color: "var(--accent)", fontWeight: 700, textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
-                          📡 TRUE-Kanal
+                          🗞️ TRUE-Kanal
                         </Link>
                         <Link href="/community" style={{ fontSize: "0.72rem", color: "var(--text-dim)", fontWeight: 700, textDecoration: "none" }}>Community →</Link>
                       </div>
