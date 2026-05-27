@@ -172,8 +172,27 @@ function getWeekNumber(d: Date): number {
 export default function SwRegister() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return
+
+    // Auto-reload when new SW takes over — no manual cache clear needed
+    navigator.serviceWorker.addEventListener("message", e => {
+      if (e.data?.type === "SW_UPDATED") {
+        window.location.reload()
+      }
+    })
+
     navigator.serviceWorker.register("/sw.js")
-      .then(() => {
+      .then(reg => {
+        // If a new SW is waiting, tell it to skip waiting immediately
+        if (reg.waiting) reg.waiting.postMessage({ type: "SKIP_WAITING" })
+        reg.addEventListener("updatefound", () => {
+          const newSW = reg.installing
+          if (!newSW) return
+          newSW.addEventListener("statechange", () => {
+            if (newSW.state === "installed" && navigator.serviceWorker.controller) {
+              newSW.postMessage({ type: "SKIP_WAITING" })
+            }
+          })
+        })
         checkBirthdayNotification()
         checkDailyNotification()
         checkShoppingListReminder()
