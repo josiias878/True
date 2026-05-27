@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState, useCallback, Suspense } from "react
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import AuthModal from "@/components/AuthModal"
+import GoalPicker from "@/components/GoalPicker"
 import { useSupabaseAuth } from "@/lib/useSupabaseAuth"
 
 function px(id: number, w = 1920, h = 1080) {
@@ -643,7 +644,15 @@ function LandingInner() {
     try { localStorage.setItem("true-new-user", "1") } catch {}
     try { localStorage.setItem("true-needs-photo", "1") } catch {}
     if (goals.length > 0) {
-      try { localStorage.setItem("true-goals", JSON.stringify(goals)) } catch {}
+      try {
+        localStorage.setItem("true-goals", JSON.stringify(goals))
+        localStorage.setItem("true-goals-v1", JSON.stringify(goals)) // compat
+        // also into profile so scanner picks it up
+        const raw = localStorage.getItem("true-profile")
+        const p = raw ? JSON.parse(raw) : {}
+        p.goals = goals
+        localStorage.setItem("true-profile", JSON.stringify(p))
+      } catch {}
     }
     router.push("/home")
   }, [guestName, router])
@@ -896,45 +905,24 @@ function LandingInner() {
             </>
           )}
 
-          {onboardStep === 2 && (() => {
-            const GOALS = [
-              { id: "palmol",    emoji: "🌴", label: "Kein Palmöl",      desc: "Zeigt Warnungen + Alternativen" },
-              { id: "plastic",   emoji: "♻️", label: "Plastikfrei",      desc: "Hebt Einwegplastik hervor" },
-              { id: "gesundheit",emoji: "🥦", label: "Gesund leben",     desc: "Zucker, PFAS, Zusatzstoffe" },
-              { id: "truth",     emoji: "🔍", label: "Konzern-Wahrheit", desc: "Wer steckt wirklich dahinter?" },
-              { id: "family",    emoji: "👨‍👩‍👧", label: "Für die Familie",  desc: "Kinderfreundliche Bewertungen" },
-              { id: "budget",    emoji: "💶", label: "Günstig & fair",   desc: "Preis-Leistung + fairer Handel" },
-            ]
-            const toggle = (id: string) => setSelectedGoals(prev => prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id])
-            return (
-              <>
-                <div style={{ textAlign: "center", width: "100%" }}>
-                  <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🎯</div>
-                  <div style={{ fontSize: "1.2rem", fontWeight: 900, color: "#fff", letterSpacing: "-0.02em" }}>Was ist dir wichtig?</div>
-                  <div style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.4)", marginTop: "0.3rem" }}>TRUE passt Bewertungen & Alternativen an</div>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%" }}>
-                  {GOALS.map(g => {
-                    const active = selectedGoals.includes(g.id)
-                    return (
-                      <button key={g.id} onClick={() => toggle(g.id)}
-                        style={{ background: active ? "rgba(46,204,138,0.15)" : "rgba(255,255,255,0.04)", border: `1.5px solid ${active ? "#2ECC8A" : "rgba(255,255,255,0.1)"}`, borderRadius: 14, padding: "12px 10px", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}>
-                        <div style={{ fontSize: "1.4rem", marginBottom: 4 }}>{g.emoji}</div>
-                        <div style={{ fontWeight: 800, fontSize: "0.82rem", color: active ? "#2ECC8A" : "#fff" }}>{g.label}</div>
-                        <div style={{ fontSize: "0.68rem", color: "rgba(255,255,255,0.35)", marginTop: 2, lineHeight: 1.3 }}>{g.desc}</div>
-                      </button>
-                    )
-                  })}
-                </div>
-                <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
-                  <button onClick={() => handleGuestFinish(selectedGoals)}
-                    style={{ width: "100%", background: "#2ECC8A", color: "#000", border: "none", borderRadius: 14, padding: "1rem", fontWeight: 800, fontSize: "1.05rem", cursor: "pointer", boxShadow: "0 0 40px rgba(46,204,138,0.25)" }}>
-                    {selectedGoals.length > 0 ? `Los geht's →` : "Überspringen →"}
-                  </button>
-                </div>
-              </>
-            )
-          })()}
+          {onboardStep === 2 && (
+            <>
+              <div style={{ textAlign: "center", width: "100%" }}>
+                <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🎯</div>
+                <div style={{ fontSize: "1.2rem", fontWeight: 900, color: "#fff", letterSpacing: "-0.02em" }}>Was ist dir wichtig?</div>
+                <div style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.4)", marginTop: "0.3rem" }}>TRUE passt Scanner, Bewertungen & Alternativen an</div>
+              </div>
+              <div style={{ width: "100%", maxHeight: "50vh", overflowY: "auto" }}>
+                <GoalPicker selected={selectedGoals} onChange={setSelectedGoals} dark={true} />
+              </div>
+              <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
+                <button onClick={() => handleGuestFinish(selectedGoals)}
+                  style={{ width: "100%", background: "#2ECC8A", color: "#000", border: "none", borderRadius: 14, padding: "1rem", fontWeight: 800, fontSize: "1.05rem", cursor: "pointer", boxShadow: "0 0 40px rgba(46,204,138,0.25)" }}>
+                  {selectedGoals.length > 0 ? `Los geht's →` : "Überspringen →"}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     )}

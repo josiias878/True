@@ -1007,6 +1007,14 @@ export default function HomePage() {
         const vn = p.vorname || p.name || ""
         if (vn) setUserName(vn.split(" ")[0])
       }
+      // Fallback: separate goal keys (guest flow = "true-goals", auth flow = "true-goals-v1")
+      const goalsRaw = localStorage.getItem("true-goals") || localStorage.getItem("true-goals-v1")
+      if (goalsRaw) {
+        try {
+          const goals = JSON.parse(goalsRaw)
+          if (Array.isArray(goals) && goals.length > 0) setUserGoals(goals)
+        } catch {}
+      }
       const ph = localStorage.getItem("true-profile-photo")
       if (ph) setMyPhoto(ph)
     } catch {}

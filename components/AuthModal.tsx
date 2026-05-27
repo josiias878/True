@@ -1,6 +1,7 @@
 "use client"
 import { useState, useEffect, useRef } from "react"
 import { useSupabaseAuth } from "@/lib/useSupabaseAuth"
+import GoalPicker from "@/components/GoalPicker"
 
 interface Props {
   onClose: () => void
@@ -500,45 +501,16 @@ export default function AuthModal({ onClose, onSuccess, onGuest, onRegister, def
                 </div>
               )}
 
-              {/* ── Step 4: Goals ── */}
+              {/* ── Step 4: Goals (GoalPicker) ── */}
               {regStep === "goals" && (
                 <div>
                   <div style={{ textAlign: "center", fontSize: "2.8rem", marginBottom: 8 }}>🎯</div>
-                  <p style={{ textAlign: "center", fontSize: "0.84rem", color: "rgba(255,255,255,0.4)", marginBottom: 20, lineHeight: 1.6 }}>
-                    Was ist dir beim Einkaufen wichtig?
+                  <p style={{ textAlign: "center", fontSize: "0.84rem", color: "rgba(255,255,255,0.4)", marginBottom: 16, lineHeight: 1.6 }}>
+                    Was ist dir beim Einkaufen wichtig?<br/>
+                    <span style={{ fontSize: "0.75rem" }}>Tippe ein Stichwort oder wähle direkt aus</span>
                   </p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
-                    {GOALS.map(g => {
-                      const active = selectedGoals.includes(g.id)
-                      return (
-                        <button key={g.id}
-                          onClick={() => setSelectedGoals(prev => prev.includes(g.id) ? prev.filter(x => x !== g.id) : [...prev, g.id])}
-                          style={{
-                            background: active ? "rgba(46,204,138,0.12)" : "rgba(255,255,255,0.04)",
-                            border: `1.5px solid ${active ? "#2ECC8A" : "rgba(255,255,255,0.08)"}`,
-                            borderRadius: 14, padding: "11px 14px", cursor: "pointer",
-                            display: "flex", alignItems: "center", gap: 12,
-                            textAlign: "left", transition: "all 0.2s",
-                            boxShadow: active ? "0 0 14px rgba(46,204,138,0.12)" : "none",
-                          }}
-                        >
-                          <span style={{ fontSize: "1.4rem", flexShrink: 0 }}>{g.emoji}</span>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 700, fontSize: "0.9rem", color: active ? "#2ECC8A" : "#fff" }}>{g.label}</div>
-                            <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.35)", marginTop: 1 }}>{g.hint}</div>
-                          </div>
-                          <div style={{
-                            width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
-                            border: `2px solid ${active ? "#2ECC8A" : "rgba(255,255,255,0.15)"}`,
-                            background: active ? "#2ECC8A" : "transparent",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: "0.65rem", color: "#000", fontWeight: 900,
-                          }}>
-                            {active ? "✓" : ""}
-                          </div>
-                        </button>
-                      )
-                    })}
+                  <div style={{ maxHeight: "42vh", overflowY: "auto", marginBottom: 16 }}>
+                    <GoalPicker selected={selectedGoals} onChange={setSelectedGoals} dark={true} />
                   </div>
                   <Btn label="Los geht's 🚀" color="#2ECC8A" disabled={false} onClick={handleSaveGoals} />
                   <button onClick={() => {

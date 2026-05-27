@@ -656,6 +656,14 @@ export default function ScanPage() {
         if (Array.isArray(p.goals) && p.goals.length > 0) setUserGoals(p.goals)
         if (Array.isArray(p.allergies) && p.allergies.length > 0) setUserAllergies(p.allergies)
       }
+      // Fallback goal keys (guest = "true-goals", auth = "true-goals-v1")
+      const goalsRaw = localStorage.getItem("true-goals") || localStorage.getItem("true-goals-v1")
+      if (goalsRaw) {
+        try {
+          const goals = JSON.parse(goalsRaw)
+          if (Array.isArray(goals) && goals.length > 0) setUserGoals(goals)
+        } catch {}
+      }
     } catch {}
     try {
       const fm = localStorage.getItem("true-family-members")
