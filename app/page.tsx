@@ -633,10 +633,10 @@ function LandingInner() {
 
   const finishOnboarding = useCallback((photo: string | null) => {
     const name = guestName.trim()
-    localStorage.setItem("true-guest-name", name)
-    localStorage.setItem("true-profile", JSON.stringify({ vorname: name, name }))
-    if (photo) localStorage.setItem("true-profile-photo", photo)
-    localStorage.setItem("true-new-user", "1")
+    try { localStorage.setItem("true-guest-name", name) } catch {}
+    try { localStorage.setItem("true-profile", JSON.stringify({ vorname: name, name })) } catch {}
+    if (photo) { try { localStorage.setItem("true-profile-photo", photo) } catch {} }
+    try { localStorage.setItem("true-new-user", "1") } catch {}
     router.push("/home")
   }, [guestName, router])
 
@@ -910,7 +910,19 @@ function LandingInner() {
                 const file = e.target.files?.[0]
                 if (!file) return
                 const reader = new FileReader()
-                reader.onload = ev => setOnboardPhoto(ev.target?.result as string)
+                reader.onload = ev => {
+                  const img = new Image()
+                  img.onload = () => {
+                    const canvas = document.createElement("canvas")
+                    const MAX = 400
+                    const scale = Math.min(1, MAX / Math.max(img.width, img.height))
+                    canvas.width = img.width * scale
+                    canvas.height = img.height * scale
+                    canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height)
+                    setOnboardPhoto(canvas.toDataURL("image/jpeg", 0.7))
+                  }
+                  img.src = ev.target?.result as string
+                }
                 reader.readAsDataURL(file)
               }} />
             </label>

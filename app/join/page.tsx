@@ -140,7 +140,19 @@ function JoinInner() {
                 const file = e.target.files?.[0]
                 if (!file) return
                 const reader = new FileReader()
-                reader.onload = ev => setPhoto(ev.target?.result as string)
+                reader.onload = ev => {
+                  const img = new Image()
+                  img.onload = () => {
+                    const canvas = document.createElement("canvas")
+                    const MAX = 400
+                    const scale = Math.min(1, MAX / Math.max(img.width, img.height))
+                    canvas.width = img.width * scale
+                    canvas.height = img.height * scale
+                    canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height)
+                    setPhoto(canvas.toDataURL("image/jpeg", 0.7))
+                  }
+                  img.src = ev.target?.result as string
+                }
                 reader.readAsDataURL(file)
               }} />
             </label>
