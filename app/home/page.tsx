@@ -1656,7 +1656,7 @@ export default function HomePage() {
               }
             </div>
             <span style={{ fontSize: "0.65rem", fontWeight: activeListPerson === "mine" ? 800 : 500, color: activeListPerson === "mine" ? "var(--accent)" : "var(--text-dim)", whiteSpace: "nowrap" }}>{userName || "Ich"}</span>
-            <span style={{ fontSize: "0.58rem", color: "var(--text-dim)" }}>{listItems.filter(i => !i.personId && !i.checked).length} offen</span>
+            <span style={{ fontSize: "0.58rem", color: "var(--text-dim)" }}>{listItems.filter(i => !i.checked).length} offen</span>
           </button>
           {/* Alle */}
           <button onClick={() => setActiveListPerson("all")}
@@ -1716,8 +1716,7 @@ export default function HomePage() {
               meat: "#aa2040", frozen: "#2060aa", household: "#5566aa",
             }
             const allVisible = listItems.filter(i =>
-              activeListPerson === "all" ? true
-              : activeListPerson === "mine" ? !i.personId
+              activeListPerson === "all" || activeListPerson === "mine" ? true
               : i.personId === activeListPerson
             )
             const uncheckedAll = allVisible.filter(i => !i.checked)
