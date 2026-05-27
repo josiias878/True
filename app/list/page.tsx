@@ -10,7 +10,7 @@ import { useSupabaseAuth } from "@/lib/useSupabaseAuth"
 import { guessEmoji, guessCategory } from "@/lib/productDetection"
 import ProductCoachPanel from "@/components/ProductCoachPanel"
 
-interface FamilyMember { id: string; name: string; age: string; emoji: string }
+interface FamilyMember { id: string; name: string; age: string; emoji: string; avatarUrl?: string }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -998,8 +998,10 @@ export default function ShoppingListPage() {
         {familyMembers.map(m => (
           <button key={m.id} onClick={() => setActivePerson(m.id)}
             style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-            <div style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--surface-2)", border: `2.5px solid ${activePerson === m.id ? "var(--accent)" : "transparent"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", transition: "border-color 0.15s", boxShadow: activePerson === m.id ? "0 0 0 3px rgba(46,204,138,0.15)" : "none" }}>
-              {m.emoji}
+            <div style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--surface-2)", border: `2.5px solid ${activePerson === m.id ? "var(--accent)" : "transparent"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", transition: "border-color 0.15s", boxShadow: activePerson === m.id ? "0 0 0 3px rgba(46,204,138,0.15)" : "none", overflow: "hidden" }}>
+              {m.avatarUrl
+                ? <img src={m.avatarUrl} alt={m.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+                : m.emoji}
             </div>
             <span style={{ fontSize: "0.62rem", fontWeight: activePerson === m.id ? 700 : 500, color: activePerson === m.id ? "var(--accent)" : "var(--text-dim)", whiteSpace: "nowrap", maxWidth: 52, overflow: "hidden", textOverflow: "ellipsis" }}>{m.name}</span>
           </button>
