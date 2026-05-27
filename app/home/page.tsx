@@ -854,7 +854,7 @@ export default function HomePage() {
   const [deleteConfirmItem, setDeleteConfirmItem] = useState<typeof listItems[0] | null>(null)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [familyMembers, setFamilyMembers] = useState<{ id: string; name: string; age: string; emoji: string; avatarUrl?: string }[]>([])
-  const [activeListPerson, setActiveListPerson] = useState<string>("all")
+  const [activeListPerson, setActiveListPerson] = useState<string>("mine")
   const [inviteMember, setInviteMember] = useState<{ id: string; name: string; emoji: string } | null>(null)
   const [inviteCopied, setInviteCopied] = useState(false)
   const [personSheetTab, setPersonSheetTab] = useState<"manual" | "invite">("manual")
@@ -893,6 +893,7 @@ export default function HomePage() {
   const [showQuickAdd, setShowQuickAdd] = useState(false)
   const [activeCat, setActiveCat]     = useState<string>("all")
   const [isDark, setIsDark]           = useState(false)
+  const [isGuest, setIsGuest]         = useState(false)
   const [coachOpen, setCoachOpen]     = useState(false)
   const [viewMode, setViewMode]       = useState<"list" | "grid">("list")
   const [showSortSheet, setShowSortSheet] = useState(false)
@@ -924,6 +925,8 @@ export default function HomePage() {
     else if (h < 17) setGreeting("Guten Tag")
     else setGreeting("Guten Abend")
     setIsPremium(localStorage.getItem("true-premium") === "1")
+    // Gast-Modus: hat Guest-Name aber kein Supabase-Konto
+    setIsGuest(!!localStorage.getItem("true-guest-name") && !localStorage.getItem("true-supabase-user"))
     if (localStorage.getItem("true-community-card-dismissed") === "1") setShowCommunityCard(false)
     // Auto-follow the official TRUE channel for every user
     try {
@@ -1575,6 +1578,9 @@ export default function HomePage() {
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span onClick={handleLogoTap} style={{ fontSize: "1.4rem", fontWeight: 900, letterSpacing: "-0.06em", color: "var(--accent)", cursor: "default", userSelect: "none" }}>TRUE</span>
           {isPremium && <span style={{ background: "linear-gradient(135deg,#ffd700,#ffaa00)", color: "#000", borderRadius: 6, padding: "1px 6px", fontSize: "0.55rem", fontWeight: 900 }}>PREMIUM</span>}
+          {isGuest && !isPremium && (
+            <span style={{ background: "rgba(255,255,255,0.08)", color: "var(--text-dim)", border: "1px solid var(--border)", borderRadius: 6, padding: "1px 7px", fontSize: "0.55rem", fontWeight: 700, letterSpacing: "0.05em" }}>GAST</span>
+          )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           <button
@@ -1677,13 +1683,23 @@ export default function HomePage() {
             <span style={{ fontSize: "0.65rem", fontWeight: activeListPerson === "mine" ? 800 : 500, color: activeListPerson === "mine" ? "var(--accent)" : "var(--text-dim)", whiteSpace: "nowrap" }}>{userName || "Ich"}</span>
             <span style={{ fontSize: "0.58rem", color: "var(--text-dim)" }}>{listItems.filter(i => !i.checked).length} offen</span>
           </button>
-          {/* Alle */}
-          <button onClick={() => setActiveListPerson("all")}
-            style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>
-            <div style={{ width: 52, height: 52, borderRadius: "50%", background: activeListPerson === "all" ? "var(--accent)" : "var(--surface)", border: `2.5px solid ${activeListPerson === "all" ? "var(--accent)" : "var(--border)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", transition: "all 0.15s" }}>🛒</div>
-            <span style={{ fontSize: "0.65rem", fontWeight: activeListPerson === "all" ? 800 : 500, color: activeListPerson === "all" ? "var(--accent)" : "var(--text-dim)", whiteSpace: "nowrap" }}>Alle</span>
-            <span style={{ fontSize: "0.58rem", color: "var(--text-dim)" }}>{listItems.filter(i => !i.checked).length} offen</span>
-          </button>
+          {/* Alle — nur sichtbar wenn Familienmitglieder vorhanden */}
+          {familyMembers.length > 0 && (
+            <button onClick={() => setActiveListPerson("all")}
+              style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>
+              <div style={{ width: 52, height: 52, borderRadius: "50%", background: activeListPerson === "all" ? "var(--accent)" : "var(--surface)", border: `2.5px solid ${activeListPerson === "all" ? "var(--accent)" : "var(--border)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", transition: "all 0.15s", position: "relative", overflow: "hidden" }}>
+                {/* Zeige beide Profilbilder (ich + erstes Mitglied) */}
+                {myPhoto && familyMembers[0]?.avatarUrl ? (
+                  <>
+                    <img src={myPhoto} style={{ position: "absolute", left: 0, top: 0, width: "50%", height: "100%", objectFit: "cover" }} alt="" />
+                    <img src={familyMembers[0].avatarUrl} style={{ position: "absolute", right: 0, top: 0, width: "50%", height: "100%", objectFit: "cover" }} alt="" onError={() => setFamilyMembers(prev => prev.map((x, i) => i === 0 ? { ...x, avatarUrl: "" } : x))} />
+                  </>
+                ) : <span>🛒</span>}
+              </div>
+              <span style={{ fontSize: "0.65rem", fontWeight: activeListPerson === "all" ? 800 : 500, color: activeListPerson === "all" ? "var(--accent)" : "var(--text-dim)", whiteSpace: "nowrap" }}>Alle</span>
+              <span style={{ fontSize: "0.58rem", color: "var(--text-dim)" }}>{listItems.filter(i => !i.checked).length} offen</span>
+            </button>
+          )}
           {/* Familienmitglieder */}
           {familyMembers.map(m => {
             const count = listItems.filter(i => i.personId === m.id && !i.checked).length
@@ -1693,7 +1709,7 @@ export default function HomePage() {
             return (
               <div key={m.id} style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                 <div style={{ position: "relative" }}>
-                  <button onClick={() => setActiveListPerson(isActive ? "all" : m.id)}
+                  <button onClick={() => setActiveListPerson(isActive ? "mine" : m.id)}
                     style={{ width: 52, height: 52, borderRadius: "50%", background: isActive ? accentColor : "var(--surface)", border: `2.5px solid ${isActive ? accentColor : "var(--border)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", transition: "all 0.15s", cursor: "pointer", overflow: "hidden", padding: 0 }}>
                     {m.avatarUrl
                       ? <img src={m.avatarUrl} alt={m.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
@@ -1788,11 +1804,6 @@ export default function HomePage() {
               return (
                 <div key={item.id}
                   onClick={() => toggleListItem(item.id)}
-                  onMouseDown={() => { longPressTimerRef.current = setTimeout(() => setDeleteConfirmItem(item), 500) }}
-                  onMouseUp={() => { if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current) }}
-                  onMouseLeave={() => { if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current) }}
-                  onTouchStart={() => { longPressTimerRef.current = setTimeout(() => setDeleteConfirmItem(item), 500) }}
-                  onTouchEnd={() => { if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current) }}
                   style={{ display: "flex", alignItems: "center", gap: 13, ...cardStyle, borderRadius: 14, padding: "14px 11px 14px 14px", marginBottom: 8, cursor: "pointer", opacity: dim ? 0.55 : 1, transition: "opacity 0.15s", WebkitTapHighlightColor: "transparent", userSelect: "none" }}
                 >
                   {/* Großes Emoji */}
@@ -2061,23 +2072,6 @@ export default function HomePage() {
             )
           })()}
 
-        {/* ── TIPP DES TAGES (kompakt) ── */}
-        {userGoals.length > 0 && (() => {
-          const primary = userGoals[0]
-          const cfg = GOAL_CONFIG[primary] ?? GOAL_CONFIG["truth"]
-          const card = cfg.fuerDich[dayIndex() % cfg.fuerDich.length]
-          return (
-            <div style={{ marginTop: 16, background: "var(--surface)", border: `1px solid ${card.color}33`, borderLeft: `3px solid ${card.color}`, borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: "1.6rem", flexShrink: 0 }}>{card.emoji}</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: "0.78rem", color: card.color, marginBottom: 1 }}>💡 Tipp</div>
-                <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{card.title}</div>
-                <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{card.tip}</div>
-              </div>
-              <Link href="/community" style={{ background: card.color + "18", color: card.color, border: `1px solid ${card.color}33`, borderRadius: 99, padding: "5px 11px", fontSize: "0.68rem", fontWeight: 800, textDecoration: "none", flexShrink: 0 }}>Community →</Link>
-            </div>
-          )
-        })()}
 
       </div>
 
@@ -2538,7 +2532,7 @@ export default function HomePage() {
           const myPhoto = localStorage.getItem("true-profile-photo") || ""
           const listId = getListId()
           const itemCount = listItems.filter(i => !i.checked).length
-          const link = `https://get-true.de/join?list=${listId}&from=${encodeURIComponent(myName)}&fromPhoto=${encodeURIComponent(myPhoto)}&emoji=${encodeURIComponent(inviteEmoji)}&items=${itemCount}`
+          const link = `https://get-true.de/join?list=${listId}&from=${encodeURIComponent(myName)}&emoji=${encodeURIComponent(inviteEmoji)}&items=${itemCount}`
           setGeneratedLink(link)
         }
         return (

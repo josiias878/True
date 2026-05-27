@@ -599,6 +599,7 @@ function LandingInner() {
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [onboardStep, setOnboardStep] = useState(1)
   const [onboardPhoto, setOnboardPhoto] = useState<string | null>(null)
+  const [selectedGoals, setSelectedGoals] = useState<string[]>([])
   // Alles sofort sichtbar — kein Cinematic Delay
   const [textPhase, setTextPhase] = useState(3)
 
@@ -627,10 +628,20 @@ function LandingInner() {
     e.preventDefault()
     const name = guestName.trim()
     if (!name) return
+    // Step 1 → go to goals step
+    setOnboardStep(2)
+  }, [guestName])
+
+  const handleGuestFinish = useCallback((goals: string[]) => {
+    const name = guestName.trim()
+    if (!name) return
     try { localStorage.setItem("true-guest-name", name) } catch {}
     try { localStorage.setItem("true-profile", JSON.stringify({ vorname: name, name })) } catch {}
     try { localStorage.setItem("true-new-user", "1") } catch {}
     try { localStorage.setItem("true-needs-photo", "1") } catch {}
+    if (goals.length > 0) {
+      try { localStorage.setItem("true-goals", JSON.stringify(goals)) } catch {}
+    }
     router.push("/home")
   }, [guestName, router])
 
@@ -838,39 +849,89 @@ function LandingInner() {
     {/* ── Onboarding Overlay ── */}
     {showOnboarding && (
       <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1.5rem" }}
-        onClick={e => { if (e.target === e.currentTarget) setShowOnboarding(false) }}>
+        onClick={e => { if (e.target === e.currentTarget) { setShowOnboarding(false); setOnboardStep(1); setSelectedGoals([]) } }}>
         <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 24, padding: "2.5rem 2rem", width: "100%", maxWidth: 400, display: "flex", flexDirection: "column", alignItems: "center", gap: "1.5rem", position: "relative" }}>
 
           {/* Close */}
-          <button onClick={() => { setShowOnboarding(false); setOnboardStep(1); setOnboardPhoto(null) }} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: "1.3rem", cursor: "pointer", lineHeight: 1 }}>✕</button>
+          <button onClick={() => { setShowOnboarding(false); setOnboardStep(1); setSelectedGoals([]) }} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: "1.3rem", cursor: "pointer", lineHeight: 1 }}>✕</button>
 
-          {/* ── Name eingeben ── */}
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "2.8rem", marginBottom: "0.6rem" }}>👋</div>
-            <div style={{ fontSize: "1.4rem", fontWeight: 900, color: "#fff", letterSpacing: "-0.03em" }}>Wie heißt du?</div>
-            <div style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.4)", marginTop: "0.35rem" }}>Kein Passwort nötig · Jederzeit upgradebar</div>
+          {/* Progress dots */}
+          <div style={{ display: "flex", gap: 6 }}>
+            {[1,2].map(s => (
+              <div key={s} style={{ width: s === onboardStep ? 20 : 7, height: 7, borderRadius: 99, background: s === onboardStep ? "#2ECC8A" : "rgba(255,255,255,0.15)", transition: "all 0.3s" }} />
+            ))}
           </div>
-          <form onSubmit={handleGuestStart} style={{ width: "100%", display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-            <input
-              autoFocus
-              value={guestName}
-              onChange={e => setGuestName(e.target.value)}
-              placeholder="Dein Vorname…"
-              maxLength={30}
-              style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1.5px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: "1rem 1.1rem", color: "#fff", fontSize: "1.05rem", outline: "none", boxSizing: "border-box", transition: "border-color 0.15s" }}
-              onFocus={e => (e.target.style.borderColor = "rgba(46,204,138,0.6)")}
-              onBlur={e  => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
-            />
-            <button type="submit" disabled={!guestName.trim()} style={{ width: "100%", background: guestName.trim() ? "#2ECC8A" : "rgba(46,204,138,0.25)", color: guestName.trim() ? "#000" : "rgba(255,255,255,0.3)", border: "none", borderRadius: 14, padding: "1rem", fontWeight: 800, fontSize: "1.05rem", cursor: guestName.trim() ? "pointer" : "default", transition: "all 0.2s", boxShadow: guestName.trim() ? "0 0 40px rgba(46,204,138,0.3)" : "none" }}>
-              Los geht's →
-            </button>
-          </form>
-          <p style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.25)", margin: 0, textAlign: "center" }}>
-            Schon ein Konto?{" "}
-            <button onClick={() => { setShowOnboarding(false); setAuthMode("login") }} style={{ background: "none", border: "none", color: "#2ECC8A", fontWeight: 700, cursor: "pointer", fontSize: "0.75rem", padding: 0 }}>
-              Anmelden
-            </button>
-          </p>
+
+          {onboardStep === 1 && (
+            <>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: "2.8rem", marginBottom: "0.6rem" }}>👋</div>
+                <div style={{ fontSize: "1.4rem", fontWeight: 900, color: "#fff", letterSpacing: "-0.03em" }}>Wie heißt du?</div>
+                <div style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.4)", marginTop: "0.35rem" }}>Kein Passwort nötig · Jederzeit upgradebar</div>
+              </div>
+              <form onSubmit={handleGuestStart} style={{ width: "100%", display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+                <input
+                  autoFocus
+                  value={guestName}
+                  onChange={e => setGuestName(e.target.value)}
+                  placeholder="Dein Vorname…"
+                  maxLength={30}
+                  style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1.5px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: "1rem 1.1rem", color: "#fff", fontSize: "1.05rem", outline: "none", boxSizing: "border-box", transition: "border-color 0.15s" }}
+                  onFocus={e => (e.target.style.borderColor = "rgba(46,204,138,0.6)")}
+                  onBlur={e  => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+                />
+                <button type="submit" disabled={!guestName.trim()} style={{ width: "100%", background: guestName.trim() ? "#2ECC8A" : "rgba(46,204,138,0.25)", color: guestName.trim() ? "#000" : "rgba(255,255,255,0.3)", border: "none", borderRadius: 14, padding: "1rem", fontWeight: 800, fontSize: "1.05rem", cursor: guestName.trim() ? "pointer" : "default", transition: "all 0.2s", boxShadow: guestName.trim() ? "0 0 40px rgba(46,204,138,0.3)" : "none" }}>
+                  Weiter →
+                </button>
+              </form>
+              <p style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.25)", margin: 0, textAlign: "center" }}>
+                Schon ein Konto?{" "}
+                <button onClick={() => { setShowOnboarding(false); setAuthMode("login") }} style={{ background: "none", border: "none", color: "#2ECC8A", fontWeight: 700, cursor: "pointer", fontSize: "0.75rem", padding: 0 }}>
+                  Anmelden
+                </button>
+              </p>
+            </>
+          )}
+
+          {onboardStep === 2 && (() => {
+            const GOALS = [
+              { id: "palmol",    emoji: "🌴", label: "Kein Palmöl",      desc: "Zeigt Warnungen + Alternativen" },
+              { id: "plastic",   emoji: "♻️", label: "Plastikfrei",      desc: "Hebt Einwegplastik hervor" },
+              { id: "gesundheit",emoji: "🥦", label: "Gesund leben",     desc: "Zucker, PFAS, Zusatzstoffe" },
+              { id: "truth",     emoji: "🔍", label: "Konzern-Wahrheit", desc: "Wer steckt wirklich dahinter?" },
+              { id: "family",    emoji: "👨‍👩‍👧", label: "Für die Familie",  desc: "Kinderfreundliche Bewertungen" },
+              { id: "budget",    emoji: "💶", label: "Günstig & fair",   desc: "Preis-Leistung + fairer Handel" },
+            ]
+            const toggle = (id: string) => setSelectedGoals(prev => prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id])
+            return (
+              <>
+                <div style={{ textAlign: "center", width: "100%" }}>
+                  <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🎯</div>
+                  <div style={{ fontSize: "1.2rem", fontWeight: 900, color: "#fff", letterSpacing: "-0.02em" }}>Was ist dir wichtig?</div>
+                  <div style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.4)", marginTop: "0.3rem" }}>TRUE passt Bewertungen & Alternativen an</div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%" }}>
+                  {GOALS.map(g => {
+                    const active = selectedGoals.includes(g.id)
+                    return (
+                      <button key={g.id} onClick={() => toggle(g.id)}
+                        style={{ background: active ? "rgba(46,204,138,0.15)" : "rgba(255,255,255,0.04)", border: `1.5px solid ${active ? "#2ECC8A" : "rgba(255,255,255,0.1)"}`, borderRadius: 14, padding: "12px 10px", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}>
+                        <div style={{ fontSize: "1.4rem", marginBottom: 4 }}>{g.emoji}</div>
+                        <div style={{ fontWeight: 800, fontSize: "0.82rem", color: active ? "#2ECC8A" : "#fff" }}>{g.label}</div>
+                        <div style={{ fontSize: "0.68rem", color: "rgba(255,255,255,0.35)", marginTop: 2, lineHeight: 1.3 }}>{g.desc}</div>
+                      </button>
+                    )
+                  })}
+                </div>
+                <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
+                  <button onClick={() => handleGuestFinish(selectedGoals)}
+                    style={{ width: "100%", background: "#2ECC8A", color: "#000", border: "none", borderRadius: 14, padding: "1rem", fontWeight: 800, fontSize: "1.05rem", cursor: "pointer", boxShadow: "0 0 40px rgba(46,204,138,0.25)" }}>
+                    {selectedGoals.length > 0 ? `Los geht's →` : "Überspringen →"}
+                  </button>
+                </div>
+              </>
+            )
+          })()}
         </div>
       </div>
     )}
