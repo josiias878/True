@@ -877,6 +877,8 @@ export default function HomePage() {
   const [invitedByEmoji, setInvitedByEmoji] = useState("👤")
   const [justJoined, setJustJoined]     = useState("")
   const [justJoinedPhoto, setJustJoinedPhoto] = useState("")
+  const [showPhotoPrompt, setShowPhotoPrompt] = useState(false)
+  const [photoPromptFile, setPhotoPromptFile] = useState<string | null>(null)
   const [showCommunityCard, setShowCommunityCard] = useState(true)
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([])
   const [mapOpen, setMapOpen]         = useState(false)
@@ -975,6 +977,11 @@ export default function HomePage() {
       localStorage.removeItem("true-new-user")
       setShowConfetti(true)
       setTimeout(() => setShowConfetti(false), 3500)
+    }
+    // Photo prompt for new users (shown on top of home)
+    if (localStorage.getItem("true-needs-photo") === "1") {
+      localStorage.removeItem("true-needs-photo")
+      setShowPhotoPrompt(true)
     }
     // Dark mode detection
     setIsDark(document.documentElement.classList.contains("dark"))
@@ -1216,6 +1223,69 @@ export default function HomePage() {
 
   return (
     <>
+    {/* ── Profilbild-Overlay für neue Nutzer ── */}
+    {showPhotoPrompt && (
+      <div style={{ position: "fixed", inset: 0, zIndex: 8000, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+        {/* Backdrop — home sichtbar aber gedimmt */}
+        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(6px)" }} />
+        {/* Sheet */}
+        <div style={{ position: "relative", width: "100%", maxWidth: 480, background: "#161b22", borderRadius: "24px 24px 0 0", padding: "32px 24px 40px", display: "flex", flexDirection: "column", alignItems: "center", gap: 20, boxShadow: "0 -20px 60px rgba(0,0,0,0.5)" }}>
+          {/* Handle */}
+          <div style={{ width: 40, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.15)", marginBottom: 4 }} />
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: "2.4rem", marginBottom: 8 }}>📸</div>
+            <div style={{ fontSize: "1.25rem", fontWeight: 900, color: "#fff", letterSpacing: "-0.02em" }}>Profilbild hinzufügen</div>
+            <div style={{ fontSize: "0.82rem", color: "#8b949e", marginTop: 6 }}>Damit erkennen dich andere in der Einkaufsliste</div>
+          </div>
+          {/* Avatar Preview */}
+          <label style={{ cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 100, height: 100, borderRadius: "50%", background: "#0d1117", border: `3px solid ${photoPromptFile ? "#2ECC8A" : "rgba(255,255,255,0.12)"}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", transition: "border-color 0.2s", boxShadow: photoPromptFile ? "0 0 30px rgba(46,204,138,0.3)" : "none" }}>
+              {photoPromptFile
+                ? <img src={photoPromptFile} alt="Vorschau" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                : <span style={{ fontSize: "2.5rem" }}>👤</span>
+              }
+            </div>
+            <span style={{ fontSize: "0.85rem", color: "#2ECC8A", fontWeight: 700 }}>
+              {photoPromptFile ? "Anderes Foto wählen" : "📷 Foto auswählen"}
+            </span>
+            <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              const reader = new FileReader()
+              reader.onload = ev => {
+                const img = new Image()
+                img.onload = () => {
+                  const canvas = document.createElement("canvas")
+                  const MAX = 400
+                  const scale = Math.min(1, MAX / Math.max(img.width, img.height))
+                  canvas.width = img.width * scale
+                  canvas.height = img.height * scale
+                  canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height)
+                  setPhotoPromptFile(canvas.toDataURL("image/jpeg", 0.7))
+                }
+                img.src = ev.target?.result as string
+              }
+              reader.readAsDataURL(file)
+            }} />
+          </label>
+          {/* Buttons */}
+          <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
+            <button onClick={() => {
+              if (photoPromptFile) { try { localStorage.setItem("true-profile-photo", photoPromptFile) } catch {} }
+              setShowPhotoPrompt(false)
+            }} style={{ width: "100%", background: "#2ECC8A", color: "#000", border: "none", borderRadius: 14, padding: "15px", fontWeight: 800, fontSize: "1rem", cursor: "pointer", boxShadow: "0 0 30px rgba(46,204,138,0.25)" }}>
+              {photoPromptFile ? "Speichern & loslegen →" : "Ohne Foto loslegen →"}
+            </button>
+            {!photoPromptFile && (
+              <button onClick={() => setShowPhotoPrompt(false)} style={{ background: "none", border: "none", color: "#8b949e", fontSize: "0.78rem", cursor: "pointer", padding: 4 }}>
+                Überspringen
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+
     {/* ── Konfetti für neue Nutzer ── */}
     {showConfetti && (
       <div style={{ position: "fixed", inset: 0, zIndex: 9999, pointerEvents: "none", overflow: "hidden" }}>

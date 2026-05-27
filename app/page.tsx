@@ -627,16 +627,10 @@ function LandingInner() {
     e.preventDefault()
     const name = guestName.trim()
     if (!name) return
-    // Go to step 2 (photo)
-    setOnboardStep(2)
-  }, [guestName])
-
-  const finishOnboarding = useCallback((photo: string | null) => {
-    const name = guestName.trim()
     try { localStorage.setItem("true-guest-name", name) } catch {}
     try { localStorage.setItem("true-profile", JSON.stringify({ vorname: name, name })) } catch {}
-    if (photo) { try { localStorage.setItem("true-profile-photo", photo) } catch {} }
     try { localStorage.setItem("true-new-user", "1") } catch {}
+    try { localStorage.setItem("true-needs-photo", "1") } catch {}
     router.push("/home")
   }, [guestName, router])
 
@@ -850,94 +844,33 @@ function LandingInner() {
           {/* Close */}
           <button onClick={() => { setShowOnboarding(false); setOnboardStep(1); setOnboardPhoto(null) }} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: "1.3rem", cursor: "pointer", lineHeight: 1 }}>✕</button>
 
-          {/* Step indicator */}
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%" }}>
-            <div style={{ height: 4, borderRadius: 2, background: "#2ECC8A", flex: 1 }} />
-            <div style={{ height: 4, borderRadius: 2, background: onboardStep === 2 ? "#2ECC8A" : "rgba(255,255,255,0.12)", flex: 1 }} />
-            <span style={{ fontSize: "0.68rem", color: "rgba(255,255,255,0.35)", fontWeight: 600, letterSpacing: "0.08em", whiteSpace: "nowrap" }}>SCHRITT {onboardStep} VON 2</span>
+          {/* ── Name eingeben ── */}
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: "2.8rem", marginBottom: "0.6rem" }}>👋</div>
+            <div style={{ fontSize: "1.4rem", fontWeight: 900, color: "#fff", letterSpacing: "-0.03em" }}>Wie heißt du?</div>
+            <div style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.4)", marginTop: "0.35rem" }}>Kein Passwort nötig · Jederzeit upgradebar</div>
           </div>
-
-          {/* ── SCHRITT 1: Name ── */}
-          {onboardStep === 1 && <>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "2.8rem", marginBottom: "0.6rem" }}>👋</div>
-              <div style={{ fontSize: "1.4rem", fontWeight: 900, color: "#fff", letterSpacing: "-0.03em" }}>Wie heißt du?</div>
-              <div style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.4)", marginTop: "0.35rem" }}>Kein Passwort nötig · Jederzeit upgradebar</div>
-            </div>
-            <form onSubmit={handleGuestStart} style={{ width: "100%", display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-              <input
-                autoFocus
-                value={guestName}
-                onChange={e => setGuestName(e.target.value)}
-                placeholder="Dein Vorname…"
-                maxLength={30}
-                style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1.5px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: "1rem 1.1rem", color: "#fff", fontSize: "1.05rem", outline: "none", boxSizing: "border-box", transition: "border-color 0.15s" }}
-                onFocus={e => (e.target.style.borderColor = "rgba(46,204,138,0.6)")}
-                onBlur={e  => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
-              />
-              <button type="submit" disabled={!guestName.trim()} style={{ width: "100%", background: guestName.trim() ? "#2ECC8A" : "rgba(46,204,138,0.25)", color: guestName.trim() ? "#000" : "rgba(255,255,255,0.3)", border: "none", borderRadius: 14, padding: "1rem", fontWeight: 800, fontSize: "1.05rem", cursor: guestName.trim() ? "pointer" : "default", transition: "all 0.2s", boxShadow: guestName.trim() ? "0 0 40px rgba(46,204,138,0.3)" : "none" }}>
-                Weiter →
-              </button>
-            </form>
-            <p style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.25)", margin: 0, textAlign: "center" }}>
-              Schon ein Konto?{" "}
-              <button onClick={() => { setShowOnboarding(false); setAuthMode("login") }} style={{ background: "none", border: "none", color: "#2ECC8A", fontWeight: 700, cursor: "pointer", fontSize: "0.75rem", padding: 0 }}>
-                Anmelden
-              </button>
-            </p>
-          </>}
-
-          {/* ── SCHRITT 2: Profilbild ── */}
-          {onboardStep === 2 && <>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "2.8rem", marginBottom: "0.6rem" }}>📸</div>
-              <div style={{ fontSize: "1.4rem", fontWeight: 900, color: "#fff", letterSpacing: "-0.03em" }}>Profilbild</div>
-              <div style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.4)", marginTop: "0.35rem" }}>Damit erkennst du dich in der Liste</div>
-            </div>
-
-            {/* Avatar preview */}
-            <label style={{ cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 96, height: 96, borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: `2.5px solid ${onboardPhoto ? "#2ECC8A" : "rgba(255,255,255,0.15)"}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", transition: "border-color 0.2s" }}>
-                {onboardPhoto
-                  ? <img src={onboardPhoto} alt="Vorschau" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  : <span style={{ fontSize: "2rem", color: "rgba(255,255,255,0.3)" }}>👤</span>
-                }
-              </div>
-              <span style={{ fontSize: "0.82rem", color: "#2ECC8A", fontWeight: 700 }}>
-                {onboardPhoto ? "Anderes Foto wählen" : "📷 Foto auswählen"}
-              </span>
-              <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => {
-                const file = e.target.files?.[0]
-                if (!file) return
-                const reader = new FileReader()
-                reader.onload = ev => {
-                  const img = new Image()
-                  img.onload = () => {
-                    const canvas = document.createElement("canvas")
-                    const MAX = 400
-                    const scale = Math.min(1, MAX / Math.max(img.width, img.height))
-                    canvas.width = img.width * scale
-                    canvas.height = img.height * scale
-                    canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height)
-                    setOnboardPhoto(canvas.toDataURL("image/jpeg", 0.7))
-                  }
-                  img.src = ev.target?.result as string
-                }
-                reader.readAsDataURL(file)
-              }} />
-            </label>
-
-            <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
-              <button onClick={() => finishOnboarding(onboardPhoto)} style={{ width: "100%", background: "#2ECC8A", color: "#000", border: "none", borderRadius: 14, padding: "1rem", fontWeight: 800, fontSize: "1.05rem", cursor: "pointer", boxShadow: "0 0 40px rgba(46,204,138,0.3)" }}>
-                {onboardPhoto ? "Loslegen →" : "Ohne Foto loslegen →"}
-              </button>
-              {onboardPhoto && (
-                <button onClick={() => finishOnboarding(null)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", fontSize: "0.78rem", cursor: "pointer", padding: "4px" }}>
-                  Überspringen
-                </button>
-              )}
-            </div>
-          </>}
+          <form onSubmit={handleGuestStart} style={{ width: "100%", display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+            <input
+              autoFocus
+              value={guestName}
+              onChange={e => setGuestName(e.target.value)}
+              placeholder="Dein Vorname…"
+              maxLength={30}
+              style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1.5px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: "1rem 1.1rem", color: "#fff", fontSize: "1.05rem", outline: "none", boxSizing: "border-box", transition: "border-color 0.15s" }}
+              onFocus={e => (e.target.style.borderColor = "rgba(46,204,138,0.6)")}
+              onBlur={e  => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+            />
+            <button type="submit" disabled={!guestName.trim()} style={{ width: "100%", background: guestName.trim() ? "#2ECC8A" : "rgba(46,204,138,0.25)", color: guestName.trim() ? "#000" : "rgba(255,255,255,0.3)", border: "none", borderRadius: 14, padding: "1rem", fontWeight: 800, fontSize: "1.05rem", cursor: guestName.trim() ? "pointer" : "default", transition: "all 0.2s", boxShadow: guestName.trim() ? "0 0 40px rgba(46,204,138,0.3)" : "none" }}>
+              Los geht's →
+            </button>
+          </form>
+          <p style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.25)", margin: 0, textAlign: "center" }}>
+            Schon ein Konto?{" "}
+            <button onClick={() => { setShowOnboarding(false); setAuthMode("login") }} style={{ background: "none", border: "none", color: "#2ECC8A", fontWeight: 700, cursor: "pointer", fontSize: "0.75rem", padding: 0 }}>
+              Anmelden
+            </button>
+          </p>
         </div>
       </div>
     )}
