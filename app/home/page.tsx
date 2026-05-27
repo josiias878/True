@@ -1271,23 +1271,23 @@ export default function HomePage() {
           </label>
           {/* Buttons */}
           <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
-            <button onClick={() => {
-              if (photoPromptFile) { try { localStorage.setItem("true-profile-photo", photoPromptFile) } catch {} }
-              setShowPhotoPrompt(false)
-              setShowConfetti(true)
-              setTimeout(() => setShowConfetti(false), 3500)
-            }} style={{ width: "100%", background: "#2ECC8A", color: "#000", border: "none", borderRadius: 14, padding: "15px", fontWeight: 800, fontSize: "1rem", cursor: "pointer", boxShadow: "0 0 30px rgba(46,204,138,0.25)" }}>
-              {photoPromptFile ? "Speichern & loslegen →" : "Ohne Foto loslegen →"}
-            </button>
-            {!photoPromptFile && (
+            {photoPromptFile && (
               <button onClick={() => {
+                try { localStorage.setItem("true-profile-photo", photoPromptFile) } catch {}
                 setShowPhotoPrompt(false)
                 setShowConfetti(true)
                 setTimeout(() => setShowConfetti(false), 3500)
-              }} style={{ background: "none", border: "none", color: "#8b949e", fontSize: "0.78rem", cursor: "pointer", padding: 4 }}>
-                Überspringen
+              }} style={{ width: "100%", background: "#2ECC8A", color: "#000", border: "none", borderRadius: 14, padding: "15px", fontWeight: 800, fontSize: "1rem", cursor: "pointer", boxShadow: "0 0 30px rgba(46,204,138,0.25)" }}>
+                Speichern & loslegen →
               </button>
             )}
+            <button onClick={() => {
+              setShowPhotoPrompt(false)
+              setShowConfetti(true)
+              setTimeout(() => setShowConfetti(false), 3500)
+            }} style={{ background: "none", border: "none", color: "#8b949e", fontSize: "0.78rem", cursor: "pointer", padding: 4 }}>
+              Überspringen
+            </button>
           </div>
         </div>
       </div>
