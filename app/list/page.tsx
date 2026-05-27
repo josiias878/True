@@ -995,10 +995,25 @@ export default function ShoppingListPage() {
       {/* ── Person tabs — circular avatars ── */}
       <div style={{ overflowX: "auto", display: "flex", gap: 16, padding: "12px 16px 10px", scrollbarWidth: "none", borderBottom: "1px solid var(--border)", background: "var(--surface)", alignItems: "flex-end" }}>
         {/* Alle */}
-        {[{ id: "mine", label: userName ? userName.split(" ")[0] : "Meine", content: profilePhoto
-            ? <img src={profilePhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
-            : <span style={{ fontSize: "1.1rem" }}>👤</span> },
-          { id: "all", label: "Alle", content: <span style={{ fontSize: "1.1rem" }}>🛒</span> },
+        {/* Eigenes Profil Tab */}
+        {(() => {
+          const label = userName ? userName.split(" ")[0] : "Meine"
+          const initial = label.charAt(0).toUpperCase()
+          return (
+            <button onClick={() => setActivePerson("mine")}
+              style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+              <div style={{ width: 48, height: 48, borderRadius: "50%", background: profilePhoto ? "transparent" : "var(--accent)", border: `2.5px solid ${activePerson === "mine" ? "var(--accent)" : "transparent"}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", transition: "border-color 0.15s", boxShadow: activePerson === "mine" ? "0 0 0 3px rgba(46,204,138,0.15)" : "none" }}>
+                {profilePhoto
+                  ? <img src={profilePhoto} alt={label} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={() => setProfilePhoto(null)} />
+                  : <span style={{ fontWeight: 900, fontSize: "1.1rem", color: "#000" }}>{initial}</span>
+                }
+              </div>
+              <span style={{ fontSize: "0.62rem", fontWeight: activePerson === "mine" ? 700 : 500, color: activePerson === "mine" ? "var(--accent)" : "var(--text-dim)", whiteSpace: "nowrap" }}>{label}</span>
+            </button>
+          )
+        })()}
+        {/* Alle */}
+        {[{ id: "all", label: "Alle", content: <span style={{ fontSize: "1.1rem" }}>🛒</span> }
         ].map(tab => (
           <button key={tab.id} onClick={() => setActivePerson(tab.id)}
             style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
