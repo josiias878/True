@@ -838,7 +838,7 @@ function LandingInner() {
     </div>
 
     {authMode && (
-      <AuthModal defaultMode={authMode} onClose={() => setAuthMode(null)} onSuccess={() => router.replace("/home")} onGuest={goToApp} />
+      <AuthModal defaultMode={authMode} onClose={() => setAuthMode(null)} onSuccess={() => router.replace("/home")} onGuest={goToApp} onRegister={() => setShowOnboarding(true)} />
     )}
 
     {/* ── Onboarding Overlay ── */}

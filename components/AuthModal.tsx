@@ -6,6 +6,7 @@ interface Props {
   onClose: () => void
   onSuccess?: () => void
   onGuest?: () => void
+  onRegister?: () => void
   defaultMode?: "login" | "register"
 }
 
@@ -32,7 +33,7 @@ function isIOS()        { return typeof navigator !== "undefined" && /iphone|ipa
 function isAndroid()    { return typeof navigator !== "undefined" && /android/i.test(navigator.userAgent) }
 function isStandalone() { return typeof window !== "undefined" && (window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone === true) }
 
-export default function AuthModal({ onClose, onSuccess, onGuest, defaultMode = "login" }: Props) {
+export default function AuthModal({ onClose, onSuccess, onGuest, onRegister, defaultMode = "login" }: Props) {
   const { signInWithPassword, signInWithEmail, signInWithEmailLoginOnly, verifyEmailOtp, resetPassword, updateUserMetadata, updatePassword } = useSupabaseAuth()
 
   const [mode, setMode]         = useState<Mode>(defaultMode)
@@ -343,7 +344,7 @@ export default function AuthModal({ onClose, onSuccess, onGuest, defaultMode = "
               <span style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.25)" }}>Noch kein Konto?</span>
               <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.08)" }} />
             </div>
-            <button onClick={() => switchMode("register")} style={{
+            <button onClick={() => { if (onRegister) { handleClose(); setTimeout(onRegister, 300) } else switchMode("register") }} style={{
               display: "block", width: "100%", padding: "13px",
               background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
               borderRadius: 16, color: "#fff", fontWeight: 700, fontSize: "0.95rem", cursor: "pointer",
