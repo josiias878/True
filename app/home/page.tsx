@@ -2282,9 +2282,10 @@ export default function HomePage() {
           try { localStorage.setItem("true-family-members", JSON.stringify(next)) } catch {}
         }
         function addPerson() {
-          const name = `Person ${familyMembers.length + 1}`
-          savePeople([...familyMembers, { id: Date.now().toString(), name, age: "", emoji: newPersonEmoji }])
-          setNewPersonEmoji("🧒")
+          const name = newPersonName.trim()
+          if (!name) return
+          savePeople([...familyMembers, { id: Date.now().toString(), name, age: newPersonAge.trim(), emoji: newPersonEmoji }])
+          setNewPersonName(""); setNewPersonAge(""); setNewPersonEmoji("🧒")
         }
         function getListId() {
           try {
@@ -2361,8 +2362,14 @@ export default function HomePage() {
                           <button key={em} onClick={() => setNewPersonEmoji(em)} style={{ background: newPersonEmoji === em ? "var(--accent)" : "var(--surface)", border: `1.5px solid ${newPersonEmoji === em ? "var(--accent)" : "var(--border)"}`, borderRadius: 8, padding: "5px 8px", fontSize: "1.1rem", cursor: "pointer" }}>{em}</button>
                         ))}
                       </div>
+                      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                        <input value={newPersonName} onChange={e => setNewPersonName(e.target.value)} onKeyDown={e => e.key === "Enter" && addPerson()} placeholder="Name (z.B. Lena, Hund …)"
+                          style={{ flex: 1, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px", color: "var(--text)", fontSize: "0.88rem", outline: "none" }} />
+                        <input value={newPersonAge} onChange={e => setNewPersonAge(e.target.value)} placeholder="Alter" type="number" min="0" max="120"
+                          style={{ width: 70, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 8px", color: "var(--text)", fontSize: "0.88rem", outline: "none" }} />
+                      </div>
                       <button onClick={addPerson} style={{ width: "100%", background: "var(--accent)", color: "#000", border: "none", borderRadius: 10, padding: "11px", fontWeight: 800, fontSize: "0.9rem", cursor: "pointer" }}>
-                        ✓ Person hinzufügen
+                        ✓ Hinzufügen
                       </button>
                     </div>
                   </>
