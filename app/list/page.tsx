@@ -750,14 +750,21 @@ export default function ShoppingListPage() {
         if (fm) setFamilyMembers(JSON.parse(fm))
       } catch {}
       try {
+        // Try multiple keys where photo might be stored
         const ph = localStorage.getItem("true-profile-photo")
-        setProfilePhoto(ph || null)
+          || localStorage.getItem("true-guest-photo")
+          || null
+        setProfilePhoto(ph)
       } catch {}
       try {
         const p = localStorage.getItem("true-profile")
         if (p) {
           const parsed = JSON.parse(p)
           setUserName(parsed.name ?? parsed.vorname ?? "")
+          // Also try avatar from profile object itself
+          if (!localStorage.getItem("true-profile-photo") && parsed.avatarUrl) {
+            setProfilePhoto(parsed.avatarUrl)
+          }
         }
       } catch {}
     }
@@ -1004,7 +1011,12 @@ export default function ShoppingListPage() {
               style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
               <div style={{ width: 48, height: 48, borderRadius: "50%", background: profilePhoto ? "transparent" : "var(--accent)", border: `2.5px solid ${activePerson === "mine" ? "var(--accent)" : "transparent"}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", transition: "border-color 0.15s", boxShadow: activePerson === "mine" ? "0 0 0 3px rgba(46,204,138,0.15)" : "none" }}>
                 {profilePhoto
-                  ? <img src={profilePhoto} alt={label} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={() => setProfilePhoto(null)} />
+                  ? <img src={profilePhoto} alt={label} style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      onError={() => {
+                        // Supabase URL might be broken — clear and show initial
+                        try { localStorage.removeItem("true-profile-photo") } catch {}
+                        setProfilePhoto(null)
+                      }} />
                   : <span style={{ fontWeight: 900, fontSize: "1.1rem", color: "#000" }}>{initial}</span>
                 }
               </div>
