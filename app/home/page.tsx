@@ -872,6 +872,9 @@ export default function HomePage() {
   const [altModal, setAltModal]         = useState<{ name: string; productName: string; productEmoji: string; price?: string } | null>(null)
   const [showWelcome, setShowWelcome]   = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
+  const [invitedBy, setInvitedBy]       = useState("")
+  const [invitedByPhoto, setInvitedByPhoto] = useState("")
+  const [invitedByEmoji, setInvitedByEmoji] = useState("👤")
   const [showCommunityCard, setShowCommunityCard] = useState(true)
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([])
   const [mapOpen, setMapOpen]         = useState(false)
@@ -924,6 +927,13 @@ export default function HomePage() {
         localStorage.setItem("true-followed-channels", JSON.stringify(arr))
       }
     } catch {}
+    // Invite banner — shown when arriving via invite link
+    const invBy = localStorage.getItem("true-invited-by")
+    if (invBy) {
+      setInvitedBy(invBy)
+      setInvitedByPhoto(localStorage.getItem("true-invited-by-photo") || "")
+      setInvitedByEmoji(localStorage.getItem("true-invited-by-emoji") || "👤")
+    }
     // First-login welcome card — auto-dismiss after 7s
     if (!localStorage.getItem("true-welcome-seen")) {
       setShowWelcome(true)
@@ -1446,6 +1456,24 @@ export default function HomePage() {
       )}
 
       <div style={{ maxWidth: "520px", margin: "0 auto", padding: "1rem 1rem 0.5rem" }}>
+
+        {/* ── INVITE BANNER (shown first, on top) ── */}
+        {invitedBy && (
+          <div style={{ background: "linear-gradient(135deg, rgba(46,204,138,0.15), rgba(46,204,138,0.05))", border: "1.5px solid rgba(46,204,138,0.4)", borderRadius: 18, padding: "16px 18px", marginBottom: 10, position: "relative", animation: "fadeUp 0.4s ease", display: "flex", alignItems: "center", gap: 14 }}>
+            <button onClick={() => { setInvitedBy(""); localStorage.removeItem("true-invited-by"); localStorage.removeItem("true-invited-by-photo"); localStorage.removeItem("true-invited-by-emoji") }}
+              style={{ position: "absolute", top: 10, right: 12, background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1 }}>✕</button>
+            {invitedByPhoto
+              ? <img src={invitedByPhoto} alt={invitedBy} style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover", border: "2px solid var(--accent)", flexShrink: 0 }} />
+              : <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(46,204,138,0.2)", border: "2px solid var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: "1.1rem", color: "var(--accent)", flexShrink: 0 }}>
+                  {invitedBy.charAt(0).toUpperCase()}
+                </div>
+            }
+            <div style={{ flex: 1, paddingRight: 20 }}>
+              <div style={{ fontWeight: 800, fontSize: "0.88rem", color: "var(--accent)", marginBottom: 2 }}>🎉 Eingeladen von {invitedBy}</div>
+              <div style={{ fontSize: "0.75rem", color: "var(--text-dim)", lineHeight: 1.5 }}>Du kannst die Einkaufsliste gemeinsam bearbeiten.</div>
+            </div>
+          </div>
+        )}
 
         {/* ── FIRST-LOGIN WELCOME CARD ── */}
         {showWelcome && (
