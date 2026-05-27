@@ -1,6 +1,7 @@
 "use client"
 import React, { useState, useRef, useEffect, useCallback } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ThemeToggle, ThemeIcon } from "@/components/ThemeProvider"
 import BottomNav from "@/components/BottomNav"
 import FloatingAssistant from "@/components/FloatingAssistant"
@@ -161,6 +162,7 @@ const TOPIC_COLORS = ["#2ECC8A","#44aaff","#ff9500","#cc66ff","#ff6b6b","#ffcc00
 
 export default function CommunityPage() {
   const { user } = useSupabaseAuth()
+  const router = useRouter()
   const [showLogin, setShowLogin]     = useState(false)
   const [activeTopic, setActiveTopic] = useState("all")
   const [sortMode, setSortMode]       = useState<"neu" | "beliebt">("neu")
@@ -668,7 +670,7 @@ export default function CommunityPage() {
 
   return (
     <div style={{ minHeight: "100dvh", background: "var(--background)", color: "var(--text)", fontFamily: "system-ui,-apple-system,sans-serif", paddingBottom: 80 }}>
-      {showLogin && <AuthModal onClose={() => setShowLogin(false)} onSuccess={() => setShowLogin(false)} />}
+      {showLogin && <AuthModal onClose={() => setShowLogin(false)} onSuccess={() => setShowLogin(false)} onRegister={() => { setShowLogin(false); router.push("/?onboard=1") }} />}
 
       {/* NAV */}
       <nav style={{ borderBottom: "1px solid var(--border)", background: "var(--nav-bg)", backdropFilter: "blur(20px)", padding: "0 1.25rem", height: "56px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100 }}>

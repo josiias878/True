@@ -25,6 +25,33 @@ function checkBirthdayNotification() {
   } catch {}
 }
 
+// ─── Geburtstage von Familienmitgliedern (Eingeladene) ────────────────────────
+function checkFamilyBirthdays() {
+  try {
+    if (!("Notification" in window) || Notification.permission !== "granted") return
+    const today = new Date()
+    const todayDay = today.getDate(), todayMonth = today.getMonth() + 1
+    const yearStr = String(today.getFullYear())
+    const members: Array<{ id: string; name: string; birthDay?: string; birthMonth?: string }> =
+      JSON.parse(localStorage.getItem("true-family-members") || "[]")
+    members.forEach(m => {
+      if (!m.birthDay || !m.birthMonth) return
+      if (parseInt(m.birthDay) !== todayDay || parseInt(m.birthMonth) !== todayMonth) return
+      const key = `true-bday-family-${m.id}-${yearStr}`
+      if (localStorage.getItem(key)) return
+      localStorage.setItem(key, "1")
+      navigator.serviceWorker.ready.then(reg => {
+        reg.showNotification(`🎂 ${m.name} hat heute Geburtstag!`, {
+          body: `Vergiss nicht, ${m.name} zu gratulieren 🥳`,
+          icon: "/icon-192.png",
+          tag: `true-bday-${m.id}`,
+          data: { url: "/home" },
+        })
+      })
+    })
+  } catch {}
+}
+
 // ─── Tägliche TRUE-Update Benachrichtigung (8–10 Uhr) ────────────────────────
 const DAILY_MESSAGES = [
   { title: "🌿 TRUE Daily Update", body: "Neues zu Palmöl, Wasserrechten und besseren Alternativen — direkt auf der Startseite." },
@@ -194,6 +221,7 @@ export default function SwRegister() {
           })
         })
         checkBirthdayNotification()
+        checkFamilyBirthdays()
         checkDailyNotification()
         checkShoppingListReminder()
         checkCommunityNotification()

@@ -1706,16 +1706,23 @@ export default function HomePage() {
             const isActive = activeListPerson === m.id
             const pet = isPetMember(m)
             const accentColor = pet ? "#ff8833" : "var(--accent)"
+            // Check if today is their birthday
+            const isBirthday = (() => {
+              if (!(m as any).birthDay || !(m as any).birthMonth) return false
+              const today = new Date()
+              return today.getDate() === parseInt((m as any).birthDay) && today.getMonth() + 1 === parseInt((m as any).birthMonth)
+            })()
             return (
               <div key={m.id} style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                 <div style={{ position: "relative" }}>
                   <button onClick={() => setActiveListPerson(isActive ? "mine" : m.id)}
-                    style={{ width: 52, height: 52, borderRadius: "50%", background: isActive ? accentColor : "var(--surface)", border: `2.5px solid ${isActive ? accentColor : "var(--border)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", transition: "all 0.15s", cursor: "pointer", overflow: "hidden", padding: 0 }}>
+                    style={{ width: 52, height: 52, borderRadius: "50%", background: isActive ? accentColor : "var(--surface)", border: `2.5px solid ${isBirthday ? "#ffd700" : isActive ? accentColor : "var(--border)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", transition: "all 0.15s", cursor: "pointer", overflow: "hidden", padding: 0, boxShadow: isBirthday ? "0 0 10px rgba(255,215,0,0.5)" : "none" }}>
                     {m.avatarUrl
                       ? <img src={m.avatarUrl} alt={m.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
                           onError={() => setFamilyMembers(prev => prev.map(x => x.id === m.id ? { ...x, avatarUrl: "" } : x))} />
                       : m.emoji}
                   </button>
+                  {isBirthday && <div style={{ position: "absolute", top: -4, left: -4, fontSize: "1rem", lineHeight: 1 }}>🎂</div>}
                   {count > 0 && <div style={{ position: "absolute", top: -3, right: -3, background: pet ? "#ff8833" : "#ff4455", color: "#fff", borderRadius: "50%", width: 18, height: 18, fontSize: "0.6rem", fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid var(--background)" }}>{count}</div>}
                   {/* Invite button */}
                   <button

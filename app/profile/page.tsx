@@ -692,7 +692,23 @@ export default function ProfilePage() {
           {/* Name + bio */}
           {!editMode ? (
             <div style={{ marginBottom: 12 }}>
-              {profile.vorname && <div style={{ fontWeight: 700, fontSize: "0.95rem" }}>{profile.vorname}</div>}
+              {profile.vorname && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700, fontSize: "0.95rem" }}>
+                  {profile.vorname}
+                  {(() => {
+                    try {
+                      const raw = localStorage.getItem("true-profile")
+                      const p = raw ? JSON.parse(raw) : {}
+                      const bd = parseInt(p.birthDay), bm = parseInt(p.birthMonth)
+                      const today = new Date()
+                      if (bd && bm && today.getDate() === bd && today.getMonth() + 1 === bm) {
+                        return <span title="Heute Geburtstag! 🎂" style={{ fontSize: "1.1rem" }}>🎂</span>
+                      }
+                    } catch {}
+                    return null
+                  })()}
+                </div>
+              )}
               {handle && <div style={{ fontSize: "0.78rem", color: "var(--text-dim)" }}>{handle}</div>}
               {profile.stadt && <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", marginTop: 2 }}>📍 {profile.stadt}</div>}
               {profile.bio && <div style={{ fontSize: "0.85rem", color: "var(--text)", marginTop: 6, lineHeight: 1.5 }}>{profile.bio}</div>}

@@ -50,6 +50,8 @@ export default function AuthModal({ onClose, onSuccess, onGuest, onRegister, def
   // Register state
   const [regStep, setRegStep]       = useState<RegStep>(defaultMode === "register" ? "name" : "name")
   const [name, setName]             = useState("")
+  const [birthDay, setBirthDay]     = useState("")
+  const [birthMonth, setBirthMonth] = useState("")
   const [regEmail, setRegEmail]     = useState("")
   const [otp, setOtp]               = useState("")
   const [selectedGoals, setSelectedGoals] = useState<string[]>([])
@@ -200,12 +202,14 @@ export default function AuthModal({ onClose, onSuccess, onGuest, onRegister, def
     const userId = data?.user?.id ?? ""
     handleUserSwitch(userId)
 
-    // Save name + email to profile, then go straight to goals
+    // Save name + email + birthday to profile, then go straight to goals
     try {
       const raw     = localStorage.getItem("true-profile")
       const profile = raw ? JSON.parse(raw) : {}
       if (name.trim()) profile.vorname = name.trim()
       profile.email = regEmail.trim()
+      if (birthDay)   profile.birthDay   = birthDay
+      if (birthMonth) profile.birthMonth = birthMonth
       localStorage.setItem("true-profile", JSON.stringify(profile))
     } catch {}
 
@@ -220,10 +224,12 @@ export default function AuthModal({ onClose, onSuccess, onGuest, onRegister, def
       localStorage.setItem("true-homescreen-shown", "1")
     } catch {}
 
-    // Save to Supabase metadata
+    // Save to Supabase metadata (incl. birthday)
     const raw     = localStorage.getItem("true-profile")
     const profile = raw ? JSON.parse(raw) : {}
-    await updateUserMetadata({ profile, goals: selectedGoals })
+    if (birthDay)   profile.birthDay   = birthDay
+    if (birthMonth) profile.birthMonth = birthMonth
+    await updateUserMetadata({ profile, goals: selectedGoals, birthDay, birthMonth })
     goReg("done")
   }
 
@@ -413,18 +419,39 @@ export default function AuthModal({ onClose, onSuccess, onGuest, onRegister, def
 
             <div key={animKey} style={{ padding: "0 24px", animation: `${animDir === "forward" ? "slideRight" : "slideLeft"} 0.26s cubic-bezier(.16,1,.3,1)` }}>
 
-              {/* ── Step 1: Name ── */}
+              {/* ── Step 1: Name + Birthday ── */}
               {regStep === "name" && (
                 <div>
                   <div style={{ textAlign: "center", fontSize: "2.8rem", marginBottom: 16 }}>👋</div>
                   <p style={{ textAlign: "center", fontSize: "0.84rem", color: "rgba(255,255,255,0.35)", marginBottom: 20, lineHeight: 1.6 }}>
-                    Wie dürfen wir dich nennen? (optional)
+                    Wie dürfen wir dich nennen?
                   </p>
                   <input ref={inputRef} type="text" value={name}
                     onChange={e => { setName(e.target.value); setError("") }}
                     onKeyDown={e => e.key === "Enter" && goReg("email")}
                     placeholder="Dein Vorname"
                     style={iStyle(false, "#2ECC8A")} />
+
+                  {/* Birthday */}
+                  <div style={{ marginBottom: 8 }}>
+                    <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "rgba(255,255,255,0.35)", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+                      🎂 Geburtstag <span style={{ color: "rgba(255,255,255,0.18)", fontWeight: 400 }}>(optional — für Geburtstagsüberraschungen)</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input type="number" inputMode="numeric" min={1} max={31} value={birthDay}
+                        onChange={e => setBirthDay(e.target.value)}
+                        placeholder="Tag"
+                        style={{ ...iStyle(false, "#2ECC8A"), flex: 1, marginBottom: 0 }} />
+                      <select value={birthMonth} onChange={e => setBirthMonth(e.target.value)}
+                        style={{ ...iStyle(false, "#2ECC8A"), flex: 2, marginBottom: 0, appearance: "none" as const }}>
+                        <option value="">Monat</option>
+                        {["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"].map((m, i) => (
+                          <option key={i} value={String(i + 1)}>{m}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
                   <Btn label="Weiter →" color="#2ECC8A" disabled={false} onClick={() => goReg("email")} />
                   <button onClick={() => goReg("email")} style={{ display: "block", width: "100%", marginTop: 10, background: "none", border: "none", color: "rgba(255,255,255,0.22)", fontSize: "0.8rem", cursor: "pointer", padding: "8px 0", textAlign: "center" }}>
                     Überspringen

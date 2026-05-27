@@ -613,7 +613,10 @@ function LandingInner() {
     window.addEventListener("scroll", fn, { passive: true })
     return () => window.removeEventListener("scroll", fn)
   }, [])
-  useEffect(() => { if (searchParams.get("login") === "1") setAuthMode("login") }, [searchParams])
+  useEffect(() => {
+    if (searchParams.get("login") === "1") setAuthMode("login")
+    if (searchParams.get("onboard") === "1") setShowOnboarding(true)
+  }, [searchParams])
   // Logged-in users skip landing — but NOT during registration (authMode is open)
   useEffect(() => {
     if (user && !authMode) router.replace("/home")
