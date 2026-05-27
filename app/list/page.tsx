@@ -743,16 +743,27 @@ export default function ShoppingListPage() {
         if (markets.length > 0) setSelectedStore(markets[0])
       }
     } catch {}
-    // Load family members
-    try {
-      const fm = localStorage.getItem("true-family-members")
-      if (fm) setFamilyMembers(JSON.parse(fm))
-    } catch {}
-    // Load profile photo
-    try {
-      const ph = localStorage.getItem("true-profile-photo")
-      if (ph) setProfilePhoto(ph)
-    } catch {}
+    // Load family members + profile photo (also on focus/storage change)
+    function loadProfile() {
+      try {
+        const fm = localStorage.getItem("true-family-members")
+        if (fm) setFamilyMembers(JSON.parse(fm))
+      } catch {}
+      try {
+        const ph = localStorage.getItem("true-profile-photo")
+        setProfilePhoto(ph || null)
+      } catch {}
+      try {
+        const p = localStorage.getItem("true-profile")
+        if (p) {
+          const parsed = JSON.parse(p)
+          setUserName(parsed.name ?? parsed.vorname ?? "")
+        }
+      } catch {}
+    }
+    loadProfile()
+    window.addEventListener("focus", loadProfile)
+    window.addEventListener("storage", loadProfile)
     // Load premium status
     try {
       setIsPremium(localStorage.getItem("true-premium") === "1")
@@ -764,7 +775,6 @@ export default function ShoppingListPage() {
         const parsed = JSON.parse(p)
         setUserGoals(parsed.nutritionGoals ?? [])
         setUserAllergies(parsed.allergies ?? [])
-        setUserName(parsed.name ?? "")
       }
     } catch {}
     // Load item qty + comments
@@ -777,6 +787,10 @@ export default function ShoppingListPage() {
       if (c) setItemComment(JSON.parse(c))
     } catch {}
     setHydrated(true)
+    return () => {
+      window.removeEventListener("focus", loadProfile)
+      window.removeEventListener("storage", loadProfile)
+    }
   }, [])
 
   // Supabase sync
@@ -981,10 +995,10 @@ export default function ShoppingListPage() {
       {/* ── Person tabs — circular avatars ── */}
       <div style={{ overflowX: "auto", display: "flex", gap: 16, padding: "12px 16px 10px", scrollbarWidth: "none", borderBottom: "1px solid var(--border)", background: "var(--surface)", alignItems: "flex-end" }}>
         {/* Alle */}
-        {[{ id: "all", label: "Alle", content: <span style={{ fontSize: "1.1rem" }}>🛒</span> },
-          { id: "mine", label: userName ? userName.split(" ")[0] : "Meine", content: profilePhoto
+        {[{ id: "mine", label: userName ? userName.split(" ")[0] : "Meine", content: profilePhoto
             ? <img src={profilePhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
-            : <span style={{ fontSize: "1.1rem" }}>👤</span> }
+            : <span style={{ fontSize: "1.1rem" }}>👤</span> },
+          { id: "all", label: "Alle", content: <span style={{ fontSize: "1.1rem" }}>🛒</span> },
         ].map(tab => (
           <button key={tab.id} onClick={() => setActivePerson(tab.id)}
             style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
