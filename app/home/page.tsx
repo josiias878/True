@@ -1799,11 +1799,11 @@ export default function HomePage() {
                     tom:    { name: "Tom Richter",   avatar: "📋", title: "Verbraucherschutz" },
                     julia:  { name: "Julia Brecht",  avatar: "🌱", title: "Positive Entwicklungen" },
                   }
-                  const SENTIMENT_META: Record<string, { label: string; color: string; bg: string }> = {
-                    negative:  { label: "⚠️ Negative Entwicklung",  color: "#ff4455", bg: "rgba(255,68,85,0.12)" },
-                    positive:  { label: "✅ Positive Entwicklung",  color: "#2ECC8A", bg: "rgba(46,204,138,0.12)" },
-                    neutral:   { label: "ℹ️ Analyse",               color: "#44aaff", bg: "rgba(68,170,255,0.12)" },
-                    nutrition: { label: "🥗 Ernährung & Gesundheit", color: "#ffaa00", bg: "rgba(255,170,0,0.12)" },
+                  const SENTIMENT_META: Record<string, { color: string }> = {
+                    negative:  { color: "#ff4455" },
+                    positive:  { color: "#2ECC8A" },
+                    neutral:   { color: "#44aaff" },
+                    nutrition: { color: "#ffaa00" },
                   }
                   type JKey = "lena"|"markus"|"sara"|"tom"|"julia"
                   const FEED_POSTS: { journalist: JKey; sentiment: string; tag: string; tagColor: string; title: string; text: string; source: string; img: string }[] = [
@@ -1829,32 +1829,39 @@ export default function HomePage() {
                   const j = JOURNALISTS_HOME[post.journalist]
                   const sm = SENTIMENT_META[post.sentiment] ?? SENTIMENT_META.neutral
                   const today = new Date()
+                  // Bold key numbers/percentages in text
+                  function highlightText(text: string) {
+                    const parts = text.split(/(\d[\d.,]*\s*(?:Mio\.|Mrd\.|%|€|Milliarden|Millionen|Hektar|g\b|mg|IE|km|Liter)?)/g)
+                    return parts.map((p, i) =>
+                      /^\d/.test(p) ? <strong key={i}>{p}</strong> : p
+                    )
+                  }
                   return (
-                    <div style={{ marginTop: 12, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
-                      {/* Sentiment-Balken */}
-                      <div style={{ background: sm.bg, borderBottom: `2px solid ${sm.color}`, padding: "5px 14px", display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontSize: "0.68rem", fontWeight: 800, color: sm.color, letterSpacing: "0.04em" }}>{sm.label}</span>
-                      </div>
+                    <div style={{ marginTop: 12, background: "var(--surface)", border: `1px solid var(--border)`, borderRadius: 16, overflow: "hidden", borderTop: `4px solid ${sm.color}` }}>
                       {/* Post-Header */}
                       <div style={{ padding: "10px 14px 8px", display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(46,204,138,0.12)", border: "1.5px solid rgba(46,204,138,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", flexShrink: 0 }}>{j.avatar}</div>
+                        <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--surface-2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0 }}>{j.avatar}</div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 800, fontSize: "0.82rem" }}>{j.name}</div>
-                          <div style={{ fontSize: "0.6rem", color: "var(--text-dim)" }}>{j.title} · {today.toLocaleDateString("de-DE", { day: "numeric", month: "long" })}</div>
+                          <div style={{ fontWeight: 700, fontSize: "0.8rem" }}>{j.name}</div>
+                          <div style={{ fontSize: "0.58rem", color: "var(--text-dim)" }}>{today.toLocaleDateString("de-DE", { day: "numeric", month: "long" })}</div>
                         </div>
-                        <span style={{ fontSize: "0.6rem", fontWeight: 800, color: post.tagColor, background: post.tagColor + "18", border: `1px solid ${post.tagColor}33`, borderRadius: 20, padding: "2px 8px", flexShrink: 0 }}>{post.tag}</span>
+                        <span style={{ fontSize: "0.58rem", fontWeight: 700, color: post.tagColor, background: post.tagColor + "15", borderRadius: 20, padding: "2px 8px", flexShrink: 0 }}>{post.tag}</span>
                       </div>
                       {/* Bild */}
-                      <img src={post.img} alt={post.tag} style={{ width: "100%", height: 180, objectFit: "cover", display: "block" }} />
+                      <img src={post.img} alt={post.tag} style={{ width: "100%", height: 170, objectFit: "cover", display: "block" }} />
                       {/* Titel + Text */}
                       <div style={{ padding: "12px 14px 10px" }}>
-                        <div style={{ fontWeight: 800, fontSize: "0.9rem", marginBottom: 6, lineHeight: 1.35 }}>{post.title}</div>
-                        <div style={{ fontSize: "0.82rem", color: "var(--text)", lineHeight: 1.6 }}>{post.text}</div>
-                        <div style={{ marginTop: 8, fontSize: "0.62rem", color: "var(--text-dim)" }}>📋 {post.source}</div>
+                        <div style={{ fontWeight: 900, fontSize: "0.92rem", lineHeight: 1.3, marginBottom: 8, paddingBottom: 8, borderBottom: `2px solid ${sm.color}` }}>
+                          {post.title}
+                        </div>
+                        <div style={{ fontSize: "0.81rem", color: "var(--text)", lineHeight: 1.65 }}>
+                          {highlightText(post.text)}
+                        </div>
+                        <div style={{ marginTop: 8, fontSize: "0.6rem", color: "var(--text-dim)" }}>📋 {post.source}</div>
                       </div>
                       {/* Footer */}
                       <div style={{ borderTop: "1px solid var(--border)", padding: "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <Link href="/channel/true" style={{ fontSize: "0.72rem", color: "var(--accent)", fontWeight: 700, textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
+                        <Link href="/channel/true" style={{ fontSize: "0.72rem", color: "var(--accent)", fontWeight: 700, textDecoration: "none" }}>
                           🗞️ Alle Schlagzeilen
                         </Link>
                         <Link href="/community" style={{ fontSize: "0.72rem", color: "var(--text-dim)", fontWeight: 700, textDecoration: "none" }}>Community →</Link>
