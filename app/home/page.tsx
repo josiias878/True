@@ -936,13 +936,34 @@ export default function HomePage() {
       setInvitedByPhoto(localStorage.getItem("true-invited-by-photo") || "")
       setInvitedByEmoji(localStorage.getItem("true-invited-by-emoji") || "👤")
     }
-    // "Just joined" banner — shown to the HOST when someone joined their list
-    const joined = localStorage.getItem("true-just-joined")
-    if (joined) {
-      setJustJoined(joined)
-      setJustJoinedPhoto(localStorage.getItem("true-just-joined-photo") || "")
-      localStorage.removeItem("true-just-joined")
-      localStorage.removeItem("true-just-joined-photo")
+    // Supabase realtime: host gets notified when someone joins their list
+    const myListId = (() => { try { return localStorage.getItem("true-list-id") } catch { return null } })()
+    const myName = (() => { try { const p = localStorage.getItem("true-profile"); return JSON.parse(p||"{}").name || localStorage.getItem("true-guest-name") || "" } catch { return "" } })()
+    if (supabase && myListId) {
+      const channel = supabase
+        .channel(`list-members-${myListId}`)
+        .on("postgres_changes" as any, {
+          event: "INSERT",
+          schema: "public",
+          table: "list_members",
+          filter: `list_id=eq.${myListId}`,
+        }, (payload: any) => {
+          const member = payload.new
+          // Only show to host — not to the person who just joined themselves
+          if (member.member_name && member.member_name !== myName) {
+            setJustJoined(member.member_name)
+            setJustJoinedPhoto(member.member_photo || "")
+            // Add to family members list
+            setFamilyMembers((prev: any[]) => {
+              if (prev.find((m: any) => m.name === member.member_name)) return prev
+              const updated = [...prev, { id: `joined-${Date.now()}`, name: member.member_name, age: "", emoji: member.member_emoji || "👤", avatarUrl: member.member_photo || "" }]
+              try { localStorage.setItem("true-family-members", JSON.stringify(updated)) } catch {}
+              return updated
+            })
+          }
+        })
+        .subscribe()
+      return () => { supabase!.removeChannel(channel) }
     }
     // First-login welcome card — auto-dismiss after 7s
     if (!localStorage.getItem("true-welcome-seen")) {
@@ -1479,8 +1500,8 @@ export default function HomePage() {
                 </div>
             }
             <div style={{ flex: 1, paddingRight: 20 }}>
-              <div style={{ fontWeight: 800, fontSize: "0.88rem", color: "var(--accent)", marginBottom: 2 }}>✅ {justJoined} ist beigetreten!</div>
-              <div style={{ fontSize: "0.73rem", color: "var(--text-dim)" }}>Jetzt gemeinsam einkaufen</div>
+              <div style={{ fontWeight: 800, fontSize: "0.88rem", color: "var(--accent)", marginBottom: 2 }}>✅ {justJoined} ist deiner Liste beigetreten!</div>
+              <div style={{ fontSize: "0.73rem", color: "var(--text-dim)" }}>Ihr könnt jetzt gemeinsam einkaufen 🛒</div>
             </div>
           </div>
         )}
@@ -1497,8 +1518,8 @@ export default function HomePage() {
                 </div>
             }
             <div style={{ flex: 1, paddingRight: 20 }}>
-              <div style={{ fontWeight: 800, fontSize: "0.88rem", color: "var(--accent)", marginBottom: 2 }}>🎉 Eingeladen von {invitedBy}</div>
-              <div style={{ fontSize: "0.75rem", color: "var(--text-dim)", lineHeight: 1.5 }}>Du kannst die Einkaufsliste gemeinsam bearbeiten.</div>
+              <div style={{ fontWeight: 800, fontSize: "0.88rem", color: "var(--accent)", marginBottom: 2 }}>🎉 Willkommen! {invitedBy} hat dich eingeladen</div>
+              <div style={{ fontSize: "0.75rem", color: "var(--text-dim)", lineHeight: 1.5 }}>Du bist jetzt Teil der gemeinsamen Einkaufsliste.</div>
             </div>
           </div>
         )}
