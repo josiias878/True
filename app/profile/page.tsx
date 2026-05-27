@@ -197,6 +197,7 @@ export default function ProfilePage() {
   const [rings, setRings]                 = useState({ totalScans: 0, totalAvoided: 0, streak: 0 })
   const [following, setFollowing]         = useState<Set<string>>(new Set())
   const [followedChannels, setFollowedChannels] = useState<string[]>([])
+  const [showFollowSheet, setShowFollowSheet] = useState<"following" | "followers" | null>(null)
   const [showSearch, setShowSearch]       = useState(false)
   const [searchQuery, setSearchQuery]     = useState("")
   const [showSupport, setShowSupport]     = useState(false)
@@ -643,16 +644,18 @@ export default function ProfilePage() {
 
             {/* Stats */}
             <div style={{ flex: 1, display: "flex", justifyContent: "space-around", paddingTop: 10 }}>
-              {[
-                { label: "Folge ich",  value: followingCount  },
-                { label: "Gespeichert", value: savedCount     },
-                { label: "Beiträge",   value: myPosts.length  },
-              ].map(s => (
-                <div key={s.label} style={{ textAlign: "center" }}>
-                  <div style={{ fontWeight: 800, fontSize: "1.25rem", lineHeight: 1 }}>{s.value}</div>
-                  <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 3 }}>{s.label}</div>
-                </div>
-              ))}
+              <button onClick={() => setShowFollowSheet("following")} style={{ textAlign: "center", background: "none", border: "none", cursor: "pointer", padding: "4px 8px", borderRadius: 8 }}>
+                <div style={{ fontWeight: 800, fontSize: "1.25rem", lineHeight: 1, color: "var(--text)" }}>{followingCount}</div>
+                <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 3 }}>Folge ich</div>
+              </button>
+              <button onClick={() => setShowFollowSheet("followers")} style={{ textAlign: "center", background: "none", border: "none", cursor: "pointer", padding: "4px 8px", borderRadius: 8 }}>
+                <div style={{ fontWeight: 800, fontSize: "1.25rem", lineHeight: 1, color: "var(--text)" }}>0</div>
+                <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 3 }}>Follower</div>
+              </button>
+              <div style={{ textAlign: "center", padding: "4px 8px" }}>
+                <div style={{ fontWeight: 800, fontSize: "1.25rem", lineHeight: 1 }}>{myPosts.length}</div>
+                <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 3 }}>Beiträge</div>
+              </div>
             </div>
           </div>
 
@@ -1401,6 +1404,54 @@ export default function ProfilePage() {
                 filteredSuggested.map(u => (
                   <SuggestedUserCard key={u.id} user={u} following={following.has(u.id)} onFollow={() => toggleFollow(u.id)} />
                 ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Following / Follower Sheet ── */}
+      {showFollowSheet && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 400, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => setShowFollowSheet(null)}>
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)" }} />
+          <div onClick={e => e.stopPropagation()} style={{ position: "relative", width: "100%", maxWidth: 480, background: "var(--surface)", borderRadius: "20px 20px 0 0", padding: "20px 0 40px", maxHeight: "75vh", display: "flex", flexDirection: "column" }}>
+            {/* Handle */}
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--border)", margin: "0 auto 16px" }} />
+            {/* Tabs */}
+            <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginBottom: 8 }}>
+              {(["following", "followers"] as const).map(tab => (
+                <button key={tab} onClick={() => setShowFollowSheet(tab)} style={{ flex: 1, background: "none", border: "none", padding: "10px 0", fontWeight: showFollowSheet === tab ? 800 : 500, fontSize: "0.9rem", color: showFollowSheet === tab ? "var(--accent)" : "var(--text-dim)", borderBottom: showFollowSheet === tab ? "2px solid var(--accent)" : "2px solid transparent", cursor: "pointer" }}>
+                  {tab === "following" ? `Folge ich (${followingCount})` : "Follower (0)"}
+                </button>
+              ))}
+            </div>
+            {/* List */}
+            <div style={{ overflowY: "auto", padding: "0 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+              {showFollowSheet === "following" ? (
+                followingCount === 0 ? (
+                  <p style={{ textAlign: "center", color: "var(--text-dim)", fontSize: "0.85rem", padding: "2rem 0" }}>Du folgst noch niemandem</p>
+                ) : (
+                  SUGGESTED_USERS.filter(u => following.has(u.id)).concat(
+                    followedChannels.map(ch => ({ id: ch, name: ch, avatar: "📡", handle: `@${ch}`, bio: "TRUE Channel", posts: 0, followers: 0 }))
+                  ).map(u => (
+                    <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--surface-2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", flexShrink: 0 }}>{u.avatar}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>{u.name}</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>{u.handle}</div>
+                      </div>
+                      <button onClick={() => toggleFollow(u.id)} style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 14px", fontWeight: 700, fontSize: "0.78rem", cursor: "pointer", color: "var(--text-dim)" }}>
+                        Folge ich
+                      </button>
+                    </div>
+                  ))
+                )
+              ) : (
+                <div style={{ textAlign: "center", padding: "2rem 0" }}>
+                  <div style={{ fontSize: "2rem", marginBottom: 8 }}>👥</div>
+                  <p style={{ color: "var(--text-dim)", fontSize: "0.85rem", margin: 0 }}>Noch keine Follower</p>
+                  <p style={{ color: "var(--text-dim)", fontSize: "0.75rem", marginTop: 6 }}>Teile dein Profil, damit andere dir folgen können</p>
+                </div>
               )}
             </div>
           </div>
