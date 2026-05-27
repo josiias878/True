@@ -884,6 +884,7 @@ export default function HomePage() {
   const [mapOpen, setMapOpen]         = useState(false)
   const [userGoals, setUserGoals]     = useState<string[]>([])
   const [userName, setUserName]       = useState("")
+  const [myPhoto, setMyPhoto]         = useState<string | null>(null)
   const [isPremium, setIsPremium]     = useState(false)
   const [premiumToast, setPremiumToast] = useState("")
   const [quickAdd, setQuickAdd]       = useState("")
@@ -1001,7 +1002,18 @@ export default function HomePage() {
         const vn = p.vorname || p.name || ""
         if (vn) setUserName(vn.split(" ")[0])
       }
+      const ph = localStorage.getItem("true-profile-photo")
+      if (ph) setMyPhoto(ph)
     } catch {}
+
+    function refreshPhoto() {
+      try {
+        const ph = localStorage.getItem("true-profile-photo")
+        setMyPhoto(ph || null)
+      } catch {}
+    }
+    window.addEventListener("focus", refreshPhoto)
+    return () => window.removeEventListener("focus", refreshPhoto)
   }, [])
 
   // Load real shopping list items + family members from localStorage
@@ -1634,6 +1646,18 @@ export default function HomePage() {
 
         {/* ── FAMILY TABS — immer sichtbar ── */}
         <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, marginBottom: 14, scrollbarWidth: "none" }}>
+          {/* Eigenes Profil — immer zuerst */}
+          <button onClick={() => setActiveListPerson("mine")}
+            style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>
+            <div style={{ width: 52, height: 52, borderRadius: "50%", background: myPhoto ? "transparent" : "var(--accent)", border: `2.5px solid ${activeListPerson === "mine" ? "var(--accent)" : "var(--border)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", fontWeight: 900, color: "#000", transition: "all 0.15s", overflow: "hidden" }}>
+              {myPhoto
+                ? <img src={myPhoto} alt={userName} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={() => setMyPhoto(null)} />
+                : <span style={{ color: "#000", fontWeight: 900, fontSize: "1.1rem" }}>{(userName || "M").charAt(0).toUpperCase()}</span>
+              }
+            </div>
+            <span style={{ fontSize: "0.65rem", fontWeight: activeListPerson === "mine" ? 800 : 500, color: activeListPerson === "mine" ? "var(--accent)" : "var(--text-dim)", whiteSpace: "nowrap" }}>{userName || "Ich"}</span>
+            <span style={{ fontSize: "0.58rem", color: "var(--text-dim)" }}>{listItems.filter(i => !i.personId && !i.checked).length} offen</span>
+          </button>
           {/* Alle */}
           <button onClick={() => setActiveListPerson("all")}
             style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>
