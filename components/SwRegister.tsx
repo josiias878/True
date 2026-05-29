@@ -198,28 +198,53 @@ function getWeekNumber(d: Date): number {
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function SwRegister() {
   useEffect(() => {
+    // ── Version check: fetch sw.js directly, compare CACHE version ──
+    // Works on ALL browsers including iOS Safari, independent of SW state
+    let reloading = false
+    function doReload() {
+      if (reloading) return
+      reloading = true
+      window.location.reload()
+    }
+    fetch("/sw.js", { cache: "no-store" })
+      .then(r => r.text())
+      .then(text => {
+        const match = text.match(/const CACHE = "([^"]+)"/)
+        if (!match) return
+        const serverVersion = match[1]
+        const localVersion = localStorage.getItem("true-app-version")
+        if (localVersion && localVersion !== serverVersion) {
+          localStorage.setItem("true-app-version", serverVersion)
+          doReload()
+          return
+        }
+        localStorage.setItem("true-app-version", serverVersion)
+      })
+      .catch(() => {})
+
     if (!("serviceWorker" in navigator)) return
 
-    // Auto-reload when new SW takes over — no manual cache clear needed
+    // SW-based reload as additional layer (controllerchange = iOS-safe)
+    navigator.serviceWorker.addEventListener("controllerchange", doReload)
     navigator.serviceWorker.addEventListener("message", e => {
-      if (e.data?.type === "SW_UPDATED") {
-        window.location.reload()
-      }
+      if (e.data?.type === "SW_UPDATED") doReload()
     })
 
     navigator.serviceWorker.register("/sw.js")
       .then(reg => {
-        // If a new SW is waiting, tell it to skip waiting immediately
-        if (reg.waiting) reg.waiting.postMessage({ type: "SKIP_WAITING" })
+        if (reg.waiting) {
+          reg.waiting.postMessage({ type: "SKIP_WAITING" })
+        }
         reg.addEventListener("updatefound", () => {
           const newSW = reg.installing
           if (!newSW) return
           newSW.addEventListener("statechange", () => {
-            if (newSW.state === "installed" && navigator.serviceWorker.controller) {
+            if (newSW.state === "installed") {
               newSW.postMessage({ type: "SKIP_WAITING" })
             }
           })
         })
+        setInterval(() => reg.update(), 60_000)
         checkBirthdayNotification()
         checkFamilyBirthdays()
         checkDailyNotification()

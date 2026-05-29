@@ -12,6 +12,7 @@ import { useSupabaseAuth } from "@/lib/useSupabaseAuth"
 import { useProfile } from "@/lib/useProfile"
 import { supabase } from "@/lib/supabase"
 import { loadRings } from "@/components/Rings"
+import GoalPicker from "@/components/GoalPicker"
 
 const EMOJI_OPTIONS = ["🧑","👩","👨","🧑‍🦱","👩‍🦱","🧑‍🦲","👴","👵","🧒","👦","👧","🤷","🙋","🦸","🧑‍💻","🌱"]
 const FAMILY_EMOJIS = ["👶","🧒","👦","👧","🧑","👩","👨","👴","👵","🐶","🐱"]
@@ -1075,75 +1076,40 @@ export default function ProfilePage() {
                 </button>
                 {openSetting === "goals" && (
                   <div style={{ padding: "0 16px 16px", borderTop: "1px solid var(--border)" }}>
-                    <p style={{ margin: "10px 0 12px", fontSize: "0.72rem", color: "var(--text-dim)" }}>Beeinflusst deinen Scan-Kontext und persönliche Hinweise.</p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {[
-                        { id: "env",    icon: "🌱", label: "Umwelt schützen",   desc: "Konzerne & Abholzung aufdecken" },
-                        { id: "health", icon: "💪", label: "Gesünder leben",    desc: "Schädliche Inhaltsstoffe meiden" },
-                        { id: "family", icon: "👨‍👩‍👧", label: "Familie schützen", desc: "Sichere Produkte für Kinder" },
-                        { id: "truth",  icon: "🔍", label: "Wahrheit kennen",   desc: "Was steckt wirklich dahinter?" },
-                        { id: "action", icon: "✊", label: "Etwas bewegen",     desc: "Mit jedem Kauf einen Unterschied machen" },
-                        { id: "budget", icon: "💸", label: "Clever sparen",     desc: "Faire Alternativen zum günstigeren Preis" },
-                      ].map(g => {
-                        const active = userGoals.includes(g.id)
-                        return (
-                          <button key={g.id} onClick={() => toggleGoal(g.id)} style={{ display: "flex", alignItems: "center", gap: 12, background: active ? "rgba(46,204,138,0.08)" : "var(--background)", border: `1.5px solid ${active ? "var(--accent)" : "var(--border)"}`, borderRadius: 12, padding: "10px 12px", cursor: "pointer", textAlign: "left", width: "100%", transition: "all 0.15s" }}>
-                            <span style={{ fontSize: "1.3rem", flexShrink: 0 }}>{g.icon}</span>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontWeight: 700, fontSize: "0.85rem", color: active ? "var(--accent)" : "var(--text)" }}>{g.label}</div>
-                              <div style={{ fontSize: "0.7rem", color: "var(--text-dim)" }}>{g.desc}</div>
-                            </div>
-                            <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: `2px solid ${active ? "var(--accent)" : "var(--border)"}`, background: active ? "var(--accent)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", color: active ? "#000" : "transparent" }}>✓</div>
-                          </button>
-                        )
-                      })}
-                    </div>
+                    <p style={{ margin: "10px 0 12px", fontSize: "0.72rem", color: "var(--text-dim)" }}>Beeinflusst Scan-Bewertung, Tagesinfos & persönliche Hinweise.</p>
+                    <GoalPicker
+                      dark={false}
+                      selected={userGoals}
+                      onChange={next => {
+                        setUserGoals(next)
+                        try {
+                          const raw = localStorage.getItem("true-profile")
+                          const p = raw ? JSON.parse(raw) : {}
+                          localStorage.setItem("true-profile", JSON.stringify({ ...p, goals: next }))
+                          localStorage.setItem("true-goals-v1", JSON.stringify(next))
+                        } catch {}
+                      }}
+                    />
                   </div>
                 )}
               </div>
 
-              {/* 5 · Ernährung & Allergien */}
+              {/* 5 · Allergien */}
               <div style={{ borderBottom: "1px solid var(--border)" }}>
                 <button onClick={() => setOpenSetting(openSetting === "nutrition" ? null : "nutrition")}
                   style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}>
-                  <span style={{ fontSize: "1.3rem", width: 28, textAlign: "center" }}>🥗</span>
+                  <span style={{ fontSize: "1.3rem", width: 28, textAlign: "center" }}>⚠️</span>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: "0.88rem", color: "var(--text)" }}>Ernährung & Allergien</div>
+                    <div style={{ fontWeight: 600, fontSize: "0.88rem", color: "var(--text)" }}>Allergien & Unverträglichkeiten</div>
                     <div style={{ fontSize: "0.7rem", color: "var(--text-dim)" }}>
-                      {[...nutritionGoals, ...allergies].length > 0
-                        ? `${nutritionGoals.length > 0 ? nutritionGoals[0] : ""}${allergies.length > 0 ? ` · ${allergies.length} Allergie(n)` : ""}`
-                        : "Für präzise Coach-Hinweise setzen"}
+                      {allergies.length > 0 ? `${allergies.length} eingetragen` : "Keine — Scanner warnt nicht"}
                     </div>
                   </div>
                   <span style={{ color: "var(--text-dim)", fontSize: "1.1rem", transform: openSetting === "nutrition" ? "rotate(90deg)" : "none", transition: "transform 0.2s" }}>›</span>
                 </button>
                 {openSetting === "nutrition" && (
                   <div style={{ padding: "0 16px 16px", borderTop: "1px solid var(--border)" }}>
-
-                    {/* Ernährungsziele */}
-                    <p style={{ margin: "12px 0 8px", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Ernährungsziel</p>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-                      {[
-                        { id: "abnehmen",     label: "🔥 Abnehmen" },
-                        { id: "muskelaufbau", label: "💪 Muskelaufbau" },
-                        { id: "vegan",        label: "🌱 Vegan" },
-                        { id: "vegetarisch",  label: "🥦 Vegetarisch" },
-                        { id: "kind",         label: "👶 Kind / Familie" },
-                        { id: "diabetes",     label: "💉 Diabetes" },
-                        { id: "herzgesund",   label: "❤️ Herzgesund" },
-                      ].map(g => {
-                        const active = nutritionGoals.includes(g.id)
-                        return (
-                          <button key={g.id} onClick={() => toggleNutritionGoal(g.id)}
-                            style={{ background: active ? "rgba(46,204,138,0.12)" : "var(--background)", border: `1.5px solid ${active ? "var(--accent)" : "var(--border)"}`, borderRadius: 99, padding: "7px 14px", cursor: "pointer", fontSize: "0.82rem", fontWeight: active ? 700 : 500, color: active ? "var(--accent)" : "var(--text)", transition: "all 0.15s" }}>
-                            {g.label}
-                          </button>
-                        )
-                      })}
-                    </div>
-
-                    {/* Allergien & Unverträglichkeiten */}
-                    <p style={{ margin: "0 0 8px", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Allergien & Unverträglichkeiten</p>
+                    <p style={{ margin: "10px 0 12px", fontSize: "0.72rem", color: "var(--text-dim)", lineHeight: 1.5 }}>Der Scanner warnt dich beim Erkennen dieser Inhaltsstoffe.</p>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                       {[
                         { id: "laktose",      label: "🥛 Laktose" },
@@ -1166,48 +1132,6 @@ export default function ProfilePage() {
                         )
                       })}
                     </div>
-                  </div>
-                )}
-              </div>
-
-              {/* 6 · Einkaufsläden */}
-              <div style={{ borderBottom: "1px solid var(--border)" }}>
-                <button onClick={() => setOpenSetting(openSetting === "stores" ? null : "stores")}
-                  style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}>
-                  <span style={{ fontSize: "1.3rem", width: 28, textAlign: "center" }}>🏪</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: "0.88rem", color: "var(--text)" }}>Einkaufsläden</div>
-                    <div style={{ fontSize: "0.7rem", color: "var(--text-dim)" }}>{selectedStores.length > 0 ? selectedStores.slice(0,2).join(", ") + (selectedStores.length > 2 ? ` +${selectedStores.length - 2}` : "") : "Keine ausgewählt"}</div>
-                  </div>
-                  <span style={{ color: "var(--text-dim)", fontSize: "1.1rem", transform: openSetting === "stores" ? "rotate(90deg)" : "none", transition: "transform 0.2s" }}>›</span>
-                </button>
-                {openSetting === "stores" && (
-                  <div style={{ padding: "0 16px 16px", borderTop: "1px solid var(--border)" }}>
-                    <p style={{ margin: "10px 0 12px", fontSize: "0.72rem", color: "var(--text-dim)", lineHeight: 1.5 }}>Wo kaufst du ein? TRUE zeigt dir passende Alternativen in deinen Läden.</p>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-                      {STORE_OPTIONS.map(s => {
-                        const active = selectedStores.includes(s)
-                        return (
-                          <button key={s} onClick={() => toggleStore(s)}
-                            style={{ background: active ? "rgba(46,204,138,0.1)" : "var(--background)", border: `1.5px solid ${active ? "var(--accent)" : "var(--border)"}`, borderRadius: 99, padding: "6px 14px", cursor: "pointer", fontSize: "0.82rem", fontWeight: active ? 700 : 500, color: active ? "var(--accent)" : "var(--text)", transition: "all 0.15s" }}>
-                            {s}
-                          </button>
-                        )
-                      })}
-                    </div>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      <input
-                        value={customStore}
-                        onChange={e => saveCustomStore(e.target.value)}
-                        placeholder="Anderer Laden (z.B. Tegut, Wasgau…)"
-                        style={{ flex: 1, background: "var(--background)", border: "1px solid var(--border)", borderRadius: 99, padding: "8px 14px", color: "var(--text)", fontSize: "0.82rem", outline: "none" }}
-                      />
-                    </div>
-                    {selectedStores.length > 0 && (
-                      <div style={{ marginTop: 10, fontSize: "0.68rem", color: "var(--accent)", fontWeight: 600 }}>
-                        ✓ {[...selectedStores, ...(customStore ? [customStore] : [])].join(", ")}
-                      </div>
-                    )}
                   </div>
                 )}
               </div>

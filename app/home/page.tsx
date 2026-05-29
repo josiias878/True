@@ -99,6 +99,7 @@ const INGREDIENT_INFO: Record<string, { title: string; color: string; emoji: str
 const GOAL_LABELS: Record<string, string> = {
   env: "Umwelt schützen", health: "Gesünder leben", family: "Familie schützen",
   truth: "Wahrheit kennen", action: "Etwas bewegen", budget: "Clever sparen",
+  weightloss: "Abnehmen", protein: "Mehr Protein", vegan: "Vegan/Vegetarisch",
 }
 
 const GOAL_CONFIG: Record<string, {
@@ -147,8 +148,8 @@ const GOAL_CONFIG: Record<string, {
         tip: "Achte auf E-Nummern zwischen E100–E180 in Kindersnacks und Säften." },
     ],
     premium: { count: 670, locked: [
-      { emoji: "👶", title: "Kindersichere Produktliste (47 Einträge)", preview: "Geprüfte Produkte ohne kritische Zusatzstoffe, speziell für Kinder unter 12. Mit Altersangabe und Verfügbarkeit in deinen gespeicherten Märkten…" },
-      { emoji: "🏪", title: "Familienfreundliche Alternativen bei dir", preview: "In deinen gespeicherten Märkten verfügbar: Günstige, sichere Alternativen für die beliebtesten Kinderprodukte — direkt vergleichbar…" },
+      { emoji: "👶", title: "Kindersichere Produktliste (47 Einträge)", preview: "Geprüfte Produkte ohne kritische Zusatzstoffe, speziell für Kinder unter 12. Mit Altersangabe und Alternativvorschlägen…" },
+      { emoji: "🏪", title: "Familienfreundliche Alternativen", preview: "Günstige, sichere Alternativen für die beliebtesten Kinderprodukte — gefiltert nach Kategorie und direkt vergleichbar…" },
     ]},
   },
   truth: {
@@ -193,7 +194,52 @@ const GOAL_CONFIG: Record<string, {
     ],
     premium: { count: 430, locked: [
       { emoji: "💰", title: "Sparrechner: Dein Potenzial", preview: "Basierend auf deinen bisherigen Scans könntest du monatlich bis zu X € sparen — bei gleichwertiger oder besserer Produktqualität…" },
-      { emoji: "🏪", title: "Preisvergleich-Datenbank (200+ Produkte)", preview: "Faire Alternativen mit Preisen in Rewe, Edeka, Aldi und Lidl. Gefiltert nach deinen gespeicherten Märkten und Kategorien…" },
+      { emoji: "🏪", title: "Preisvergleich-Datenbank (200+ Produkte)", preview: "Faire Alternativen mit Preisen in Rewe, Edeka, Aldi und Lidl — gefiltert nach Kategorie und Preis…" },
+    ]},
+  },
+  weightloss: {
+    subtitle: "TRUE hilft dir, beim Einkauf die besseren Entscheidungen zu treffen.",
+    fuerDich: [
+      { emoji: "⚖️", title: "Kalorienfallen entlarven", color: "#38BDF8",
+        text: "Müsliriegel, Smoothies und 'Light'-Produkte enthalten oft überraschend viele Kalorien. Scanne und lass TRUE die Kalorien & Zucker direkt anzeigen.",
+        tip: "Scanne dein nächstes Frühstück — TRUE zeigt kcal und Zucker auf einen Blick." },
+      { emoji: "🍬", title: "Versteckter Zucker", color: "#ff7700",
+        text: "In 74 % aller verarbeiteten Lebensmittel ist Zucker versteckt — oft unter 56 verschiedenen Namen. Maltodextrin, Glukosesirup und Fruktose sind besonders heimtückisch.",
+        tip: "Zutaten enden immer auf '…sirup', '…zucker' oder '…ose'? Dann steckt Zucker drin." },
+    ],
+    premium: { count: 340, locked: [
+      { emoji: "📊", title: "Dein persönlicher Kalorientracker", preview: "Alle gescannten Produkte mit Kalorien, Zucker und Fett — automatisch getrackt. Mit Wochenauswertung und Trend…" },
+      { emoji: "🥗", title: "Kalorienarme Alternativen zu deinen Favoriten", preview: "Basierend auf deinen Scans zeigen wir dir kalorienarme Swaps mit ähnlichem Geschmack und weniger Zucker…" },
+    ]},
+  },
+  protein: {
+    subtitle: "Maximale Proteinfülle — TRUE zeigt dir was wirklich drin ist.",
+    fuerDich: [
+      { emoji: "💪", title: "Proteingehalt auf einen Blick", color: "#fb923c",
+        text: "Für Muskelaufbau empfehlen Sporternährungsexperten 1,6–2,2 g Protein pro kg Körpergewicht täglich. TRUE zeigt dir beim Scannen sofort den Proteingehalt pro 100g.",
+        tip: "Scanne Joghurt, Käse oder Hülsenfrüchte — oft unterschätzte Proteinquellen." },
+      { emoji: "🥩", title: "Günstige Proteinquellen", color: "#2ECC8A",
+        text: "Hüttenkäse (12g/100g), Linsen (9g/100g) und Eier (13g/100g) sind günstige Proteinlieferanten. Teure Protein-Shakes enthalten oft nur 20–25g Protein pro Portion.",
+        tip: "Magerquark mit 13g Protein/100g schlägt viele teure Fitnessprodukte — für ~0,50€." },
+    ],
+    premium: { count: 280, locked: [
+      { emoji: "🏋️", title: "Tagesplan: Protein-Ziel erreichen", preview: "Basierend auf deinem Gewicht und Ziel: Wie viele Gramm Protein du heute brauchst und welche Scans bereits dazu beigetragen haben…" },
+      { emoji: "🔢", title: "Protein-Score deiner Einkaufsliste", preview: "Alle Produkte in deiner Liste nach Proteingehalt sortiert — mit Empfehlung, was du tauschen solltest für mehr Eiweiß…" },
+    ]},
+  },
+  vegan: {
+    subtitle: "Pflanzlich & bewusst — TRUE prüft jeden Inhaltsstoff für dich.",
+    fuerDich: [
+      { emoji: "🌿", title: "Versteckte tierische Zutaten", color: "#4ade80",
+        text: "Gelatine (E441) in Gummibärchen, Kasein in Margarine, Schellack (E904) auf Obstschalen — tierische Zutaten verstecken sich in über 200 verschiedenen Bezeichnungen.",
+        tip: "Scanne Backwaren und Saucen — dort ist Gelatine oder Molke am häufigsten versteckt." },
+      { emoji: "🌴", title: "Vegan ≠ nachhaltig — der Palmöl-Trick", color: "#ff7700",
+        text: "Viele vegane Produkte enthalten Palmöl — verantwortlich für Abholzung von 27 Mio. Hektar Regenwald. TRUE warnt dich beim Scannen direkt auf Palmöl und seine Synonyme.",
+        tip: "Achte auf: 'pflanzliches Öl', 'E471', 'Palmin', 'Palmstearin' — alles Palmöl." },
+    ],
+    premium: { count: 410, locked: [
+      { emoji: "🐄", title: "Vollständige Inhaltsstoff-Analyse", preview: "Für alle deine gescannten Produkte: Vollständige Liste tierischer Zutaten, versteckter Gelatine, Milchderivate und Palmöl-Synonyme…" },
+      { emoji: "🛒", title: "Deine vegane Einkaufsliste", preview: "Alle Produkte in deiner Liste mit Vegan-Status und Alternativen für nicht-vegane Einträge — gefiltert nach Kategorie und Preis…" },
     ]},
   },
 }
@@ -881,6 +927,7 @@ export default function HomePage() {
   const [justJoinedPhoto, setJustJoinedPhoto] = useState("")
   const [showPhotoPrompt, setShowPhotoPrompt] = useState(false)
   const [photoPromptFile, setPhotoPromptFile] = useState<string | null>(null)
+  const [sharedListId, setSharedListId] = useState<string | null>(null)
   const [showCommunityCard, setShowCommunityCard] = useState(true)
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([])
   const [mapOpen, setMapOpen]         = useState(false)
@@ -944,35 +991,9 @@ export default function HomePage() {
       setInvitedByPhoto(localStorage.getItem("true-invited-by-photo") || "")
       setInvitedByEmoji(localStorage.getItem("true-invited-by-emoji") || "👤")
     }
-    // Supabase realtime: host gets notified when someone joins their list
-    const myListId = (() => { try { return localStorage.getItem("true-list-id") } catch { return null } })()
-    const myName = (() => { try { const p = localStorage.getItem("true-profile"); return JSON.parse(p||"{}").name || localStorage.getItem("true-guest-name") || "" } catch { return "" } })()
-    if (supabase && myListId) {
-      const channel = supabase
-        .channel(`list-members-${myListId}`)
-        .on("postgres_changes" as any, {
-          event: "INSERT",
-          schema: "public",
-          table: "list_members",
-          filter: `list_id=eq.${myListId}`,
-        }, (payload: any) => {
-          const member = payload.new
-          // Only show to host — not to the person who just joined themselves
-          if (member.member_name && member.member_name !== myName) {
-            setJustJoined(member.member_name)
-            setJustJoinedPhoto(member.member_photo || "")
-            // Add to family members list
-            setFamilyMembers((prev: any[]) => {
-              if (prev.find((m: any) => m.name === member.member_name)) return prev
-              const updated = [...prev, { id: `joined-${Date.now()}`, name: member.member_name, age: "", emoji: member.member_emoji || "👤", avatarUrl: member.member_photo || "" }]
-              try { localStorage.setItem("true-family-members", JSON.stringify(updated)) } catch {}
-              return updated
-            })
-          }
-        })
-        .subscribe()
-      return () => { supabase!.removeChannel(channel) }
-    }
+    // Load shared list ID into state so the subscription effect can react to it
+    const storedListId = (() => { try { return localStorage.getItem("true-list-id") } catch { return null } })()
+    if (storedListId) setSharedListId(storedListId)
     // First-login welcome card — auto-dismiss after 7s
     if (!localStorage.getItem("true-welcome-seen")) {
       setShowWelcome(true)
@@ -983,10 +1004,16 @@ export default function HomePage() {
     if (localStorage.getItem("true-needs-photo") === "1") {
       localStorage.removeItem("true-needs-photo")
       localStorage.removeItem("true-new-user")
+      // Clear guest scan data so new account starts fresh
+      localStorage.removeItem("true-scan-history")
+      localStorage.removeItem(`true-scans-${new Date().toISOString().slice(0, 10)}`)
       setShowPhotoPrompt(true)
     } else if (localStorage.getItem("true-new-user") === "1") {
       // fallback: no photo prompt, fire confetti directly
       localStorage.removeItem("true-new-user")
+      // Clear guest scan data so new account starts fresh
+      localStorage.removeItem("true-scan-history")
+      localStorage.removeItem(`true-scans-${new Date().toISOString().slice(0, 10)}`)
       setShowConfetti(true)
       setTimeout(() => setShowConfetti(false), 3500)
     }
@@ -1076,6 +1103,82 @@ export default function HomePage() {
       if (jc) setJoinedCommunities(JSON.parse(jc))
     } catch {}
   }, [])
+
+  // Supabase realtime: host gets notified when someone joins their list
+  // Runs whenever sharedListId changes so it works even if the list ID is created mid-session
+  useEffect(() => {
+    if (!supabase || !sharedListId) return
+    const myName = (() => { try { const p = localStorage.getItem("true-profile"); return JSON.parse(p||"{}").name || localStorage.getItem("true-guest-name") || "" } catch { return "" } })()
+
+    function fetchMembers() {
+      if (!supabase || !sharedListId) return
+      supabase.from("list_members").select("*").eq("list_id", sharedListId).then(({ data }) => {
+        if (!data) return
+        setFamilyMembers(prev => {
+          let updated = [...prev]
+          let changed = false
+          for (const member of data) {
+            if (!member.member_name || member.member_name === myName) continue
+            if (updated.find(m => m.name === member.member_name)) continue
+            updated = [...updated, { id: `joined-${member.member_name}`, name: member.member_name, age: "", emoji: member.member_emoji || "👤", avatarUrl: member.member_photo || "" }]
+            changed = true
+          }
+          if (changed) {
+            try { localStorage.setItem("true-family-members", JSON.stringify(updated)) } catch {}
+          }
+          return changed ? updated : prev
+        })
+      })
+    }
+
+    // Immediately fetch members (historical + catch up)
+    fetchMembers()
+    // Polling fallback every 10s (in case realtime doesn't fire)
+    const pollInterval = setInterval(fetchMembers, 10_000)
+
+    // Also fetch any members who joined while the app was closed (historical query)
+    supabase.from("list_members").select("*").eq("list_id", sharedListId).then(({ data }) => {
+      if (!data) return
+      setFamilyMembers(prev => {
+        let updated = [...prev]
+        let changed = false
+        for (const member of data) {
+          if (!member.member_name || member.member_name === myName) continue
+          if (updated.find(m => m.name === member.member_name)) continue
+          updated = [...updated, { id: `joined-${member.member_name}`, name: member.member_name, age: "", emoji: member.member_emoji || "👤", avatarUrl: member.member_photo || "" }]
+          changed = true
+        }
+        if (changed) {
+          try { localStorage.setItem("true-family-members", JSON.stringify(updated)) } catch {}
+        }
+        return changed ? updated : prev
+      })
+    })
+
+    // Realtime subscription for future joins
+    const channel = supabase
+      .channel(`list-members-${sharedListId}`)
+      .on("postgres_changes" as any, {
+        event: "INSERT",
+        schema: "public",
+        table: "list_members",
+        filter: `list_id=eq.${sharedListId}`,
+      }, (payload: any) => {
+        const member = payload.new
+        if (member.member_name && member.member_name !== myName) {
+          setJustJoined(member.member_name)
+          setJustJoinedPhoto(member.member_photo || "")
+          setFamilyMembers((prev: any[]) => {
+            if (prev.find((m: any) => m.name === member.member_name)) return prev
+            const updated = [...prev, { id: `joined-${Date.now()}`, name: member.member_name, age: "", emoji: member.member_emoji || "👤", avatarUrl: member.member_photo || "" }]
+            try { localStorage.setItem("true-family-members", JSON.stringify(updated)) } catch {}
+            return updated
+          })
+        }
+      })
+      .subscribe()
+    return () => { supabase!.removeChannel(channel); clearInterval(pollInterval) }
+  }, [sharedListId])
 
   // Erledigte Items permanent löschen
   function clearCheckedItems() {
@@ -1965,11 +2068,10 @@ export default function HomePage() {
                 {/* ── Schlagzeilen Feed (täglicher Beitrag) ── */}
                 {(() => {
                   const JOURNALISTS_HOME = {
-                    lena:   { name: "Lena Fischer",  avatar: "🔍", title: "Investigativjournalistin" },
-                    markus: { name: "Markus Bauer",  avatar: "🥗", title: "Ernährungswissenschaftler" },
-                    sara:   { name: "Sara Ahmed",    avatar: "🌍", title: "Umweltkorrespondentin" },
-                    tom:    { name: "Tom Richter",   avatar: "📋", title: "Verbraucherschutz" },
-                    julia:  { name: "Julia Brecht",  avatar: "🌱", title: "Positive Entwicklungen" },
+                    julia:  { name: "Julia",  avatar: "✍️", title: "Allgemeine Redaktion" },
+                    markus: { name: "Markus", avatar: "⚡", title: "Sportwissenschaftler" },
+                    sara:   { name: "Sara",   avatar: "🥗", title: "Ernährungsberaterin" },
+                    tom:    { name: "Tom",    avatar: "📋", title: "Verbraucherschutz" },
                   }
                   const SENTIMENT_META: Record<string, { color: string }> = {
                     negative:  { color: "#ff4455" },
@@ -1977,24 +2079,24 @@ export default function HomePage() {
                     neutral:   { color: "#44aaff" },
                     nutrition: { color: "#ffaa00" },
                   }
-                  type JKey = "lena"|"markus"|"sara"|"tom"|"julia"
+                  type JKey = "julia"|"markus"|"sara"|"tom"
                   const FEED_POSTS: { journalist: JKey; sentiment: string; tag: string; tagColor: string; title: string; text: string; source: string; img: string }[] = [
-                    { journalist:"lena",   sentiment:"negative",  tag:"Kinderarbeit",         tagColor:"#ff4455", title:"1,56 Mio. Kinder auf Nestlé & Ferrero-Kakaofeldern",       text:"International Cocoa Initiative: 1,56 Millionen Kinder arbeiten auf Kakaofeldern in Ghana und Côte d'Ivoire — davon liefern die meisten direkt an Nestlé, Ferrero und Mondelez. Durchschnittslohn der Eltern: unter 1 € pro Tag.", source:"ICI Monitoring Report 2024 · Reuters Investigativ", img:"https://images.pexels.com/photos/1352249/pexels-photo-1352249.jpeg?auto=compress&cs=tinysrgb&w=800" },
-                    { journalist:"markus", sentiment:"nutrition", tag:"Zucker",               tagColor:"#ffaa00", title:"Wie viel Zucker ist wirklich zu viel?",                    text:"Die WHO empfiehlt max. 25 g freie Zucker pro Tag. Eine Dose Cola enthält bereits 39 g. Industriezucker aktiviert laut Max-Planck-Institut dieselben Hirnareale wie Kokain. Fertigprodukte verantworten 43 % der deutschen Zuckerzufuhr.", source:"WHO 2023 · Deutsche Diabetes Gesellschaft 2024 · Max-Planck-Institut", img:"https://images.pexels.com/photos/1059905/pexels-photo-1059905.jpeg?auto=compress&cs=tinysrgb&w=800" },
-                    { journalist:"sara",   sentiment:"negative",  tag:"Wasserrechte",         tagColor:"#44aaff", title:"Coca-Cola entnimmt 350 % mehr Grundwasser als genehmigt",  text:"Coca-Cola entnimmt täglich 1,8 Milliarden Liter Grundwasser weltweit. In Südostasien bis zu 350 % mehr als genehmigt — in Regionen, wo 3 Millionen Menschen keinen sicheren Zugang zu Trinkwasser haben.", source:"TU Berlin Umweltforschung · 2024 · WHO Wasserknappheit Report", img:"https://images.pexels.com/photos/2893555/pexels-photo-2893555.jpeg?auto=compress&cs=tinysrgb&w=800" },
+                    { journalist:"julia",   sentiment:"negative",  tag:"Kinderarbeit",         tagColor:"#ff4455", title:"1,56 Mio. Kinder auf Nestlé & Ferrero-Kakaofeldern",       text:"International Cocoa Initiative: 1,56 Millionen Kinder arbeiten auf Kakaofeldern in Ghana und Côte d'Ivoire — davon liefern die meisten direkt an Nestlé, Ferrero und Mondelez. Durchschnittslohn der Eltern: unter 1 € pro Tag.", source:"ICI Monitoring Report 2024 · Reuters Investigativ", img:"https://images.pexels.com/photos/1352249/pexels-photo-1352249.jpeg?auto=compress&cs=tinysrgb&w=800" },
+                    { journalist:"markus", sentiment:"neutral",   tag:"Sportnahrung",         tagColor:"#fb923c", title:"Protein-Shakes: Was Hersteller verschweigen",              text:"60 % der meistverkauften Protein-Shakes enthalten Zusatzstoffe wie Aspartam, Acesulfam-K oder Carrageen. 200 g Magerquark liefert dieselbe Proteinmenge ohne Zusätze — zu einem Bruchteil des Preises.", source:"Stiftung Warentest Proteinprodukte 2024 · EFSA Zusatzstoffe-Review", img:"https://images.pexels.com/photos/1092730/pexels-photo-1092730.jpeg?auto=compress&cs=tinysrgb&w=800" },
+                    { journalist:"sara",   sentiment:"nutrition", tag:"Zucker",               tagColor:"#ffaa00", title:"Wie viel Zucker ist wirklich zu viel?",                    text:"Die WHO empfiehlt max. 25 g freie Zucker pro Tag. Eine Dose Cola enthält bereits 39 g. Industriezucker aktiviert laut Max-Planck-Institut dieselben Hirnareale wie Kokain. Fertigprodukte verantworten 43 % der deutschen Zuckerzufuhr.", source:"WHO 2023 · Deutsche Diabetes Gesellschaft 2024 · Max-Planck-Institut", img:"https://images.pexels.com/photos/1059905/pexels-photo-1059905.jpeg?auto=compress&cs=tinysrgb&w=800" },
                     { journalist:"tom",    sentiment:"negative",  tag:"Irreführung",          tagColor:"#cc66ff", title:"'Natürlich' auf 340 Produkten — ohne Rechtsgrundlage",     text:"Auf 340 Produkten im deutschen Supermarkt steht 'natürlich' — ohne gesetzliche Definition. 78 % dieser Produkte enthalten Zusatzstoffe, Aromen oder Palmöl. Die EU-Kommission diskutiert Regulierung.", source:"Foodwatch Marktcheck 2024 · EU-Kommission Entwurf 2024", img:"https://images.pexels.com/photos/4033148/pexels-photo-4033148.jpeg?auto=compress&cs=tinysrgb&w=800" },
                     { journalist:"julia",  sentiment:"positive",  tag:"Positive Entwicklung ✅",tagColor:"#2ECC8A",title:"dm stoppt nicht-zertifiziertes Palmöl — ein echter Schritt", text:"dm verwendet ab 2025 ausschließlich RSPO-zertifiziertes Palmöl und stellt bis 2027 schrittweise auf Alternativen um. Greenpeace: 'erster ernsthafter Schritt im deutschen Einzelhandel'.", source:"dm Pressemitteilung 2024 · Greenpeace Deutschland", img:"https://images.pexels.com/photos/1303081/pexels-photo-1303081.jpeg?auto=compress&cs=tinysrgb&w=800" },
-                    { journalist:"lena",   sentiment:"negative",  tag:"Greenwashing",         tagColor:"#ff6633", title:"Unilever vermarktet Plastik als 'nachhaltig' — Werberat stoppt Kampagne", text:"Der britische Advertising Standards Authority verurteilt Unilever: Dove, Hellmann's und Knorr als 'nachhaltig' beworben ohne belegbaren Nachweis. Diese Praxis läuft in 14 EU-Ländern gleichzeitig.", source:"Advertising Standards Authority UK 2024 · eigene Analyse", img:"https://images.pexels.com/photos/975250/pexels-photo-975250.jpeg?auto=compress&cs=tinysrgb&w=800" },
-                    { journalist:"markus", sentiment:"nutrition", tag:"Ultra-processed",       tagColor:"#ff6633", title:"NOVA 4: Was Ultra-Processed Food mit dem Körper macht",     text:"Ultra-verarbeitete Lebensmittel machen 46 % der deutschen Kalorienzufuhr aus. Laut Lancet 2024 erhöhen sie das Risiko für Typ-2-Diabetes um 53 %, für Herzerkrankungen um 32 %. Erkennungszeichen: mehr als 5 Zutaten, Aromen, Farbstoffe.", source:"The Lancet 2024 · NOVA Food Classification · DGE", img:"https://images.pexels.com/photos/1128678/pexels-photo-1128678.jpeg?auto=compress&cs=tinysrgb&w=800" },
-                    { journalist:"sara",   sentiment:"negative",  tag:"Plastik",              tagColor:"#ff4455", title:"PepsiCo: 58.000 Tonnen Plastik — nur 9 % recycelt",         text:"PepsiCo 2024 erneut auf der globalen Plastik-Blacklist: 58.000 Tonnen Einwegplastik produziert, nur 9 % recycelt. In Entwicklungsländern zweitgrößter Plastikverschmutzer nach Coca-Cola.", source:"Break Free From Plastic Audit 2024 · UNEP", img:"https://images.pexels.com/photos/2547565/pexels-photo-2547565.jpeg?auto=compress&cs=tinysrgb&w=800" },
+                    { journalist:"julia",   sentiment:"negative",  tag:"Greenwashing",         tagColor:"#ff6633", title:"Unilever vermarktet Plastik als 'nachhaltig' — Werberat stoppt Kampagne", text:"Der britische Advertising Standards Authority verurteilt Unilever: Dove, Hellmann's und Knorr als 'nachhaltig' beworben ohne belegbaren Nachweis. Diese Praxis läuft in 14 EU-Ländern gleichzeitig.", source:"Advertising Standards Authority UK 2024 · eigene Analyse", img:"https://images.pexels.com/photos/975250/pexels-photo-975250.jpeg?auto=compress&cs=tinysrgb&w=800" },
+                    { journalist:"markus", sentiment:"neutral",   tag:"Regeneration",         tagColor:"#44aaff", title:"Schlaf schlägt jedes Supplement — die Forschung ist eindeutig", text:"7–9 Stunden Schlaf steigern die Muskelregeneration um 40 % gegenüber 6 Stunden. Wachstumshormon-Ausschüttung erfolgt zu 80 % im Tiefschlaf. Kein Kreatin-Supplement der Welt kann das ersetzen.", source:"Matthew Walker: Why We Sleep · Journal of Sleep Research 2024", img:"https://images.pexels.com/photos/3820380/pexels-photo-3820380.jpeg?auto=compress&cs=tinysrgb&w=800" },
+                    { journalist:"sara",   sentiment:"nutrition", tag:"Darmgesundheit",       tagColor:"#88cc44", title:"Präbiotika vs. Probiotika — der entscheidende Unterschied", text:"Probiotika = lebende Bakterien (Joghurt, Kefir, Sauerkraut). Präbiotika = Nahrung für diese Bakterien. Laut aktuellen Studien sind Präbiotika langfristig wirksamer. Beste Quellen: Chicorée, Knoblauch, erkaltete Kartoffeln, grüne Bananen.", source:"Nature Medicine 2024 · DGNM Leitlinien", img:"https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800" },
                     { journalist:"tom",    sentiment:"negative",  tag:"Zusatzstoffe",         tagColor:"#ff7700", title:"Red Bull: 7 umstrittene Zusatzstoffe — EFSA warnt",         text:"Red Bull enthält 7 Lebensmittelzusatzstoffe, die in der EU zulässig, aber umstritten sind. EFSA empfiehlt: kein Konsum für Kinder unter 12. In Deutschland trinken 14 % der 10–14-Jährigen regelmäßig Energy Drinks.", source:"EFSA Bewertung Energydrinks 2024 · DAK Gesundheitsreport", img:"https://images.pexels.com/photos/5591661/pexels-photo-5591661.jpeg?auto=compress&cs=tinysrgb&w=800" },
                     { journalist:"julia",  sentiment:"positive",  tag:"Forschung ✅",          tagColor:"#2ECC8A", title:"Pflanzliche Ernährung senkt Herzrisiko um 32 %",            text:"Metaanalyse aus 30 Studien (500.000 Teilnehmer): überwiegend pflanzliche Ernährung senkt Herzerkrankungsrisiko um 32 %, Typ-2-Diabetes um 23 %. Entscheidend: hoher Anteil Hülsenfrüchte, Vollkorn und Gemüse.", source:"European Heart Journal 2024 · Harvard T.H. Chan School", img:"https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800" },
-                    { journalist:"markus", sentiment:"nutrition", tag:"Omega-3",              tagColor:"#44aaff", title:"Fisch, Algen oder Supplement — was wirklich hilft",         text:"EPA + DHA aus Fisch sind die bioaktiven Formen. Zuchtlachs enthält heute bis zu 40 % weniger Omega-3 als Wildlachs (TU München 2024). Algen-Öl ist gleichwertig und enthält kein Quecksilber.", source:"TU München 2024 · EFSA Omega-3 Bewertung", img:"https://images.pexels.com/photos/3655916/pexels-photo-3655916.jpeg?auto=compress&cs=tinysrgb&w=800" },
-                    { journalist:"lena",   sentiment:"negative",  tag:"Steuervermeidung",     tagColor:"#888",    title:"8 Mrd. € in Steueroasen: Nestlé, Unilever & Co.",          text:"Oxfam: Nestlé, Unilever, AB InBev, Danone und Mondelez verschoben 2023 über 8 Milliarden Euro in Niedrigsteuerländer — Nestlé-CEO verdiente dabei 14,4 Mio. CHF.", source:"Oxfam Food Tax Justice 2024 · Nestlé Annual Report 2023", img:"https://images.pexels.com/photos/1602726/pexels-photo-1602726.jpeg?auto=compress&cs=tinysrgb&w=800" },
-                    { journalist:"sara",   sentiment:"positive",  tag:"Klimarecht ✅",         tagColor:"#2ECC8A", title:"Shell muss Emissionen um 45 % senken — Gericht bestätigt", text:"Berufungsgericht Den Haag: Shell muss CO₂-Emissionen bis 2030 um 45 % senken. Erstmals wird ein Konzern rechtlich zur Klimawende verpflichtet — ein Präzedenzfall für ganz Europa.", source:"Gerechtshof Den Haag 2024 · Milieudefensie", img:"https://images.pexels.com/photos/1497435334941-8c899a9e74e7?auto=compress&cs=tinysrgb&w=800" },
+                    { journalist:"markus", sentiment:"neutral",   tag:"Muskeln & Ernährung",  tagColor:"#fb923c", title:"Wie viel Protein braucht man wirklich?",                   text:"Die DGE empfiehlt 0,8 g/kg Körpergewicht — das gilt für Inaktive. Für Kraftsport optimal: 1,6–2,0 g/kg. Mehr bringt keinen Mehrwert, belastet aber Nieren und Geldbeutel. Hochwertige Quellen: Hülsenfrüchte, Eier, Magerquark, Hühnchen.", source:"International Society of Sports Nutrition 2024 · DGE", img:"https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800" },
+                    { journalist:"julia",   sentiment:"negative",  tag:"Steuervermeidung",     tagColor:"#888",    title:"8 Mrd. € in Steueroasen: Nestlé, Unilever & Co.",          text:"Oxfam: Nestlé, Unilever, AB InBev, Danone und Mondelez verschoben 2023 über 8 Milliarden Euro in Niedrigsteuerländer — Nestlé-CEO verdiente dabei 14,4 Mio. CHF.", source:"Oxfam Food Tax Justice 2024 · Nestlé Annual Report 2023", img:"https://images.pexels.com/photos/1602726/pexels-photo-1602726.jpeg?auto=compress&cs=tinysrgb&w=800" },
+                    { journalist:"sara",   sentiment:"nutrition", tag:"Vitamin D",             tagColor:"#ffcc00", title:"Vitamin D3 + K2: Warum immer zusammen?",                  text:"80 % der Deutschen haben im Winter Vitamin-D-Mangel. D3 ohne K2 erhöht das Risiko von Calcium-Ablagerungen in Arterien. Optimale Kombination: 2000–4000 IE D3 täglich mit 100–200 µg K2 (MK-7). Im Sommer ersetzen 20 Min. Sonne die Supplementierung vollständig.", source:"Robert Koch-Institut 2024 · EFSA D3/K2 Review · Journal of Nutrition", img:"https://images.pexels.com/photos/1640775/pexels-photo-1640775.jpeg?auto=compress&cs=tinysrgb&w=800" },
                     { journalist:"julia",  sentiment:"positive",  tag:"Positive Entwicklung ✅",tagColor:"#2ECC8A",title:"EU verbietet Mikroplastik in 17 Produktkategorien",         text:"EU-Kommission: Ab 2025 Verbot von absichtlich zugesetztem Mikroplastik in 17 Kategorien — Kosmetik, Reinigungsmittel, Dünger. Schätzung: 500.000 Tonnen Mikroplastik pro Jahr verhindert.", source:"EU-Kommission Verordnung 2023/2055 · EEA 2024", img:"https://images.pexels.com/photos/2547565/pexels-photo-2547565.jpeg?auto=compress&cs=tinysrgb&w=800" },
                     { journalist:"tom",    sentiment:"neutral",   tag:"Analyse",              tagColor:"#44aaff", title:"Was Nestlés internes Dokument wirklich bedeutet",           text:"Nach dem Leak des Nestlé-Health-Reports 2021: 70 % des Portfolios erfüllt keine eigenen Gesundheitsstandards. Danach druckte Nestlé das 'Healthier Choice' Label auf 7.000 Produkte — ohne eine Rezeptur zu ändern.", source:"Financial Times 2021 · Nestlé Annual Report 2023", img:"https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=800" },
-                    { journalist:"markus", sentiment:"nutrition", tag:"Darmgesundheit",       tagColor:"#88cc44", title:"Präbiotika vs. Probiotika — der entscheidende Unterschied", text:"Probiotika = lebende Bakterien (Joghurt, Kefir, Sauerkraut). Präbiotika = Nahrung für diese Bakterien. Laut aktuellen Studien sind Präbiotika langfristig wirksamer. Beste Quellen: Chicorée, Knoblauch, grüne Bananen.", source:"Nature Medicine 2024 · DGNM Leitlinien", img:"https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800" },
+                    { journalist:"markus", sentiment:"neutral",   tag:"Bewegung ✅",           tagColor:"#2ECC8A", title:"30 Minuten täglich: Wie viel Sport wirklich nötig ist",   text:"WHO-Empfehlung: 150 Minuten moderate Bewegung pro Woche reichen, um das Herzerkrankungsrisiko um 35 % zu senken. Das sind 21 Minuten täglich — kein Fitnessstudio nötig. Spazierengehen, Radfahren, Treppensteigen zählen vollständig.", source:"WHO Physical Activity Guidelines 2023 · Lancet Global Health", img:"https://images.pexels.com/photos/3775566/pexels-photo-3775566.jpeg?auto=compress&cs=tinysrgb&w=800" },
                   ]
                   const day = Math.floor(Date.now() / 86400000)
                   const post = FEED_POSTS[day % FEED_POSTS.length]
@@ -2010,12 +2112,14 @@ export default function HomePage() {
                   }
                   return (
                     <div style={{ marginTop: 12, background: "var(--surface)", border: `1px solid var(--border)`, borderRadius: 16, overflow: "hidden", borderTop: `4px solid ${sm.color}` }}>
+                      {/* Entire card is clickable → TRUE Kanal (full reload to bypass JS cache) */}
+                      <a href="/channel/true" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
                       {/* Post-Header */}
                       <div style={{ padding: "10px 14px 8px", display: "flex", alignItems: "center", gap: 10 }}>
                         <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--surface-2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0 }}>{j.avatar}</div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 700, fontSize: "0.8rem" }}>{j.name}</div>
-                          <div style={{ fontSize: "0.58rem", color: "var(--text-dim)" }}>{today.toLocaleDateString("de-DE", { day: "numeric", month: "long" })}</div>
+                          <div style={{ fontWeight: 700, fontSize: "0.8rem" }}>{j.name.split(" ")[0]}</div>
+                          <div style={{ fontSize: "0.58rem", color: "var(--text-dim)" }}>{j.title} · {today.toLocaleDateString("de-DE", { day: "numeric", month: "long" })}</div>
                         </div>
                         <span style={{ fontSize: "0.58rem", fontWeight: 700, color: post.tagColor, background: post.tagColor + "15", borderRadius: 20, padding: "2px 8px", flexShrink: 0 }}>{post.tag}</span>
                       </div>
@@ -2031,11 +2135,12 @@ export default function HomePage() {
                         </div>
                         <div style={{ marginTop: 8, fontSize: "0.6rem", color: "var(--text-dim)" }}>📋 {post.source}</div>
                       </div>
+                      </a>
                       {/* Footer */}
                       <div style={{ borderTop: "1px solid var(--border)", padding: "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <Link href="/channel/true" style={{ fontSize: "0.72rem", color: "var(--accent)", fontWeight: 700, textDecoration: "none" }}>
-                          🗞️ Alle Schlagzeilen
-                        </Link>
+                        <a href="/channel/true" style={{ fontSize: "0.72rem", color: "var(--accent)", fontWeight: 700, textDecoration: "none" }}>
+                          🗞️ Alle Schlagzeilen →
+                        </a>
                         <Link href="/community" style={{ fontSize: "0.72rem", color: "var(--text-dim)", fontWeight: 700, textDecoration: "none" }}>Community →</Link>
                       </div>
                     </div>
@@ -2538,6 +2643,7 @@ export default function HomePage() {
           try {
             let id = localStorage.getItem("true-list-id")
             if (!id) { id = Math.random().toString(36).slice(2, 10); localStorage.setItem("true-list-id", id) }
+            setSharedListId(id)
             return id
           } catch { return "shared" }
         }
@@ -2549,6 +2655,37 @@ export default function HomePage() {
           const itemCount = listItems.filter(i => !i.checked).length
           const link = `https://get-true.de/join?list=${listId}&from=${encodeURIComponent(myName)}&emoji=${encodeURIComponent(inviteEmoji)}&items=${itemCount}`
           setGeneratedLink(link)
+          if (!supabase || !listId) return
+          // 1) Host in list_members eintragen (mit Foto) → Eingeladener kann es sehen
+          supabase.from("list_members").upsert({
+            list_id: listId,
+            member_name: myName,
+            member_photo: myPhoto,
+            member_emoji: inviteEmoji,
+            joined_at: new Date().toISOString(),
+          }, { onConflict: "list_id,member_name" }).then(({ error }) => {
+            if (error) console.warn("[TRUE invite] host member upsert error:", error.message)
+          })
+          // 2) Aktuelle Listenprodukte hochladen → Eingeladener sieht sie sofort
+          const rawItems = (() => { try { return JSON.parse(localStorage.getItem("shopping-list-items-v1") || "[]") } catch { return [] } })()
+          if (rawItems.length > 0) {
+            const rows = rawItems.filter((i: any) => !i.checked).map((i: any) => ({
+              list_id: listId,
+              product_id: String(i.id),
+              product_name: i.name || "",
+              product_brand: i.brand || "",
+              product_emoji: i.emoji || "🛒",
+              severity: i.severity || "none",
+              issue: `${i.category || "other"}||${i.issue || ""}`,
+              checked: false,
+              added_by: myName,
+              added_at: new Date().toISOString(),
+            }))
+            supabase.from("shared_list_items").upsert(rows, { onConflict: "list_id,product_id" }).then(({ error }) => {
+              if (error) console.warn("[TRUE invite] upload items error:", error.message)
+              else console.log("[TRUE invite] uploaded", rows.length, "items to shared list")
+            })
+          }
         }
         return (
           <>
@@ -2680,10 +2817,32 @@ export default function HomePage() {
           try {
             let id = localStorage.getItem("true-list-id")
             if (!id) { id = Math.random().toString(36).slice(2, 10); localStorage.setItem("true-list-id", id) }
+            setSharedListId(id)
+            // Upload existing items when invite modal opens
+            if (supabase && id && listItems.length > 0) {
+              const myProfile = (() => { try { return JSON.parse(localStorage.getItem("true-profile") || "{}") } catch { return {} } })()
+              const myName = myProfile.vorname || myProfile.name || "Host"
+              const rows = listItems.filter(i => !i.checked).map(i => ({
+                list_id: id,
+                product_id: String(i.id),
+                product_name: i.name,
+                product_brand: i.brand || "",
+                product_emoji: i.emoji || "🛒",
+                severity: i.severity || "none",
+                issue: `${i.category || "other"}||${i.issue || ""}`,
+                checked: false,
+                added_by: myName,
+                added_at: new Date().toISOString(),
+              }))
+              supabase.from("shared_list_items").upsert(rows, { onConflict: "list_id,product_id" }).then(() => {})
+            }
             return id
           } catch { return "shared" }
         })()
-        const link = `https://get-true.de/join?list=${listId}&name=${encodeURIComponent(inviteMember.name)}&emoji=${encodeURIComponent(inviteMember.emoji)}`
+        const myProfile2 = (() => { try { return JSON.parse(localStorage.getItem("true-profile") || "{}") } catch { return {} } })()
+        const myName2 = myProfile2.vorname || myProfile2.name || "Jemand"
+        const myPhoto2 = localStorage.getItem("true-profile-photo") || ""
+        const link = `https://get-true.de/join?list=${listId}&from=${encodeURIComponent(myName2)}&name=${encodeURIComponent(inviteMember.name)}&emoji=${encodeURIComponent(inviteMember.emoji)}`
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", zIndex: 300, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
             onClick={e => { if (e.target === e.currentTarget) setInviteMember(null) }}>

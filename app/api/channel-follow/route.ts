@@ -23,11 +23,11 @@ export async function GET(req: NextRequest) {
       .in("type", ["bot", "eva"])
 
     return NextResponse.json({
-      followers: (count ?? 0) + 1200, // Seed-Offset: ehrliche Basis + echte neue Follower
+      followers: count ?? 0,
       posts: postCount ?? 0,
     })
   } catch {
-    return NextResponse.json({ followers: 1200, posts: 0 })
+    return NextResponse.json({ followers: 0, posts: 0 })
   }
 }
 

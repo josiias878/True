@@ -429,7 +429,7 @@ function AppFeatureBlocks() {
     { icon: "📷", color: "#38BDF8", label: "Scanner",       tagline: "Scan deinen Einkauf. Erfahre Inhaltsstoffe & Konzern.", imgId: 3962285 },
     { icon: "🛒", color: "#2ECC8A", label: "Einkaufsliste", tagline: "Erstelle Listen & lade deine Familie ein.",             imgId: 3184183 },
     { icon: "👥", color: "#A78BFA", label: "Community",      tagline: "Tausch dich aus. Nimm gemeinsam Einfluss.",            imgId: 1181406 },
-    { icon: "🥗", color: "#4ade80", label: "Coaching",       tagline: "Coaching für deine persönlichen Ernährungsziele.",     imgId: 1640470 },
+    { icon: "🥗", color: "#4ade80", label: "Coaching",       tagline: "Coaching für deine persönlichen Ernährungsziele.",     imgId: 1640777 },
   ]
 
   useEffect(() => {

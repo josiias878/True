@@ -1,6 +1,6 @@
 // TRUE Service Worker — Push Notifications + Offline Cache
 
-const CACHE = "true-v5"
+const CACHE = "true-v9"
 const PRECACHE = ["/home", "/scan", "/offline"]
 
 self.addEventListener("install", e => {
@@ -18,12 +18,8 @@ self.addEventListener("activate", e => {
   e.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim()).then(() => {
-      // Notify all clients to reload after SW takeover
-      self.clients.matchAll({ type: "window" }).then(clients => {
-        clients.forEach(client => client.postMessage({ type: "SW_UPDATED" }))
-      })
-    })
+    ).then(() => self.clients.claim())
+    // controllerchange event fires in all tabs after claim() — SwRegister listens and reloads
   )
 })
 

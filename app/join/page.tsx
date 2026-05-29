@@ -11,10 +11,11 @@ function JoinInner() {
   const emoji     = params.get("emoji") || "👤"
   const listId    = params.get("list") || ""
 
-  const [step, setStep]     = useState(1) // 1=name, 2=photo
-  const [name, setName]     = useState("")
-  const [photo, setPhoto]   = useState<string | null>(null)
-  const [ready, setReady]   = useState(false)
+  const [step, setStep]         = useState(1) // 1=name, 2=photo
+  const [name, setName]         = useState("")
+  const [photo, setPhoto]       = useState<string | null>(null)
+  const [ready, setReady]       = useState(false)
+  const [hostPhoto, setHostPhoto] = useState<string | null>(null)
 
   useEffect(() => {
     try {
@@ -28,6 +29,11 @@ function JoinInner() {
       if (existingPhoto) setPhoto(existingPhoto)
     } catch {}
     setReady(true)
+    // Host-Foto aus list_members laden (wurde beim Invite-Erstellen hochgeladen)
+    if (supabase && listId && fromName) {
+      supabase.from("list_members").select("member_photo").eq("list_id", listId).eq("member_name", fromName).maybeSingle()
+        .then(({ data }) => { if (data?.member_photo) setHostPhoto(data.member_photo) })
+    }
   }, [])
 
   async function finishJoin(finalPhoto: string | null) {
@@ -53,16 +59,43 @@ function JoinInner() {
 
       // Write to Supabase list_members so HOST sees the join in realtime
       if (supabase && listId) {
-        await supabase.from("list_members").upsert({
+        const { error } = await supabase.from("list_members").upsert({
           list_id: listId,
           member_name: trimmed,
           member_photo: finalPhoto || "",
           member_emoji: emoji,
           joined_at: new Date().toISOString(),
-        }, { onConflict: "list_id,member_name" }).then(() => {})
+        }, { onConflict: "list_id,member_name" })
+        if (error) console.error("[TRUE join] Supabase list_members upsert failed:", error)
+        else console.log("[TRUE join] Wrote to list_members OK — listId:", listId, "name:", trimmed)
+
+        // Upload invitee's existing local items to the shared list
+        try {
+          const rawItems = JSON.parse(localStorage.getItem("shopping-list-items-v1") || "[]")
+          const rows = rawItems
+            .filter((i: any) => !i.checked)
+            .map((i: any) => ({
+              list_id: listId,
+              product_id: i.id,
+              product_name: i.name || "",
+              product_brand: i.brand || "",
+              product_emoji: i.emoji || "🛒",
+              severity: i.severity || "none",
+              issue: `${i.category || "other"}||${i.issue || ""}`,
+              checked: false,
+              added_by: trimmed,
+              added_at: new Date(i.addedAt || Date.now()).toISOString(),
+            }))
+          if (rows.length > 0) {
+            const { error: uploadErr } = await supabase.from("shared_list_items")
+              .upsert(rows, { onConflict: "list_id,product_id", ignoreDuplicates: true } as any)
+            if (uploadErr) console.warn("[join] item upload error:", uploadErr.message)
+            else console.log("[join] uploaded", rows.length, "items to shared list")
+          }
+        } catch {}
       }
     } catch {}
-    router.replace("/home")
+    router.replace("/list")
   }
 
   if (!ready) return (
@@ -79,8 +112,8 @@ function JoinInner() {
 
         {/* Inviter card */}
         <div style={{ background: "#161b22", border: "1px solid #30363d", borderRadius: 20, padding: "18px 20px", display: "flex", alignItems: "center", gap: 14 }}>
-          {fromPhoto
-            ? <img src={fromPhoto} alt={fromName} style={{ width: 48, height: 48, borderRadius: "50%", objectFit: "cover", border: "2px solid #2ecc8a", flexShrink: 0 }} />
+          {(hostPhoto || fromPhoto)
+            ? <img src={hostPhoto || fromPhoto} alt={fromName} style={{ width: 48, height: 48, borderRadius: "50%", objectFit: "cover", border: "2px solid #2ecc8a", flexShrink: 0 }} />
             : <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(46,204,138,0.15)", border: "2px solid #2ecc8a", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: "1.3rem", color: "#2ecc8a", flexShrink: 0 }}>{initials}</div>
           }
           <div>

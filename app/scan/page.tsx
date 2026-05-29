@@ -22,6 +22,7 @@ interface ScanResult {
   evidence?: { id: string; title: string; source: string; date: string; level: string; status?: string }[]
   imageUrl?: string | null
   source?: string
+  nutriments?: { kcal?: number; protein?: number; carbs?: number; sugar?: number; fat?: number; fiber?: number } | null
 }
 
 interface HistoryEntry {
@@ -55,12 +56,15 @@ const GRADE_LABEL: Record<string,string> = { A:"GUT", B:"OKAY", C:"BEDINGT", D:"
 
 // ── Goal-spezifischer Kontext im Scan-Ergebnis ────────────────────────────
 const GOAL_META: Record<string, { icon: string; label: string; color: string }> = {
-  env:    { icon: "🌱", label: "Umwelt schützen",  color: "#2ECC8A" },
-  health: { icon: "💪", label: "Gesünder leben",   color: "#ff7700" },
-  family: { icon: "👨‍👩‍👧", label: "Familie schützen", color: "#ffaa00" },
-  truth:  { icon: "🔍", label: "Wahrheit kennen",  color: "#44aaff" },
-  action: { icon: "✊", label: "Etwas bewegen",    color: "#cc66ff" },
-  budget: { icon: "💸", label: "Clever sparen",    color: "#ffcc00" },
+  env:        { icon: "🌱", label: "Umwelt schützen",   color: "#2ECC8A" },
+  health:     { icon: "💪", label: "Gesünder leben",    color: "#ff7700" },
+  family:     { icon: "👨‍👩‍👧", label: "Familie schützen",  color: "#ffaa00" },
+  truth:      { icon: "🔍", label: "Wahrheit kennen",   color: "#44aaff" },
+  action:     { icon: "✊", label: "Etwas bewegen",     color: "#cc66ff" },
+  budget:     { icon: "💸", label: "Clever sparen",     color: "#ffcc00" },
+  weightloss: { icon: "⚖️", label: "Abnehmen",          color: "#38BDF8" },
+  protein:    { icon: "💪", label: "Mehr Protein",      color: "#fb923c" },
+  vegan:      { icon: "🌿", label: "Vegan/Vegetarisch", color: "#4ade80" },
 }
 
 const GOAL_SCAN_HINT: Record<string, Record<string, string>> = {
@@ -99,6 +103,24 @@ const GOAL_SCAN_HINT: Record<string, Record<string, string>> = {
     high:     "Faire Alternative oft zum gleichen oder niedrigeren Preis erhältlich.",
     medium:   "TRUE hat Preisvergleiche und Alternativen für dich.",
     low:      "Kein Grund zum Wechseln — dieser Kauf ist in Ordnung.",
+  },
+  weightloss: {
+    critical: "Für Abnehmen ungeeignet — hoher Zucker- oder Kaloriengehalt. Schau auf die Nährwerte.",
+    high:     "Für dein Ziel gibt es kalorienärmere Alternativen.",
+    medium:   "Prüfe Kalorien und Zucker — TRUE zeigt dir die Nährwerte unten.",
+    low:      "Für Abnehmen unbedenklich — kalorienarm und wenig Zucker.",
+  },
+  protein: {
+    critical: "Sehr proteinarm — für Muskelaufbau klar die falsche Wahl.",
+    high:     "Wenig Protein — für Muskelaufbau besser eine proteinreichere Alternative wählen.",
+    medium:   "Mittlerer Proteingehalt — schau auf die genauen Werte unten.",
+    low:      "Gute Proteinquelle — passt zu deinem Muskelaufbau-Ziel.",
+  },
+  vegan: {
+    critical: "Enthält tierische Zutaten — nicht vegan. Schau auf die Inhaltsstoffe.",
+    high:     "Möglicherweise tierische Inhaltsstoffe enthalten — prüfe die Zutatenliste.",
+    medium:   "Veganer Status unklar — Zutaten prüfen empfohlen.",
+    low:      "Keine auffälligen tierischen Zutaten erkannt — weitgehend pflanzlich.",
   },
 }
 
@@ -1355,6 +1377,165 @@ export default function ScanPage() {
                         </div>
                       </div>
                     )}
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* ── NÄHRWERTE FÜR DEIN ZIEL ── */}
+            {(() => {
+              // Only show when user has protein / weightloss / vegan goal AND nutriments available
+              const nutriGoals = userGoals.filter(g => ["protein","weightloss","vegan"].includes(g))
+              if (nutriGoals.length === 0) return null
+              const nm = result.nutriments
+
+              // Vegan goal: use categories instead of nutriments
+              const hasVeganGoal  = nutriGoals.includes("vegan")
+              const veganCat      = (result.categories ?? []).find(c => c.id === "vegan-label")
+              const vegetCat      = (result.categories ?? []).find(c => c.id === "vegetarian-label")
+              const animalCat     = (result.categories ?? []).find(c => c.id === "animal-ingredient")
+              const palmCat       = (result.categories ?? []).find(c => c.id === "palmoel")
+
+              const hasProteinGoal    = nutriGoals.includes("protein")
+              const hasWeightlossGoal = nutriGoals.includes("weightloss")
+              const hasNutrimentData  = nm && (nm.protein !== undefined || nm.kcal !== undefined || nm.sugar !== undefined)
+
+              if (!hasVeganGoal && !hasNutrimentData) return null
+
+              return (
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
+                  {/* Header */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px 12px" }}>
+                    <span style={{ fontSize: "1.1rem" }}>🎯</span>
+                    <span style={{ flex: 1, fontWeight: 800, fontSize: "0.88rem", color: "var(--text)" }}>Für dein Ziel</span>
+                  </div>
+                  <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+
+                    {/* ── Protein goal ── */}
+                    {hasProteinGoal && nm?.protein !== undefined && (() => {
+                      const p = nm.protein
+                      const color = p >= 15 ? "#2ECC8A" : p >= 8 ? "#ffcc00" : "#ff4455"
+                      const label = p >= 15 ? "Sehr proteinreich ✓" : p >= 8 ? "Mittlerer Proteingehalt" : "Wenig Protein ✗"
+                      const tip   = p >= 15 ? "Super für Muskelaufbau — gute Proteinquelle." : p >= 8 ? "Brauchbar als Ergänzung, nicht als Hauptquelle." : "Kaum Protein — für Muskelaufbau kaum geeignet."
+                      return (
+                        <div style={{ background: color + "12", border: `1.5px solid ${color}44`, borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+                          <div style={{ fontSize: "1.6rem", fontWeight: 900, color, lineHeight: 1, flexShrink: 0, minWidth: 44, textAlign: "center" }}>
+                            {p}<span style={{ fontSize: "0.7rem", fontWeight: 700 }}>g</span>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: "0.55rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-dim)", marginBottom: 2 }}>Protein / 100g</div>
+                            <div style={{ fontWeight: 800, fontSize: "0.82rem", color }}>{label}</div>
+                            <div style={{ fontSize: "0.68rem", color: "var(--text-dim)", marginTop: 2 }}>{tip}</div>
+                          </div>
+                          <span style={{ fontSize: "1.3rem", marginLeft: "auto" }}>💪</span>
+                        </div>
+                      )
+                    })()}
+
+                    {/* ── Weightloss goal ── */}
+                    {hasWeightlossGoal && (nm?.kcal !== undefined || nm?.sugar !== undefined) && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                        {nm.kcal !== undefined && (() => {
+                          const k = nm.kcal
+                          const color = k <= 60 ? "#2ECC8A" : k <= 200 ? "#ffcc00" : "#ff4455"
+                          const label = k <= 60 ? "Kalorienarm ✓" : k <= 200 ? "Mittel" : "Kalorienreich ✗"
+                          return (
+                            <div style={{ background: color + "12", border: `1.5px solid ${color}44`, borderRadius: 12, padding: "9px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                              <div style={{ fontSize: "1.4rem", fontWeight: 900, color, lineHeight: 1, flexShrink: 0, minWidth: 44, textAlign: "center" }}>
+                                {k}<span style={{ fontSize: "0.65rem", fontWeight: 700 }}>kcal</span>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: "0.55rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-dim)", marginBottom: 2 }}>Kalorien / 100g</div>
+                                <div style={{ fontWeight: 800, fontSize: "0.8rem", color }}>{label}</div>
+                              </div>
+                              <span style={{ fontSize: "1.2rem", marginLeft: "auto" }}>⚖️</span>
+                            </div>
+                          )
+                        })()}
+                        {nm.sugar !== undefined && (() => {
+                          const s = nm.sugar
+                          const color = s <= 5 ? "#2ECC8A" : s <= 12 ? "#ffcc00" : "#ff4455"
+                          const label = s <= 5 ? "Wenig Zucker ✓" : s <= 12 ? "Mittlerer Zuckergehalt" : "Zuckerreich ✗"
+                          return (
+                            <div style={{ background: color + "12", border: `1.5px solid ${color}44`, borderRadius: 12, padding: "9px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                              <div style={{ fontSize: "1.4rem", fontWeight: 900, color, lineHeight: 1, flexShrink: 0, minWidth: 44, textAlign: "center" }}>
+                                {s}<span style={{ fontSize: "0.65rem", fontWeight: 700 }}>g</span>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: "0.55rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-dim)", marginBottom: 2 }}>Zucker / 100g</div>
+                                <div style={{ fontWeight: 800, fontSize: "0.8rem", color }}>{label}</div>
+                              </div>
+                              <span style={{ fontSize: "1.2rem", marginLeft: "auto" }}>🍬</span>
+                            </div>
+                          )
+                        })()}
+                      </div>
+                    )}
+
+                    {/* ── Vegan goal ── */}
+                    {hasVeganGoal && (() => {
+                      if (veganCat) return (
+                        <div style={{ background: "#4ade8012", border: "1.5px solid #4ade8044", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                          <span style={{ fontSize: "1.5rem" }}>🌿</span>
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: "0.85rem", color: "#4ade80" }}>Vegan zertifiziert ✓</div>
+                            <div style={{ fontSize: "0.68rem", color: "var(--text-dim)", marginTop: 2 }}>Laut Hersteller vegan — keine tierischen Zutaten.</div>
+                          </div>
+                        </div>
+                      )
+                      if (vegetCat) return (
+                        <div style={{ background: "#fbbf2412", border: "1.5px solid #fbbf2444", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                          <span style={{ fontSize: "1.5rem" }}>🥕</span>
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: "0.85rem", color: "#fbbf24" }}>Vegetarisch — nicht vegan</div>
+                            <div style={{ fontSize: "0.68rem", color: "var(--text-dim)", marginTop: 2 }}>Vegetarisch zertifiziert, enthält aber ggf. Milch oder Ei.</div>
+                          </div>
+                        </div>
+                      )
+                      if (animalCat) return (
+                        <div style={{ background: "#ff445512", border: "1.5px solid #ff445544", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                          <span style={{ fontSize: "1.5rem" }}>🐄</span>
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: "0.85rem", color: "#ff4455" }}>Tierische Zutaten ✗</div>
+                            <div style={{ fontSize: "0.68rem", color: "var(--text-dim)", marginTop: 2 }}>Enthält Fleisch, Milch, Ei, Gelatine o.ä. — nicht vegan.</div>
+                          </div>
+                        </div>
+                      )
+                      if (palmCat) return (
+                        <div style={{ background: "#ff770012", border: "1.5px solid #ff770044", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                          <span style={{ fontSize: "1.5rem" }}>🌴</span>
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: "0.85rem", color: "#ff7700" }}>Palmöl enthalten</div>
+                            <div style={{ fontSize: "0.68rem", color: "var(--text-dim)", marginTop: 2 }}>Vegan, enthält aber Palmöl — umweltkritisch.</div>
+                          </div>
+                        </div>
+                      )
+                      return (
+                        <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                          <span style={{ fontSize: "1.5rem" }}>❓</span>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "var(--text)" }}>Vegan-Status unklar</div>
+                            <div style={{ fontSize: "0.68rem", color: "var(--text-dim)", marginTop: 2 }}>Keine Vegan-Kennzeichnung gefunden — Zutaten prüfen.</div>
+                          </div>
+                        </div>
+                      )
+                    })()}
+
+                    {/* Vollständige Nährwerttabelle (kompakt) */}
+                    {nm && (nm.kcal !== undefined || nm.protein !== undefined || nm.carbs !== undefined) && (
+                      <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10, marginTop: 2 }}>
+                        <div style={{ fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-dim)", marginBottom: 7 }}>Nährwerte pro 100g</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
+                          {nm.kcal     !== undefined && <div style={{ background: "var(--surface-2)", borderRadius: 10, padding: "7px 10px", textAlign: "center" }}><div style={{ fontSize: "0.95rem", fontWeight: 900, color: "var(--text)" }}>{nm.kcal}</div><div style={{ fontSize: "0.57rem", color: "var(--text-dim)", marginTop: 1 }}>kcal</div></div>}
+                          {nm.protein  !== undefined && <div style={{ background: "var(--surface-2)", borderRadius: 10, padding: "7px 10px", textAlign: "center" }}><div style={{ fontSize: "0.95rem", fontWeight: 900, color: "var(--text)" }}>{nm.protein}g</div><div style={{ fontSize: "0.57rem", color: "var(--text-dim)", marginTop: 1 }}>Protein</div></div>}
+                          {nm.carbs    !== undefined && <div style={{ background: "var(--surface-2)", borderRadius: 10, padding: "7px 10px", textAlign: "center" }}><div style={{ fontSize: "0.95rem", fontWeight: 900, color: "var(--text)" }}>{nm.carbs}g</div><div style={{ fontSize: "0.57rem", color: "var(--text-dim)", marginTop: 1 }}>Kohlehydr.</div></div>}
+                          {nm.sugar    !== undefined && <div style={{ background: "var(--surface-2)", borderRadius: 10, padding: "7px 10px", textAlign: "center" }}><div style={{ fontSize: "0.95rem", fontWeight: 900, color: "var(--text)" }}>{nm.sugar}g</div><div style={{ fontSize: "0.57rem", color: "var(--text-dim)", marginTop: 1 }}>Zucker</div></div>}
+                          {nm.fat      !== undefined && <div style={{ background: "var(--surface-2)", borderRadius: 10, padding: "7px 10px", textAlign: "center" }}><div style={{ fontSize: "0.95rem", fontWeight: 900, color: "var(--text)" }}>{nm.fat}g</div><div style={{ fontSize: "0.57rem", color: "var(--text-dim)", marginTop: 1 }}>Fett</div></div>}
+                          {nm.fiber    !== undefined && <div style={{ background: "var(--surface-2)", borderRadius: 10, padding: "7px 10px", textAlign: "center" }}><div style={{ fontSize: "0.95rem", fontWeight: 900, color: "var(--text)" }}>{nm.fiber}g</div><div style={{ fontSize: "0.57rem", color: "var(--text-dim)", marginTop: 1 }}>Ballaststoffe</div></div>}
+                        </div>
+                      </div>
+                    )}
+
                   </div>
                 </div>
               )

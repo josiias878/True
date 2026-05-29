@@ -1,5 +1,4 @@
 "use client"
-import AuthGuard from "@/components/AuthGuard"
 import BottomNav from "@/components/BottomNav"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
@@ -29,13 +28,17 @@ function timeAgo(ms: number): string {
   return `Vor ${Math.floor(diff / 86_400_000)} Tag${Math.floor(diff / 86_400_000) === 1 ? "" : "en"}`
 }
 
-const AUTHOR_META: Record<string, { name: string; emoji: string; color: string }> = {
-  bot:   { name: "TRUE Bot",    emoji: "📰", color: "#2ECC8A" },
-  eva:   { name: "Eva Müller",  emoji: "✍️", color: "#ffaa00" },
-  coach: { name: "Coach",       emoji: "🥗", color: "#44aaff" },
+const AUTHOR_META: Record<string, { name: string; emoji: string; color: string; title: string }> = {
+  bot:    { name: "TRUE Bot", emoji: "📰", color: "#2ECC8A", title: "Automatische Recherche" },
+  eva:    { name: "Julia",    emoji: "✍️", color: "#ffaa00", title: "Allgemeine Redaktion" },
+  markus: { name: "Markus",  emoji: "⚡", color: "#fb923c", title: "Sportwissenschaftler" },
+  sara:   { name: "Sara",    emoji: "🥗", color: "#44aaff", title: "Ernährungsberaterin" },
+  tom:    { name: "Tom",     emoji: "📋", color: "#cc66ff", title: "Verbraucherschutz" },
 }
 function postAvatar(type: string) { return AUTHOR_META[type]?.emoji ?? "📡" }
-function postName(type: string)   { return AUTHOR_META[type]?.name ?? "TRUE" }
+function postFirstName(type: string) { return (AUTHOR_META[type]?.name ?? "TRUE Redaktion").split(" ")[0] }
+function postName(type: string)   { return AUTHOR_META[type]?.name ?? "TRUE Redaktion" }
+function postTitle(type: string)  { return AUTHOR_META[type]?.title ?? "TRUE Team" }
 function postColor(type: string)  { return AUTHOR_META[type]?.color ?? ACCENT }
 
 // ── Instagram-style vertical post viewer ─────────────────────────────────────
@@ -85,8 +88,8 @@ function PostFeed({
                 {postAvatar(post.type)}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 800, fontSize: "0.88rem", color: "var(--text)" }}>{postName(post.type)}</div>
-                <div style={{ fontSize: "0.68rem", color: "var(--text-dim)" }}>{timeAgo(post.createdAt)}</div>
+                <div style={{ fontWeight: 800, fontSize: "0.88rem", color: "var(--text)" }}>{postFirstName(post.type)}</div>
+                <div style={{ fontSize: "0.6rem", color: "var(--text-dim)" }}>{postTitle(post.type)} · {timeAgo(post.createdAt)}</div>
               </div>
               <span style={{ background: post.tagColor + "18", color: post.tagColor, border: `1px solid ${post.tagColor}33`, borderRadius: 20, padding: "3px 10px", fontSize: "0.68rem", fontWeight: 700 }}>{post.tag}</span>
             </div>
@@ -207,7 +210,7 @@ export default function TrueChannelPage() {
     supabase
       .from("posts")
       .select("id, type, tag, tag_color, title, text, source, img_url, likes, created_at")
-      .in("type", ["bot", "eva", "coach"])
+      .in("type", ["bot", "eva", "markus", "sara", "tom"])
       .order("created_at", { ascending: false })
       .limit(100)
       .then(({ data }) => {
@@ -274,7 +277,6 @@ export default function TrueChannelPage() {
   }
 
   return (
-    <AuthGuard>
       <div style={{ minHeight: "100dvh", background: "var(--background)", color: "var(--text)", fontFamily: "system-ui,-apple-system,sans-serif", paddingBottom: 80 }}>
 
         {/* Header */}
@@ -321,7 +323,7 @@ export default function TrueChannelPage() {
                 <span style={{ background: ACCENT + "18", color: ACCENT, border: `1px solid ${ACCENT}33`, borderRadius: 4, padding: "2px 7px", fontSize: "0.58rem", fontWeight: 800 }}>OFFIZIELL</span>
               </div>
               <p style={{ fontSize: "0.82rem", color: "var(--text-dim)", lineHeight: 1.55, margin: 0 }}>
-                Täglich neue Hintergründe, Recherchen & Fakten — von unserem Bot, Journalistin Eva Müller und dem Coach.
+                Täglich neue Recherchen, Fakten & Hintergründe — von Julia, Markus, Sara, Tom und dem TRUE Bot.
               </p>
             </div>
 
@@ -404,6 +406,5 @@ export default function TrueChannelPage() {
 
         <BottomNav />
       </div>
-    </AuthGuard>
   )
 }

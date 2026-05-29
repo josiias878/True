@@ -3,7 +3,7 @@
  * Used by home/page.tsx, list/page.tsx, scan/page.tsx.
  */
 
-type Category = "produce" | "dairy" | "bread" | "pasta" | "meat" | "frozen" | "drinks" | "snacks" | "household"
+type Category = "produce" | "dairy" | "bread" | "pasta" | "meat" | "frozen" | "drinks" | "snacks" | "household" | "other"
 
 // [regex, emoji, category]
 const RULES: [RegExp, string, Category][] = [
@@ -223,6 +223,55 @@ const RULES: [RegExp, string, Category][] = [
   [/salsa|bbq.?soße|worcestersauce/,                          "🍅", "produce"],
   [/konserve|dose.*(gemüse|fisch|bohnen|mais|tomate)/,        "🥫", "produce"],
 
+  // ── Büro & Schreibwaren ──────────────────────────────────────────────────────
+  [/kleb(?:e)?stift|klebestift|uhu|pritt|klebstoff|kleber/,   "🖊️", "other"],
+  [/schere|bastelschere/,                                      "✂️", "other"],
+  [/bleistift|stift(?:e)?|kugelschreiber|kuli|filzstift|marker|highlighter/, "✏️", "other"],
+  [/radiergummi|tipp.?ex|korrekturroller/,                    "📝", "other"],
+  [/hefter|heftklammern|tacker|locher/,                       "📎", "other"],
+  [/büroklammern?|clips/,                                     "📎", "other"],
+  [/lineal|geodreieck|zirkel/,                                "📐", "other"],
+  [/notizbuch|notizblock|heft(?!ig)|schulheft|collegeblock/,  "📓", "other"],
+  [/zeichenblock|skizzenblock|malblock/,                      "🎨", "other"],
+  [/umschlag|briefumschlag|kuvert/,                           "✉️", "other"],
+  [/briefmarke|stamp/,                                        "📬", "other"],
+  [/tesafilm|klebeband|tape/,                                 "🎁", "other"],
+  [/post.?it|haftnotiz/,                                      "📌", "other"],
+  [/ordner|ringbuch|mappe/,                                   "📁", "other"],
+  [/druckerpatrone|tinte|toner|patronen/,                     "🖨️", "other"],
+  [/druckerpapier|kopierp(?:apier)?|a4.?papier/,             "🗒️", "other"],
+
+  // ── Spielzeug & Kinder ────────────────────────────────────────────────────────
+  [/lego|playmobil|baustein|bauklötze/,                       "🧱", "other"],
+  [/spielzeug|puppe(?!nkuchen)|teddy|kuscheltier/,            "🧸", "other"],
+  [/puzzle/,                                                   "🧩", "other"],
+  [/ball(?!on)/,                                              "⚽", "other"],
+  [/buntstifte|malkreide|fingerfarbe|wasserfarbe|acrylfarbe/, "🎨", "other"],
+  [/knete|plastilin/,                                         "🎨", "other"],
+
+  // ── Technik & Elektronik ─────────────────────────────────────────────────────
+  [/batterie(?:n)?|akkus?/,                                   "🔋", "other"],
+  [/glühbirne|leuchtmittel|led.?lampe/,                      "💡", "other"],
+  [/ladekabel|usb.?kabel|netzteil/,                           "🔌", "other"],
+  [/kopfhörer|earbuds|ohrhörer/,                              "🎧", "other"],
+
+  // ── Gartenarbeit & Haustier ──────────────────────────────────────────────────
+  [/blumenerde|pflanzerde|gartenerde/,                        "🌱", "other"],
+  [/blumentopf|pflanzgefäß/,                                  "🪴", "other"],
+  [/dünger|pflanzendünger/,                                   "🌿", "other"],
+  [/saatgut|samen|blumensamen/,                               "🌱", "other"],
+  [/gartenschere|gießkanne|gartenhandschuh/,                  "🌿", "other"],
+
+  // ── Medizin & Gesundheit ──────────────────────────────────────────────────────
+  [/pflaster|wundpflaster|hansaplast/,                        "🩹", "other"],
+  [/tabletten?|kapseln?|pille/,                               "💊", "other"],
+  [/vitamin|supplement|nahrungsergänzung/,                    "💊", "other"],
+  [/verbandsmull|binde|verband/,                              "🩹", "other"],
+  [/thermometer/,                                             "🌡️", "other"],
+  [/desinfektionsmittel|desinfektion/,                        "🧴", "other"],
+  [/masken?|mund.?nase|atemschutz/,                           "😷", "other"],
+  [/kondome?|verhütung/,                                      "💊", "other"],
+
   // ── Hygiene & Haushalt ───────────────────────────────────────────────────────
   [/zahnpasta|zahnbürste|zahncreme|mundspülung/,              "🦷", "household"],
   [/shampoo|conditioner|haarspülung|haarkur/,                 "🧴", "household"],
@@ -260,5 +309,5 @@ export function guessCategory(name: string): Category {
   for (const [pattern, , category] of RULES) {
     if (pattern.test(n)) return category
   }
-  return "produce"
+  return "other"
 }

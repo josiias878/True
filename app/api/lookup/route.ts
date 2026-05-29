@@ -14,12 +14,27 @@ function mapEcoscoreToSeverity(grade?: string): string {
 }
 
 async function lookupOpenFoodFacts(barcode: string) {
-  const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}.json?fields=product_name_de,product_name,brands,nova_group,ecoscore_grade,ingredients_text,additives_tags,image_front_small_url,image_front_url`
+  const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}.json?fields=product_name_de,product_name,brands,nova_group,ecoscore_grade,ingredients_text,additives_tags,image_front_small_url,image_front_url,nutriments,labels_tags`
   const res = await fetch(url, { next: { revalidate: 3600 } })
   if (!res.ok) return null
   const data = await res.json()
   if (data.status !== 1 || !data.product) return null
   return data.product
+}
+
+function extractNutriments(product: Record<string, unknown>): {
+  kcal?: number; protein?: number; carbs?: number; sugar?: number; fat?: number; fiber?: number
+} | null {
+  const n = product.nutriments as Record<string, number> | undefined
+  if (!n) return null
+  const r: { kcal?: number; protein?: number; carbs?: number; sugar?: number; fat?: number; fiber?: number } = {}
+  if (typeof n["energy-kcal_100g"] === "number") r.kcal    = Math.round(n["energy-kcal_100g"])
+  if (typeof n["proteins_100g"]    === "number") r.protein  = +n["proteins_100g"].toFixed(1)
+  if (typeof n["carbohydrates_100g"] === "number") r.carbs  = +n["carbohydrates_100g"].toFixed(1)
+  if (typeof n["sugars_100g"]      === "number") r.sugar    = +n["sugars_100g"].toFixed(1)
+  if (typeof n["fat_100g"]         === "number") r.fat      = +n["fat_100g"].toFixed(1)
+  if (typeof n["fiber_100g"]       === "number") r.fiber    = +n["fiber_100g"].toFixed(1)
+  return Object.keys(r).length > 0 ? r : null
 }
 
 export async function GET(req: NextRequest) {
@@ -115,6 +130,20 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Vegan / vegetarian label check
+    const labels: string[] = product.labels_tags ?? []
+    const isVegan = labels.some((l: string) => l.includes("vegan"))
+    const isVegetarian = labels.some((l: string) => l.includes("vegetarian"))
+    const animalIngredients = ["gelatine","gelatin","schwein","schmalz","lard","fleisch","meat","rindfleisch","hühnerfleisch","milch","milk","ei","egg","honig","honey"]
+    const hasAnimalIngredient = animalIngredients.some(a => ingredients.includes(a))
+    if (isVegan) {
+      categories.push({ id: "vegan-label", name: "Vegan ✓", icon: "🌱", description: "Produkt ist als vegan zertifiziert (laut Herstellerangabe)." })
+    } else if (isVegetarian) {
+      categories.push({ id: "vegetarian-label", name: "Vegetarisch ✓", icon: "🥕", description: "Produkt ist als vegetarisch zertifiziert." })
+    } else if (hasAnimalIngredient) {
+      categories.push({ id: "animal-ingredient", name: "Tierische Zutaten", icon: "🐄", description: "Enthält tierische Zutaten (Fleisch, Milch, Ei, Gelatine o.ä.)." })
+    }
+
     // MSG check
     const additives: string[] = product.additives_tags ?? []
     if (additives.includes("en:e621")) {
@@ -157,6 +186,7 @@ export async function GET(req: NextRequest) {
         categories: mergedCategories,
         evidence: [...internalEvidence, ...evidence],
         imageUrl: product.image_front_small_url || product.image_front_url || null,
+        nutriments: extractNutriments(product),
       })
     }
 
@@ -179,6 +209,7 @@ export async function GET(req: NextRequest) {
       evidence,
       source: "openfoodfacts",
       imageUrl: product.image_front_small_url || product.image_front_url || null,
+      nutriments: extractNutriments(product),
     })
   } catch {
     return NextResponse.json({ found: false, query: q })

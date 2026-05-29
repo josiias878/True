@@ -58,6 +58,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="icon" href="/icon-192.png" sizes="192x192" type="image/png" />
         {/* Leaflet CSS — must load before any map renders */}
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossOrigin="" />
+        {/* Version check — runs before any cached JS, forces reload on new deploy */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function(){
+            var V = "20260529-1";
+            try {
+              var stored = localStorage.getItem("true-build");
+              var url = location.href;
+              var hasV = url.indexOf("_v=") !== -1;
+              if (stored !== V && !hasV) {
+                localStorage.setItem("true-build", V);
+                var base = url.split("?")[0];
+                location.replace(base + "?_v=" + V);
+              } else {
+                localStorage.setItem("true-build", V);
+              }
+            } catch(e){}
+          })();
+        ` }} />
       </head>
       <body className="min-h-full">
         <ThemeProvider>{children}</ThemeProvider>

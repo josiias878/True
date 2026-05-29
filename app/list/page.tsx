@@ -6,7 +6,9 @@ import { ThemeToggle, ThemeIcon } from "@/components/ThemeProvider"
 import Link from "next/link"
 import PremiumGate from "@/components/PremiumGate"
 import { useListSync } from "@/lib/useListSync"
+import { useSharedListSync } from "@/lib/useSharedListSync"
 import { useSupabaseAuth } from "@/lib/useSupabaseAuth"
+import { supabase } from "@/lib/supabase"
 import { guessEmoji, guessCategory } from "@/lib/productDetection"
 import ProductCoachPanel from "@/components/ProductCoachPanel"
 
@@ -15,7 +17,7 @@ interface FamilyMember { id: string; name: string; age: string; emoji: string; a
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Severity = "critical" | "high" | "medium" | "low" | "none"
-type Category = "snacks" | "drinks" | "dairy" | "bread" | "pasta" | "produce" | "household" | "frozen" | "meat"
+type Category = "snacks" | "drinks" | "dairy" | "bread" | "pasta" | "produce" | "household" | "frozen" | "meat" | "other"
 
 interface Alternative {
   name: string
@@ -129,9 +131,10 @@ const CATEGORY_META: Record<Category, { label: string; emoji: string; bg: string
   meat:      { label: "Fleisch & Fisch",  emoji: "🥩", color: "#ff4455", bg: "rgba(255,68,85,0.10)",    border: "rgba(255,68,85,0.25)"   },
   frozen:    { label: "Tiefkühl",         emoji: "🧊", color: "#88eeff", bg: "rgba(136,238,255,0.10)",  border: "rgba(136,238,255,0.25)" },
   household: { label: "Haushalt",         emoji: "🧴", color: "#aaaacc", bg: "rgba(170,170,204,0.10)",  border: "rgba(170,170,204,0.25)" },
+  other:     { label: "Sonstiges",        emoji: "📦", color: "#888888", bg: "rgba(136,136,136,0.10)",  border: "rgba(136,136,136,0.25)" },
 }
 
-const CATEGORY_ORDER: Category[] = ["produce", "dairy", "bread", "pasta", "meat", "frozen", "drinks", "snacks", "household"]
+const CATEGORY_ORDER: Category[] = ["produce", "dairy", "bread", "pasta", "meat", "frozen", "drinks", "snacks", "household", "other"]
 
 const CATEGORY_FILTERS = [
   { key: "all",       label: "Alle",            emoji: "🛒",  color: "var(--accent)" },
@@ -144,6 +147,7 @@ const CATEGORY_FILTERS = [
   { key: "household", label: "Haushalt",         emoji: "🧴",  color: "#aaaacc" },
   { key: "frozen",    label: "Tiefkühl",         emoji: "🧊",  color: "#88eeff" },
   { key: "meat",      label: "Fleisch & Fisch",  emoji: "🥩",  color: "#ff4455" },
+  { key: "other",     label: "Sonstiges",        emoji: "📦",  color: "#888888" },
 ]
 
 const STORES = ["Alle", "Rewe", "Edeka", "Lidl", "Aldi", "dm", "Alnatura", "Bio Company"]
@@ -200,6 +204,7 @@ const CAT_FLAGS: Record<string, string[]> = {
   meat:      ["protein","animal"],
   frozen:    ["processed"],
   household: ["household"],
+  other:     ["non-food"],
 }
 
 // Protein per 100g known products
@@ -271,7 +276,7 @@ function drinkTips(items: ListItem[], goal?: string): CoachTip[] {
 }
 
 function analyzeCart(goal: string, items: ListItem[]): CoachTip[] {
-  const food = items.filter(i => i.category !== "household")
+  const food = items.filter(i => i.category !== "household" && i.category !== "other")
   const tips: CoachTip[] = []
   const has = (cat: string) => food.some(i => i.category === cat)
   const get = (id: string) => food.find(i => i.id === id)
@@ -425,7 +430,7 @@ const QUICK_REPLIES = [
 // ─── Intelligente Antwort-Engine ──────────────────────────────────────────────
 function generateCoachReply(input: string, items: ListItem[], goals: string[], allergies: string[]): ChatMsg[] {
   const q    = input.toLowerCase().trim()
-  const food = items.filter(i => i.category !== "household")
+  const food = items.filter(i => i.category !== "household" && i.category !== "other")
   const activeGoal = goals.find(g => GOAL_LABELS[g]) ?? ""
 
   // Keyword-basierte Antworten
@@ -711,7 +716,11 @@ export default function ShoppingListPage() {
   const [showPersonSheet, setShowPersonSheet] = useState(false)
   const [newPersonEmoji, setNewPersonEmoji]   = useState("🧒")
   const [profilePhoto, setProfilePhoto]       = useState<string | null>(null)
+  const [sharedListId, setSharedListId]       = useState<string | null>(null)
+  const [isInvitee, setIsInvitee]             = useState(false)      // joined via invite link
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [sharedMembers, setSharedMembers] = useState<{name: string; photo: string; emoji: string}[]>([])
+  const [toastNotif, setToastNotif] = useState<{addedBy: string; itemName: string} | null>(null)
 
   // Load from localStorage
   useEffect(() => {
@@ -793,6 +802,13 @@ export default function ShoppingListPage() {
       const c = localStorage.getItem("list-item-note-v1")
       if (c) setItemComment(JSON.parse(c))
     } catch {}
+    // Shared list: check if in a shared list (host or invitee)
+    try {
+      const lid = localStorage.getItem("true-list-id")
+      if (lid) setSharedListId(lid)
+      const invBy = localStorage.getItem("true-invited-by")
+      if (invBy) setIsInvitee(true)
+    } catch {}
     setHydrated(true)
     return () => {
       window.removeEventListener("focus", loadProfile)
@@ -800,8 +816,79 @@ export default function ShoppingListPage() {
     }
   }, [])
 
-  // Supabase sync
-  const { syncAdd, syncRemove, syncToggle } = useListSync(user, items as any, setItems as any, hydrated)
+  // Notification callback: fires when another list member adds an item
+  const handleNewItemByOther = useCallback((addedBy: string, itemName: string) => {
+    setToastNotif({ addedBy, itemName })
+    setTimeout(() => setToastNotif(null), 4500)
+  }, [])
+
+  // Subscribe to list_members table to track shared list participants
+  useEffect(() => {
+    if (!sharedListId || !supabase) return
+    const myN = (() => { try { const p = localStorage.getItem("true-profile"); return JSON.parse(p||"{}").name || localStorage.getItem("true-guest-name") || "Ich" } catch { return "Ich" } })()
+    function fetchSharedMembers() {
+      supabase!.from("list_members")
+        .select("member_name,member_photo,member_emoji")
+        .eq("list_id", sharedListId!)
+        .then(({ data }: any) => {
+          if (data) {
+            const others = data.filter((m: any) => m.member_name !== myN)
+            setSharedMembers(others.map((m: any) => ({
+              name: m.member_name,
+              photo: m.member_photo || "",
+              emoji: m.member_emoji || "👤",
+            })))
+          }
+        })
+    }
+    fetchSharedMembers()
+    const poll = setInterval(fetchSharedMembers, 10_000)
+    const channel = supabase.channel(`list-members-list-${sharedListId}`)
+      .on("postgres_changes" as any,
+        { event: "*", schema: "public", table: "list_members", filter: `list_id=eq.${sharedListId}` },
+        fetchSharedMembers
+      ).subscribe()
+    return () => { supabase?.removeChannel(channel); clearInterval(poll) }
+  }, [sharedListId])
+
+  // Auth-based Supabase sync (only for logged-in users without a shared list)
+  const usePersonalSync = !!user && !sharedListId
+  const { syncAdd: personalAdd, syncRemove: personalRemove, syncToggle: personalToggle } = useListSync(
+    usePersonalSync ? user : null,
+    items as any,
+    setItems as any,
+    hydrated
+  )
+
+  // Shared list sync (host + guest via invite link) — keyed by list_id, no auth required
+  const sharedName = (() => { try { const p = localStorage.getItem("true-profile"); return JSON.parse(p||"{}").name || localStorage.getItem("true-guest-name") || "Ich" } catch { return "Ich" } })()
+  const { syncAdd: sharedAdd, syncRemove: sharedRemove, syncToggle: sharedToggle, uploadExisting } = useSharedListSync(
+    sharedListId,
+    setItems as any,
+    hydrated,
+    sharedName,
+    handleNewItemByOther,
+  )
+
+  // Route sync calls through the right backend
+  const syncAdd    = sharedListId ? sharedAdd    : personalAdd
+  const syncRemove = sharedListId ? sharedRemove : personalRemove
+  const syncToggle = sharedListId ? sharedToggle : personalToggle
+
+  // When shared list becomes active for the first time (host just generated invite),
+  // upload existing items so the invitee sees them immediately
+  const uploadedRef = useRef(false)
+  useEffect(() => {
+    if (!sharedListId || !hydrated || uploadedRef.current) return
+    uploadedRef.current = true
+    // Small delay so items are loaded from localStorage first
+    setTimeout(() => {
+      setItems(prev => {
+        if (prev.length > 0) uploadExisting(prev as any)
+        return prev
+      })
+    }, 800)
+  }, [sharedListId, hydrated])
 
   // Save to localStorage
   useEffect(() => {
@@ -892,8 +979,16 @@ export default function ShoppingListPage() {
   // ─── Derived state ──────────────────────────────────────────────────────────
 
   const filteredItems = items.filter(it => {
-    const catOk  = activeCategory === "all" || it.category === activeCategory
-    const persOk = activePerson === "all" || (activePerson === "mine" ? !it.personId : it.personId === activePerson)
+    const catOk = activeCategory === "all" || it.category === activeCategory
+    let persOk: boolean
+    if (sharedListId) {
+      // In shared mode: filter by addedBy field
+      if (activePerson === "all") persOk = true
+      else if (activePerson === "mine") persOk = !(it as any).addedBy || (it as any).addedBy === sharedName
+      else persOk = (it as any).addedBy === activePerson
+    } else {
+      persOk = activePerson === "all" || (activePerson === "mine" ? !it.personId : it.personId === activePerson)
+    }
     return catOk && persOk
   })
   const unchecked = filteredItems.filter(it => !it.checked)
@@ -948,6 +1043,18 @@ export default function ShoppingListPage() {
         .check-overlay { pointer-events: none; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 20px; background: rgba(0,0,0,0.18); font-size: 1.8rem; }
       `}</style>
 
+      {/* ── Shared list banner (invitee view) ── */}
+      {isInvitee && sharedListId && (
+        <div style={{ background: "rgba(46,204,138,0.10)", borderBottom: "1px solid rgba(46,204,138,0.25)", padding: "10px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: "1.2rem" }}>🔗</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: "0.78rem", fontWeight: 800, color: "var(--accent)" }}>Geteilte Einkaufsliste</div>
+            <div style={{ fontSize: "0.68rem", color: "var(--text-dim)" }}>Eingeladen von {localStorage.getItem("true-invited-by") || "jemandem"} · Änderungen sind für alle sichtbar</div>
+          </div>
+          <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--accent)", background: "rgba(46,204,138,0.15)", borderRadius: 6, padding: "2px 8px" }}>LIVE</span>
+        </div>
+      )}
+
       {/* ── Header ── */}
       <header style={{
         position: "sticky", top: 0, zIndex: 50,
@@ -958,10 +1065,10 @@ export default function ShoppingListPage() {
       }}>
         <div style={{ flex: 1 }}>
           <h1 style={{ fontSize: "1.25rem", fontWeight: 700, letterSpacing: "-0.02em" }}>
-            Einkaufsliste
+            {sharedListId ? "🔗 Geteilte Liste" : "Einkaufsliste"}
           </h1>
           <p style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 1 }}>
-            {items.filter(i => !i.checked).length} Artikel übrig
+            {items.filter(i => !i.checked).length} Artikel übrig{sharedListId ? " · Live-Sync aktiv" : ""}
           </p>
         </div>
 
@@ -1035,24 +1142,42 @@ export default function ShoppingListPage() {
             <span style={{ fontSize: "0.62rem", fontWeight: activePerson === tab.id ? 700 : 500, color: activePerson === tab.id ? "var(--accent)" : "var(--text-dim)", whiteSpace: "nowrap" }}>{tab.label}</span>
           </button>
         ))}
-        {/* Familie */}
-        {familyMembers.map(m => (
-          <button key={m.id} onClick={() => setActivePerson(m.id)}
-            style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-            <div style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--surface-2)", border: `2.5px solid ${activePerson === m.id ? "var(--accent)" : "transparent"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", transition: "border-color 0.15s", boxShadow: activePerson === m.id ? "0 0 0 3px rgba(46,204,138,0.15)" : "none", overflow: "hidden" }}>
-              {m.avatarUrl
-                ? <img src={m.avatarUrl} alt={m.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
-                : m.emoji}
-            </div>
-            <span style={{ fontSize: "0.62rem", fontWeight: activePerson === m.id ? 700 : 500, color: activePerson === m.id ? "var(--accent)" : "var(--text-dim)", whiteSpace: "nowrap", maxWidth: 52, overflow: "hidden", textOverflow: "ellipsis" }}>{m.name}</span>
-          </button>
-        ))}
-        {/* Person einladen */}
-        <button onClick={() => setShowPersonSheet(true)}
-          style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-          <div style={{ width: 48, height: 48, borderRadius: "50%", border: "2px dashed var(--border)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: "1.3rem" }}>+</div>
-          <span style={{ fontSize: "0.62rem", color: "var(--text-dim)" }}>Einladen</span>
-        </button>
+        {/* Shared mode: show other list participants */}
+        {sharedListId ? (
+          sharedMembers.map(m => (
+            <button key={m.name} onClick={() => setActivePerson(m.name)}
+              style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+              <div style={{ width: 48, height: 48, borderRadius: "50%", background: m.photo ? "transparent" : "var(--surface-2)", border: `2.5px solid ${activePerson === m.name ? "var(--accent)" : "transparent"}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", transition: "border-color 0.15s", boxShadow: activePerson === m.name ? "0 0 0 3px rgba(46,204,138,0.15)" : "none" }}>
+                {m.photo
+                  ? <img src={m.photo} alt={m.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  : <span style={{ fontWeight: 900, fontSize: "1.1rem", color: "var(--text)" }}>{m.name.charAt(0).toUpperCase()}</span>
+                }
+              </div>
+              <span style={{ fontSize: "0.62rem", fontWeight: activePerson === m.name ? 700 : 500, color: activePerson === m.name ? "var(--accent)" : "var(--text-dim)", whiteSpace: "nowrap", maxWidth: 52, overflow: "hidden", textOverflow: "ellipsis" }}>{m.name}</span>
+            </button>
+          ))
+        ) : (
+          <>
+            {/* Familie */}
+            {familyMembers.map(m => (
+              <button key={m.id} onClick={() => setActivePerson(m.id)}
+                style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                <div style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--surface-2)", border: `2.5px solid ${activePerson === m.id ? "var(--accent)" : "transparent"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", transition: "border-color 0.15s", boxShadow: activePerson === m.id ? "0 0 0 3px rgba(46,204,138,0.15)" : "none", overflow: "hidden" }}>
+                  {m.avatarUrl
+                    ? <img src={m.avatarUrl} alt={m.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+                    : m.emoji}
+                </div>
+                <span style={{ fontSize: "0.62rem", fontWeight: activePerson === m.id ? 700 : 500, color: activePerson === m.id ? "var(--accent)" : "var(--text-dim)", whiteSpace: "nowrap", maxWidth: 52, overflow: "hidden", textOverflow: "ellipsis" }}>{m.name}</span>
+              </button>
+            ))}
+            {/* Person einladen */}
+            <button onClick={() => setShowPersonSheet(true)}
+              style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+              <div style={{ width: 48, height: 48, borderRadius: "50%", border: "2px dashed var(--border)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: "1.3rem" }}>+</div>
+              <span style={{ fontSize: "0.62rem", color: "var(--text-dim)" }}>Einladen</span>
+            </button>
+          </>
+        )}
       </div>
 
       {/* ── Main content ── */}
@@ -1084,8 +1209,71 @@ export default function ShoppingListPage() {
           </div>
         )}
 
-        {/* Grouped unchecked items */}
-        {Object.entries(grouped).map(([cat, catItems]) => {
+        {/* ── Shared mode: per-person sections (only when "Alle" selected) ── */}
+        {sharedListId && activePerson === "all" && (() => {
+          const myItems = unchecked.filter(it => !(it as any).addedBy || (it as any).addedBy === sharedName)
+          const otherSections = sharedMembers.map(m => ({
+            member: m,
+            items: unchecked.filter(it => (it as any).addedBy === m.name),
+          }))
+          const hasContent = myItems.length > 0 || otherSections.some(s => s.items.length > 0)
+          if (!hasContent) return null
+          return (
+            <>
+              {/* My items */}
+              {myItems.length > 0 && (
+                <section style={{ marginBottom: 24, animation: "fadeUp 0.35s ease" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, padding: "0 2px" }}>
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: profilePhoto ? "transparent" : "rgba(46,204,138,0.15)", border: "1.5px solid rgba(46,204,138,0.35)", overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {profilePhoto
+                        ? <img src={profilePhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        : <span style={{ fontSize: "0.8rem", fontWeight: 900, color: "var(--accent)" }}>{(userName || "I").charAt(0).toUpperCase()}</span>
+                      }
+                    </div>
+                    <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Meine Liste</span>
+                    <span style={{ background: "rgba(46,204,138,0.12)", color: "var(--accent)", borderRadius: 999, padding: "1px 7px", fontSize: "0.7rem", fontWeight: 700 }}>{myItems.length}</span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {myItems.map(item => (
+                      <ProductRow key={item.id} item={item} selectedStore={selectedStore}
+                        onToggle={() => toggleItem(item.id)} onInfo={() => setDetailItem(item)}
+                        onVorschlag={() => setVorschlagItem(item)} onSource={() => setSourceItem(item)}
+                        onMenu={() => setMenuSheetItem(item)} onCoach={() => setCoachItem(item)}
+                        qty={itemQty[item.id]} comment={itemComment[item.id]} />
+                    ))}
+                  </div>
+                </section>
+              )}
+              {/* Other members' items */}
+              {otherSections.map(({ member, items: memberItems }) => memberItems.length > 0 && (
+                <section key={member.name} style={{ marginBottom: 24, animation: "fadeUp 0.35s ease" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, padding: "0 2px" }}>
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: member.photo ? "transparent" : "rgba(68,170,255,0.12)", border: "1.5px solid rgba(68,170,255,0.35)", overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {member.photo
+                        ? <img src={member.photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        : <span style={{ fontSize: "0.8rem", fontWeight: 900, color: "#44aaff" }}>{member.name.charAt(0).toUpperCase()}</span>
+                      }
+                    </div>
+                    <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "#44aaff", textTransform: "uppercase", letterSpacing: "0.06em" }}>{member.name}s Liste</span>
+                    <span style={{ background: "rgba(68,170,255,0.12)", color: "#44aaff", borderRadius: 999, padding: "1px 7px", fontSize: "0.7rem", fontWeight: 700 }}>{memberItems.length}</span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {memberItems.map(item => (
+                      <ProductRow key={item.id} item={item} selectedStore={selectedStore}
+                        onToggle={() => toggleItem(item.id)} onInfo={() => setDetailItem(item)}
+                        onVorschlag={() => setVorschlagItem(item)} onSource={() => setSourceItem(item)}
+                        onMenu={() => setMenuSheetItem(item)} onCoach={() => setCoachItem(item)}
+                        qty={itemQty[item.id]} comment={itemComment[item.id]} />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </>
+          )
+        })()}
+
+        {/* Grouped unchecked items (normal mode OR filtered by person) */}
+        {(!sharedListId || activePerson !== "all") && Object.entries(grouped).map(([cat, catItems]) => {
           const meta = CATEGORY_META[cat as Category]
           return (
             <section key={cat} style={{ marginBottom: 24, animation: "fadeUp 0.35s ease" }}>
@@ -1472,8 +1660,19 @@ export default function ShoppingListPage() {
                   )}
                 </div>
 
-                {/* Coach-Tipp */}
-                <ProductCoachTip item={si} goals={userGoals} allergies={userAllergies} />
+                {/* Coach-Tipp — nur Premium */}
+                {isPremium ? (
+                  <ProductCoachTip item={si} goals={userGoals} allergies={userAllergies} />
+                ) : (
+                  <button onClick={() => setShowPremiumGate(true)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, background: "rgba(255,215,0,0.06)", border: "1px solid rgba(255,215,0,0.25)", borderRadius: 14, padding: "12px 16px", cursor: "pointer", textAlign: "left" }}>
+                    <span style={{ fontSize: "1.1rem" }}>🥗</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text)" }}>KI Coach-Tipp für dieses Produkt</div>
+                      <div style={{ fontSize: "0.68rem", color: "var(--text-dim)", marginTop: 2 }}>Basierend auf deinen Zielen & Allergien</div>
+                    </div>
+                    <span style={{ background: "linear-gradient(135deg,#ffd700,#ffaa00)", color: "#000", borderRadius: 6, padding: "2px 8px", fontSize: "0.6rem", fontWeight: 800, flexShrink: 0 }}>👑 Premium</span>
+                  </button>
+                )}
 
                 {/* Aus Liste entfernen */}
                 <button
@@ -1562,6 +1761,30 @@ export default function ShoppingListPage() {
           </>
         )
       })()}
+
+      {/* ── In-app toast: new item added by another list member ── */}
+      {toastNotif && (
+        <div style={{
+          position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)",
+          background: "var(--surface)", border: "1px solid rgba(46,204,138,0.45)",
+          borderRadius: 16, padding: "12px 16px",
+          boxShadow: "0 6px 28px rgba(0,0,0,0.28)", zIndex: 150,
+          display: "flex", alignItems: "center", gap: 10,
+          maxWidth: "calc(100vw - 40px)", minWidth: 240,
+          animation: "fadeUp 0.3s ease",
+        }}>
+          <span style={{ fontSize: "1.3rem", flexShrink: 0 }}>🛒</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "var(--text)" }}>
+              {toastNotif.addedBy} hat etwas hinzugefügt
+            </div>
+            <div style={{ fontSize: "0.72rem", color: "var(--accent)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {toastNotif.itemName}
+            </div>
+          </div>
+          <button onClick={() => setToastNotif(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-dim)", fontSize: "1rem", padding: "0 2px", flexShrink: 0 }}>✕</button>
+        </div>
+      )}
 
       <BottomNav />
       {showPremiumGate && <PremiumGate trigger="list" onClose={() => setShowPremiumGate(false)} />}

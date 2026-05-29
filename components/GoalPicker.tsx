@@ -59,6 +59,30 @@ export const MASTER_GOALS: Array<{
     effect: "Preisvergleiche & günstige Alternativen",
     keywords: ["sparen","preis","günstig","budget","fair","eigenmarke","billig","geld","kosten","wirtschaftlich","haushalt"],
   },
+  {
+    id: "weightloss",
+    emoji: "⚖️",
+    label: "Abnehmen",
+    color: "#38BDF8",
+    effect: "Kalorien & Zucker-Ampel im Scanner",
+    keywords: ["abnehmen","gewicht","diät","kalorien","kalorienarm","zucker","schlank","fett","bmi","light","figur","abspecken","sport","ernährung"],
+  },
+  {
+    id: "protein",
+    emoji: "💪",
+    label: "Mehr Protein / Muskeln",
+    color: "#fb923c",
+    effect: "Proteingehalt & Muskelaufbau-Bewertung",
+    keywords: ["protein","muskel","fitness","sport","muskeln","krafttraining","eiweiß","aufbau","trainieren","gym","stärke","körper","fleisch","milch","hülsenfrüchte"],
+  },
+  {
+    id: "vegan",
+    emoji: "🌿",
+    label: "Vegan / Vegetarisch",
+    color: "#4ade80",
+    effect: "Tierische Zutaten & Vegan-Check im Scanner",
+    keywords: ["vegan","vegetarisch","pflanzlich","tierfrei","milchfrei","laktosefrei","palmöl","gelatine","ei","honig","fleischfrei","plant","bio","nachhaltig"],
+  },
 ]
 
 // ── Keyword-Matching ───────────────────────────────────────────────────────────
