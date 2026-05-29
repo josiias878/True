@@ -50,6 +50,13 @@ interface ListItem extends CatalogProduct {
   checked: boolean
   addedAt: number
   personId?: string   // which family member this item belongs to
+  mealId?: string     // which meal/dish section this item belongs to
+}
+
+interface MealSection {
+  id: string
+  name: string
+  emoji: string
 }
 
 // ─── Shared Source Data ───────────────────────────────────────────────────────
@@ -727,6 +734,11 @@ export default function ShoppingListPage() {
   const [personSheetTab, setPersonSheetTab]   = useState<"manual" | "invite">("invite")
   const [listInviteLink, setListInviteLink]   = useState<string | null>(null)
   const [listInviteCopied, setListInviteCopied] = useState(false)
+  // Gericht (Meal) sections
+  const [meals, setMeals]                     = useState<MealSection[]>([])
+  const [showMealInput, setShowMealInput]     = useState(false)
+  const [newMealName, setNewMealName]         = useState("")
+  const [collapsedMeals, setCollapsedMeals]   = useState<Set<string>>(new Set())
 
   // Load from localStorage
   useEffect(() => {
@@ -748,6 +760,10 @@ export default function ShoppingListPage() {
     try {
       const raw = localStorage.getItem("list-item-comments-v1")
       if (raw) setItemComments(JSON.parse(raw))
+    } catch {}
+    try {
+      const raw = localStorage.getItem("shopping-list-meals-v1")
+      if (raw) setMeals(JSON.parse(raw))
     } catch {}
     // Apply saved supermarket from profile
     try {
@@ -960,6 +976,52 @@ export default function ShoppingListPage() {
     })
   }
 
+  // ─── Gericht (Meal) helpers ──────────────────────────────────────────────────
+
+  function saveMeals(next: MealSection[]) {
+    setMeals(next)
+    try { localStorage.setItem("shopping-list-meals-v1", JSON.stringify(next)) } catch {}
+  }
+
+  function addMeal() {
+    const trimmed = newMealName.trim()
+    if (!trimmed) return
+    const emojis = ["🍽️","🍝","🍕","🥗","🍛","🍜","🌮","🥘","🍲","🥙","🍣","🫕"]
+    const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)]
+    saveMeals([...meals, { id: Date.now().toString(), name: trimmed, emoji: randomEmoji }])
+    setNewMealName("")
+    setShowMealInput(false)
+  }
+
+  function deleteMeal(mealId: string) {
+    // Detach items from this meal
+    setItems(prev => {
+      const updated = prev.map(it => it.mealId === mealId ? { ...it, mealId: undefined } : it)
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)) } catch {}
+      return updated
+    })
+    saveMeals(meals.filter(m => m.id !== mealId))
+  }
+
+  function assignItemToMeal(itemId: string, mealId: string | null) {
+    setItems(prev => {
+      const updated = prev.map(it =>
+        it.id === itemId ? { ...it, mealId: mealId ?? undefined } : it
+      )
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)) } catch {}
+      return updated
+    })
+  }
+
+  function toggleMealCollapse(mealId: string) {
+    setCollapsedMeals(prev => {
+      const s = new Set(prev)
+      if (s.has(mealId)) s.delete(mealId); else s.add(mealId)
+      return s
+    })
+  }
+
+
   function generateListInvite() {
     const myProfile = (() => { try { return JSON.parse(localStorage.getItem("true-profile") || "{}") } catch { return {} } })()
     const myName    = myProfile.name || myProfile.vorname || sharedName || "Jemand"
@@ -1104,9 +1166,9 @@ export default function ShoppingListPage() {
   const unchecked = filteredItems.filter(it => !it.checked)
   const checked   = filteredItems.filter(it => it.checked)
 
-  // Group unchecked by category
+  // Group unchecked by category — exclude items assigned to a meal
   const grouped = CATEGORY_ORDER.reduce<Record<string, ListItem[]>>((acc, cat) => {
-    const g = unchecked.filter(it => it.category === cat)
+    const g = unchecked.filter(it => it.category === cat && !it.mealId)
     if (g.length) acc[cat] = g
     return acc
   }, {})
@@ -1359,6 +1421,102 @@ export default function ShoppingListPage() {
             <div style={{ fontSize: "3rem", marginBottom: 12 }}>🛍️</div>
             <p style={{ fontSize: "1rem", fontWeight: 600, marginBottom: 6 }}>Liste ist leer</p>
             <p style={{ fontSize: "0.82rem" }}>Tippe auf + um Artikel hinzuzufügen</p>
+          </div>
+        )}
+
+        {/* ── Gericht (Meal) sections ── */}
+        {meals.map(meal => {
+          const mealItems = unchecked.filter(it => it.mealId === meal.id)
+          const isCollapsed = collapsedMeals.has(meal.id)
+          return (
+            <section key={meal.id} style={{ marginBottom: 20, animation: "fadeUp 0.35s ease" }}>
+              {/* Meal header */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "var(--surface)", borderRadius: isCollapsed ? 14 : "14px 14px 0 0", border: "1.5px solid rgba(46,204,138,0.28)", borderBottom: isCollapsed ? undefined : "none" }}>
+                <span style={{ fontSize: "1.3rem" }}>{meal.emoji}</span>
+                <span style={{ fontWeight: 800, fontSize: "0.9rem", flex: 1, color: "var(--text)" }}>{meal.name}</span>
+                <span style={{ fontSize: "0.68rem", color: "var(--accent)", fontWeight: 700, background: "rgba(46,204,138,0.12)", borderRadius: 99, padding: "2px 8px", flexShrink: 0 }}>
+                  {mealItems.length} {mealItems.length === 1 ? "Artikel" : "Artikel"}
+                </span>
+                <button
+                  onClick={() => toggleMealCollapse(meal.id)}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-dim)", fontSize: "0.9rem", padding: "4px 2px", lineHeight: 1, transition: "transform 0.2s", transform: isCollapsed ? "rotate(-90deg)" : "rotate(0deg)" }}
+                >▾</button>
+                <button
+                  onClick={() => deleteMeal(meal.id)}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-dim)", fontSize: "0.88rem", padding: "4px 2px", lineHeight: 1, marginLeft: 2 }}
+                >🗑</button>
+              </div>
+              {!isCollapsed && (
+                <div style={{ border: "1.5px solid rgba(46,204,138,0.28)", borderTop: "none", borderRadius: "0 0 14px 14px", padding: mealItems.length ? "8px 10px 12px" : "14px 14px", background: "rgba(46,204,138,0.03)" }}>
+                  {mealItems.length > 0 ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {mealItems.map(item => {
+                        const meta = CATEGORY_META[item.category as Category]
+                        return (
+                          <ProductRow
+                            key={item.id}
+                            item={item}
+                            selectedStore={selectedStore}
+                            onToggle={() => toggleItem(item.id)}
+                            onInfo={() => setDetailItem(item)}
+                            onVorschlag={() => setVorschlagItem(item)}
+                            onSource={() => setSourceItem(item)}
+                            onMenu={() => setMenuSheetItem(item)}
+                            onCoach={() => setCoachItem(item)}
+                            catBg={meta.bg}
+                            catColor={meta.color}
+                            catBorder={meta.border}
+                            qty={itemQty[item.id]}
+                            comment={itemComment[item.id]}
+                            canEdit={canEditItem(item)}
+                          />
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: "center", fontSize: "0.78rem", color: "var(--text-dim)" }}>
+                      Noch keine Produkte — tippe bei einem Produkt auf <strong>•••</strong> und wähle dieses Gericht
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          )
+        })}
+
+        {/* ── Gericht hinzufügen button / inline input ── */}
+        {!showMealInput ? (
+          <button
+            onClick={() => setShowMealInput(true)}
+            style={{ width: "100%", marginBottom: 16, background: "var(--surface)", border: "1.5px dashed var(--border)", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", textAlign: "left", transition: "border-color 0.15s" }}
+          >
+            <span style={{ fontSize: "1.1rem" }}>📋</span>
+            <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-dim)" }}>Gericht hinzufügen</span>
+            <span style={{ marginLeft: "auto", width: 24, height: 24, borderRadius: "50%", background: "var(--surface-2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", color: "var(--text-dim)", flexShrink: 0 }}>+</span>
+          </button>
+        ) : (
+          <div style={{ marginBottom: 16, background: "var(--surface)", border: "1.5px solid var(--accent)", borderRadius: 12, padding: "10px 12px", display: "flex", gap: 8, alignItems: "center", animation: "scaleIn 0.15s ease" }}>
+            <span style={{ fontSize: "1.1rem" }}>📋</span>
+            <input
+              autoFocus
+              value={newMealName}
+              onChange={e => setNewMealName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter") addMeal()
+                if (e.key === "Escape") { setShowMealInput(false); setNewMealName("") }
+              }}
+              placeholder="z.B. Spaghetti Bolognese…"
+              style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: "0.88rem", color: "var(--text)" }}
+            />
+            <button
+              onClick={addMeal}
+              disabled={!newMealName.trim()}
+              style={{ background: newMealName.trim() ? "var(--accent)" : "var(--surface-2)", color: newMealName.trim() ? "#000" : "var(--text-dim)", border: "none", borderRadius: 8, padding: "6px 14px", fontWeight: 700, cursor: newMealName.trim() ? "pointer" : "default", fontSize: "0.8rem", transition: "all 0.15s", flexShrink: 0 }}
+            >Erstellen</button>
+            <button
+              onClick={() => { setShowMealInput(false); setNewMealName("") }}
+              style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: "1rem", flexShrink: 0, padding: "2px 4px" }}
+            >✕</button>
           </div>
         )}
 
@@ -1786,6 +1944,28 @@ export default function ShoppingListPage() {
                     </div>
                     <span style={{ background: "linear-gradient(135deg,#ffd700,#ffaa00)", color: "#000", borderRadius: 6, padding: "2px 8px", fontSize: "0.6rem", fontWeight: 800, flexShrink: 0 }}>👑 Premium</span>
                   </button>
+                )}
+
+                {/* Zu Gericht zuordnen */}
+                {meals.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: "0.6rem", fontWeight: 800, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>📋 Gericht</div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {(si as any).mealId && (
+                        <button
+                          onClick={() => { assignItemToMeal(si.id, null); setMenuSheetItem(null) }}
+                          style={{ fontSize: "0.75rem", padding: "6px 12px", borderRadius: 99, border: "1.5px solid var(--danger)", background: "var(--danger-dim)", color: "var(--danger)", cursor: "pointer", fontWeight: 600 }}
+                        >✕ Aus Gericht</button>
+                      )}
+                      {meals.filter(m => m.id !== (si as any).mealId).map(meal => (
+                        <button
+                          key={meal.id}
+                          onClick={() => { assignItemToMeal(si.id, meal.id); setMenuSheetItem(null) }}
+                          style={{ fontSize: "0.75rem", padding: "6px 12px", borderRadius: 99, border: "1.5px solid rgba(46,204,138,0.4)", background: "rgba(46,204,138,0.08)", color: "var(--accent)", cursor: "pointer", fontWeight: 600 }}
+                        >{meal.emoji} {meal.name}</button>
+                      ))}
+                    </div>
+                  </div>
                 )}
 
                 {/* Aus Liste entfernen */}
