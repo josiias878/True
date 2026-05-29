@@ -1,6 +1,6 @@
 // TRUE Service Worker — Push Notifications + Offline Cache
 
-const CACHE = "true-v11"
+const CACHE = "true-v12"
 const PRECACHE = ["/home", "/scan", "/offline"]
 
 self.addEventListener("install", e => {
@@ -16,15 +16,27 @@ self.addEventListener("message", e => {
 
 self.addEventListener("activate", e => {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
-    // controllerchange event fires in all tabs after claim() — SwRegister listens and reloads
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
+      .then(() =>
+        // Tell every open tab to reload so they get fresh HTML/JS
+        self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
+          list.forEach(client => client.postMessage({ type: "SW_UPDATED", version: CACHE }))
+        })
+      )
   )
 })
 
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return
+  // Never serve HTML from cache — always network-first and bypass SW cache for navigation
+  if (e.request.mode === "navigate") {
+    e.respondWith(
+      fetch(e.request, { cache: "no-store" }).catch(() => caches.match(e.request))
+    )
+    return
+  }
   e.respondWith(
     fetch(e.request).catch(() => caches.match(e.request))
   )
