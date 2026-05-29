@@ -895,7 +895,11 @@ export default function HomePage() {
   const [greeting, setGreeting]       = useState("Guten Tag")
   const [modal, setModal]             = useState<string | null>(null)
   const [productModal, setProductModal] = useState<Product | null>(null)
-  const [listItems, setListItems]     = useState<{ id: number|string; name: string; emoji: string; brand?: string; severity?: string; issue?: string; alternative?: { name: string }; checked: boolean; personId?: string; category?: string }[]>([])
+  const [listItems, setListItems]     = useState<{ id: number|string; name: string; emoji: string; brand?: string; severity?: string; issue?: string; alternative?: { name: string }; checked: boolean; personId?: string; category?: string; mealId?: string }[]>([])
+  const [meals, setMeals]             = useState<{ id: string; name: string; emoji: string }[]>([])
+  const [showMealInput, setShowMealInput] = useState(false)
+  const [newMealName, setNewMealName] = useState("")
+  const [collapsedMeals, setCollapsedMeals] = useState<Set<string>>(new Set())
   const [severityModal, setSeverityModal] = useState<typeof listItems[0] | null>(null)
   const [deleteConfirmItem, setDeleteConfirmItem] = useState<typeof listItems[0] | null>(null)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -1073,8 +1077,13 @@ export default function HomePage() {
           checked: it.checked ?? false,
           personId: it.personId,
           category: it.category,
+          mealId: (it as any).mealId,
         })))
       }
+    } catch {}
+    try {
+      const rawMeals = localStorage.getItem("shopping-list-meals-v1")
+      if (rawMeals) setMeals(JSON.parse(rawMeals))
     } catch {}
     try {
       const fm = localStorage.getItem("true-family-members")
@@ -1195,6 +1204,63 @@ export default function HomePage() {
   function clearAllItems() {
     setListItems([])
     try { localStorage.setItem("shopping-list-items-v1", JSON.stringify([])) } catch {}
+  }
+
+  // ─── Gericht (Meal) helpers ──────────────────────────────────────────────────
+  function saveMeals(next: { id: string; name: string; emoji: string }[]) {
+    setMeals(next)
+    try { localStorage.setItem("shopping-list-meals-v1", JSON.stringify(next)) } catch {}
+  }
+
+  function addMeal() {
+    const trimmed = newMealName.trim()
+    if (!trimmed) return
+    const emojis = ["🍽️","🍝","🍕","🥗","🍛","🍜","🌮","🥘","🍲","🥙","🍣","🫕"]
+    const emoji = emojis[Math.floor(Math.random() * emojis.length)]
+    saveMeals([...meals, { id: Date.now().toString(), name: trimmed, emoji }])
+    setNewMealName("")
+    setShowMealInput(false)
+  }
+
+  function deleteMeal(mealId: string) {
+    setListItems(prev => {
+      const next = prev.map(it => it.mealId === mealId ? { ...it, mealId: undefined } : it)
+      try {
+        const raw = localStorage.getItem("shopping-list-items-v1")
+        if (raw) {
+          const full = JSON.parse(raw)
+          localStorage.setItem("shopping-list-items-v1", JSON.stringify(
+            full.map((it: any) => it.mealId === mealId ? { ...it, mealId: undefined } : it)
+          ))
+        }
+      } catch {}
+      return next
+    })
+    saveMeals(meals.filter(m => m.id !== mealId))
+  }
+
+  function assignItemToMeal(id: number|string, mealId: string | null) {
+    setListItems(prev => {
+      const next = prev.map(it => it.id === id ? { ...it, mealId: mealId ?? undefined } : it)
+      try {
+        const raw = localStorage.getItem("shopping-list-items-v1")
+        if (raw) {
+          const full = JSON.parse(raw)
+          localStorage.setItem("shopping-list-items-v1", JSON.stringify(
+            full.map((it: any) => it.id === id ? { ...it, mealId: mealId ?? undefined } : it)
+          ))
+        }
+      } catch {}
+      return next
+    })
+  }
+
+  function toggleMealCollapse(mealId: string) {
+    setCollapsedMeals(prev => {
+      const s = new Set(prev)
+      if (s.has(mealId)) s.delete(mealId); else s.add(mealId)
+      return s
+    })
   }
 
   // Persist checked state back to the shared localStorage key
@@ -1887,6 +1953,7 @@ export default function HomePage() {
             })))
             const grouped: Record<string, typeof unchecked> = {}
             unchecked.forEach(item => {
+              if (item.mealId) return   // items in a meal are rendered in their meal section
               const raw = item.category || "other"
               const cat = KNOWN_CATS.has(raw) ? raw : "other"
               if (!grouped[cat]) grouped[cat] = []
@@ -1998,6 +2065,54 @@ export default function HomePage() {
                     <div style={{ fontSize: "3rem", marginBottom: 8 }}>🛍️</div>
                     <div style={{ fontWeight: 700, fontSize: "0.95rem", marginBottom: 4 }}>Liste ist leer</div>
                     <div style={{ fontSize: "0.8rem" }}>Tippe auf + um Produkte hinzuzufügen</div>
+                  </div>
+                )}
+
+                {/* ── Gericht (Meal) Sektionen ── */}
+                {meals.map(meal => {
+                  const mealItems = unchecked.filter(it => it.mealId === meal.id)
+                  const isCollapsed = collapsedMeals.has(meal.id)
+                  return (
+                    <div key={meal.id} style={{ marginBottom: 16 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", background: "var(--surface)", borderRadius: isCollapsed ? 14 : "14px 14px 0 0", border: "1.5px solid rgba(46,204,138,0.28)", borderBottom: isCollapsed ? undefined : "none" }}>
+                        <span style={{ fontSize: "1.25rem" }}>{meal.emoji}</span>
+                        <span style={{ fontWeight: 800, fontSize: "0.9rem", flex: 1, color: "var(--text)" }}>{meal.name}</span>
+                        <span style={{ fontSize: "0.66rem", color: "#18a36a", fontWeight: 800, background: "rgba(46,204,138,0.12)", borderRadius: 99, padding: "2px 8px", flexShrink: 0 }}>{mealItems.length}</span>
+                        <button onClick={() => toggleMealCollapse(meal.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-dim)", fontSize: "0.9rem", padding: "4px 2px", lineHeight: 1, transform: isCollapsed ? "rotate(-90deg)" : "none", transition: "transform 0.2s" }}>▾</button>
+                        <button onClick={() => deleteMeal(meal.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-dim)", fontSize: "0.85rem", padding: "4px 2px", lineHeight: 1 }}>🗑</button>
+                      </div>
+                      {!isCollapsed && (
+                        <div style={{ border: "1.5px solid rgba(46,204,138,0.28)", borderTop: "none", borderRadius: "0 0 14px 14px", padding: mealItems.length ? "10px 10px 4px" : "14px", background: "rgba(46,204,138,0.03)" }}>
+                          {mealItems.length > 0
+                            ? mealItems.map(item => renderBigCard(item))
+                            : <div style={{ textAlign: "center", fontSize: "0.76rem", color: "var(--text-dim)" }}>Noch keine Produkte — tippe bei einem Produkt auf ••• und wähle dieses Gericht</div>
+                          }
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+
+                {/* ── Gericht hinzufügen ── */}
+                {!showMealInput ? (
+                  <button onClick={() => setShowMealInput(true)} style={{ width: "100%", marginBottom: 16, background: "var(--surface)", border: "1.5px dashed var(--border)", borderRadius: 12, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", textAlign: "left" }}>
+                    <span style={{ fontSize: "1.1rem" }}>📋</span>
+                    <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-dim)" }}>Gericht hinzufügen</span>
+                    <span style={{ marginLeft: "auto", width: 24, height: 24, borderRadius: "50%", background: "var(--surface-2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", color: "var(--text-dim)", flexShrink: 0 }}>+</span>
+                  </button>
+                ) : (
+                  <div style={{ marginBottom: 16, background: "var(--surface)", border: "1.5px solid #18a36a", borderRadius: 12, padding: "10px 12px", display: "flex", gap: 8, alignItems: "center" }}>
+                    <span style={{ fontSize: "1.1rem" }}>📋</span>
+                    <input
+                      autoFocus
+                      value={newMealName}
+                      onChange={e => setNewMealName(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter") addMeal(); if (e.key === "Escape") { setShowMealInput(false); setNewMealName("") } }}
+                      placeholder="z.B. Spaghetti Bolognese…"
+                      style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: "0.88rem", color: "var(--text)" }}
+                    />
+                    <button onClick={addMeal} disabled={!newMealName.trim()} style={{ background: newMealName.trim() ? "#18a36a" : "var(--surface-2)", color: newMealName.trim() ? "#fff" : "var(--text-dim)", border: "none", borderRadius: 8, padding: "6px 14px", fontWeight: 700, cursor: newMealName.trim() ? "pointer" : "default", fontSize: "0.8rem", flexShrink: 0 }}>Erstellen</button>
+                    <button onClick={() => { setShowMealInput(false); setNewMealName("") }} style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: "1rem", flexShrink: 0, padding: "2px 4px" }}>✕</button>
                   </div>
                 )}
 
@@ -2332,6 +2447,28 @@ export default function HomePage() {
                     </div>
                   )}
                 </div>
+
+                {/* Zu Gericht zuordnen */}
+                {meals.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: "0.6rem", fontWeight: 800, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>📋 Gericht</div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {si.mealId && (
+                        <button
+                          onClick={() => { assignItemToMeal(si.id, null); setMenuSheetItem(null) }}
+                          style={{ fontSize: "0.75rem", padding: "6px 12px", borderRadius: 99, border: "1.5px solid var(--danger)", background: "var(--danger-dim)", color: "var(--danger)", cursor: "pointer", fontWeight: 600 }}
+                        >✕ Aus Gericht</button>
+                      )}
+                      {meals.filter(m => m.id !== si.mealId).map(meal => (
+                        <button
+                          key={meal.id}
+                          onClick={() => { assignItemToMeal(si.id, meal.id); setMenuSheetItem(null) }}
+                          style={{ fontSize: "0.75rem", padding: "6px 12px", borderRadius: 99, border: "1.5px solid rgba(46,204,138,0.4)", background: "rgba(46,204,138,0.08)", color: "#18a36a", cursor: "pointer", fontWeight: 600 }}
+                        >{meal.emoji} {meal.name}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Aus Liste entfernen */}
                 <button
