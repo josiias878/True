@@ -721,6 +721,8 @@ export default function ShoppingListPage() {
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [sharedMembers, setSharedMembers] = useState<{name: string; photo: string; emoji: string}[]>([])
   const [toastNotif, setToastNotif] = useState<{addedBy: string; itemName: string} | null>(null)
+  const [confirmLeave, setConfirmLeave]   = useState(false)  // two-tap leave confirmation
+  const [confirmDelete, setConfirmDelete] = useState(false)  // two-tap list-delete confirmation
 
   // Load from localStorage
   useEffect(() => {
@@ -940,6 +942,41 @@ export default function ShoppingListPage() {
     })
   }
 
+  function leaveSharedList() {
+    // Remove self from list_members in Supabase
+    if (supabase && sharedListId) {
+      supabase.from("list_members")
+        .delete()
+        .eq("list_id", sharedListId)
+        .eq("member_name", sharedName)
+        .then(({ error }: any) => { if (error) console.warn("[leave] list_members error:", error) })
+    }
+    // Clear all shared-list localStorage keys
+    try {
+      localStorage.removeItem("true-list-id")
+      localStorage.removeItem("true-invited-by")
+      localStorage.removeItem("true-invited-by-photo")
+      localStorage.removeItem("true-invited-by-emoji")
+    } catch {}
+    // Reset shared-list state
+    setSharedListId(null)
+    setIsInvitee(false)
+    setSharedMembers([])
+    setActivePerson("all")
+    setConfirmLeave(false)
+  }
+
+  function deleteMyList() {
+    // Remove all items from Supabase (personal sync)
+    if (user && !sharedListId) {
+      items.forEach(it => syncRemove(it.id))
+    }
+    // Clear localStorage
+    try { localStorage.removeItem(STORAGE_KEY) } catch {}
+    setItems([])
+    setConfirmDelete(false)
+  }
+
   async function createShareUrl(): Promise<string> {
     const shareData = items.map(it => ({ id: it.id, name: it.name, brand: it.brand, emoji: it.emoji, checked: it.checked, severity: it.severity, issue: it.issue }))
     const profileName = (() => { try { const p = localStorage.getItem("true-profile"); if (!p) return "Jemand"; const parsed = JSON.parse(p); return parsed.name || parsed.vorname || "Jemand" } catch { return "Jemand" } })()
@@ -1010,6 +1047,10 @@ export default function ShoppingListPage() {
         (p.name.toLowerCase().includes(query) || p.brand.toLowerCase().includes(query))
       )
 
+  // Returns true when the current user may edit this item
+  const canEditItem = (item: ListItem) =>
+    !sharedListId || !(item as any).addedBy || (item as any).addedBy === sharedName
+
   // ─── Long-press handlers ────────────────────────────────────────────────────
 
   const handleTouchStart = (item: ListItem) => {
@@ -1043,15 +1084,36 @@ export default function ShoppingListPage() {
         .check-overlay { pointer-events: none; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 20px; background: rgba(0,0,0,0.18); font-size: 1.8rem; }
       `}</style>
 
-      {/* ── Shared list banner (invitee view) ── */}
-      {isInvitee && sharedListId && (
+      {/* ── Shared list banner — shown for both host and invitee ── */}
+      {sharedListId && (
         <div style={{ background: "rgba(46,204,138,0.10)", borderBottom: "1px solid rgba(46,204,138,0.25)", padding: "10px 16px", display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: "1.2rem" }}>🔗</span>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: "0.78rem", fontWeight: 800, color: "var(--accent)" }}>Geteilte Einkaufsliste</div>
-            <div style={{ fontSize: "0.68rem", color: "var(--text-dim)" }}>Eingeladen von {localStorage.getItem("true-invited-by") || "jemandem"} · Änderungen sind für alle sichtbar</div>
+            <div style={{ fontSize: "0.68rem", color: "var(--text-dim)" }}>
+              {isInvitee
+                ? `Eingeladen von ${(() => { try { return localStorage.getItem("true-invited-by") || "jemandem" } catch { return "jemandem" } })()} · Live-Sync aktiv`
+                : `${sharedMembers.length > 0 ? sharedMembers.map(m => m.name).join(", ") + " nimmt teil" : "Warte auf Teilnehmer…"}`
+              }
+            </div>
           </div>
           <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--accent)", background: "rgba(46,204,138,0.15)", borderRadius: 6, padding: "2px 8px" }}>LIVE</span>
+          {/* Leave / End sharing button — two-tap confirmation */}
+          <button
+            onClick={() => {
+              if (!confirmLeave) { setConfirmLeave(true); setTimeout(() => setConfirmLeave(false), 3000) }
+              else leaveSharedList()
+            }}
+            style={{
+              marginLeft: 4, background: confirmLeave ? "rgba(255,68,85,0.15)" : "none",
+              color: confirmLeave ? "#ff4455" : "var(--text-dim)",
+              border: `1px solid ${confirmLeave ? "rgba(255,68,85,0.4)" : "var(--border)"}`,
+              borderRadius: 8, padding: "4px 10px", fontSize: "0.68rem", fontWeight: 700, cursor: "pointer",
+              whiteSpace: "nowrap", transition: "all 0.2s", flexShrink: 0,
+            }}
+          >
+            {confirmLeave ? "✓ Bestätigen" : (isInvitee ? "Verlassen" : "Beenden")}
+          </button>
         </div>
       )}
 
@@ -1239,7 +1301,7 @@ export default function ShoppingListPage() {
                         onToggle={() => toggleItem(item.id)} onInfo={() => setDetailItem(item)}
                         onVorschlag={() => setVorschlagItem(item)} onSource={() => setSourceItem(item)}
                         onMenu={() => setMenuSheetItem(item)} onCoach={() => setCoachItem(item)}
-                        qty={itemQty[item.id]} comment={itemComment[item.id]} />
+                        qty={itemQty[item.id]} comment={itemComment[item.id]} canEdit />
                     ))}
                   </div>
                 </section>
@@ -1263,7 +1325,7 @@ export default function ShoppingListPage() {
                         onToggle={() => toggleItem(item.id)} onInfo={() => setDetailItem(item)}
                         onVorschlag={() => setVorschlagItem(item)} onSource={() => setSourceItem(item)}
                         onMenu={() => setMenuSheetItem(item)} onCoach={() => setCoachItem(item)}
-                        qty={itemQty[item.id]} comment={itemComment[item.id]} />
+                        qty={itemQty[item.id]} comment={itemComment[item.id]} canEdit={false} />
                     ))}
                   </div>
                 </section>
@@ -1311,6 +1373,7 @@ export default function ShoppingListPage() {
                       catBorder={meta.border}
                       qty={itemQty[item.id]}
                       comment={itemComment[item.id]}
+                      canEdit={canEditItem(item)}
                     />
                   ))}
                 </div>
@@ -1375,11 +1438,34 @@ export default function ShoppingListPage() {
                     onCoach={() => setCoachItem(item)}
                     qty={itemQty[item.id]}
                     comment={itemComment[item.id]}
+                    canEdit={canEditItem(item)}
                   />
                 ))}
               </div>
             )}
           </section>
+        )}
+
+        {/* ── Danger zone: delete own list (only in non-shared mode) ── */}
+        {!sharedListId && items.length > 0 && (
+          <div style={{ marginTop: 24, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
+            <button
+              onClick={() => {
+                if (!confirmDelete) { setConfirmDelete(true); setTimeout(() => setConfirmDelete(false), 3500) }
+                else deleteMyList()
+              }}
+              style={{
+                width: "100%", background: confirmDelete ? "rgba(255,68,85,0.12)" : "none",
+                color: confirmDelete ? "#ff4455" : "var(--text-dim)",
+                border: `1px solid ${confirmDelete ? "rgba(255,68,85,0.35)" : "var(--border)"}`,
+                borderRadius: 12, padding: "11px 16px",
+                fontSize: "0.8rem", fontWeight: 700, cursor: "pointer",
+                transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              }}
+            >
+              <span>{confirmDelete ? "🗑 Wirklich löschen? (nochmal tippen)" : "🗑 Meine Liste löschen"}</span>
+            </button>
+          </div>
         )}
       </main>
 
@@ -1853,9 +1939,10 @@ interface RowProps {
   catBorder?: string
   qty?: number
   comment?: string
+  canEdit?: boolean   // false → hide the ••• menu button (read-only item)
 }
 
-function ProductRow({ item, selectedStore, onToggle, onInfo, onVorschlag, onSource, onMenu, onCoach, catBg, catColor, catBorder, qty, comment }: RowProps) {
+function ProductRow({ item, selectedStore, onToggle, onInfo, onVorschlag, onSource, onMenu, onCoach, catBg, catColor, catBorder, qty, comment, canEdit = true }: RowProps) {
   const hasIssue = item.severity !== "none" && item.issue !== "—"
   const sevColor = hasIssue ? SEVERITY_COLOR[item.severity] : null
   const hasAlt   = !!item.alternative
@@ -1934,16 +2021,18 @@ function ProductRow({ item, selectedStore, onToggle, onInfo, onVorschlag, onSour
         >💚 Alt.</button>
       )}
 
-      {/* ••• Menü */}
-      <button
-        onClick={e => { e.stopPropagation(); onMenu() }}
-        style={{
-          width: 30, height: 30, borderRadius: "50%",
-          background: "var(--surface-2)", border: "none",
-          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          flexShrink: 0, fontSize: "0.75rem", color: "var(--text-dim)", letterSpacing: "0.05em",
-        }}
-      >•••</button>
+      {/* ••• Menü — only for own items */}
+      {canEdit && (
+        <button
+          onClick={e => { e.stopPropagation(); onMenu() }}
+          style={{
+            width: 30, height: 30, borderRadius: "50%",
+            background: "var(--surface-2)", border: "none",
+            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0, fontSize: "0.75rem", color: "var(--text-dim)", letterSpacing: "0.05em",
+          }}
+        >•••</button>
+      )}
     </div>
   )
 }
