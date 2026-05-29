@@ -719,10 +719,14 @@ export default function ShoppingListPage() {
   const [sharedListId, setSharedListId]       = useState<string | null>(null)
   const [isInvitee, setIsInvitee]             = useState(false)      // joined via invite link
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [sharedMembers, setSharedMembers] = useState<{name: string; photo: string; emoji: string}[]>([])
-  const [toastNotif, setToastNotif] = useState<{addedBy: string; itemName: string} | null>(null)
-  const [confirmLeave, setConfirmLeave]   = useState(false)  // two-tap leave confirmation
-  const [confirmDelete, setConfirmDelete] = useState(false)  // two-tap list-delete confirmation
+  const [sharedMembers, setSharedMembers]     = useState<{name: string; photo: string; emoji: string}[]>([])
+  const [toastNotif, setToastNotif]           = useState<{addedBy: string; itemName: string} | null>(null)
+  const [confirmLeave, setConfirmLeave]       = useState(false)
+  const [confirmDelete, setConfirmDelete]     = useState(false)
+  const [showConfetti, setShowConfetti]       = useState(false)
+  const [personSheetTab, setPersonSheetTab]   = useState<"manual" | "invite">("invite")
+  const [listInviteLink, setListInviteLink]   = useState<string | null>(null)
+  const [listInviteCopied, setListInviteCopied] = useState(false)
 
   // Load from localStorage
   useEffect(() => {
@@ -810,6 +814,20 @@ export default function ShoppingListPage() {
       if (lid) setSharedListId(lid)
       const invBy = localStorage.getItem("true-invited-by")
       if (invBy) setIsInvitee(true)
+    } catch {}
+    // Confetti + welcome toast for new invitees
+    try {
+      if (localStorage.getItem("true-new-user") === "1") {
+        localStorage.removeItem("true-new-user")
+        setShowConfetti(true)
+        setTimeout(() => setShowConfetti(false), 4000)
+        // Show welcome notification toast
+        const inviterName = localStorage.getItem("true-invited-by") || ""
+        if (inviterName) {
+          setTimeout(() => setToastNotif({ addedBy: `🎉 Willkommen!`, itemName: `${inviterName} hat dich zu ihrer Liste eingeladen` }), 800)
+          setTimeout(() => setToastNotif(null), 5000)
+        }
+      }
     } catch {}
     setHydrated(true)
     return () => {
@@ -940,6 +958,65 @@ export default function ShoppingListPage() {
       try { localStorage.setItem("list-item-comments-v1", JSON.stringify(next)) } catch {}
       return next
     })
+  }
+
+  function generateListInvite() {
+    const myProfile = (() => { try { return JSON.parse(localStorage.getItem("true-profile") || "{}") } catch { return {} } })()
+    const myName    = myProfile.name || myProfile.vorname || sharedName || "Jemand"
+    const myPhoto   = localStorage.getItem("true-profile-photo") || ""
+
+    // Get or create a stable list ID
+    let listId: string | null = sharedListId
+    if (!listId) {
+      try {
+        listId = localStorage.getItem("true-list-id")
+        if (!listId) {
+          listId = Math.random().toString(36).slice(2, 10)
+          localStorage.setItem("true-list-id", listId)
+        }
+        setSharedListId(listId)
+      } catch { listId = "shared" }
+    }
+
+    const link = `https://get-true.de/join?list=${encodeURIComponent(listId!)}&from=${encodeURIComponent(myName)}&emoji=${encodeURIComponent(newPersonEmoji)}`
+    setListInviteLink(link)
+    setListInviteCopied(false)
+
+    if (!supabase || !listId) return
+
+    // Register host in list_members
+    supabase.from("list_members").upsert({
+      list_id: listId,
+      member_name: myName,
+      member_photo: myPhoto,
+      member_emoji: newPersonEmoji,
+      joined_at: new Date().toISOString(),
+    }, { onConflict: "list_id,member_name" }).then(({ error }: any) => {
+      if (error) console.warn("[invite] list_members error:", error.message)
+    })
+
+    // Upload current list items so invitee sees them immediately
+    const rawItems = (() => { try { return JSON.parse(localStorage.getItem("shopping-list-items-v1") || "[]") } catch { return [] } })()
+    if (rawItems.length > 0) {
+      const rows = rawItems.filter((i: any) => !i.checked).map((i: any) => ({
+        list_id:       listId,
+        product_id:    String(i.id),
+        product_name:  i.name || "",
+        product_brand: i.brand || "",
+        product_emoji: i.emoji || "🛒",
+        severity:      i.severity || "none",
+        issue:         `${i.category || "other"}||${i.issue || ""}`,
+        checked:       false,
+        added_by:      myName,
+        added_at:      new Date().toISOString(),
+      }))
+      supabase.from("shared_list_items")
+        .upsert(rows, { onConflict: "list_id,product_id" })
+        .then(({ error }: any) => {
+          if (error) console.warn("[invite] upload items error:", error.message)
+          else console.log("[invite] uploaded", rows.length, "items")
+        })
+    }
   }
 
   function leaveSharedList() {
@@ -1789,64 +1866,163 @@ export default function ShoppingListPage() {
           setFamilyMembers(next)
           try { localStorage.setItem("true-family-members", JSON.stringify(next)) } catch {}
         }
-        function addPerson() {
-          const autoName = `Person ${familyMembers.length + 1}`
-          savePeople([...familyMembers, { id: Date.now().toString(), name: autoName, age: "", emoji: newPersonEmoji }])
-          setNewPersonEmoji("🧒")
-          // also generate invite link
-          openShare()
+        function closeSheet() {
           setShowPersonSheet(false)
+          setListInviteLink(null)
+          setListInviteCopied(false)
         }
         return (
           <>
-            <div onClick={() => setShowPersonSheet(false)} style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.5)" }} />
-            <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 301, background: "var(--surface)", borderRadius: "20px 20px 0 0", padding: "0 0 env(safe-area-inset-bottom,20px)", boxShadow: "0 -8px 40px rgba(0,0,0,0.35)", animation: "slideUp 0.22s ease", maxHeight: "85vh", overflowY: "auto" }}>
+            <div onClick={closeSheet} style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.5)" }} />
+            <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 301, background: "var(--surface)", borderRadius: "20px 20px 0 0", padding: "0 0 env(safe-area-inset-bottom,20px)", boxShadow: "0 -8px 40px rgba(0,0,0,0.35)", animation: "slideUp 0.22s ease", maxHeight: "90vh", overflowY: "auto" }}>
+              {/* Handle */}
               <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 4px" }}>
                 <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--border)" }} />
               </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 20px 14px" }}>
+              {/* Header */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 20px 12px" }}>
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: "1rem" }}>Jemanden einladen</div>
-                  <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 2 }}>Die Person trägt ihren Namen selbst ein</div>
+                  <div style={{ fontWeight: 800, fontSize: "1rem" }}>👨‍👩‍👧 Meine Liste</div>
+                  <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 2 }}>Für wen kaufst du ein?</div>
                 </div>
-                <button onClick={() => setShowPersonSheet(false)} style={{ background: "var(--surface-2)", border: "none", borderRadius: "50%", width: 30, height: 30, cursor: "pointer", fontSize: "0.9rem", color: "var(--text-dim)" }}>✕</button>
+                <button onClick={closeSheet} style={{ background: "var(--surface-2)", border: "none", borderRadius: "50%", width: 30, height: 30, cursor: "pointer", fontSize: "0.9rem", color: "var(--text-dim)" }}>✕</button>
               </div>
-              <div style={{ borderTop: "1px solid var(--border)", margin: "0 20px" }} />
-              <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
 
-                {/* Existing members */}
-                {familyMembers.length > 0 && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {familyMembers.map(m => (
-                      <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--background)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 14px" }}>
-                        <div style={{ width: 38, height: 38, borderRadius: "50%", background: "var(--surface-2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem" }}>{m.emoji}</div>
-                        <div style={{ flex: 1, fontWeight: 600, fontSize: "0.88rem" }}>{m.name}</div>
-                        <button onClick={() => savePeople(familyMembers.filter(x => x.id !== m.id))} style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: "1.2rem", padding: "0 4px" }}>×</button>
+              {/* Tabs */}
+              <div style={{ display: "flex", margin: "0 20px 0", background: "var(--background)", borderRadius: 10, padding: 4, gap: 4 }}>
+                {([["manual","👤 Eigene Liste"],["invite","🔗 Einladen"]] as const).map(([tab, label]) => (
+                  <button key={tab} onClick={() => { setPersonSheetTab(tab); setListInviteLink(null); setListInviteCopied(false) }}
+                    style={{ flex: 1, background: personSheetTab === tab ? "var(--surface)" : "transparent", border: "none", borderRadius: 8, padding: "8px", fontWeight: personSheetTab === tab ? 700 : 500, fontSize: "0.82rem", color: personSheetTab === tab ? "var(--text)" : "var(--text-dim)", cursor: "pointer", transition: "all 0.15s" }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ padding: "14px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+
+                {/* ── TAB: Eigene Liste (Manuell) ── */}
+                {personSheetTab === "manual" && (
+                  <>
+                    <p style={{ fontSize: "0.8rem", color: "var(--text-dim)", margin: 0, lineHeight: 1.5 }}>
+                      Erstelle eine eigene Sektion in deiner Liste — für dich persönlich oder ein Familienmitglied. Kein Einladen nötig.
+                    </p>
+                    {/* Existing personal members */}
+                    {familyMembers.length > 0 && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {familyMembers.map(m => (
+                          <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--background)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 14px" }}>
+                            <div style={{ width: 38, height: 38, borderRadius: "50%", background: "var(--surface-2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem" }}>{m.emoji}</div>
+                            <div style={{ flex: 1, fontWeight: 600, fontSize: "0.88rem" }}>{m.name}</div>
+                            <button onClick={() => savePeople(familyMembers.filter(x => x.id !== m.id))} style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: "1.2rem", padding: "0 4px" }}>×</button>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    )}
+                    <div>
+                      <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-dim)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Symbol wählen</div>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {PERSON_EMOJIS.map(em => (
+                          <button key={em} onClick={() => setNewPersonEmoji(em)} style={{ width: 42, height: 42, borderRadius: "50%", background: newPersonEmoji === em ? "var(--accent)" : "var(--surface-2)", border: `2px solid ${newPersonEmoji === em ? "var(--accent)" : "transparent"}`, fontSize: "1.3rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.12s" }}>{em}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const autoName = `Person ${familyMembers.length + 1}`
+                        savePeople([...familyMembers, { id: Date.now().toString(), name: autoName, age: "", emoji: newPersonEmoji }])
+                        setNewPersonEmoji("🧒")
+                        closeSheet()
+                      }}
+                      style={{ width: "100%", background: "var(--accent)", color: "#000", border: "none", borderRadius: 14, padding: "14px", fontWeight: 800, fontSize: "0.95rem", cursor: "pointer" }}
+                    >
+                      ✚ Eigene Liste erstellen
+                    </button>
+                  </>
                 )}
 
-                {/* Emoji picker */}
-                <div>
-                  <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-dim)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Wer wird eingeladen?</div>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {PERSON_EMOJIS.map(em => (
-                      <button key={em} onClick={() => setNewPersonEmoji(em)} style={{ width: 42, height: 42, borderRadius: "50%", background: newPersonEmoji === em ? "var(--accent)" : "var(--surface-2)", border: `2px solid ${newPersonEmoji === em ? "var(--accent)" : "transparent"}`, fontSize: "1.3rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.12s" }}>{em}</button>
-                    ))}
-                  </div>
-                </div>
+                {/* ── TAB: Einladen (Realtime invite) ── */}
+                {personSheetTab === "invite" && (
+                  <>
+                    <p style={{ fontSize: "0.8rem", color: "var(--text-dim)", margin: 0, lineHeight: 1.5 }}>
+                      Lade jemanden ein — er öffnet den Link, trägt seinen Namen ein und sieht sofort deine Liste.
+                    </p>
+                    {/* Emoji / avatar for invitee */}
+                    <div>
+                      <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-dim)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Symbol für die eingeladene Person</div>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {PERSON_EMOJIS.map(em => (
+                          <button key={em} onClick={() => setNewPersonEmoji(em)} style={{ width: 42, height: 42, borderRadius: "50%", background: newPersonEmoji === em ? "var(--accent)" : "var(--surface-2)", border: `2px solid ${newPersonEmoji === em ? "var(--accent)" : "transparent"}`, fontSize: "1.3rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.12s" }}>{em}</button>
+                        ))}
+                      </div>
+                    </div>
 
-                {/* CTA */}
-                <button onClick={addPerson} style={{ width: "100%", background: "var(--accent)", color: "#000", border: "none", borderRadius: 14, padding: "14px", fontWeight: 800, fontSize: "0.95rem", cursor: "pointer" }}>
-                  📤 Einladungslink erstellen & teilen
-                </button>
-                <p style={{ textAlign: "center", fontSize: "0.72rem", color: "var(--text-dim)", margin: 0 }}>Die Person öffnet den Link und trägt ihren Namen ein</p>
+                    {/* Generate button */}
+                    {!listInviteLink ? (
+                      <button
+                        onClick={generateListInvite}
+                        style={{ width: "100%", background: "var(--accent)", color: "#000", border: "none", borderRadius: 14, padding: "14px", fontWeight: 800, fontSize: "0.95rem", cursor: "pointer" }}
+                      >
+                        📤 Einladungslink erstellen
+                      </button>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        {/* Link display */}
+                        <div style={{ background: "var(--background)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 14px" }}>
+                          <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--text-dim)", marginBottom: 4, textTransform: "uppercase" }}>Dein Einladungslink</div>
+                          <div style={{ fontSize: "0.78rem", color: "var(--text)", wordBreak: "break-all", lineHeight: 1.4 }}>{listInviteLink}</div>
+                        </div>
+                        {/* Copy + WhatsApp buttons */}
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button
+                            onClick={() => { navigator.clipboard?.writeText(listInviteLink).catch(() => {}); setListInviteCopied(true) }}
+                            style={{ flex: 1, background: listInviteCopied ? "rgba(46,204,138,0.15)" : "var(--accent)", color: listInviteCopied ? "var(--accent)" : "#000", border: listInviteCopied ? "1px solid var(--accent)" : "none", borderRadius: 12, padding: "12px", fontWeight: 800, fontSize: "0.88rem", cursor: "pointer" }}
+                          >
+                            {listInviteCopied ? "✓ Kopiert!" : "📋 Kopieren"}
+                          </button>
+                          <button
+                            onClick={() => { const text = `Ich lade dich zu meiner Einkaufsliste bei TRUE ein 🛒\n\n${listInviteLink}`; window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank") }}
+                            style={{ flex: 1, background: "#25D366", color: "#fff", border: "none", borderRadius: 12, padding: "12px", fontWeight: 800, fontSize: "0.88rem", cursor: "pointer" }}
+                          >
+                            💬 WhatsApp
+                          </button>
+                        </div>
+                        <p style={{ textAlign: "center", fontSize: "0.7rem", color: "var(--text-dim)", margin: 0 }}>
+                          Die Person öffnet den Link, trägt ihren Namen ein und landet direkt in deiner Liste
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+
               </div>
             </div>
           </>
         )
       })()}
+
+      {/* ── Confetti for new invitees ── */}
+      {showConfetti && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, pointerEvents: "none", overflow: "hidden" }}>
+          {Array.from({ length: 60 }).map((_, i) => {
+            const colors = ["#2ECC8A","#ffd700","#ff6b6b","#38BDF8","#a78bfa","#fb923c"]
+            const color  = colors[i % colors.length]
+            const left   = `${Math.random() * 100}%`
+            const delay  = `${Math.random() * 1.2}s`
+            const dur    = `${2.2 + Math.random() * 1.2}s`
+            const size   = `${6 + Math.random() * 8}px`
+            return (
+              <div key={i} style={{
+                position: "absolute", top: "-20px", left,
+                width: size, height: size,
+                background: color, borderRadius: Math.random() > 0.5 ? "50%" : "2px",
+                animation: `confettiFall ${dur} ${delay} ease-in forwards`,
+                opacity: 0.9,
+              }} />
+            )
+          })}
+          <style>{`@keyframes confettiFall{0%{transform:translateY(0) rotate(0deg);opacity:1}80%{opacity:1}100%{transform:translateY(105vh) rotate(720deg);opacity:0}}`}</style>
+        </div>
+      )}
 
       {/* ── In-app toast: new item added by another list member ── */}
       {toastNotif && (

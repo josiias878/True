@@ -61,7 +61,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Version check — runs before any cached JS, forces reload on new deploy */}
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){
-            var V = "20260529-2";
+            var V = "20260529-3";
             try {
               var stored = localStorage.getItem("true-build");
               var url = location.href;
