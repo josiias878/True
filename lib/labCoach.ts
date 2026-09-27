@@ -229,10 +229,13 @@ function idleAdvice(s: LabState, today: string, wins: PhaseWindow[], push: Push)
         actions: [{ label: `🔬 ${ONSET_INFO[lib.onset].days} Tage testen`, action: { kind: "startTest", suppId: next.id }, primary: true },
           { label: "📌 Einfach durchgehend nehmen", action: { kind: "konstant", suppId: next.id } },
           { label: "Anderes wählen", action: { kind: "pickNext" } }] })
-    } else {
-      const days = lib ? ONSET_INFO[lib.onset].days : 3
+    } else if (lib) {
       push({ id: `next-${next.id}`, mood: "happy", prio: 3, title: `Bereit für den nächsten Test`,
-        text: `Mein Vorschlag: ${next.name}. ${days} Tage lang nimmst du nur ${next.name}, und ich vergleiche mit deinem Reset.`,
+        text: `Mein Vorschlag: ${next.name}. Ich empfehle ${ONSET_INFO[lib.onset].days} Tage, du kannst das beim Start noch anpassen.`,
+        actions: [{ label: `🔬 ${next.name} starten`, action: { kind: "startTest", suppId: next.id }, primary: true }, { label: "Anderes wählen", action: { kind: "pickNext" } }] })
+    } else {
+      push({ id: `next-${next.id}`, mood: "think", prio: 3, title: `Bereit für den nächsten Test`,
+        text: `${next.name} kenne ich nicht — ich kann dir keine Dauer empfehlen, das wäre Beratung. Du entscheidest beim Start selbst.`,
         actions: [{ label: `🔬 ${next.name} starten`, action: { kind: "startTest", suppId: next.id }, primary: true }, { label: "Anderes wählen", action: { kind: "pickNext" } }] })
     }
     return

@@ -988,6 +988,15 @@ export function nextCandidates(s: LabState): MySupp[] {
   return autoOrder(s.supps.filter(x => x.mode === "test" && !s.verdicts[x.id] && !tested.has(x.id)), s.goals)
 }
 
+/**
+ * Grobe Erkennung "das klingt nach einer Dauertherapie, die man nicht zum Testen absetzt"
+ * (Hormone, Blutverdünner, Psychopharmaka, Blutdruck- und Blutzuckermedikamente …).
+ * Nur ein Hinweis, keine Diagnose — betrifft ausschließlich eigene, nicht in der Bibliothek
+ * geführte Einträge, weil dort ohnehin keine Dauer-Empfehlung möglich ist.
+ */
+const PRESCRIPTION_HINTS = /testosteron|trt\b|hormonersatz|\bhrt\b|\bivf\b|insulin|levothyroxin|l-thyroxin|euthyrox|schilddrüsenhormon|kortison|cortison|prednisolon|ssri|antidepress|citalopram|sertralin|fluoxetin|escitalopram|\bpille\b|verhütung|marcumar|warfarin|blutverdünner|blutdruck|ramipril|metformin|opioid|methadon|\bbenzo\b|xanax|tavor|schilddrüse|antibabypille/i
+export function looksPrescribed(name: string) { return PRESCRIPTION_HINTS.test(name) }
+
 export type SuppStatusKey = "waiting" | "testing" | "kept" | "maybe" | "dropped" | "constant" | "paused" | "observing" | "verdict"
 
 export function suppStatus(s: LabState, id: string, today = todayIso()): { key: SuppStatusKey; label: string; emoji: string } {

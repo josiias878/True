@@ -7,13 +7,13 @@ import {
   loadState, saveState, emptyState, demoState, computeBadges, levelFor, streak, hydrate,
   phaseWindows, phaseAt, testResult, checkinsIn, buildStack, allowedSlots, slotTime, slotFor, stackMembers, intakeOn,
   STORE_MODE, LAB_BASE, todayIso, addDays, diffDays, fmtDate, suppColor, daySum, activeDims, signal, libOf, makeSupp, defaultCheckinTime,
-  nextCandidates, suppStatus, takingInfo, avgIntakeMinutes, phaseEndsAt, fmtCountdown, nowTime, closeActive,
+  nextCandidates, suppStatus, takingInfo, avgIntakeMinutes, phaseEndsAt, fmtCountdown, nowTime, closeActive, looksPrescribed,
   startTest, startStack, startCheck, applyVerdict, resolveCheck, fromMin,
   type LabState, type Decision, type Dim, type PhaseWindow, type MySupp, type LibSupp, type Settings, type CheckIn, type Scores, type SuppStatusKey,
 } from "@/lib/supplementLab"
 import { checkLabReminders, downloadIcs, hasNativeReminders, syncNativeReminders } from "@/lib/labReminders"
 import { coach, type CoachAction, type CoachMsg } from "@/lib/labCoach"
-import { LAB_CSS, Btn, Capsule, Card, FaceRow, Label, Sheet, SideChips, Stars, XpToast } from "./ui"
+import { LAB_CSS, Btn, Capsule, Card, FaceRow, Label, Sheet, SideChips, Stars, Stepper, XpToast } from "./ui"
 import { CheckInSheet, Onboarding, SuppPicker } from "./flows"
 import { DeltaBars, DimLineChart, MoodCalendar, MoodCurve, ProCon } from "./charts"
 import { CoachBubble, FloatingMascot, HelpSheet, Mascot } from "./mascot"
@@ -139,6 +139,7 @@ export default function LabApp() {
   const [phaseSheet, setPhaseSheet] = useState<PhaseWindow | null>(null)
   const [suppSheet, setSuppSheet] = useState<string | null>(null)
   const [pickOpen, setPickOpen] = useState(false)
+  const [testSetup, setTestSetup] = useState<string | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [dismissed, setDismissed] = useState<string[]>(loadDismissed)
@@ -212,10 +213,7 @@ export default function LabApp() {
   const runAction = useCallback((a: CoachAction, msgId: string) => {
     switch (a.kind) {
       case "checkin": setCheckinDate(today); break
-      case "startTest":
-        update(p => startTest(p, a.suppId, today), { amount: 10, label: "Test gestartet" })
-        setFlash(`🔬 Test gestartet: ${s.supps.find(x => x.id === a.suppId)?.name}`)
-        break
+      case "startTest": setTestSetup(a.suppId); break
       case "pickNext": setPickOpen(true); break
       case "verdict": update(p => applyVerdict(p, a.suppId, a.decision, "Vorschlag übernommen", today), { amount: 50, label: "Urteil gefällt" }); break
       case "openVerdict": setVerdictFor(a.suppId); break
@@ -349,6 +347,18 @@ export default function LabApp() {
       <PhaseSheet s={s} w={phaseSheet} today={today} onClose={() => setPhaseSheet(null)} update={update} onVerdict={id => { setPhaseSheet(null); setVerdictFor(id) }} />
       {suppSheet && <SuppSheet s={s} id={suppSheet} today={today} onClose={() => setSuppSheet(null)} update={update} onAction={a => { setSuppSheet(null); runAction(a, "supp") }} onVerdict={id => { setSuppSheet(null); setVerdictFor(id) }} />}
       {pickOpen && <PickNextSheet s={s} onClose={() => setPickOpen(false)} update={update} onStart={id => { setPickOpen(false); runAction({ kind: "startTest", suppId: id }, "pick") }} />}
+      {testSetup && <TestSetupSheet s={s} suppId={testSetup} onClose={() => setTestSetup(null)}
+        onConfirm={days => {
+          const id = testSetup; const name = s.supps.find(x => x.id === id)?.name
+          setTestSetup(null)
+          update(p => startTest(p, id, today, days), { amount: 10, label: "Test gestartet" })
+          setFlash(`🔬 Test gestartet: ${name} · ${days} Tage`)
+        }}
+        onKonstant={() => {
+          const id = testSetup
+          setTestSetup(null)
+          update(p => { p.supps = p.supps.map(x => x.id === id ? { ...x, mode: "konstant" } : x); return p })
+        }} />}
       {helpOpen && <HelpSheet msgs={msgs} onAction={runAction} onClose={() => setHelpOpen(false)} />}
       {settingsOpen && <SettingsSheet s={s} onClose={() => setSettingsOpen(false)} update={update}
         onEnableReminders={enableReminders}
@@ -682,7 +692,7 @@ function PickNextSheet({ s, onClose, update, onStart }: { s: LabState; onClose: 
                 <span style={{ width: 40, height: 40, borderRadius: 13, background: suppColor(x), display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", flexShrink: 0 }}>{x.emoji}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 800 }}>{x.name} {i === 0 && <span style={{ fontSize: "0.65rem", background: "var(--accent-dim)", color: "var(--accent)", padding: "2px 6px", borderRadius: 6 }}>VORSCHLAG</span>}</div>
-                  <div style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>{lib ? `${ONSET_INFO[lib.onset].emoji} ${ONSET_INFO[lib.onset].label} · ${ONSET_INFO[lib.onset].days} Tage Test` : "3 Tage Test"}</div>
+                  <div style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>{lib ? `${ONSET_INFO[lib.onset].emoji} ${ONSET_INFO[lib.onset].label} · Empfehlung ${ONSET_INFO[lib.onset].days} Tage` : "unbekannt · keine Empfehlung"}</div>
                 </div>
                 {canStart && <Btn onClick={() => onStart(x.id)} style={{ padding: "9px 12px", fontSize: "0.8rem" }}>Starten</Btn>}
               </div>
@@ -697,6 +707,66 @@ function PickNextSheet({ s, onClose, update, onStart }: { s: LabState; onClose: 
           onPasteAdd={items => update(p => { items.forEach(it => { if (!it.lib || !p.supps.some(x => x.lib === it.lib!.id)) p.supps.push(makeSupp(it.lib, it.name, p.supps, it.dose)) }); return p })}
           onToggle={(lib: LibSupp) => update(p => { if (!p.supps.some(x => x.lib === lib.id)) p.supps.push(makeSupp(lib, lib.name, p.supps)); return p })} />
       ) : <Btn variant="ghost" full onClick={() => setAdding(true)}>+ Neues Supplement hinzufügen</Btn>}
+    </Sheet>
+  )
+}
+
+// ── Bevor ein Test startet: Kolbi empfiehlt eine Dauer, du entscheidest ────────
+
+function TestSetupSheet({ s, suppId, onClose, onConfirm, onKonstant }: {
+  s: LabState; suppId: string; onClose: () => void; onConfirm: (days: number) => void; onKonstant: () => void
+}) {
+  const x = s.supps.find(q => q.id === suppId)
+  const lib = libOf(x)
+  const recommended = lib ? ONSET_INFO[lib.onset].days : null
+  const [days, setDays] = useState(recommended ?? 5)
+  const prescribed = !lib && !!x && looksPrescribed(x.name)
+  if (!x) return null
+  const presets = [3, 5, 7, 10, 14]
+
+  const startBtn = <Btn full onClick={() => onConfirm(days)}>🔬 {days} Tage testen</Btn>
+  const stayBtn = <Btn full variant={prescribed ? "primary" : "soft"} onClick={onKonstant}>📌 {prescribed ? "Weiter nehmen (empfohlen)" : "Doch einfach weiter nehmen"}</Btn>
+
+  return (
+    <Sheet open onClose={onClose} title={`🔬 ${x.name} testen`}>
+      <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 18 }}>
+        <div style={{ flexShrink: 0 }}><Mascot mood={prescribed ? "alert" : lib ? "happy" : "think"} size={48} /></div>
+        <div style={{
+          flex: 1, minWidth: 0, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "16px 16px 16px 4px",
+          padding: "10px 12px", fontSize: "0.86rem", lineHeight: 1.5,
+        }}>
+          {lib ? (
+            <>{ONSET_INFO[lib.onset].text} Ich empfehle <b>{recommended} Tage</b> — unten schon ausgewählt, du kannst es ändern.</>
+          ) : (
+            <>
+              <b>{x.name}</b> kenne ich nicht — dazu kann ich keine Dauer empfehlen, das wäre Beratung.
+              {prescribed && <> Klingt nach einem <b>Mittel, das man über längere Zeit nimmt</b> (z. B. Hormone, Blutdruck, Psychopharmaka). Sowas testet man nicht kurz ab, sondern spricht Änderungen mit der Ärztin/dem Arzt ab.</>}
+            </>
+          )}
+        </div>
+      </div>
+
+      <Label style={{ marginBottom: 8 }}>Wie lange testen?</Label>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+        {presets.map(d => (
+          <button key={d} className="lab-press" onClick={() => setDays(d)} style={{
+            padding: "10px 14px", borderRadius: 14, fontWeight: 800, position: "relative", color: "var(--text)",
+            border: days === d ? "2px solid var(--accent)" : "1px solid var(--border)",
+            background: days === d ? "var(--accent-dim)" : "var(--surface)",
+          }}>
+            {d} Tage
+            {recommended === d && <span style={{ position: "absolute", top: -9, left: "50%", transform: "translateX(-50%)", fontSize: "0.6rem", background: "var(--accent)", color: "#fff", padding: "2px 6px", borderRadius: 6, whiteSpace: "nowrap" }}>Empfehlung</span>}
+          </button>
+        ))}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+        <span style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>eigene Anzahl</span>
+        <Stepper value={days} min={1} max={30} onChange={setDays} suffix=" T" />
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {prescribed ? <>{stayBtn}{startBtn}</> : <>{startBtn}{stayBtn}</>}
+      </div>
     </Sheet>
   )
 }
