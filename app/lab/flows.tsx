@@ -10,6 +10,7 @@ import {
 import { hasNativeReminders } from "@/lib/labReminders"
 import { Btn, Capsule, Card, FaceRow, Label, Segmented, SideChips, Stars } from "./ui"
 import { MASCOT_NAME, Mascot } from "./mascot"
+import { InstallHint } from "./install"
 import type { Mood } from "@/lib/labCoach"
 
 // ── Supplement-Auswahl: antippen oder Liste einfügen ───────────────────────────
@@ -220,6 +221,7 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
               </div>
             ))}
           </div>
+          {STORE_MODE && <div style={{ marginBottom: 14 }}><InstallHint compact /></div>}
           <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
             <Btn full onClick={next}>Los geht&apos;s · 1 Minute</Btn>
             <Btn full variant="ghost" onClick={onDemo}>Erst mal mit Beispiel-Daten umschauen</Btn>

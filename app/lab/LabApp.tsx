@@ -17,6 +17,7 @@ import { LAB_CSS, Btn, Capsule, Card, FaceRow, Label, Sheet, SideChips, Stars, X
 import { CheckInSheet, Onboarding, SuppPicker } from "./flows"
 import { DeltaBars, DimLineChart, MoodCalendar, MoodCurve, ProCon } from "./charts"
 import { CoachBubble, FloatingMascot, HelpSheet, Mascot } from "./mascot"
+import { InstallHint } from "./install"
 
 type Tab = "heute" | "reise" | "daten" | "stack"
 
@@ -417,6 +418,7 @@ function Dashboard({ s, wins, today, now, msgs, onAction, onHelp, onCheckin, onQ
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {/* Kolbi sagt, was dran ist */}
       {top && <CoachBubble msg={top} onAction={onAction} more={msgs.length - 1} onMore={onHelp} />}
+      {STORE_MODE && !hasNativeReminders() && <InstallHint compact />}
 
       {/* Status + Countdown */}
       <div className="lab-rise lab-press" onClick={() => w && onPhase(w)} style={{
