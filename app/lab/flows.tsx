@@ -4,9 +4,10 @@ import Link from "next/link"
 import {
   FACES, FACE_LABELS, TAGS, LIBRARY, SIDE_EFFECTS, SIDE_BY_ID, knownSides, intakeOn, ONSET_INFO, ROUTE_INFO, SUPP_COLORS, CATEGORIES, GOALS, RHYTHMS, TRAININGS,
   buildPhases, todayIso, addDays, fmtDate, diffDays, makeSupp, autoOrder, defaultDays, parseSuppList, goalRelevance,
-  activeDims, defaultCheckinTime, libOf, daySum,
+  activeDims, defaultCheckinTime, libOf, daySum, STORE_MODE,
   type CheckIn, type Dim, type LabState, type MySupp, type Settings, type LibSupp, type GoalId, type SuppMode, type Scores,
 } from "@/lib/supplementLab"
+import { hasNativeReminders } from "@/lib/labReminders"
 import { Btn, Capsule, Card, FaceRow, Label, Segmented, SideChips, Stars, Stepper } from "./ui"
 
 export const MODE_OPTIONS: { id: SuppMode; label: string }[] = [
@@ -197,7 +198,7 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
   }
 
   const totalDays = baseline + order.reduce((a, id) => a + (days[id] ?? 5), 0) + Math.max(0, order.length - 1) * settings.washoutDays
-  const peptides = supps.filter(s => libOf(s)?.category === "Peptide")
+  const peptides = supps.filter(s => libOf(s)?.category === "Peptide" || (STORE_MODE && !s.lib))
   const rx = supps.filter(s => libOf(s)?.rx)
   const slow = order.filter(id => libOf(supps.find(x => x.id === id))?.onset === "langsam")
 
@@ -252,13 +253,13 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
 
       {step === 0 && (
         <div className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          <Link href="/home" style={{ color: "var(--text-dim)", textDecoration: "none", fontWeight: 700, fontSize: "0.85rem", alignSelf: "flex-start" }}>← TRUE</Link>
+          {!STORE_MODE && <Link href="/home" style={{ color: "var(--text-dim)", textDecoration: "none", fontWeight: 700, fontSize: "0.85rem", alignSelf: "flex-start" }}>← TRUE</Link>}
           <div style={{ position: "relative", height: 220, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <div className="lab-float" style={{
               width: 140, height: 140, borderRadius: 44, background: "var(--lab-grad)", display: "flex", alignItems: "center",
               justifyContent: "center", fontSize: "4.2rem", boxShadow: "0 20px 60px rgba(46,204,138,.45)",
             }}>🧪</div>
-            {["💊", "🌙", "💉", "🌿", "🧬"].map((e, i) => (
+            {(STORE_MODE ? ["💊", "🌙", "⚡", "🌿", "📈"] : ["💊", "🌙", "💉", "🌿", "🧬"]).map((e, i) => (
               <span key={i} className="lab-float" style={{
                 position: "absolute", fontSize: "1.6rem", animationDelay: `${i * 0.5}s`,
                 left: `${[12, 78, 18, 80, 48][i]}%`, top: `${[18, 14, 72, 70, 0][i]}%`,
@@ -267,7 +268,7 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
           </div>
           <div style={{ fontSize: "2rem", fontWeight: 900, lineHeight: 1.1, marginBottom: 10 }}>Supplement Lab</div>
           <div style={{ fontSize: "1.05rem", color: "var(--text-dim)", lineHeight: 1.5, marginBottom: 22 }}>
-            Finde raus, was bei dir wirklich wirkt — Supplements & Peptide, eins nach dem anderen. Du tippst, die App plant.
+            Finde raus, was bei dir wirklich wirkt — {STORE_MODE ? "Supplement für Supplement" : "Supplements & Peptide, eins nach dem anderen"}. Du tippst, die App plant.
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
             {[
@@ -300,7 +301,7 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
 
       {step === 2 && (
         <div className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          {title("Was nimmst du? 💊", "Antippen oder deine Liste reinkopieren — Dosis wird mit erkannt. Peptide findest du ganz oben.")}
+          {title("Was nimmst du? 💊", STORE_MODE ? "Antippen oder deine Liste reinkopieren — Dosis wird mit erkannt. Nicht dabei? Einfach eintippen." : "Antippen oder deine Liste reinkopieren — Dosis wird mit erkannt. Peptide findest du ganz oben.")}
           {supps.length > 0 && (
             <div className="lab-card" style={{ padding: 12, marginBottom: 14 }}>
               <Label style={{ marginBottom: 8 }}>Dein Stack · {supps.length}</Label>
@@ -410,7 +411,9 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
           )}
           {(peptides.length > 0 || rx.length > 0) && (
             <div style={{ fontSize: "0.8rem", lineHeight: 1.5, padding: "10px 12px", borderRadius: 14, background: "var(--danger-dim)", marginBottom: 10 }}>
-              🧬 <b>Peptide:</b> Die meisten sind nicht als Arzneimittel zugelassen und kaum am Menschen untersucht; Reinheit schwankt stark. Nur mit ärztlicher Begleitung, sterilem Material und geprüfter Quelle. Dosis & Protokoll trägst du selbst ein.
+              {STORE_MODE
+                ? <>⚕️ <b>Eigene Substanzen & Medikamente:</b> Die App protokolliert nur, was du einträgst — sie empfiehlt keine Substanzen oder Dosierungen. Alles, was über normale Nahrungsergänzung hinausgeht, bitte ärztlich abklären.</>
+                : <>🧬 <b>Peptide:</b> Die meisten sind nicht als Arzneimittel zugelassen und kaum am Menschen untersucht; Reinheit schwankt stark. Nur mit ärztlicher Begleitung, sterilem Material und geprüfter Quelle. Dosis & Protokoll trägst du selbst ein.</>}
             </div>
           )}
 
@@ -431,7 +434,7 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
             </div>
           )}
 
-          {remind && (
+          {remind && !hasNativeReminders() && (
             <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: "0.85rem", fontWeight: 700, margin: "8px 0" }}>
               <input type="checkbox" checked={calendar} onChange={e => setCalendar(e.target.checked)} style={{ width: 20, height: 20, accentColor: "var(--accent)" }} />
               📅 Alle Termine direkt in meinen Kalender (klappt auch bei geschlossener App)

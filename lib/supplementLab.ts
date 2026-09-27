@@ -3,6 +3,16 @@
 // testen → Vergleich mit der Baseline → persönlicher Stack mit perfektem Tagesplan.
 // Alles lokal im Browser (localStorage), kein Login nötig.
 
+/**
+ * Store-Version (eigenständige App für App Store / Google Play):
+ * Research-Peptide sind nicht in der Bibliothek — sie können nur neutral als eigene
+ * Substanz angelegt werden (keine Beschreibungen, Dosierungen oder Injektionshinweise).
+ * Wird im Vite-Build der App gesetzt, im TRUE-Web ist es aus.
+ */
+export const STORE_MODE = process.env.NEXT_PUBLIC_LAB_STORE === "1"
+/** Basis-Pfad der App (TRUE: /lab, Store-App: /) */
+export const LAB_BASE = STORE_MODE ? "/" : "/lab"
+
 // ── Dimensionen für den Check-in ────────────────────────────────────────────────
 
 export type Dim =
@@ -226,9 +236,7 @@ export const ROUTE_INFO: Record<Route, { emoji: string; label: string }> = {
 
 export type Category =
   | "Schlaf & Ruhe" | "Energie & Fokus" | "Stress & Adaptogene" | "Vitamine & Mineralien"
-  | "Training" | "Darm & Immun" | "Peptide"
-
-export const CATEGORIES: Category[] = ["Peptide", "Schlaf & Ruhe", "Energie & Fokus", "Stress & Adaptogene", "Vitamine & Mineralien", "Training", "Darm & Immun"]
+  | "Training" | "Darm & Immun" | "Peptide" | "Verschriebene Medikamente"
 
 export interface LibSupp {
   id: string
@@ -251,7 +259,7 @@ export interface LibSupp {
 
 const PEPTIDE_NOTE = "Nicht als Arzneimittel zugelassen, kaum Humanstudien, Reinheit von Research-Peptiden schwankt stark. Nur mit ärztlicher Begleitung und sauberer Injektionshygiene."
 
-export const LIBRARY: LibSupp[] = [
+const ALL_LIBRARY: LibSupp[] = [
   // ── Peptide ──
   { id: "bpc157", name: "BPC-157", emoji: "🩹", category: "Peptide", onset: "mittel", route: "subkutan",
     slots: ["nuechtern", "schlaf"], dose: "laut Protokoll", watch: ["gelenke", "koerper", "verdauung"],
@@ -418,6 +426,18 @@ export const LIBRARY: LibSupp[] = [
     effect: "Knochen — meist reicht die Ernährung.",
     timing: "Mit Essen, ≥2 h Abstand zu Eisen und Zink.", aliases: ["calcium", "kalzium"] },
 ]
+
+const RESEARCH_PEPTIDES = new Set(["bpc157", "tb500", "ghkcu", "cjc-ipa", "semax", "selank", "motsc", "epitalon", "ta1", "kpv"])
+
+export const LIBRARY: LibSupp[] = STORE_MODE
+  ? ALL_LIBRARY.filter(l => !RESEARCH_PEPTIDES.has(l.id)).map(l => l.id === "glp1"
+      ? { ...l, category: "Verschriebene Medikamente" as Category, effect: "Verschriebenes Medikament zur Gewichtsregulation — hier nur zum Mitprotokollieren.", timing: "Wie ärztlich verordnet, meist 1× pro Woche am gleichen Tag." }
+      : l)
+  : ALL_LIBRARY
+
+export const CATEGORIES: Category[] = STORE_MODE
+  ? ["Schlaf & Ruhe", "Energie & Fokus", "Stress & Adaptogene", "Vitamine & Mineralien", "Training", "Darm & Immun", "Verschriebene Medikamente"]
+  : ["Peptide", "Schlaf & Ruhe", "Energie & Fokus", "Stress & Adaptogene", "Vitamine & Mineralien", "Training", "Darm & Immun"]
 
 export const LIB_BY_ID: Record<string, LibSupp> = Object.fromEntries(LIBRARY.map(s => [s.id, s]))
 
@@ -940,11 +960,12 @@ export function demoState(): LabState {
   const s = emptyState()
   s.demo = true
   s.goals = ["schlaf", "regeneration", "fokus"]
-  const picks = ["magnesium", "theanin", "bpc157", "kreatin", "vitd", "cjc-ipa"]
+  const third = STORE_MODE ? "ashwagandha" : "bpc157"
+  const picks = ["magnesium", "theanin", third, "kreatin", "vitd", STORE_MODE ? "glycin" : "cjc-ipa"]
   s.supps = picks.map((id, i) => ({ ...makeSupp(LIB_BY_ID[id], LIB_BY_ID[id].name, []), color: i }))
   s.supps.find(x => x.id === "vitd")!.mode = "konstant"
-  s.supps.find(x => x.id === "cjc-ipa")!.mode = "pause"
-  s.phases = buildPhases(["magnesium", "theanin", "bpc157", "kreatin"], { magnesium: 5, theanin: 4, bpc157: 7, kreatin: 10 }, 2)
+  s.supps[5].mode = "pause"
+  s.phases = buildPhases(["magnesium", "theanin", third, "kreatin"], { magnesium: 5, theanin: 4, [third]: 7, kreatin: 10 }, 2)
   s.settings = { ...DEFAULT_SETTINGS, training: "18:00" }
   s.reminders = { enabled: true, checkin: "22:00", intake: true }
   const total = 7 + 5 + 2 + 4 + 2 + 3 // mitten im BPC-157-Test
@@ -953,6 +974,7 @@ export function demoState(): LabState {
     magnesium: { schlaf: 1.3, ruhe: 0.9, koerper: 0.4 },
     theanin: { ruhe: 0.8, fokus: 0.6, stimmung: 0.2 },
     bpc157: { gelenke: 1.1, koerper: 0.5, verdauung: 0.4 },
+    ashwagandha: { ruhe: 0.8, schlaf: 0.6, gelenke: 0.3 },
   }
   let seed = 7
   const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280 }
@@ -974,6 +996,7 @@ export function demoState(): LabState {
     if (w?.suppId === "magnesium" && rnd() > 0.7) sides.durchfall = 1
     if (w?.suppId === "theanin" && rnd() > 0.4) sides.muede = 1
     if (w?.suppId === "bpc157" && rnd() > 0.3) sides.einstich = 1
+    if (w?.suppId === "ashwagandha" && rnd() > 0.5) sides.muede = 1
     if (rnd() > 0.8) tags.push("Training")
     if (rnd() > 0.9) tags.push("Alkohol")
     s.checkins[date] = { date, scores, tags, sides, note: "" }

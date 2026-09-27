@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f0f1a" />
+    <meta name="description" content="Finde heraus, welche Supplements bei dir wirklich wirken: Reset-Woche, Einzeltests, 1-Klick-Check-in und dein persönlicher Stack." />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Supplement Lab" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icon-192.png" type="image/png" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <title>Supplement Lab</title>
+    <script>
+      // Theme vor dem ersten Paint setzen (System-Einstellung, sonst gespeichert)
+      (function () {
+        try {
+          var t = localStorage.getItem("lab-theme")
+          if (!t) t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"
+          document.documentElement.classList.add(t)
+        } catch (e) { document.documentElement.classList.add("dark") }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

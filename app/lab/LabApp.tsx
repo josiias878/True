@@ -6,10 +6,10 @@ import {
   DIMS, FACES, FACE_LABELS, ONSET_INFO, SIDE_EFFECTS, SIDE_BY_ID, LIB_SIDES, knownSides, ROUTE_INFO, SLOTS, BADGES, GOALS,
   loadState, saveState, emptyState, demoState, computeBadges, levelFor, streak, hydrate,
   phaseWindows, phaseAt, testResult, checkinsIn, buildStack, allowedSlots, slotTime, slotFor, stackMembers, intakeOn,
-  todayIso, addDays, diffDays, fmtDate, suppColor, daySum, activeDims, signal, libOf, makeSupp, defaultDays, defaultCheckinTime,
+  STORE_MODE, LAB_BASE, todayIso, addDays, diffDays, fmtDate, suppColor, daySum, activeDims, signal, libOf, makeSupp, defaultDays, defaultCheckinTime,
   type LabState, type Decision, type Dim, type PhaseWindow, type Phase, type MySupp, type LibSupp, type Settings, type CheckIn, type Scores,
 } from "@/lib/supplementLab"
-import { checkLabReminders, downloadIcs } from "@/lib/labReminders"
+import { checkLabReminders, downloadIcs, hasNativeReminders, syncNativeReminders } from "@/lib/labReminders"
 import { LAB_CSS, Btn, Capsule, Card, FaceRow, Label, Segmented, Sheet, SideChips, Stars, Stepper, XpToast } from "./ui"
 import { CheckInSheet, MODE_OPTIONS, Onboarding, OrderEditor, SuppPicker } from "./flows"
 import { DeltaBars, DimLineChart, MoodCalendar, ProCon } from "./charts"
@@ -115,6 +115,9 @@ export default function LabApp() {
     return () => clearInterval(id)
   }, [])
 
+  // Store-App: native Erinnerungen bei jeder Änderung neu planen (im Web ein No-op)
+  useEffect(() => { syncNativeReminders(s) }, [s])
+
   const update: Update = useCallback((fn, xp) => {
     setS(prev => {
       let next = fn(structuredClone(prev))
@@ -185,7 +188,7 @@ export default function LabApp() {
         borderBottom: "1px solid var(--border)",
       }}>
         <div style={{ maxWidth: 640, margin: "0 auto", padding: "10px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-          <Link href="/home" aria-label="Zurück zu TRUE" style={{ color: "var(--text-dim)", textDecoration: "none", fontSize: "1.1rem", padding: "4px 6px 4px 0" }}>←</Link>
+          {!STORE_MODE && <Link href="/home" aria-label="Zurück zu TRUE" style={{ color: "var(--text-dim)", textDecoration: "none", fontSize: "1.1rem", padding: "4px 6px 4px 0" }}>←</Link>}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 900, fontSize: "1.05rem", lineHeight: 1.1 }}>Supplement Lab {s.demo && <span style={{ fontSize: "0.65rem", background: "var(--warning-dim)", color: "var(--warning)", padding: "2px 6px", borderRadius: 6, verticalAlign: "middle" }}>DEMO</span>}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
@@ -1177,7 +1180,7 @@ function StackView({ s, update, onVerdict }: { s: LabState; update: Update; onVe
       {inStack.length > 0 && <Btn full variant="soft" onClick={copy}>{copied ? "✓ Geteilt!" : "📤 Plan teilen / kopieren"}</Btn>}
 
       <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", lineHeight: 1.5, padding: "0 4px" }}>
-        ⚕️ Das Lab ersetzt keine ärztliche Beratung. Selbstbeobachtung ist subjektiv; Placebo, Wetter, Stress und Schlaf spielen mit. Mangel-Themen (Vitamin D, B12, Eisen) lieber per Blutbild klären. Peptide nur mit ärztlicher Begleitung.
+        ⚕️ Das Lab ersetzt keine ärztliche Beratung. Selbstbeobachtung ist subjektiv; Placebo, Wetter, Stress und Schlaf spielen mit. Mangel-Themen (Vitamin D, B12, Eisen) lieber per Blutbild klären.{STORE_MODE ? " Die App empfiehlt keine Substanzen oder Dosierungen." : " Peptide nur mit ärztlicher Begleitung."}
       </div>
     </div>
   )
@@ -1239,7 +1242,7 @@ function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnable
   }
   const testNotif = () => {
     navigator.serviceWorker?.ready.then(reg => reg.showNotification("🧪 So sieht deine Erinnerung aus", {
-      body: "1 Tipp auf die Benachrichtigung öffnet den Check-in.", icon: "/icon-192.png", tag: "true-lab-test", data: { url: "/lab?checkin=1" },
+      body: "1 Tipp auf die Benachrichtigung öffnet den Check-in.", icon: "/icon-192.png", tag: "true-lab-test", data: { url: `${LAB_BASE}?checkin=1` },
     })).catch(() => setMsg("⚠️ Benachrichtigungen werden hier nicht unterstützt"))
   }
 
@@ -1266,12 +1269,12 @@ function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnable
               <input type="checkbox" checked={s.reminders.intake} onChange={e => { const v = e.target.checked; update(p => { p.reminders.intake = v; return p }) }} style={{ width: 20, height: 20, accentColor: "var(--accent)" }} />
             </label>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <Btn variant="soft" onClick={() => downloadIcs(s)} style={{ fontSize: "0.82rem", padding: "10px 12px" }}>📅 In Kalender eintragen</Btn>
+              {!hasNativeReminders() && <Btn variant="soft" onClick={() => downloadIcs(s)} style={{ fontSize: "0.82rem", padding: "10px 12px" }}>📅 In Kalender eintragen</Btn>}
               {perm === "granted" ? <Btn variant="ghost" onClick={testNotif} style={{ fontSize: "0.82rem", padding: "10px 12px" }}>Test senden</Btn>
                 : perm === "default" ? <Btn variant="ghost" onClick={() => onEnableReminders(false)} style={{ fontSize: "0.82rem", padding: "10px 12px" }}>Benachrichtigungen erlauben</Btn> : null}
             </div>
             <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 8, lineHeight: 1.45 }}>
-              Der Kalender erinnert dich zuverlässig, auch wenn die App zu ist. App-Benachrichtigungen kommen, sobald TRUE offen oder als App installiert ist.{perm === "denied" ? " Benachrichtigungen sind im Browser blockiert — nutze den Kalender." : ""}
+              {hasNativeReminders() ? "Erinnerungen kommen als Push-Nachricht — auch wenn die App geschlossen ist. Direkt aus der Nachricht bewerten oder abhaken." : <>Der Kalender erinnert dich zuverlässig, auch wenn die App zu ist. App-Benachrichtigungen kommen, sobald TRUE offen oder als App installiert ist.{perm === "denied" ? " Benachrichtigungen sind im Browser blockiert — nutze den Kalender." : ""}</>}
             </div>
           </>
         )}

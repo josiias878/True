@@ -1,0 +1,56 @@
+/* Farb-Tokens wie in TRUE (app/globals.css), damit die geteilte Lab-Oberfläche identisch aussieht */
+:root, html.light {
+  --background: #f2f4f6;
+  --surface:    #ffffff;
+  --surface-2:  #e4e7ec;
+  --border:     #d0d4db;
+  --accent:     #1EA872;
+  --accent-dim: rgba(30, 168, 114, 0.12);
+  --danger:     #d01818;
+  --danger-dim: rgba(208, 24, 24, 0.1);
+  --warning:    #b87000;
+  --warning-dim:rgba(184, 112, 0, 0.1);
+  --text:       #1a1c20;
+  --text-dim:   #50535c;
+  --nav-bg:     rgba(242, 244, 246, 0.97);
+  --shadow:     0 2px 12px rgba(0,0,0,0.10);
+  color-scheme: light;
+}
+html.dark {
+  --background: #08080f;
+  --surface:    #0f0f1a;
+  --surface-2:  #16162a;
+  --border:     #252538;
+  --accent:     #2ECC8A;
+  --accent-dim: rgba(46, 204, 138, 0.12);
+  --danger:     #ff4455;
+  --danger-dim: rgba(255, 68, 85, 0.12);
+  --warning:    #ffaa00;
+  --warning-dim:rgba(255, 170, 0, 0.12);
+  --text:       #e8e8f2;
+  --text-dim:   #7a7a9a;
+  --nav-bg:     rgba(8, 8, 15, 0.95);
+  --shadow:     0 4px 24px rgba(0,0,0,0.4);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--background); }
+body {
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+  padding-top: env(safe-area-inset-top);
+}
+button { font-family: inherit; cursor: pointer; }
+input, textarea, select {
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+input::placeholder, textarea::placeholder { color: var(--text-dim); }
+input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+*, *::before, *::after { transition: background-color 0.2s, border-color 0.2s, color 0.15s; }

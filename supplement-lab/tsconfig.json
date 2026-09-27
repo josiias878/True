@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "types": ["node", "vite/client"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["../*"],
+      "next/link": ["./src/shims/next-link.tsx"],
+      "react": ["./node_modules/@types/react"],
+      "react/*": ["./node_modules/@types/react/*"]
+    }
+  },
+  "include": ["src", "vite.config.ts", "capacitor.config.ts", "../app/lab/LabApp.tsx", "../app/lab/flows.tsx", "../app/lab/charts.tsx", "../app/lab/ui.tsx", "../lib/supplementLab.ts", "../lib/labReminders.ts", "../components/Confetti.tsx"]
+}

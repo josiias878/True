@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Eigenständige Supplement-Lab-App (Vite/Capacitor) hat eigene Tooling-Konfiguration
+    "supplement-lab/**",
   ]),
 ]);
 
