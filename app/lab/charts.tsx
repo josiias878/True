@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react"
 import {
   DIMS, FACES, addDays, diffDays, fmtDate, todayIso, phaseWindows, daySum, suppColor,
-  type Dim, type LabState,
+  type Dim, type LabState, type Scores,
 } from "@/lib/supplementLab"
 
 const POS = "#1baf7a"
@@ -41,7 +41,7 @@ export function DimLineChart({ s, dim }: { s: LabState; dim: Dim | "gesamt" }) {
     const points = Array.from({ length: n }, (_, i) => {
       const date = addDays(s.startDate!, i)
       const c = s.checkins[date]
-      const v = c ? (dim === "gesamt" ? daySum(c) : c.scores[dim]) : null
+      const v = c ? (dim === "gesamt" ? daySum(c) : (c.scores[dim] ?? null)) : null
       return { i, date, v }
     })
     const base = wins.find(w => w.kind === "baseline")
@@ -142,13 +142,13 @@ export function DimLineChart({ s, dim }: { s: LabState; dim: Dim | "gesamt" }) {
 
 // ── Vergleich Test vs. Reset (divergierende Balken) ─────────────────────────────
 
-export function DeltaBars({ delta, avg, base }: { delta: Record<Dim, number>; avg: Record<Dim, number>; base: Record<Dim, number> }) {
+export function DeltaBars({ delta, avg, base, dims }: { delta: Scores; avg: Scores; base: Scores; dims: Dim[] }) {
   const [open, setOpen] = useState<Dim | null>(null)
   const MAX = 2
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      {DIMS.map(d => {
-        const v = delta[d.id]
+      {DIMS.filter(d => dims.includes(d.id)).map(d => {
+        const v = delta[d.id] ?? 0
         const w = Math.min(1, Math.abs(v) / MAX) * 50
         const tiny = Math.abs(v) < 0.25
         return (
@@ -172,7 +172,7 @@ export function DeltaBars({ delta, avg, base }: { delta: Record<Dim, number>; av
             </div>
             {open === d.id && (
               <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", margin: "2px 0 2px 112px" }}>
-                Reset Ø {fmt(base[d.id])} → Test Ø {fmt(avg[d.id])}
+                Reset Ø {fmt(base[d.id] ?? 0)} → Test Ø {fmt(avg[d.id] ?? 0)}
               </div>
             )}
           </div>

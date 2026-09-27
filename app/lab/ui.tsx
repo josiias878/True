@@ -170,3 +170,63 @@ export function XpToast({ amount, label }: { amount: number; label: string }) {
     </div>
   )
 }
+
+/** Sterne-Bewertung 1–5 (ein Tipp). */
+export function Stars({ value, onChange, size = 26 }: { value: number | undefined; onChange?: (v: number) => void; size?: number }) {
+  return (
+    <span style={{ display: "inline-flex", gap: 2 }} role={onChange ? "radiogroup" : "img"} aria-label={value ? `${value} von 5 Sternen` : "keine Bewertung"}>
+      {[1, 2, 3, 4, 5].map(i => {
+        const on = (value ?? 0) >= i
+        return (
+          <button key={i} type="button" disabled={!onChange} onClick={() => onChange?.(i)} aria-label={`${i} Sterne`}
+            className={onChange ? "lab-press" : undefined}
+            style={{
+              width: size + 6, height: size + 6, border: "none", background: "none", padding: 0, cursor: onChange ? "pointer" : "default",
+              fontSize: size * 0.9, lineHeight: 1, color: on ? "#f5b400" : "var(--border)",
+              textShadow: on ? "0 2px 8px rgba(245,180,0,.35)" : undefined, transition: "color .15s, transform .15s",
+            }}>★</button>
+        )
+      })}
+    </span>
+  )
+}
+
+/** Große Gesichter-Reihe für die 1-Klick-Bewertung. */
+export function FaceRow({ value, onPick, faces, labels, size = 60 }: { value?: number; onPick: (v: number) => void; faces: string[]; labels?: string[]; size?: number }) {
+  const hue = ["#e34948", "#eb6834", "#eda100", "#1baf7a", "#2ECC8A"]
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 6 }}>
+      {faces.map((f, i) => {
+        const v = i + 1
+        const on = value === v
+        return (
+          <button key={i} className="lab-press" onClick={() => onPick(v)} aria-label={labels?.[i] ?? `${v} von 5`} style={{
+            flex: 1, maxWidth: size + 16, minHeight: size, borderRadius: 18, padding: "8px 0 6px",
+            border: on ? `3px solid ${hue[i]}` : "1px solid var(--border)",
+            background: on ? `color-mix(in srgb, ${hue[i]} 18%, var(--surface))` : "var(--surface)",
+            transform: on ? "scale(1.08)" : undefined, display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+            color: "var(--text-dim)",
+          }}>
+            <span style={{ fontSize: size * 0.5, lineHeight: 1.1 }}>{f}</span>
+            {labels && <span style={{ fontSize: "0.62rem", fontWeight: 800 }}>{labels[i]}</span>}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** Segment-Schalter (1 Tipp). */
+export function Segmented<T extends string>({ value, options, onChange }: { value: T; options: { id: T; label: string }[]; onChange: (v: T) => void }) {
+  return (
+    <div style={{ display: "flex", background: "var(--surface-2)", borderRadius: 12, padding: 3, gap: 2 }}>
+      {options.map(o => (
+        <button key={o.id} className="lab-press" onClick={() => onChange(o.id)} style={{
+          flex: 1, border: "none", borderRadius: 10, padding: "7px 4px", fontSize: "0.72rem", fontWeight: 800, whiteSpace: "nowrap",
+          background: value === o.id ? "var(--surface)" : "transparent", color: value === o.id ? "var(--text)" : "var(--text-dim)",
+          boxShadow: value === o.id ? "0 1px 4px rgba(0,0,0,.12)" : "none",
+        }}>{o.label}</button>
+      ))}
+    </div>
+  )
+}

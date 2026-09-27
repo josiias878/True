@@ -1,5 +1,6 @@
 "use client"
 import { useEffect } from "react"
+import { checkLabReminders } from "@/lib/labReminders"
 
 // ─── Geburtstags-Benachrichtigung ─────────────────────────────────────────────
 function checkBirthdayNotification() {
@@ -251,8 +252,15 @@ export default function SwRegister() {
         checkShoppingListReminder()
         checkCommunityNotification()
         checkWeeklyDigest()
+        checkLabReminders()
       })
       .catch(() => {})
+
+    // Supplement Lab: fällige Erinnerungen regelmäßig prüfen, solange TRUE offen ist
+    const labTimer = setInterval(checkLabReminders, 5 * 60_000)
+    const onVisible = () => { if (document.visibilityState === "visible") checkLabReminders() }
+    document.addEventListener("visibilitychange", onVisible)
+    return () => { clearInterval(labTimer); document.removeEventListener("visibilitychange", onVisible) }
   }, [])
   return null
 }

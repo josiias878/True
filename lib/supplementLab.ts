@@ -1,29 +1,74 @@
 // ── Supplement Lab ────────────────────────────────────────────────────────────
-// Selbstexperiment: 1 Woche Reset (nichts nehmen) → Supplements einzeln testen →
-// Vergleich mit der Baseline → persönlicher Stack mit perfektem Tagesplan.
+// Selbstexperiment: 1 Woche Reset (nichts nehmen) → Supplements & Peptide einzeln
+// testen → Vergleich mit der Baseline → persönlicher Stack mit perfektem Tagesplan.
 // Alles lokal im Browser (localStorage), kein Login nötig.
 
-// ── Dimensionen für den täglichen Check-in ──────────────────────────────────────
+// ── Dimensionen für den Check-in ────────────────────────────────────────────────
 
-export type Dim = "energie" | "fokus" | "stimmung" | "ruhe" | "schlaf" | "koerper" | "verdauung"
+export type Dim =
+  | "energie" | "fokus" | "stimmung" | "ruhe" | "schlaf" | "koerper" | "verdauung"
+  | "appetit" | "haut" | "gelenke" | "libido"
 
-export const DIMS: { id: Dim; label: string; emoji: string; question: string; low: string; high: string }[] = [
-  { id: "energie",   label: "Energie",    emoji: "⚡", question: "Wie viel Energie hattest du heute?",        low: "leer",       high: "voll geladen" },
-  { id: "fokus",     label: "Fokus",      emoji: "🎯", question: "Wie klar war dein Kopf?",                    low: "Nebel",      high: "messerscharf" },
-  { id: "stimmung",  label: "Stimmung",   emoji: "☀️", question: "Wie war deine Stimmung?",                    low: "mies",       high: "richtig gut" },
-  { id: "ruhe",      label: "Ruhe",       emoji: "🌊", question: "Wie entspannt warst du? (wenig Stress)",     low: "unter Strom", high: "tiefenentspannt" },
-  { id: "schlaf",    label: "Schlaf",     emoji: "🌙", question: "Wie gut hast du letzte Nacht geschlafen?",   low: "katastrophal", high: "wie ein Stein" },
-  { id: "koerper",   label: "Körper",     emoji: "💪", question: "Wie hat sich dein Körper angefühlt?",        low: "schlapp",    high: "stark & fit" },
-  { id: "verdauung", label: "Verdauung",  emoji: "🌿", question: "Wie lief deine Verdauung?",                  low: "Chaos",      high: "top" },
+export interface DimInfo { id: Dim; label: string; emoji: string; question: string; core?: boolean }
+
+export const DIMS: DimInfo[] = [
+  { id: "energie",   label: "Energie",     emoji: "⚡", question: "Wie viel Energie hattest du?", core: true },
+  { id: "fokus",     label: "Fokus",       emoji: "🎯", question: "Wie klar war dein Kopf?", core: true },
+  { id: "stimmung",  label: "Stimmung",    emoji: "☀️", question: "Wie war deine Stimmung?", core: true },
+  { id: "ruhe",      label: "Ruhe",        emoji: "🌊", question: "Wie entspannt warst du?", core: true },
+  { id: "schlaf",    label: "Schlaf",      emoji: "🌙", question: "Wie gut hast du geschlafen?", core: true },
+  { id: "koerper",   label: "Körper",      emoji: "💪", question: "Wie fit hat sich dein Körper angefühlt?", core: true },
+  { id: "verdauung", label: "Verdauung",   emoji: "🌿", question: "Wie lief deine Verdauung?", core: true },
+  { id: "appetit",   label: "Appetit",     emoji: "🍽️", question: "Wie gut hattest du Hunger im Griff?" },
+  { id: "haut",      label: "Haut & Haar", emoji: "✨", question: "Wie sahen Haut & Haare aus?" },
+  { id: "gelenke",   label: "Gelenke",     emoji: "🦴", question: "Wie schmerzfrei waren Gelenke & Sehnen?" },
+  { id: "libido",    label: "Libido",      emoji: "🔥", question: "Wie war deine Libido?" },
 ]
+export const DIM_BY_ID = Object.fromEntries(DIMS.map(d => [d.id, d])) as Record<Dim, DimInfo>
 
 export const FACES = ["😣", "😕", "😐", "🙂", "🤩"]
+export const FACE_LABELS = ["Mies", "Meh", "Okay", "Gut", "Top"]
 
 export const TAGS = [
   "Kopfschmerzen", "Müde am Nachmittag", "Unruhig / nervös", "Lebhafte Träume", "Früh wach",
   "Heißhunger", "Blähungen", "Übelkeit", "Guter Pump", "Motiviert", "Gereizt", "Kribbeln",
-  "Wenig geschlafen", "Viel Stress", "Training", "Alkohol", "Krank",
+  "Wassereinlagerung", "Einstichstelle gereizt", "Wenig geschlafen", "Viel Stress", "Training", "Alkohol", "Krank",
 ]
+
+// ── Ziele ──────────────────────────────────────────────────────────────────────
+
+export type GoalId =
+  | "schlaf" | "energie" | "fokus" | "stress" | "muskel" | "regeneration"
+  | "abnehmen" | "darm" | "haut" | "longevity" | "immun" | "libido"
+
+export interface Goal { id: GoalId; emoji: string; label: string; dims: Dim[]; suggest: string[] }
+
+export const GOALS: Goal[] = [
+  { id: "schlaf",       emoji: "🌙", label: "Besser schlafen",   dims: ["schlaf", "ruhe", "energie"],    suggest: ["magnesium", "glycin", "theanin", "melatonin", "ashwagandha", "cjc-ipa"] },
+  { id: "energie",      emoji: "⚡", label: "Mehr Energie",      dims: ["energie", "stimmung", "fokus"], suggest: ["b12", "bkomplex", "rhodiola", "koffein", "q10", "eisen", "elektrolyte", "motsc"] },
+  { id: "fokus",        emoji: "🎯", label: "Fokus & Kopf",      dims: ["fokus", "energie", "stimmung"], suggest: ["theanin", "koffein", "lionsmane", "semax", "kreatin", "omega3"] },
+  { id: "stress",       emoji: "🧘", label: "Weniger Stress",    dims: ["ruhe", "stimmung", "schlaf"],   suggest: ["ashwagandha", "magnesium", "theanin", "rhodiola", "selank"] },
+  { id: "muskel",       emoji: "🏋️", label: "Muskeln & Kraft",   dims: ["koerper", "energie"],           suggest: ["kreatin", "citrullin", "betaalanin", "vitd", "zink", "cjc-ipa", "elektrolyte"] },
+  { id: "regeneration", emoji: "🩹", label: "Regeneration",      dims: ["gelenke", "koerper", "schlaf"], suggest: ["bpc157", "tb500", "kollagen", "omega3", "curcumin", "magnesium"] },
+  { id: "abnehmen",     emoji: "🔥", label: "Abnehmen",          dims: ["appetit", "energie", "stimmung"], suggest: ["glp1", "motsc", "elektrolyte", "koffein", "probiotika"] },
+  { id: "darm",         emoji: "🌿", label: "Darm & Verdauung",  dims: ["verdauung", "stimmung"],        suggest: ["probiotika", "kpv", "bpc157", "curcumin", "magnesium"] },
+  { id: "haut",         emoji: "✨", label: "Haut & Haare",      dims: ["haut", "stimmung"],             suggest: ["ghkcu", "kollagen", "zink", "omega3", "vitc"] },
+  { id: "longevity",    emoji: "🧬", label: "Longevity",         dims: ["energie", "koerper", "schlaf"], suggest: ["omega3", "vitd", "q10", "epitalon", "motsc", "kreatin"] },
+  { id: "immun",        emoji: "🛡️", label: "Immunsystem",       dims: ["koerper", "energie"],           suggest: ["vitd", "zink", "vitc", "ta1", "probiotika"] },
+  { id: "libido",       emoji: "❤️‍🔥", label: "Libido & Hormone", dims: ["libido", "energie", "stimmung"], suggest: ["zink", "vitd", "ashwagandha", "kreatin", "omega3"] },
+]
+export const GOAL_BY_ID = Object.fromEntries(GOALS.map(g => [g.id, g])) as Record<GoalId, Goal>
+
+/** Welche Bereiche frage ich ab? Kern + zielspezifische, Ziel-Bereiche zuerst. */
+export function activeDims(s: { goals: GoalId[] }): DimInfo[] {
+  const goalDims = s.goals.flatMap(g => GOAL_BY_ID[g]?.dims ?? [])
+  const ids = [...new Set<Dim>([...goalDims, ...DIMS.filter(d => d.core).map(d => d.id)])]
+  return ids.map(id => DIM_BY_ID[id])
+}
+
+export function goalRelevance(libId: string, goals: GoalId[]) {
+  return goals.filter(g => GOAL_BY_ID[g]?.suggest.includes(libId)).length
+}
 
 // ── Tagesablauf-Slots ───────────────────────────────────────────────────────────
 
@@ -36,172 +81,310 @@ export const SLOTS: { id: SlotId; label: string; emoji: string; hint: string }[]
   { id: "training",    label: "Vor dem Training",   emoji: "🏋️", hint: "30–60 Min vorher" },
   { id: "nachmittag",  label: "Nachmittag",         emoji: "☕", hint: "Tief überbrücken" },
   { id: "abendessen",  label: "Zum Abendessen",     emoji: "🍲", hint: "mit Essen" },
-  { id: "schlaf",      label: "Vor dem Schlafen",   emoji: "🛌", hint: "30–60 Min vorher" },
+  { id: "schlaf",      label: "Vor dem Schlafen",   emoji: "🛌", hint: "30–60 Min vorher, nüchtern" },
 ]
 
 export interface Settings {
   wake: string      // "07:00"
   bed: string       // "23:00"
-  training: string | null // "18:00" oder null
+  training: string | null
   washoutDays: number
 }
 
 export const DEFAULT_SETTINGS: Settings = { wake: "07:00", bed: "23:00", training: null, washoutDays: 2 }
 
-function toMin(t: string) { const [h, m] = t.split(":").map(Number); return h * 60 + (m || 0) }
-function fromMin(m: number) { const x = ((m % 1440) + 1440) % 1440; return `${String(Math.floor(x / 60)).padStart(2, "0")}:${String(x % 60).padStart(2, "0")}` }
+export const RHYTHMS = [
+  { id: "frueh",  emoji: "🐓", label: "Frühaufsteher", wake: "06:00", bed: "22:00" },
+  { id: "normal", emoji: "☀️", label: "Normal",        wake: "07:00", bed: "23:00" },
+  { id: "spaet",  emoji: "🦉", label: "Nachteule",     wake: "09:00", bed: "01:00" },
+]
+export const TRAININGS = [
+  { id: "none",    emoji: "🛋️", label: "Kein Training", time: null },
+  { id: "morning", emoji: "🌅", label: "Morgens",       time: "07:30" },
+  { id: "noon",    emoji: "🌞", label: "Mittags",       time: "12:30" },
+  { id: "evening", emoji: "🌆", label: "Abends",        time: "18:00" },
+]
 
-/** Uhrzeit eines Slots aus Aufsteh-/Schlafenszeit. */
+export function toMin(t: string) { const [h, m] = t.split(":").map(Number); return h * 60 + (m || 0) }
+export function fromMin(m: number) { const x = ((m % 1440) + 1440) % 1440; return `${String(Math.floor(x / 60)).padStart(2, "0")}:${String(x % 60).padStart(2, "0")}` }
+
+/** Minuten seit Mitternacht des Aufsteh-Tages (kann >1440 sein bei Nachteulen). */
 export function slotMinutes(slot: SlotId, s: Settings): number {
   const wake = toMin(s.wake)
   let bed = toMin(s.bed)
   if (bed <= wake) bed += 1440
+  const span = bed - wake
   switch (slot) {
     case "nuechtern":   return wake + 10
     case "fruehstueck": return wake + 60
-    case "mittag":      return wake + Math.round((bed - wake) * 0.38)
-    case "training":    return s.training ? toMin(s.training) - 45 : wake + Math.round((bed - wake) * 0.62)
-    case "nachmittag":  return wake + Math.round((bed - wake) * 0.52)
-    case "abendessen":  return wake + Math.round((bed - wake) * 0.72)
+    case "mittag":      return wake + Math.round(span * 0.38)
+    case "training": {
+      if (!s.training) return wake + Math.round(span * 0.62)
+      let t = toMin(s.training) - 45
+      if (t < wake) t += 1440
+      return t
+    }
+    case "nachmittag":  return wake + Math.round(span * 0.52)
+    case "abendessen":  return wake + Math.round(span * 0.72)
     case "schlaf":      return bed - 45
   }
 }
 export function slotTime(slot: SlotId, s: Settings) { return fromMin(slotMinutes(slot, s)) }
 
-// ── Supplement-Bibliothek ───────────────────────────────────────────────────────
+/** Standard-Zeit für den abendlichen Check-in: 1 h vor dem Schlafen. */
+export function defaultCheckinTime(s: Settings) {
+  let bed = toMin(s.bed)
+  if (bed <= toMin(s.wake)) bed += 1440
+  return fromMin(bed - 60)
+}
+
+// ── Supplement- & Peptid-Bibliothek ─────────────────────────────────────────────
 
 export type Onset = "schnell" | "mittel" | "langsam"
+export type Route = "oral" | "subkutan" | "nasal" | "topisch"
 
-export const ONSET_INFO: Record<Onset, { label: string; days: number; text: string }> = {
-  schnell: { label: "Spürbar in Stunden–Tagen",  days: 4,  text: "Ideal für den 3–5-Tage-Test." },
-  mittel:  { label: "Spürbar nach 1–3 Wochen",   days: 10, text: "Braucht einen längeren Testblock." },
-  langsam: { label: "Wirkt über Wochen–Monate",  days: 14, text: "Kaum im Kurztest fühlbar — hier helfen Blutwerte mehr als Gefühl." },
+export const ONSET_INFO: Record<Onset, { label: string; days: number; text: string; emoji: string }> = {
+  schnell: { label: "Spürbar in Stunden–Tagen", days: 4,  emoji: "⚡", text: "Ideal für den 3–5-Tage-Test." },
+  mittel:  { label: "Spürbar nach 1–3 Wochen",  days: 7,  emoji: "⏳", text: "Braucht einen etwas längeren Testblock." },
+  langsam: { label: "Wirkt über Wochen–Monate", days: 10, emoji: "🐢", text: "Kaum im Kurztest fühlbar — Blutwerte sagen oft mehr als Gefühl." },
 }
+
+export const ROUTE_INFO: Record<Route, { emoji: string; label: string }> = {
+  oral:     { emoji: "💊", label: "Oral" },
+  subkutan: { emoji: "💉", label: "Subkutan" },
+  nasal:    { emoji: "👃", label: "Nasal" },
+  topisch:  { emoji: "🧴", label: "Topisch / Creme" },
+}
+
+export type Category =
+  | "Schlaf & Ruhe" | "Energie & Fokus" | "Stress & Adaptogene" | "Vitamine & Mineralien"
+  | "Training" | "Darm & Immun" | "Peptide"
+
+export const CATEGORIES: Category[] = ["Peptide", "Schlaf & Ruhe", "Energie & Fokus", "Stress & Adaptogene", "Vitamine & Mineralien", "Training", "Darm & Immun"]
 
 export interface LibSupp {
   id: string
   name: string
   emoji: string
-  category: "Schlaf & Ruhe" | "Energie & Fokus" | "Vitamine & Mineralien" | "Training" | "Darm & Immun" | "Stress & Adaptogene"
+  category: Category
   onset: Onset
   slots: SlotId[]          // bevorzugte Reihenfolge
   dose: string
-  effect: string           // was man erwarten kann
-  watch: Dim[]             // wo man am ehesten was merkt
-  timing: string           // Einnahme-Tipp
+  effect: string
+  watch: Dim[]
+  timing: string
   caution?: string
   withFat?: boolean
+  route?: Route
+  rx?: boolean             // verschreibungspflichtig → nie eigenmächtig absetzen
+  weekly?: boolean         // 1× pro Woche statt täglich
+  aliases: string[]        // für „Liste einfügen“
 }
 
+const PEPTIDE_NOTE = "Nicht als Arzneimittel zugelassen, kaum Humanstudien, Reinheit von Research-Peptiden schwankt stark. Nur mit ärztlicher Begleitung und sauberer Injektionshygiene."
+
 export const LIBRARY: LibSupp[] = [
+  // ── Peptide ──
+  { id: "bpc157", name: "BPC-157", emoji: "🩹", category: "Peptide", onset: "mittel", route: "subkutan",
+    slots: ["nuechtern", "schlaf"], dose: "laut Protokoll", watch: ["gelenke", "koerper", "verdauung"],
+    effect: "Wird für Heilung von Sehnen, Bändern und Darm genutzt (Daten v. a. aus Tierstudien).",
+    timing: "Täglich zur gleichen Zeit, oft nahe der betroffenen Stelle. Oral-Varianten nüchtern.",
+    caution: PEPTIDE_NOTE, aliases: ["bpc", "bpc157", "bpc-157", "body protection compound"] },
+  { id: "tb500", name: "TB-500", emoji: "🧬", category: "Peptide", onset: "mittel", route: "subkutan",
+    slots: ["nuechtern"], dose: "laut Protokoll", watch: ["gelenke", "koerper"],
+    effect: "Thymosin-Beta-4-Fragment, wird für Regeneration und Beweglichkeit genutzt.",
+    timing: "Meist wenige Male pro Woche, zur gleichen Tageszeit.",
+    caution: PEPTIDE_NOTE, aliases: ["tb500", "tb-500", "tb 500", "thymosin beta"] },
+  { id: "ghkcu", name: "GHK-Cu", emoji: "💎", category: "Peptide", onset: "langsam", route: "subkutan",
+    slots: ["schlaf", "nuechtern"], dose: "laut Protokoll", watch: ["haut"],
+    effect: "Kupferpeptid für Haut, Haare und Wundheilung — gut untersucht als Creme, weniger als Injektion.",
+    timing: "Abends; als Creme auf die gereinigte Haut. Effekte eher nach Wochen.",
+    caution: PEPTIDE_NOTE, aliases: ["ghk", "ghk-cu", "ghkcu", "kupferpeptid", "copper peptide"] },
+  { id: "cjc-ipa", name: "CJC-1295 + Ipamorelin", emoji: "🌙", category: "Peptide", onset: "mittel", route: "subkutan",
+    slots: ["schlaf"], dose: "laut Protokoll", watch: ["schlaf", "koerper", "haut"],
+    effect: "Regt die körpereigene Wachstumshormon-Ausschüttung an: oft tieferer Schlaf und bessere Regeneration.",
+    timing: "Abends vor dem Schlafen, nüchtern (≥ 2 h nach der letzten Mahlzeit), damit Insulin nicht bremst.",
+    caution: `${PEPTIDE_NOTE} Kann Wassereinlagerung, Kribbeln und Hunger machen; Blutzucker & IGF-1 im Blick behalten.`,
+    aliases: ["cjc", "cjc-1295", "cjc1295", "ipamorelin", "ipa", "mod grf", "sermorelin", "tesamorelin"] },
+  { id: "semax", name: "Semax", emoji: "🧠", category: "Peptide", onset: "schnell", route: "nasal",
+    slots: ["nuechtern", "fruehstueck"], dose: "laut Protokoll", watch: ["fokus", "energie", "stimmung"],
+    effect: "Nasenspray, das für Fokus und mentale Energie genutzt wird.",
+    timing: "Morgens bzw. vor Kopfarbeit. Nicht abends — kann wach halten.",
+    caution: "In Russland zugelassen, in der EU nicht; wenige westliche Studien. Ärztlich abklären.", aliases: ["semax", "n-acetyl semax"] },
+  { id: "selank", name: "Selank", emoji: "🕊️", category: "Peptide", onset: "schnell", route: "nasal",
+    slots: ["fruehstueck", "nachmittag"], dose: "laut Protokoll", watch: ["ruhe", "stimmung", "fokus"],
+    effect: "Nasenspray gegen Anspannung und Grübeln, ohne müde zu machen.",
+    timing: "Morgens oder in stressigen Phasen.",
+    caution: "In Russland zugelassen, in der EU nicht; wenige westliche Studien. Ärztlich abklären.", aliases: ["selank", "n-acetyl selank"] },
+  { id: "motsc", name: "MOTS-c", emoji: "🔋", category: "Peptide", onset: "mittel", route: "subkutan",
+    slots: ["nuechtern", "training"], dose: "laut Protokoll", watch: ["energie", "koerper", "appetit"],
+    effect: "Mitochondriales Peptid für Stoffwechsel und Ausdauer — Humandaten sind noch dünn.",
+    timing: "Morgens nüchtern oder vor dem Training.",
+    caution: PEPTIDE_NOTE, aliases: ["mots-c", "motsc", "mots c"] },
+  { id: "epitalon", name: "Epitalon", emoji: "⏳", category: "Peptide", onset: "langsam", route: "subkutan",
+    slots: ["schlaf"], dose: "laut Protokoll (meist als Kur)", watch: ["schlaf", "energie"],
+    effect: "Wird als Longevity-Kur genutzt, teils mit Effekt auf den Schlaf-Rhythmus.",
+    timing: "Abends, typischerweise als kurze Kur statt dauerhaft.",
+    caution: PEPTIDE_NOTE, aliases: ["epitalon", "epithalon", "epithalone"] },
+  { id: "ta1", name: "Thymosin Alpha-1", emoji: "🛡️", category: "Peptide", onset: "langsam", route: "subkutan",
+    slots: ["nuechtern"], dose: "laut Protokoll", watch: ["koerper", "energie"],
+    effect: "Immunmodulierendes Peptid (in manchen Ländern als Medikament zugelassen).",
+    timing: "Morgens, meist wenige Male pro Woche.",
+    caution: PEPTIDE_NOTE, aliases: ["thymosin alpha", "ta1", "ta-1", "thymosin a1", "zadaxin"] },
+  { id: "kpv", name: "KPV", emoji: "🌱", category: "Peptide", onset: "mittel", route: "oral",
+    slots: ["nuechtern", "abendessen"], dose: "laut Protokoll", watch: ["verdauung", "haut"],
+    effect: "Entzündungshemmendes Tripeptid, genutzt für Darm und Haut.",
+    timing: "Oral meist nüchtern; täglich zur gleichen Zeit.",
+    caution: PEPTIDE_NOTE, aliases: ["kpv"] },
+  { id: "glp1", name: "GLP-1 (Sema-/Tirzepatid)", emoji: "💉", category: "Peptide", onset: "schnell", route: "subkutan", rx: true, weekly: true,
+    slots: ["abendessen"], dose: "ärztlich verordnet", watch: ["appetit", "verdauung", "energie"],
+    effect: "Stark appetitzügelnd, Gewichtsverlust. Nebenwirkungen v. a. Übelkeit und Verdauung.",
+    timing: "1× pro Woche, immer am gleichen Wochentag.",
+    caution: "Verschreibungspflichtig — nur ärztlich verordnet und nie eigenmächtig absetzen oder pausieren.",
+    aliases: ["glp", "glp-1", "glp1", "semaglutid", "semaglutide", "ozempic", "wegovy", "tirzepatid", "tirzepatide", "mounjaro", "retatrutid", "retatrutide"] },
+
+  // ── Schlaf & Ruhe ──
   { id: "magnesium", name: "Magnesium (Glycinat)", emoji: "🌙", category: "Schlaf & Ruhe", onset: "schnell",
     slots: ["schlaf", "abendessen"], dose: "200–400 mg", watch: ["schlaf", "ruhe", "koerper"],
     effect: "Kann entspannen, Schlaf vertiefen und Muskelkrämpfe lindern.",
     timing: "Abends, 1 h vor dem Schlafen. Citrat wirkt eher abführend, Glycinat ist sanfter.",
-    caution: "Mit Abstand (≈2 h) zu Eisen und Zink einnehmen." },
+    caution: "Mit Abstand (≈2 h) zu Eisen und Zink einnehmen.", aliases: ["magnesium", "bisglycinat", "glycinat", "magnesiumcitrat", "threonat"] },
   { id: "glycin", name: "Glycin", emoji: "💤", category: "Schlaf & Ruhe", onset: "schnell",
     slots: ["schlaf"], dose: "3 g", watch: ["schlaf", "energie"],
     effect: "Kann Einschlafen erleichtern und Morgenmüdigkeit reduzieren.",
-    timing: "30–60 Min vor dem Schlafen, in Wasser gelöst (schmeckt süß)." },
+    timing: "30–60 Min vor dem Schlafen, in Wasser gelöst (schmeckt süß).", aliases: ["glycin", "glycine"] },
   { id: "melatonin", name: "Melatonin", emoji: "🦉", category: "Schlaf & Ruhe", onset: "schnell",
     slots: ["schlaf"], dose: "0,5–1 mg", watch: ["schlaf", "energie"],
     effect: "Verschiebt die innere Uhr, hilft beim Einschlafen (Jetlag, Schichtarbeit).",
     timing: "30–60 Min vor dem Schlafen. Niedrig dosiert wirkt oft besser als hoch.",
-    caution: "Nicht für Dauereinnahme gedacht. Bei Medikamenten ärztlich abklären." },
+    caution: "Nicht für Dauereinnahme gedacht. Bei Medikamenten ärztlich abklären.", aliases: ["melatonin"] },
   { id: "theanin", name: "L-Theanin", emoji: "🍵", category: "Energie & Fokus", onset: "schnell",
     slots: ["fruehstueck", "schlaf"], dose: "100–200 mg", watch: ["ruhe", "fokus"],
     effect: "Ruhige Konzentration ohne Müdigkeit, glättet Koffein-Nervosität.",
-    timing: "Morgens zusammen mit Kaffee — oder abends zum Runterkommen." },
+    timing: "Morgens zusammen mit Kaffee — oder abends zum Runterkommen.", aliases: ["theanin", "theanine", "l-theanin"] },
   { id: "koffein", name: "Koffein / Kaffee", emoji: "☕", category: "Energie & Fokus", onset: "schnell",
     slots: ["fruehstueck", "training"], dose: "100–200 mg", watch: ["energie", "fokus", "schlaf"],
-    effect: "Wacher und fokussierter — aber kann Schlaf und Ruhe kosten.",
+    effect: "Wacher und fokussierter — kann aber Schlaf und Ruhe kosten.",
     timing: "90 Min nach dem Aufstehen, spätestens 8 h vor dem Schlafen.",
-    caution: "Im Reset weglassen = Entzugskopfschmerz möglich (2–9 Tage). Eher langsam reduzieren." },
+    caution: "Im Reset weglassen = Entzugskopfschmerz möglich (2–9 Tage). Eher langsam reduzieren.", aliases: ["koffein", "caffeine", "kaffee", "coffee", "espresso", "pre-workout", "preworkout"] },
   { id: "rhodiola", name: "Rhodiola Rosea", emoji: "🏔️", category: "Stress & Adaptogene", onset: "schnell",
     slots: ["nuechtern", "fruehstueck"], dose: "200–400 mg", watch: ["energie", "fokus", "ruhe"],
     effect: "Kann Stress-Erschöpfung und mentale Müdigkeit senken.",
-    timing: "Morgens, möglichst nüchtern. Nicht abends — kann wach machen." },
+    timing: "Morgens, möglichst nüchtern. Nicht abends — kann wach machen.", aliases: ["rhodiola", "rosenwurz"] },
   { id: "ashwagandha", name: "Ashwagandha", emoji: "🌿", category: "Stress & Adaptogene", onset: "langsam",
     slots: ["abendessen", "schlaf"], dose: "300–600 mg (KSM-66)", watch: ["ruhe", "schlaf", "stimmung"],
     effect: "Kann Stress und Cortisol senken, Schlaf verbessern.",
     timing: "Abends mit Essen. Wirkung baut sich über 4–8 Wochen auf.",
-    caution: "Nicht in der Schwangerschaft, bei Schilddrüsen- oder Lebererkrankungen ärztlich abklären." },
+    caution: "Nicht in der Schwangerschaft; bei Schilddrüsen- oder Lebererkrankungen ärztlich abklären.", aliases: ["ashwagandha", "ksm-66", "ksm66", "withania"] },
   { id: "vitd", name: "Vitamin D3 + K2", emoji: "🌞", category: "Vitamine & Mineralien", onset: "langsam",
     slots: ["mittag", "fruehstueck"], dose: "1.000–2.000 IE", watch: ["stimmung", "energie"], withFat: true,
     effect: "Wichtig für Immunsystem, Knochen und Stimmung — v. a. im Winter.",
-    timing: "Zur fettreichsten Mahlzeit. Blutwert 25(OH)D sagt mehr als Gefühl.",
-    caution: "Hohe Dosen nur nach Blutbild." },
+    timing: "Zur fettreichsten Mahlzeit. Der Blutwert 25(OH)D sagt mehr als Gefühl.",
+    caution: "Hohe Dosen nur nach Blutbild.", aliases: ["vitamin d", "vit d", "vitd", "d3", "k2", "d3k2", "d3+k2"] },
   { id: "omega3", name: "Omega-3 (EPA/DHA)", emoji: "🐟", category: "Vitamine & Mineralien", onset: "langsam",
-    slots: ["mittag", "abendessen"], dose: "1–2 g EPA+DHA", watch: ["stimmung", "fokus", "koerper"], withFat: true,
+    slots: ["mittag", "abendessen"], dose: "1–2 g EPA+DHA", watch: ["stimmung", "fokus", "gelenke"], withFat: true,
     effect: "Entzündungshemmend, gut für Herz, Gehirn und Stimmung.",
     timing: "Zu einer Mahlzeit mit Fett — weniger Fischaufstoßen.",
-    caution: "Bei Blutverdünnern ärztlich abklären." },
+    caution: "Bei Blutverdünnern ärztlich abklären.", aliases: ["omega", "omega-3", "omega3", "fischöl", "fischoel", "fish oil", "epa", "dha", "algenöl", "krillöl"] },
   { id: "zink", name: "Zink", emoji: "🛡️", category: "Vitamine & Mineralien", onset: "langsam",
-    slots: ["abendessen", "mittag"], dose: "10–15 mg", watch: ["koerper", "stimmung"],
+    slots: ["abendessen", "mittag"], dose: "10–15 mg", watch: ["koerper", "haut", "libido"],
     effect: "Immunsystem, Haut, Testosteron — vor allem bei Mangel spürbar.",
     timing: "Mit Essen (nüchtern oft Übelkeit). Abstand zu Eisen & Calcium.",
-    caution: "Langfristig über 25 mg/Tag kann Kupfermangel verursachen." },
+    caution: "Langfristig über 25 mg/Tag kann Kupfermangel verursachen.", aliases: ["zink", "zinc", "zinkbisglycinat", "zinkpicolinat"] },
   { id: "eisen", name: "Eisen", emoji: "🩸", category: "Vitamine & Mineralien", onset: "langsam",
     slots: ["nuechtern"], dose: "nach Blutbild", watch: ["energie", "koerper"],
     effect: "Gegen Müdigkeit — aber nur bei nachgewiesenem Mangel (Ferritin).",
     timing: "Nüchtern mit Vitamin C, ≥2 h Abstand zu Kaffee, Tee, Calcium, Zink, Magnesium.",
-    caution: "Niemals ohne Blutbild supplementieren — zu viel Eisen schadet." },
+    caution: "Niemals ohne Blutbild supplementieren — zu viel Eisen schadet.", aliases: ["eisen", "iron", "ferro"] },
   { id: "b12", name: "Vitamin B12", emoji: "🔋", category: "Vitamine & Mineralien", onset: "langsam",
     slots: ["fruehstueck", "nuechtern"], dose: "250–1.000 µg", watch: ["energie", "fokus"],
     effect: "Nerven & Blutbildung. Spürbar vor allem bei Mangel (vegan!).",
-    timing: "Morgens — kann bei manchen leicht aktivierend wirken." },
+    timing: "Morgens — kann bei manchen leicht aktivierend wirken.", aliases: ["b12", "b 12", "vitamin b12", "cobalamin", "methylcobalamin"] },
   { id: "bkomplex", name: "B-Komplex", emoji: "🅱️", category: "Vitamine & Mineralien", onset: "mittel",
     slots: ["fruehstueck"], dose: "1 Kapsel", watch: ["energie", "stimmung"],
     effect: "Energiestoffwechsel. Färbt den Urin gelb — harmlos.",
-    timing: "Morgens zum Frühstück, nicht abends (kann wach halten)." },
+    timing: "Morgens zum Frühstück, nicht abends (kann wach halten).", aliases: ["b-komplex", "b komplex", "b complex", "b-complex", "b-vitamine", "vitamin b komplex"] },
   { id: "vitc", name: "Vitamin C", emoji: "🍊", category: "Darm & Immun", onset: "mittel",
-    slots: ["fruehstueck", "mittag"], dose: "200–500 mg", watch: ["koerper"],
+    slots: ["fruehstueck", "mittag"], dose: "200–500 mg", watch: ["koerper", "haut"],
     effect: "Immunsystem, Kollagenbildung, verbessert Eisenaufnahme.",
-    timing: "Zu einer Mahlzeit. Mit Eisen zusammen = bessere Aufnahme." },
+    timing: "Zu einer Mahlzeit. Mit Eisen zusammen = bessere Aufnahme.", aliases: ["vitamin c", "vit c", "vitc", "ascorbin"] },
   { id: "probiotika", name: "Probiotika", emoji: "🦠", category: "Darm & Immun", onset: "mittel",
     slots: ["fruehstueck"], dose: "1 Kapsel", watch: ["verdauung", "stimmung"],
     effect: "Kann Verdauung und Darmflora unterstützen. Anfangs evtl. Blähungen.",
-    timing: "Täglich zur gleichen Zeit, kurz vor oder zum Frühstück." },
+    timing: "Täglich zur gleichen Zeit, kurz vor oder zum Frühstück.", aliases: ["probiotika", "probiotic", "probiotikum", "darmbakterien", "kefir"] },
   { id: "kreatin", name: "Kreatin", emoji: "🏋️", category: "Training", onset: "langsam",
     slots: ["fruehstueck", "training"], dose: "3–5 g", watch: ["koerper", "fokus", "energie"],
     effect: "Mehr Kraft & Leistung, evtl. auch mentale Ausdauer. Leichte Wassereinlagerung.",
-    timing: "Timing egal — Hauptsache jeden Tag. Muskel-Sättigung nach ~3–4 Wochen." },
+    timing: "Timing egal — Hauptsache jeden Tag. Muskel-Sättigung nach ~3–4 Wochen.", aliases: ["kreatin", "creatin", "creatine", "monohydrat"] },
   { id: "citrullin", name: "L-Citrullin", emoji: "🔥", category: "Training", onset: "schnell",
     slots: ["training"], dose: "6–8 g", watch: ["koerper", "energie"],
     effect: "Besserer Pump und Ausdauer im Training.",
-    timing: "30–60 Min vor dem Training." },
+    timing: "30–60 Min vor dem Training.", aliases: ["citrullin", "citrulline", "citrullin malat"] },
   { id: "betaalanin", name: "Beta-Alanin", emoji: "⚡", category: "Training", onset: "langsam",
     slots: ["training", "fruehstueck"], dose: "3–5 g", watch: ["koerper"],
     effect: "Mehr Ausdauer bei intensiven Sätzen. Kribbeln ist harmlos.",
-    timing: "Täglich, gern aufgeteilt. Effekt nach 2–4 Wochen." },
+    timing: "Täglich, gern aufgeteilt. Effekt nach 2–4 Wochen.", aliases: ["beta-alanin", "beta alanin", "beta-alanine", "betaalanin"] },
   { id: "elektrolyte", name: "Elektrolyte", emoji: "💧", category: "Training", onset: "schnell",
     slots: ["nuechtern", "training"], dose: "1 Portion", watch: ["energie", "koerper", "fokus"],
     effect: "Weniger Kopfweh/Schlappheit bei Hitze, Sport oder Low-Carb.",
-    timing: "Morgens in Wasser oder rund ums Training." },
+    timing: "Morgens in Wasser oder rund ums Training.", aliases: ["elektrolyte", "electrolytes", "lmnt", "salz", "natrium"] },
   { id: "kollagen", name: "Kollagen", emoji: "✨", category: "Training", onset: "langsam",
-    slots: ["fruehstueck"], dose: "10 g", watch: ["koerper"],
+    slots: ["fruehstueck"], dose: "10 g", watch: ["haut", "gelenke"],
     effect: "Haut, Gelenke, Sehnen — Effekte nach Wochen bis Monaten.",
-    timing: "Egal wann, z. B. im Kaffee oder Smoothie." },
+    timing: "Egal wann, z. B. im Kaffee oder Smoothie.", aliases: ["kollagen", "collagen"] },
   { id: "q10", name: "Coenzym Q10", emoji: "❤️", category: "Energie & Fokus", onset: "langsam",
     slots: ["fruehstueck", "mittag"], dose: "100–200 mg", watch: ["energie"], withFat: true,
     effect: "Zellenergie, v. a. relevant ab 40 oder bei Statin-Einnahme.",
-    timing: "Morgens/mittags mit fetthaltigem Essen." },
+    timing: "Morgens/mittags mit fetthaltigem Essen.", aliases: ["q10", "coenzym", "coq10", "ubiquinol"] },
   { id: "lionsmane", name: "Lion's Mane", emoji: "🍄", category: "Energie & Fokus", onset: "langsam",
     slots: ["fruehstueck"], dose: "500–1.000 mg", watch: ["fokus", "stimmung"],
     effect: "Kann Fokus und Gedächtnis unterstützen — Effekt baut sich langsam auf.",
-    timing: "Morgens zum Frühstück." },
+    timing: "Morgens zum Frühstück.", aliases: ["lion", "lions mane", "lion's mane", "hericium", "igelstachelbart"] },
   { id: "curcumin", name: "Curcumin", emoji: "🟡", category: "Darm & Immun", onset: "langsam",
-    slots: ["mittag", "abendessen"], dose: "500 mg", watch: ["koerper", "verdauung"], withFat: true,
+    slots: ["mittag", "abendessen"], dose: "500 mg", watch: ["gelenke", "verdauung"], withFat: true,
     effect: "Entzündungshemmend, Gelenke & Regeneration.",
     timing: "Mit Fett und Piperin (schwarzer Pfeffer) für bessere Aufnahme.",
-    caution: "Bei Blutverdünnern oder Gallenproblemen ärztlich abklären." },
+    caution: "Bei Blutverdünnern oder Gallenproblemen ärztlich abklären.", aliases: ["curcumin", "kurkuma", "turmeric"] },
   { id: "calcium", name: "Calcium", emoji: "🦴", category: "Vitamine & Mineralien", onset: "langsam",
     slots: ["abendessen", "mittag"], dose: "nach Bedarf", watch: ["koerper"],
     effect: "Knochen — meist reicht die Ernährung.",
-    timing: "Mit Essen, ≥2 h Abstand zu Eisen und Zink." },
+    timing: "Mit Essen, ≥2 h Abstand zu Eisen und Zink.", aliases: ["calcium", "kalzium"] },
 ]
 
 export const LIB_BY_ID: Record<string, LibSupp> = Object.fromEntries(LIBRARY.map(s => [s.id, s]))
+
+// ── „Liste einfügen“: Freitext → Supplements ────────────────────────────────────
+
+export interface ParsedItem { lib: LibSupp | null; name: string; dose: string }
+
+const DOSE_RE = /(\d+(?:[.,]\d+)?\s*(?:mg|g|µg|mcg|ug|ie|iu|i\.e\.|ml|mcg|kapseln?|tabletten?|caps|tabs?|tropfen|sprühstöße?|x)\b)/i
+
+export function parseSuppList(text: string): ParsedItem[] {
+  const parts = text
+    .split(/[\n,;•·|]+|\s-\s|\s+und\s+/i)
+    .map(p => p.replace(/^[\s\-*\d.)]+(?=[a-zäöü])/i, "").trim())
+    .filter(p => p.length > 1)
+  const out: ParsedItem[] = []
+  const seen = new Set<string>()
+  for (const raw of parts) {
+    const low = ` ${raw.toLowerCase()} `
+    const dose = raw.match(DOSE_RE)?.[1]?.trim() ?? ""
+    // längster Alias gewinnt (z. B. „vitamin c“ vs. „c“)
+    let best: { lib: LibSupp; len: number } | null = null
+    for (const lib of LIBRARY) {
+      for (const a of lib.aliases) {
+        if (low.includes(a.toLowerCase()) && (!best || a.length > best.len)) best = { lib, len: a.length }
+      }
+    }
+    const key = best ? best.lib.id : raw.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    const name = best ? best.lib.name : raw.replace(DOSE_RE, "").trim().replace(/^\w/, c => c.toUpperCase())
+    if (!name) continue
+    out.push({ lib: best?.lib ?? null, name, dose })
+  }
+  return out
+}
 
 // ── Wechselwirkungen / Timing-Regeln ────────────────────────────────────────────
 
@@ -210,10 +393,13 @@ export interface PairRule { a: string; b: string; kind: "trennen" | "combo"; tex
 export const PAIR_RULES: PairRule[] = [
   { a: "eisen", b: "calcium",   kind: "trennen", text: "Calcium hemmt die Eisenaufnahme — 2 h Abstand." },
   { a: "eisen", b: "zink",      kind: "trennen", text: "Eisen und Zink konkurrieren — 2 h Abstand." },
-  { a: "eisen", b: "magnesium", kind: "trennen", text: "Magnesium kann Eisenaufnahme mindern — trennen." },
+  { a: "eisen", b: "magnesium", kind: "trennen", text: "Magnesium kann die Eisenaufnahme mindern — trennen." },
   { a: "eisen", b: "koffein",   kind: "trennen", text: "Kaffee/Tee hemmt Eisen — mind. 1–2 h Abstand." },
   { a: "zink",  b: "calcium",   kind: "trennen", text: "Calcium bremst Zink — besser getrennt." },
   { a: "zink",  b: "magnesium", kind: "trennen", text: "Hoch dosiert konkurrieren sie — lieber trennen." },
+  { a: "cjc-ipa", b: "glycin",  kind: "combo",   text: "Beides abends — Schlaf-Upgrade für die Regeneration." },
+  { a: "cjc-ipa", b: "magnesium", kind: "combo", text: "Abend-Duo für Schlaf und Regeneration." },
+  { a: "bpc157", b: "tb500",    kind: "combo",   text: "Werden oft zusammen für Regeneration genutzt — dann aber nicht getrennt bewertbar." },
   { a: "eisen", b: "vitc",      kind: "combo",   text: "Vitamin C verbessert die Eisenaufnahme." },
   { a: "koffein", b: "theanin", kind: "combo",   text: "Fokus-Duo: klar & ruhig statt zittrig." },
   { a: "magnesium", b: "glycin", kind: "combo",  text: "Schlaf-Combo für tiefere Nächte." },
@@ -226,45 +412,48 @@ export function pairRule(a: string, b: string) {
 
 // ── State ──────────────────────────────────────────────────────────────────────
 
+/** test = wird einzeln getestet · konstant = läuft durchgehend weiter · pause = vorerst weglassen */
+export type SuppMode = "test" | "konstant" | "pause"
+
 export interface MySupp {
   id: string          // libId oder "custom-xyz"
   name: string
   emoji: string
   dose: string
-  lib?: string        // Verweis auf LIBRARY
-  color: number       // Index in SUPP_COLORS
+  lib?: string
+  color: number
+  mode: SuppMode
 }
 
 export type PhaseKind = "baseline" | "test" | "washout"
 
-export interface Phase {
-  id: string
-  kind: PhaseKind
-  suppId?: string
-  days: number
-}
+export interface Phase { id: string; kind: PhaseKind; suppId?: string; days: number }
 
 export interface CheckIn {
   date: string // YYYY-MM-DD
-  scores: Record<Dim, number> // 1–5
+  scores: Partial<Record<Dim, number>> // 1–5
   tags: string[]
   note: string
+  quick?: boolean // 1-Klick-Check-in (alle Bereiche = Gesamtgefühl)
 }
 
 export type Decision = "keep" | "maybe" | "drop"
-
 export interface Verdict { decision: Decision; note: string; date: string }
 
+export interface Reminders { enabled: boolean; checkin: string; intake: boolean }
+
 export interface LabState {
-  v: 1
+  v: 2
   startDate: string | null
+  goals: GoalId[]
   supps: MySupp[]
   phases: Phase[]
   checkins: Record<string, CheckIn>
   verdicts: Record<string, Verdict>
   slotOverrides: Record<string, SlotId>
-  taken: Record<string, boolean> // Datum → Test-Supplement eingenommen
+  took: Record<string, string[]> // Datum → eingenommene Supplement-IDs
   settings: Settings
+  reminders: Reminders
   xp: number
   badges: string[]
   demo?: boolean
@@ -274,17 +463,37 @@ export const STORAGE_KEY = "true-supplement-lab-v1"
 
 export function emptyState(): LabState {
   return {
-    v: 1, startDate: null, supps: [], phases: [], checkins: {}, verdicts: {},
-    slotOverrides: {}, taken: {}, settings: { ...DEFAULT_SETTINGS }, xp: 0, badges: [],
+    v: 2, startDate: null, goals: [], supps: [], phases: [], checkins: {}, verdicts: {},
+    slotOverrides: {}, took: {}, settings: { ...DEFAULT_SETTINGS },
+    reminders: { enabled: false, checkin: "22:00", intake: true }, xp: 0, badges: [],
   }
+}
+
+/** Liest & migriert gespeicherte Daten (v1 → v2). */
+export function hydrate(raw: unknown): LabState {
+  const p = (raw ?? {}) as Partial<LabState> & { taken?: Record<string, boolean> }
+  const s: LabState = {
+    ...emptyState(), ...p, v: 2,
+    goals: p.goals ?? [],
+    settings: { ...DEFAULT_SETTINGS, ...p.settings },
+    reminders: { ...emptyState().reminders, ...p.reminders },
+    supps: (p.supps ?? []).map(x => ({ ...x, mode: x.mode ?? "test" })),
+    took: p.took ?? {},
+  }
+  if (p.taken) {
+    for (const [date, v] of Object.entries(p.taken)) {
+      const id = v ? testSuppOn(s, date) : null
+      if (id) s.took[date] = [...new Set([...(s.took[date] ?? []), id])]
+    }
+    delete (s as Partial<typeof p>).taken
+  }
+  return s
 }
 
 export function loadState(): LabState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return emptyState()
-    const parsed = JSON.parse(raw) as LabState
-    return { ...emptyState(), ...parsed, settings: { ...DEFAULT_SETTINGS, ...parsed.settings } }
+    return raw ? hydrate(JSON.parse(raw)) : emptyState()
   } catch {
     return emptyState()
   }
@@ -297,6 +506,17 @@ export function saveState(s: LabState) {
 // Kapsel-Farben (kategoriale Palette, feste Reihenfolge)
 export const SUPP_COLORS = ["#3987e5", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#9085e9", "#e34948", "#008300"]
 export function suppColor(s: MySupp | undefined) { return s ? SUPP_COLORS[s.color % SUPP_COLORS.length] : "#8a8a99" }
+
+export function makeSupp(lib: LibSupp | null, name: string, existing: MySupp[], dose = ""): MySupp {
+  const used = new Set(existing.map(s => s.color))
+  let color = 0
+  while (used.has(color) && color < SUPP_COLORS.length) color++
+  if (color >= SUPP_COLORS.length) color = existing.length % SUPP_COLORS.length
+  if (lib) return { id: lib.id, name: lib.name, emoji: lib.emoji, dose: dose || lib.dose, lib: lib.id, color, mode: lib.rx ? "konstant" : "test" }
+  return { id: `custom-${Date.now().toString(36)}-${existing.length}`, name, emoji: "💊", dose, color, mode: "test" }
+}
+
+export function libOf(s: MySupp | undefined) { return s?.lib ? LIB_BY_ID[s.lib] : undefined }
 
 // ── Datum ──────────────────────────────────────────────────────────────────────
 
@@ -322,7 +542,7 @@ export function fmtDate(iso: string) {
 
 export interface PhaseWindow extends Phase { start: string; end: string /* inklusiv */; index: number }
 
-export function phaseWindows(s: LabState): PhaseWindow[] {
+export function phaseWindows(s: Pick<LabState, "startDate" | "phases">): PhaseWindow[] {
   if (!s.startDate) return []
   let cursor = s.startDate
   return s.phases.map((p, index) => {
@@ -333,11 +553,10 @@ export function phaseWindows(s: LabState): PhaseWindow[] {
   })
 }
 
-export function phaseAt(s: LabState, date: string): PhaseWindow | null {
+export function phaseAt(s: Pick<LabState, "startDate" | "phases">, date: string): PhaseWindow | null {
   return phaseWindows(s).find(w => date >= w.start && date <= w.end) ?? null
 }
 
-/** Neuen Plan aus Reihenfolge der Test-Supplements erstellen. */
 export function buildPhases(testIds: string[], testDays: Record<string, number>, washout: number, baselineDays = 7): Phase[] {
   const phases: Phase[] = [{ id: "baseline", kind: "baseline", days: baselineDays }]
   testIds.forEach((id, i) => {
@@ -347,18 +566,52 @@ export function buildPhases(testIds: string[], testDays: Record<string, number>,
   return phases
 }
 
-/** Test-Supplement an einem Tag (Baseline & Auswaschphase: nichts). Jedes Supplement läuft allein gegen die Baseline. */
-export function testSuppOn(s: LabState, date: string): string | null {
+/** Automatische Testreihenfolge: schnell wirkende & zielrelevante zuerst. */
+const ONSET_RANK: Record<Onset, number> = { schnell: 0, mittel: 1, langsam: 2 }
+export function autoOrder(supps: MySupp[], goals: GoalId[]) {
+  return [...supps].sort((a, b) => {
+    const la = libOf(a), lb = libOf(b)
+    const oa = la ? ONSET_RANK[la.onset] : 1, ob = lb ? ONSET_RANK[lb.onset] : 1
+    if (oa !== ob) return oa - ob
+    return goalRelevance(lb?.id ?? "", goals) - goalRelevance(la?.id ?? "", goals)
+  })
+}
+export function defaultDays(s: MySupp) {
+  const lib = libOf(s)
+  return lib ? ONSET_INFO[lib.onset].days : 5
+}
+
+export function testSuppOn(s: Pick<LabState, "startDate" | "phases">, date: string): string | null {
   const w = phaseAt(s, date)
   return w?.kind === "test" && w.suppId ? w.suppId : null
 }
 
+/** Was steht an einem Tag auf dem Einnahmeplan? Test-Supplement + durchgehende. */
+export function intakeOn(s: LabState, date: string): string[] {
+  const first = phaseWindows(s)[0]
+  if (!first || date < first.start) return []
+  // Wöchentliche (z. B. GLP-1) nur am Wochentag des Experiment-Starts
+  const sameWeekday = diffDays(first.start, date) % 7 === 0
+  const ids = s.supps.filter(x => x.mode === "konstant" && (!libOf(x)?.weekly || sameWeekday)).map(x => x.id)
+  const t = testSuppOn(s, date)
+  if (t && !ids.includes(t)) ids.unshift(t)
+  return ids
+}
+
 // ── Statistik ──────────────────────────────────────────────────────────────────
 
-export function avgScores(checkins: CheckIn[]): Record<Dim, number> | null {
+export type Scores = Partial<Record<Dim, number>>
+
+export function avgScores(checkins: CheckIn[]): Scores | null {
   if (!checkins.length) return null
-  const out = {} as Record<Dim, number>
-  for (const d of DIMS) out[d.id] = checkins.reduce((a, c) => a + (c.scores[d.id] ?? 3), 0) / checkins.length
+  const sum: Scores = {}, n: Scores = {}
+  for (const c of checkins) for (const [k, v] of Object.entries(c.scores) as [Dim, number][]) {
+    if (v == null) continue
+    sum[k] = (sum[k] ?? 0) + v
+    n[k] = (n[k] ?? 0) + 1
+  }
+  const out: Scores = {}
+  for (const k of Object.keys(sum) as Dim[]) out[k] = sum[k]! / n[k]!
   return out
 }
 
@@ -371,17 +624,34 @@ export function baselineAvg(s: LabState) {
   return w ? avgScores(checkinsIn(s, w)) : null
 }
 
+/** Tages-Score = Durchschnitt aller bewerteten Bereiche (1–5 Sterne). */
+export function daySum(c: CheckIn) {
+  const vals = Object.values(c.scores).filter((v): v is number => v != null)
+  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 3
+}
+
 export function testResult(s: LabState, suppId: string) {
   const w = phaseWindows(s).find(p => p.kind === "test" && p.suppId === suppId)
   if (!w) return null
   const cs = checkinsIn(s, w)
   const avg = avgScores(cs)
   const base = baselineAvg(s)
-  if (!avg || !base) return { window: w, n: cs.length, avg, base, delta: null, total: 0, tags: tagCounts(cs) }
-  const delta = {} as Record<Dim, number>
+  const baseW = phaseWindows(s).find(p => p.kind === "baseline")
+  const baseDay = baseW ? checkinsIn(s, baseW).map(daySum) : []
+  const testDay = cs.map(daySum)
+  const mean = (a: number[]) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null
+  const overall = { base: mean(baseDay), test: mean(testDay) }
+  if (!avg || !base) return { window: w, n: cs.length, avg, base, delta: null, dims: [] as Dim[], total: 0, overall, tags: tagCounts(cs) }
+  const delta: Scores = {}
+  const dims: Dim[] = []
   let total = 0
-  for (const d of DIMS) { delta[d.id] = avg[d.id] - base[d.id]; total += delta[d.id] }
-  return { window: w, n: cs.length, avg, base, delta, total, tags: tagCounts(cs) }
+  for (const d of DIMS) {
+    if (avg[d.id] == null || base[d.id] == null) continue
+    delta[d.id] = avg[d.id]! - base[d.id]!
+    dims.push(d.id)
+    total += delta[d.id]!
+  }
+  return { window: w, n: cs.length, avg, base, delta, dims, total, overall, tags: tagCounts(cs) }
 }
 
 function tagCounts(cs: CheckIn[]) {
@@ -390,7 +660,28 @@ function tagCounts(cs: CheckIn[]) {
   return Object.entries(m).sort((a, b) => b[1] - a[1])
 }
 
-export function daySum(c: CheckIn) { return DIMS.reduce((a, d) => a + (c.scores[d.id] ?? 3), 0) / DIMS.length }
+export interface Signal { key: "none" | "few" | "strong" | "light" | "flat" | "neg"; text: string; emoji: string; focus: Dim | null; suggestion: Decision | null }
+
+/** Wie deutlich ist der Effekt — gewichtet nach den Bereichen, die für das Supplement & deine Ziele zählen. */
+export function signal(s: LabState, suppId: string): Signal {
+  const r = testResult(s, suppId)
+  if (!r || !r.delta || !r.dims.length) return { key: "none", text: "Noch keine Vergleichsdaten", emoji: "⏳", focus: null, suggestion: null }
+  const lib = libOf(s.supps.find(x => x.id === suppId))
+  const goalDims = s.goals.flatMap(g => GOAL_BY_ID[g]?.dims ?? [])
+  const weights = new Map<Dim, number>()
+  r.dims.forEach(d => weights.set(d, 1))
+  lib?.watch.forEach(d => weights.has(d) && weights.set(d, weights.get(d)! + 1))
+  goalDims.forEach(d => weights.has(d) && weights.set(d, weights.get(d)! + 1))
+  let wsum = 0, acc = 0
+  weights.forEach((w, d) => { wsum += w; acc += w * r.delta![d]! })
+  const key = acc / wsum
+  const best = [...r.dims].sort((a, b) => r.delta![b]! - r.delta![a]!)[0]
+  if (r.n < 3) return { key: "few", text: `Erst ${r.n} Check-in${r.n === 1 ? "" : "s"} — noch wenig aussagekräftig`, emoji: "🤏", focus: best, suggestion: "maybe" }
+  if (key >= 0.45) return { key: "strong", text: "Deutliches Plus", emoji: "💚", focus: best, suggestion: "keep" }
+  if (key >= 0.2) return { key: "light", text: "Leichtes Plus", emoji: "🌱", focus: best, suggestion: "keep" }
+  if (key <= -0.25) return { key: "neg", text: "Eher negativ", emoji: "⚠️", focus: best, suggestion: "drop" }
+  return { key: "flat", text: lib?.onset === "langsam" ? "Kein klarer Effekt — wirkt aber auch langsam" : "Kein klarer Effekt", emoji: "😶", focus: best, suggestion: lib?.onset === "langsam" ? "maybe" : "drop" }
+}
 
 export function streak(s: LabState): number {
   let n = 0
@@ -423,6 +714,7 @@ export const BADGES: { id: string; emoji: string; name: string; desc: string }[]
   { id: "first",    emoji: "🌱", name: "Erster Schritt",   desc: "Ersten Check-in gemacht" },
   { id: "streak3",  emoji: "🔥", name: "Dranbleiber",      desc: "3 Tage am Stück eingecheckt" },
   { id: "streak7",  emoji: "☄️", name: "Unaufhaltsam",     desc: "7 Tage am Stück eingecheckt" },
+  { id: "reminder", emoji: "🔔", name: "Organisiert",      desc: "Erinnerungen eingerichtet" },
   { id: "reset",    emoji: "🧘", name: "Reset gemeistert", desc: "Baseline-Woche abgeschlossen" },
   { id: "verdict1", emoji: "⚖️", name: "Erstes Urteil",    desc: "Erstes Supplement bewertet" },
   { id: "verdict3", emoji: "🔬", name: "Wissenschaftler",  desc: "3 Supplements bewertet" },
@@ -437,6 +729,7 @@ export function computeBadges(s: LabState): string[] {
   if (nCheck >= 1) got.add("first")
   if (st >= 3) got.add("streak3")
   if (st >= 7) got.add("streak7")
+  if (s.reminders.enabled) got.add("reminder")
   const base = phaseWindows(s).find(p => p.kind === "baseline")
   if (base && todayIso() > base.end && checkinsIn(s, base).length >= 4) got.add("reset")
   const verdicts = Object.values(s.verdicts)
@@ -453,8 +746,7 @@ export interface StackPlacement { suppId: string; slot: SlotId }
 export interface StackIssue { a: string; b: string; text: string }
 
 function slotOf(suppId: string, s: LabState): SlotId[] {
-  const my = s.supps.find(x => x.id === suppId)
-  const lib = my?.lib ? LIB_BY_ID[my.lib] : undefined
+  const lib = libOf(s.supps.find(x => x.id === suppId))
   let slots: SlotId[] = lib?.slots ?? ["fruehstueck"]
   if (!s.settings.training) {
     const noTrain = slots.filter(x => x !== "training")
@@ -469,16 +761,31 @@ export function allowedSlots(suppId: string, s: LabState): SlotId[] {
   return [...pref, ...rest]
 }
 
+export function slotFor(suppId: string, s: LabState): SlotId {
+  return s.slotOverrides[suppId] ?? slotOf(suppId, s)[0]
+}
+
 function libKey(suppId: string, s: LabState) { return s.supps.find(x => x.id === suppId)?.lib ?? suppId }
 
+/** Welche Supplements gehören in den Stack? Behalten + durchgehende (außer rausgeworfen). */
+export function stackMembers(s: LabState, withMaybe: boolean) {
+  return s.supps.filter(x => {
+    const v = s.verdicts[x.id]?.decision
+    if (v === "drop") return false
+    if (v === "keep") return true
+    if (v === "maybe") return withMaybe
+    return x.mode === "konstant"
+  })
+}
+
 /** Platziert Supplements greedy in ihre bevorzugten Slots und löst Konflikte (≥2 h Abstand). */
-export function buildStack(suppIds: string[], s: LabState): { placements: StackPlacement[]; issues: StackIssue[]; combos: PairRule[] } {
+export function buildStack(suppIds: string[], s: LabState): { placements: StackPlacement[]; weekly: string[]; issues: StackIssue[]; combos: PairRule[] } {
   const placements: StackPlacement[] = []
+  const weekly = suppIds.filter(id => libOf(s.supps.find(x => x.id === id))?.weekly)
+  const daily = suppIds.filter(id => !weekly.includes(id))
   const tooClose = (x: SlotId, y: SlotId) => Math.abs(slotMinutes(x, s.settings) - slotMinutes(y, s.settings)) < 120
 
-  // Stark eingeschränkte zuerst (Eisen nüchtern, Schlaf-Sachen …)
-  const order = [...suppIds].sort((a, b) => slotOf(a, s).length - slotOf(b, s).length)
-
+  const order = [...daily].sort((a, b) => slotOf(a, s).length - slotOf(b, s).length)
   for (const id of order) {
     const override = s.slotOverrides[id]
     if (override) { placements.push({ suppId: id, slot: override }); continue }
@@ -492,17 +799,17 @@ export function buildStack(suppIds: string[], s: LabState): { placements: StackP
 
   const issues: StackIssue[] = []
   const combos: PairRule[] = []
-  for (let i = 0; i < placements.length; i++) {
-    for (let j = i + 1; j < placements.length; j++) {
-      const p = placements[i], q = placements[j]
-      const r = pairRule(libKey(p.suppId, s), libKey(q.suppId, s))
+  for (let i = 0; i < suppIds.length; i++) {
+    for (let j = i + 1; j < suppIds.length; j++) {
+      const r = pairRule(libKey(suppIds[i], s), libKey(suppIds[j], s))
       if (!r) continue
-      if (r.kind === "trennen" && tooClose(p.slot, q.slot)) issues.push({ a: p.suppId, b: q.suppId, text: r.text })
-      if (r.kind === "combo") combos.push(r)
+      if (r.kind === "combo") { combos.push(r); continue }
+      const p = placements.find(x => x.suppId === suppIds[i]), q = placements.find(x => x.suppId === suppIds[j])
+      if (p && q && tooClose(p.slot, q.slot)) issues.push({ a: p.suppId, b: q.suppId, text: r.text })
     }
   }
   placements.sort((a, b) => slotMinutes(a.slot, s.settings) - slotMinutes(b.slot, s.settings))
-  return { placements, issues, combos }
+  return { placements, weekly, issues, combos }
 }
 
 // ── Demo-Daten ─────────────────────────────────────────────────────────────────
@@ -510,28 +817,32 @@ export function buildStack(suppIds: string[], s: LabState): { placements: StackP
 export function demoState(): LabState {
   const s = emptyState()
   s.demo = true
-  const picks = ["magnesium", "theanin", "vitd", "kreatin", "ashwagandha"]
-  s.supps = picks.map((id, i) => ({ id, name: LIB_BY_ID[id].name, emoji: LIB_BY_ID[id].emoji, dose: LIB_BY_ID[id].dose, lib: id, color: i }))
-  s.phases = buildPhases(["magnesium", "theanin", "kreatin"], { magnesium: 5, theanin: 4, kreatin: 5 }, 2)
+  s.goals = ["schlaf", "regeneration", "fokus"]
+  const picks = ["magnesium", "theanin", "bpc157", "kreatin", "vitd", "cjc-ipa"]
+  s.supps = picks.map((id, i) => ({ ...makeSupp(LIB_BY_ID[id], LIB_BY_ID[id].name, []), color: i }))
+  s.supps.find(x => x.id === "vitd")!.mode = "konstant"
+  s.supps.find(x => x.id === "cjc-ipa")!.mode = "pause"
+  s.phases = buildPhases(["magnesium", "theanin", "bpc157", "kreatin"], { magnesium: 5, theanin: 4, bpc157: 7, kreatin: 10 }, 2)
   s.settings = { ...DEFAULT_SETTINGS, training: "18:00" }
-  // Start so, dass wir mitten im 3. Test stehen
-  const total = 7 + 5 + 2 + 4 + 2 + 2
+  s.reminders = { enabled: true, checkin: "22:00", intake: true }
+  const total = 7 + 5 + 2 + 4 + 2 + 3 // mitten im BPC-157-Test
   s.startDate = addDays(todayIso(), -total)
-  const effects: Record<string, Partial<Record<Dim, number>>> = {
+  const effects: Record<string, Scores> = {
     magnesium: { schlaf: 1.3, ruhe: 0.9, koerper: 0.4 },
     theanin: { ruhe: 0.8, fokus: 0.6, stimmung: 0.2 },
-    kreatin: { koerper: 0.5, energie: 0.3 },
+    bpc157: { gelenke: 1.1, koerper: 0.5, verdauung: 0.4 },
   }
   let seed = 7
   const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280 }
   const windows = phaseWindows(s)
+  const dims = activeDims(s)
   for (let i = 0; i < total; i++) {
     const date = addDays(s.startDate, i)
     const w = windows.find(x => date >= x.start && date <= x.end)
     const eff = w?.kind === "test" && w.suppId ? effects[w.suppId] ?? {} : {}
-    const scores = {} as Record<Dim, number>
-    for (const d of DIMS) {
-      const base = d.id === "schlaf" ? 2.6 : d.id === "ruhe" ? 2.5 : 3
+    const scores: Scores = {}
+    for (const d of dims) {
+      const base = d.id === "schlaf" ? 2.6 : d.id === "ruhe" ? 2.5 : d.id === "gelenke" ? 2.4 : 3
       scores[d.id] = Math.max(1, Math.min(5, Math.round(base + (eff[d.id] ?? 0) + (rnd() - 0.5) * 1.6)))
     }
     const tags: string[] = []
@@ -539,7 +850,7 @@ export function demoState(): LabState {
     if (w?.suppId === "magnesium" && rnd() > 0.5) tags.push("Lebhafte Träume")
     if (rnd() > 0.8) tags.push("Training")
     s.checkins[date] = { date, scores, tags, note: "" }
-    if (w?.kind === "test") s.taken[date] = true
+    s.took[date] = intakeOn(s, date)
   }
   s.verdicts = {
     magnesium: { decision: "keep", note: "Schlafe tiefer, wache ruhiger auf.", date: addDays(s.startDate, 12) },

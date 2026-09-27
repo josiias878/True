@@ -1,16 +1,17 @@
 "use client"
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import Confetti from "@/components/Confetti"
 import {
-  DIMS, FACES, LIB_BY_ID, ONSET_INFO, SLOTS, BADGES,
-  loadState, saveState, emptyState, demoState, computeBadges, levelFor, streak,
-  phaseWindows, phaseAt, testSuppOn, testResult, checkinsIn, buildStack, allowedSlots, slotTime,
-  todayIso, addDays, diffDays, fmtDate, suppColor, daySum,
-  type LabState, type Decision, type Dim, type PhaseWindow, type Phase, type MySupp, type LibSupp, type Settings,
+  DIMS, FACES, FACE_LABELS, ONSET_INFO, ROUTE_INFO, SLOTS, BADGES, GOALS,
+  loadState, saveState, emptyState, demoState, computeBadges, levelFor, streak, hydrate,
+  phaseWindows, phaseAt, testResult, checkinsIn, buildStack, allowedSlots, slotTime, slotFor, stackMembers, intakeOn,
+  todayIso, addDays, diffDays, fmtDate, suppColor, daySum, activeDims, signal, libOf, makeSupp, defaultDays, defaultCheckinTime,
+  type LabState, type Decision, type Dim, type PhaseWindow, type Phase, type MySupp, type LibSupp, type Settings, type CheckIn, type Scores,
 } from "@/lib/supplementLab"
-import { LAB_CSS, Btn, Capsule, Card, Label, Sheet, Stepper, XpToast } from "./ui"
-import { CheckInFlow, Onboarding, OrderEditor, SuppPicker, makeSupp, defaultDays } from "./flows"
+import { checkLabReminders, downloadIcs } from "@/lib/labReminders"
+import { LAB_CSS, Btn, Capsule, Card, FaceRow, Label, Segmented, Sheet, Stars, Stepper, XpToast } from "./ui"
+import { CheckInSheet, MODE_OPTIONS, Onboarding, OrderEditor, SuppPicker } from "./flows"
 import { DeltaBars, DimLineChart, MoodCalendar } from "./charts"
 
 type Tab = "heute" | "reise" | "daten" | "stack"
@@ -28,50 +29,94 @@ function phaseEmoji(s: LabState, w: { kind: string; suppId?: string }) {
   return s.supps.find(x => x.id === w.suppId)?.emoji ?? "💊"
 }
 
-/** Wie deutlich ist das Signal? */
-function signal(s: LabState, suppId: string) {
-  const r = testResult(s, suppId)
-  if (!r || !r.delta) return { key: "none", text: "Noch keine Vergleichsdaten", emoji: "⏳", focus: null as Dim | null }
-  const supp = s.supps.find(x => x.id === suppId)
-  const lib = supp?.lib ? LIB_BY_ID[supp.lib] : undefined
-  const watch = lib?.watch ?? DIMS.map(d => d.id)
-  const key = watch.reduce((a, d) => a + r.delta![d], 0) / watch.length
-  const best = DIMS.map(d => d.id).sort((a, b) => r.delta![b] - r.delta![a])[0]
-  if (r.n < 3) return { key: "few", text: `Erst ${r.n} Check-in${r.n === 1 ? "" : "s"} — noch wenig aussagekräftig`, emoji: "🤏", focus: best }
-  if (key >= 0.5) return { key: "strong", text: "Deutliches Plus", emoji: "💚", focus: best }
-  if (key >= 0.2) return { key: "light", text: "Leichtes Plus", emoji: "🌱", focus: best }
-  if (key <= -0.3) return { key: "neg", text: "Eher negativ", emoji: "⚠️", focus: best }
-  return { key: "flat", text: lib?.onset === "langsam" ? "Kein klarer Effekt, wirkt aber auch langsam" : "Kein klarer Effekt", emoji: "😶", focus: best }
-}
-
 const DECISIONS: { id: Decision; emoji: string; label: string; color: string }[] = [
   { id: "keep",  emoji: "💚", label: "Behalten",  color: "#1baf7a" },
   { id: "maybe", emoji: "🤔", label: "Vielleicht", color: "#eda100" },
   { id: "drop",  emoji: "✂️", label: "Fliegt raus", color: "#e34948" },
 ]
 
+function quickCheckin(s: LabState, date: string, v: number): CheckIn {
+  const scores: Scores = {}
+  activeDims(s).forEach(d => { scores[d.id] = v })
+  return { date, scores, tags: [], note: "", quick: true }
+}
+
 function initialTab(): Tab {
   try { return (localStorage.getItem("true-lab-tab") as Tab | null) ?? "heute" } catch { return "heute" }
 }
 
+/** Aktionen aus Benachrichtigungen (?rate=4, ?taken=id, ?checkin=1) direkt beim Öffnen ausführen. */
+function initialLoad(): { s: LabState; openCheckin: boolean; flash: string | null } {
+  const s = loadState()
+  let openCheckin = false
+  let flash: string | null = null
+  try {
+    const q = new URLSearchParams(window.location.search)
+    const today = todayIso()
+    const rate = Number(q.get("rate"))
+    const taken = q.get("taken")
+    if (rate >= 1 && rate <= 5 && s.startDate && !s.checkins[today]) {
+      s.checkins[today] = quickCheckin(s, today, rate)
+      s.xp += 20
+      flash = `${FACES[rate - 1]} Check-in gespeichert (+20 XP)`
+    }
+    if (taken && s.startDate) {
+      s.took[today] = [...new Set([...(s.took[today] ?? []), taken])]
+      flash = `✓ ${s.supps.find(x => x.id === taken)?.name ?? "Einnahme"} abgehakt`
+    }
+    if (q.get("checkin") === "1" && !s.checkins[today] && s.startDate) openCheckin = true
+    if (rate || taken || q.get("checkin")) {
+      saveState(s)
+      window.history.replaceState(null, "", window.location.pathname)
+    }
+  } catch {}
+  return { s, openCheckin, flash }
+}
+
+// Echte Daten sichern, wenn man zwischendurch die Demo anschaut
+const BACKUP_KEY = "true-supplement-lab-v1-backup"
+function backup(s: LabState) {
+  if (s.demo || !s.startDate) return
+  try { localStorage.setItem(BACKUP_KEY, JSON.stringify(s)) } catch {}
+}
+function restoreBackup(): LabState {
+  try {
+    const raw = localStorage.getItem(BACKUP_KEY)
+    localStorage.removeItem(BACKUP_KEY)
+    if (raw) return hydrate(JSON.parse(raw))
+  } catch {}
+  return emptyState()
+}
+
+type Update = (fn: (prev: LabState) => LabState, xp?: { amount: number; label: string }) => void
+
 // Wird nur im Browser gerendert (siehe page.tsx), daher darf der State direkt aus localStorage kommen.
 export default function LabApp() {
-  const [s, setS] = useState<LabState | null>(() => loadState())
+  const [init] = useState(initialLoad)
+  const [s, setS] = useState<LabState>(init.s)
   const [tab, setTab] = useState<Tab>(initialTab)
-  const [checkinDate, setCheckinDate] = useState<string | null>(null)
+  const [checkinDate, setCheckinDate] = useState<string | null>(init.openCheckin ? todayIso() : null)
   const [verdictFor, setVerdictFor] = useState<string | null>(null)
   const [phaseSheet, setPhaseSheet] = useState<PhaseWindow | null>(null)
   const [planOpen, setPlanOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [toast, setToast] = useState<{ amount: number; label: string; k: number } | null>(null)
+  const [flash, setFlash] = useState<string | null>(init.flash)
   const [newBadge, setNewBadge] = useState<string | null>(null)
   const [confetti, setConfetti] = useState(false)
 
   useEffect(() => { try { localStorage.setItem("true-lab-tab", tab) } catch {} }, [tab])
+  useEffect(() => { if (!flash) return; const t = setTimeout(() => setFlash(null), 2600); return () => clearTimeout(t) }, [flash])
 
-  const update = useCallback((fn: (prev: LabState) => LabState, xp?: { amount: number; label: string }) => {
+  // Erinnerungen prüfen, solange die App offen ist (System-Benachrichtigung, je 1× pro Tag)
+  useEffect(() => {
+    checkLabReminders()
+    const id = setInterval(checkLabReminders, 60_000)
+    return () => clearInterval(id)
+  }, [])
+
+  const update: Update = useCallback((fn, xp) => {
     setS(prev => {
-      if (!prev) return prev
       let next = fn(structuredClone(prev))
       if (xp) next.xp += xp.amount
       const badges = computeBadges(next)
@@ -90,7 +135,21 @@ export default function LabApp() {
     }
   }, [])
 
-  if (!s) return <div style={{ minHeight: "100dvh", background: "var(--background)" }} />
+  const saveCheckin = useCallback((c: CheckIn) => {
+    const isNew = !s.checkins[c.date]
+    const refined = !isNew && s.checkins[c.date]?.quick && !c.quick
+    update(p => { p.checkins[c.date] = c; return p },
+      isNew ? { amount: 20, label: "Check-in" } : refined ? { amount: 10, label: "Feintuning" } : undefined)
+    if (isNew) setConfetti(true)
+  }, [s.checkins, update])
+
+  // Kalender-Download zuerst (braucht die direkte Nutzer-Geste, v. a. auf iOS), dann Berechtigung anfragen
+  const enableReminders = useCallback((withCalendar: boolean) => {
+    const reminders = { ...s.reminders, enabled: true, checkin: s.reminders.checkin || defaultCheckinTime(s.settings) }
+    if (withCalendar) downloadIcs({ ...s, reminders })
+    update(p => { p.reminders = reminders; return p })
+    if ("Notification" in window && Notification.permission === "default") Notification.requestPermission().catch(() => {})
+  }, [s, update])
 
   // ── Onboarding ──
   if (!s.startDate) {
@@ -99,9 +158,11 @@ export default function LabApp() {
         <style>{LAB_CSS}</style>
         <Onboarding
           onDemo={() => { const d = demoState(); saveState(d); setS(d); setTab("heute") }}
-          onStart={partial => {
-            const next: LabState = { ...emptyState(), ...partial }
+          onStart={({ state, wantsCalendar }) => {
+            const next = hydrate({ ...emptyState(), ...state })
+            next.badges = computeBadges(next)
             saveState(next); setS(next); setTab("heute"); setConfetti(true)
+            if (wantsCalendar) downloadIcs(next)
           }}
         />
         {confetti && <Confetti onDone={() => setConfetti(false)} />}
@@ -148,7 +209,8 @@ export default function LabApp() {
       </header>
 
       <main style={{ maxWidth: 640, margin: "0 auto", padding: "16px 16px calc(110px + env(safe-area-inset-bottom))" }}>
-        {tab === "heute" && <TodayView s={s} wins={wins} today={today} onCheckin={setCheckinDate} onVerdict={setVerdictFor} update={update} goTab={setTab} />}
+        {tab === "heute" && <TodayView s={s} wins={wins} today={today} onCheckin={setCheckinDate} onQuick={(d, v) => saveCheckin(quickCheckin(s, d, v))}
+          onVerdict={setVerdictFor} update={update} goTab={setTab} onReminders={() => enableReminders(true)} />}
         {tab === "reise" && <JourneyView s={s} wins={wins} today={today} onPhase={setPhaseSheet} onPlan={() => setPlanOpen(true)} goTab={setTab} />}
         {tab === "daten" && <DataView s={s} wins={wins} onVerdict={setVerdictFor} onCheckin={setCheckinDate} />}
         {tab === "stack" && <StackView s={s} update={update} onVerdict={setVerdictFor} />}
@@ -180,17 +242,11 @@ export default function LabApp() {
 
       {/* ── Overlays ── */}
       {checkinDate && (
-        <CheckInFlow
-          date={checkinDate}
-          existing={s.checkins[checkinDate]}
+        <CheckInSheet
+          s={s} date={checkinDate}
           phaseLabel={(() => { const w = phaseAt(s, checkinDate); return w ? phaseTitle(s, w) : "Außerhalb des Experiments" })()}
           onClose={() => setCheckinDate(null)}
-          onDone={c => {
-            const isNew = !s.checkins[c.date]
-            update(p => { p.checkins[c.date] = c; return p }, isNew ? { amount: 20, label: "Check-in" } : undefined)
-            setCheckinDate(null)
-            if (isNew) setConfetti(true)
-          }}
+          onDone={c => { saveCheckin(c); setCheckinDate(null) }}
         />
       )}
       {verdictFor && <VerdictSheet key={verdictFor} s={s} suppId={verdictFor} onClose={() => setVerdictFor(null)} onSave={(id, decision, note) => {
@@ -201,6 +257,8 @@ export default function LabApp() {
       <PhaseSheet s={s} w={phaseSheet} today={today} onClose={() => setPhaseSheet(null)} update={update} onVerdict={id => { setPhaseSheet(null); setVerdictFor(id) }} />
       {planOpen && <PlanSheet s={s} today={today} onClose={() => setPlanOpen(false)} update={update} />}
       {settingsOpen && <SettingsSheet s={s} onClose={() => setSettingsOpen(false)} update={update}
+        onEnableReminders={enableReminders}
+        onImport={next => { saveState(next); setS(next); setSettingsOpen(false); setFlash("✓ Daten importiert") }}
         onReset={() => { const e = s.demo ? restoreBackup() : emptyState(); saveState(e); setS(e); setSettingsOpen(false) }}
         onDemo={() => { backup(s); const d = demoState(); saveState(d); setS(d); setSettingsOpen(false) }} />}
 
@@ -219,34 +277,23 @@ export default function LabApp() {
         )
       })()}
       {toast && <XpToast key={toast.k} amount={toast.amount} label={toast.label} />}
+      {flash && !toast && (
+        <div style={{ position: "fixed", top: 18, left: 0, right: 0, zIndex: 600, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+          <div className="lab-pop" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 18px", fontWeight: 800, boxShadow: "var(--shadow)" }}>{flash}</div>
+        </div>
+      )}
       {confetti && <Confetti onDone={() => setConfetti(false)} />}
     </div>
   )
 }
 
-// Echte Daten sichern, wenn man zwischendurch die Demo anschaut
-const BACKUP_KEY = "true-supplement-lab-v1-backup"
-function backup(s: LabState) {
-  if (s.demo || !s.startDate) return
-  try { localStorage.setItem(BACKUP_KEY, JSON.stringify(s)) } catch {}
-}
-function restoreBackup(): LabState {
-  try {
-    const raw = localStorage.getItem(BACKUP_KEY)
-    localStorage.removeItem(BACKUP_KEY)
-    if (raw) return { ...emptyState(), ...JSON.parse(raw) }
-  } catch {}
-  return emptyState()
-}
-
-type Update = (fn: (prev: LabState) => LabState, xp?: { amount: number; label: string }) => void
-
 // ═══════════════════════════════════════════════════════════════════════════════
 // HEUTE
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function TodayView({ s, wins, today, onCheckin, onVerdict, update, goTab }: {
-  s: LabState; wins: PhaseWindow[]; today: string; onCheckin: (d: string) => void; onVerdict: (id: string) => void; update: Update; goTab: (t: Tab) => void
+function TodayView({ s, wins, today, onCheckin, onQuick, onVerdict, update, goTab, onReminders }: {
+  s: LabState; wins: PhaseWindow[]; today: string; onCheckin: (d: string) => void; onQuick: (d: string, v: number) => void
+  onVerdict: (id: string) => void; update: Update; goTab: (t: Tab) => void; onReminders: () => void
 }) {
   const w = wins.find(x => today >= x.start && today <= x.end) ?? null
   const first = wins[0]
@@ -257,15 +304,21 @@ function TodayView({ s, wins, today, onCheckin, onVerdict, update, goTab }: {
   const checked = s.checkins[today]
   const yesterday = addDays(today, -1)
   const missedYesterday = first && yesterday >= first.start && !s.checkins[yesterday] && (!last || yesterday <= last.end)
-  const testId = testSuppOn(s, today)
+  const testId = w?.kind === "test" ? w.suppId : undefined
   const testSupp = s.supps.find(x => x.id === testId)
-  const lib = testSupp?.lib ? LIB_BY_ID[testSupp.lib] : undefined
-  const taken = !!s.taken[today]
+  const lib = libOf(testSupp)
+  const intake = intakeOn(s, today)
+  const took = s.took[today] ?? []
   const dayNo = w ? diffDays(w.start, today) + 1 : 0
   const totalDays = first && last ? diffDays(first.start, last.end) + 1 : 0
   const expDay = first ? Math.min(totalDays, Math.max(0, diffDays(first.start, today) + 1)) : 0
-
   const color = w?.kind === "test" ? suppColor(testSupp) : "#2ECC8A"
+
+  const toggleTook = (id: string) => {
+    const on = took.includes(id)
+    update(p => { const cur = p.took[today] ?? []; p.took[today] = on ? cur.filter(x => x !== id) : [...cur, id]; return p }, on ? undefined : { amount: 5, label: "Eingenommen" })
+  }
+  const takeAll = () => update(p => { p.took[today] = [...new Set([...(p.took[today] ?? []), ...intake])]; return p }, { amount: 5 * intake.filter(i => !took.includes(i)).length, label: "Alles genommen" })
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -309,111 +362,134 @@ function TodayView({ s, wins, today, onCheckin, onVerdict, update, goTab }: {
         </div>
       </div>
 
-      {/* Urteil fällig */}
+      {/* 1-Klick-Check-in */}
+      {!notStarted && (w || (finished && !checked && today <= addDays(last.end, 1))) && (
+        checked ? (
+          <Card className="lab-rise" style={{ animationDelay: "60ms" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ fontSize: "2.4rem" }}>{FACES[Math.round(daySum(checked)) - 1]}</div>
+                <div>
+                  <Label>Heute eingecheckt</Label>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+                    <Stars value={Math.round(daySum(checked))} size={18} />
+                    <span style={{ fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>{fmt(daySum(checked))}</span>
+                  </div>
+                </div>
+              </div>
+              <Btn variant="soft" onClick={() => onCheckin(today)} style={{ padding: "8px 12px", fontSize: "0.78rem" }}>{checked.quick ? "✨ Verfeinern +10" : "Bearbeiten"}</Btn>
+            </div>
+          </Card>
+        ) : (
+          <div className="lab-rise lab-card" style={{ animationDelay: "60ms", padding: 18, outline: "2px solid var(--accent)", boxShadow: "0 10px 30px rgba(46,204,138,.18)" }}>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12 }}>
+              <div style={{ fontWeight: 900, fontSize: "1.15rem" }}>Wie war dein Tag?</div>
+              <div style={{ fontWeight: 900, color: "var(--accent)", fontSize: "0.85rem" }}>1 Tipp · +20 XP</div>
+            </div>
+            <FaceRow onPick={v => onQuick(today, v)} faces={FACES} labels={FACE_LABELS} />
+            <button onClick={() => onCheckin(today)} style={{ background: "none", border: "none", color: "var(--text-dim)", fontWeight: 700, fontSize: "0.8rem", marginTop: 10, cursor: "pointer" }}>
+              oder ausführlich mit ★ pro Bereich →
+            </button>
+          </div>
+        )
+      )}
+      {missedYesterday && (
+        <div className="lab-card" style={{ padding: 14 }}>
+          <div style={{ fontSize: "0.85rem", fontWeight: 800, marginBottom: 8 }}>🕐 Gestern vergessen? 1 Tipp zum Nachtragen</div>
+          <FaceRow onPick={v => onQuick(yesterday, v)} faces={FACES} size={44} />
+        </div>
+      )}
+
+      {/* Urteil fällig — mit automatischem Vorschlag */}
       {pending.map(p => {
         const supp = s.supps.find(x => x.id === p.suppId)
         const sig = signal(s, p.suppId!)
+        const sug = DECISIONS.find(d => d.id === sig.suggestion)
         return (
-          <Card key={p.id} className="lab-rise" onClick={() => onVerdict(p.suppId!)} style={{ border: `2px solid ${suppColor(supp)}`, display: "flex", gap: 12, alignItems: "center" }}>
-            <div className="lab-wiggle" style={{ fontSize: "2rem" }}>⚖️</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 900 }}>Urteil fällig: {supp?.name}</div>
-              <div style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>{sig.emoji} {sig.text} · Tippen zum Auswerten</div>
+          <Card key={p.id} className="lab-rise" style={{ border: `2px solid ${suppColor(supp)}` }}>
+            <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
+              <div className="lab-wiggle" style={{ fontSize: "2rem" }}>⚖️</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 900 }}>Urteil fällig: {supp?.name}</div>
+                <div style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>{sig.emoji} {sig.text}</div>
+              </div>
             </div>
-            <span style={{ fontWeight: 900, color: "var(--accent)" }}>+50</span>
+            <div style={{ display: "flex", gap: 8 }}>
+              {sug && (
+                <Btn full onClick={() => update(q => { q.verdicts[p.suppId!] = { decision: sug.id, note: "Automatischer Vorschlag übernommen", date: today }; return q }, { amount: 50, label: "Urteil gefällt" })}
+                  style={{ padding: "12px 10px", fontSize: "0.88rem" }}>{sug.emoji} {sug.label} bestätigen</Btn>
+              )}
+              <Btn variant="soft" onClick={() => onVerdict(p.suppId!)} style={{ padding: "12px 12px", fontSize: "0.85rem", whiteSpace: "nowrap" }}>Details</Btn>
+            </div>
           </Card>
         )
       })}
 
-      {/* Heute nehmen */}
+      {/* Heute einnehmen */}
       {w && !finished && (
-        <Card className="lab-rise" style={{ animationDelay: "60ms" }}>
-          <Label style={{ marginBottom: 10 }}>Heute einnehmen</Label>
-          {w.kind === "test" && testSupp ? (
-            <>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 54, height: 54, borderRadius: 18, background: suppColor(testSupp), display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.7rem", flexShrink: 0 }}>{testSupp.emoji}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 900, fontSize: "1.05rem" }}>{testSupp.name}</div>
-                  <div style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>
-                    {testSupp.dose || "deine übliche Dosis"}{lib ? ` · ${SLOTS.find(x => x.id === allowedSlots(testSupp.id, s)[0])?.emoji} ${slotTime(allowedSlots(testSupp.id, s)[0], s.settings)} Uhr` : ""}
-                  </div>
-                </div>
-                <button className="lab-press" onClick={() => update(p => { p.taken[today] = !taken; return p }, taken ? undefined : { amount: 5, label: "Eingenommen" })} style={{
-                  width: 54, height: 54, borderRadius: 18, border: taken ? "none" : "2px dashed var(--border)", flexShrink: 0,
-                  background: taken ? "var(--accent)" : "transparent", color: taken ? "#fff" : "var(--text-dim)", fontSize: "1.4rem", fontWeight: 900,
-                }} aria-label="Eingenommen abhaken">{taken ? "✓" : "○"}</button>
-              </div>
-              {lib && (
-                <div style={{ marginTop: 12, fontSize: "0.83rem", lineHeight: 1.5, color: "var(--text-dim)" }}>
-                  ⏰ {lib.timing}<br />
-                  👀 Achte besonders auf: <b style={{ color: "var(--text)" }}>{lib.watch.map(d => DIMS.find(x => x.id === d)?.label).join(", ")}</b>
-                  {lib.onset !== "schnell" && <><br />🐢 {ONSET_INFO[lib.onset].label}: {ONSET_INFO[lib.onset].text}</>}
-                </div>
-              )}
-            </>
-          ) : (
+        <Card className="lab-rise" style={{ animationDelay: "120ms" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <Label>Heute einnehmen</Label>
+            {intake.length > 1 && took.length < intake.length && (
+              <button className="lab-press" onClick={takeAll} style={{ border: "none", background: "var(--accent-dim)", color: "var(--accent)", borderRadius: 999, padding: "6px 12px", fontWeight: 800, fontSize: "0.75rem" }}>✓ Alles genommen</button>
+            )}
+          </div>
+          {intake.length === 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ fontSize: "2.2rem" }}>🙅</div>
               <div>
                 <div style={{ fontWeight: 900 }}>Heute: gar nichts</div>
                 <div style={{ fontSize: "0.83rem", color: "var(--text-dim)", lineHeight: 1.45 }}>
-                  {w.kind === "baseline"
-                    ? "Reset-Phase: kein Supplement. So misst du dein echtes Normal."
-                    : "Pause, damit das letzte Supplement nicht in den nächsten Test reinwirkt."}
+                  {w.kind === "baseline" ? "Reset-Phase: kein Supplement. So misst du dein echtes Normal." : "Pause, damit das letzte Supplement nicht in den nächsten Test reinwirkt."}
                 </div>
               </div>
+            </div>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {intake.map(id => {
+              const x = s.supps.find(q => q.id === id)
+              if (!x) return null
+              const l = libOf(x)
+              const done = took.includes(id)
+              const slot = slotFor(id, s)
+              return (
+                <div key={id} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 48, height: 48, borderRadius: 16, background: suppColor(x), display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }}>{x.emoji}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {x.name} {id === testId ? <span style={{ fontSize: "0.65rem", background: "var(--accent-dim)", color: "var(--accent)", padding: "2px 6px", borderRadius: 6, verticalAlign: "middle" }}>TEST</span> : <span style={{ fontSize: "0.65rem", color: "var(--text-dim)" }}>📌</span>}
+                    </div>
+                    <div style={{ fontSize: "0.78rem", color: "var(--text-dim)" }}>
+                      {l?.weekly ? "1× pro Woche" : `${SLOTS.find(q => q.id === slot)?.emoji} ${slotTime(slot, s.settings)} Uhr`}{x.dose ? ` · ${x.dose}` : ""}{l?.route && l.route !== "oral" ? ` · ${ROUTE_INFO[l.route].emoji}` : ""}
+                    </div>
+                  </div>
+                  <button className="lab-press" onClick={() => toggleTook(id)} aria-label={`${x.name} abhaken`} style={{
+                    width: 48, height: 48, borderRadius: 16, border: done ? "none" : "2px dashed var(--border)", flexShrink: 0,
+                    background: done ? "var(--accent)" : "transparent", color: done ? "#fff" : "var(--text-dim)", fontSize: "1.3rem", fontWeight: 900,
+                  }}>{done ? "✓" : "○"}</button>
+                </div>
+              )
+            })}
+          </div>
+          {lib && w.kind === "test" && (
+            <div style={{ marginTop: 12, fontSize: "0.8rem", lineHeight: 1.5, color: "var(--text-dim)", borderTop: "1px solid var(--border)", paddingTop: 10 }}>
+              ⏰ {lib.timing}<br />
+              👀 Achte auf: <b style={{ color: "var(--text)" }}>{lib.watch.map(d => DIMS.find(x => x.id === d)?.label).join(", ")}</b>
             </div>
           )}
         </Card>
       )}
 
-      {/* Check-in */}
-      {!notStarted && (!finished || !checked) && (w || missedYesterday) && (
-        checked ? (
-          <Card className="lab-rise" style={{ animationDelay: "120ms" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <div>
-                <Label>Heutiger Check-in</Label>
-                <div style={{ fontWeight: 900, fontSize: "1.1rem", marginTop: 2 }}>{FACES[Math.round(daySum(checked)) - 1]} Erledigt, stark!</div>
-              </div>
-              <Btn variant="soft" onClick={() => onCheckin(today)} style={{ padding: "8px 14px", fontSize: "0.8rem" }}>Bearbeiten</Btn>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
-              {DIMS.map(d => (
-                <div key={d.id} style={{ textAlign: "center" }}>
-                  <div style={{ height: 54, display: "flex", alignItems: "flex-end", justifyContent: "center", background: "var(--surface-2)", borderRadius: 10, overflow: "hidden" }}>
-                    <div style={{ width: "100%", height: `${(checked.scores[d.id] / 5) * 100}%`, background: "var(--lab-grad)", borderRadius: "4px 4px 0 0", transition: "height .6s" }} />
-                  </div>
-                  <div style={{ fontSize: "0.9rem", marginTop: 4 }} title={d.label}>{d.emoji}</div>
-                </div>
-              ))}
-            </div>
-            {checked.tags.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-                {checked.tags.map(t => <span key={t} style={{ fontSize: "0.72rem", padding: "3px 9px", borderRadius: 999, background: "var(--surface-2)", fontWeight: 700 }}>{t}</span>)}
-              </div>
-            )}
-          </Card>
-        ) : w ? (
-          <button className="lab-press lab-rise lab-pulse" onClick={() => onCheckin(today)} style={{
-            animationDelay: "120ms", border: "none", borderRadius: 24, padding: "20px 18px", textAlign: "left",
-            background: "var(--surface)", color: "var(--text)", display: "flex", alignItems: "center", gap: 14,
-            boxShadow: "var(--shadow)", outline: "2px solid var(--accent)",
-          }}>
-            <div style={{ width: 56, height: 56, borderRadius: 18, background: "var(--lab-grad)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem" }}>📝</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 900, fontSize: "1.1rem" }}>Tages-Check-in</div>
-              <div style={{ fontSize: "0.83rem", color: "var(--text-dim)" }}>7 Fragen · 1 Minute · hält deine Streak am Leben 🔥</div>
-            </div>
-            <div style={{ fontWeight: 900, color: "var(--accent)" }}>+20 XP</div>
-          </button>
-        ) : null
-      )}
-      {missedYesterday && (
-        <button className="lab-press" onClick={() => onCheckin(yesterday)} style={{
-          border: "1px dashed var(--border)", borderRadius: 16, padding: "12px 14px", background: "transparent", color: "var(--text-dim)", fontWeight: 700, fontSize: "0.85rem",
-        }}>🕐 Gestern vergessen? Jetzt nachtragen</button>
+      {/* Erinnerungen einrichten */}
+      {!s.reminders.enabled && !finished && (
+        <Card className="lab-rise" onClick={onReminders} style={{ animationDelay: "160ms", display: "flex", alignItems: "center", gap: 12, background: "var(--surface-2)", border: "none", boxShadow: "none" }}>
+          <div className="lab-wiggle" style={{ fontSize: "1.8rem" }}>🔔</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 900 }}>Erinnerungen einschalten</div>
+            <div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>1 Tipp: Benachrichtigungen + alle Termine in deinen Kalender</div>
+          </div>
+          <span style={{ fontWeight: 900, color: "var(--accent)" }}>+30</span>
+        </Card>
       )}
 
       {/* Phasen-Tipp */}
@@ -424,7 +500,7 @@ function TodayView({ s, wins, today, onCheckin, onVerdict, update, goTab }: {
         const next = wins.find(x => x.start > today)
         if (!next || finished) return null
         return (
-          <Card className="lab-rise" onClick={() => goTab("reise")} style={{ animationDelay: "180ms", display: "flex", alignItems: "center", gap: 12 }}>
+          <Card className="lab-rise" onClick={() => goTab("reise")} style={{ animationDelay: "200ms", display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ fontSize: "1.6rem" }}>{phaseEmoji(s, next)}</div>
             <div style={{ flex: 1 }}>
               <Label>Als Nächstes · {fmtDate(next.start)}</Label>
@@ -462,9 +538,9 @@ function PhaseTip({ s, w, dayNo }: { s: LabState; w: PhaseWindow; dayNo: number 
   if (w.kind === "baseline") {
     const tips = [
       "Tag 1 fühlt sich evtl. komisch an, vor allem ohne Koffein. Kopfschmerzen in den ersten Tagen sind normal.",
-      "Check-in möglichst immer zur gleichen Uhrzeit, z. B. abends vor dem Schlafen.",
-      "Ehrlich bewerten, nicht schönreden. Eine 3 ist ein völlig normaler Tag.",
-      "Störfaktoren wie Alkohol, wenig Schlaf oder Stress als Tag markieren. So bleibt die Auswertung fair.",
+      "Check-in möglichst immer zur gleichen Uhrzeit, z. B. abends. Die Erinnerung kommt automatisch.",
+      "Ehrlich bewerten, nicht schönreden. 😐 ist ein völlig normaler Tag.",
+      "Alkohol, wenig Schlaf oder Stress? Beim Check-in als Besonderheit antippen — so bleibt die Auswertung fair.",
       "Halbzeit! Dein Normal nimmt Form an. Schau mal in „Daten“.",
       "Bleib bei deiner Routine: gleiches Essen, gleicher Sport. Dann siehst du später echte Unterschiede.",
       "Letzter Reset-Tag! Morgen beginnt der erste Test. 🔬",
@@ -473,12 +549,11 @@ function PhaseTip({ s, w, dayNo }: { s: LabState; w: PhaseWindow; dayNo: number 
   } else if (w.kind === "washout") {
     tip = "Kurze Pause, damit der nächste Test sauber startet. Check-ins trotzdem machen, sie zeigen, ob etwas nachwirkt."
   } else {
-    const supp = s.supps.find(x => x.id === w.suppId)
-    const lib = supp?.lib ? LIB_BY_ID[supp.lib] : undefined
-    tip = lib ? `Was du erwarten kannst: ${lib.effect}${lib.caution ? ` ⚠️ ${lib.caution}` : ""}` : "Achte auf alles, was sich anders anfühlt als in der Reset-Woche, und notiere es."
+    const lib = libOf(s.supps.find(x => x.id === w.suppId))
+    tip = lib ? `Was du erwarten kannst: ${lib.effect}${lib.onset !== "schnell" ? ` ${ONSET_INFO[lib.onset].emoji} ${ONSET_INFO[lib.onset].label}.` : ""}${lib.caution ? ` ⚠️ ${lib.caution}` : ""}` : "Achte auf alles, was sich anders anfühlt als in der Reset-Woche."
   }
   return (
-    <Card className="lab-rise" style={{ animationDelay: "150ms", display: "flex", gap: 12, background: "var(--accent-dim)", border: "none", boxShadow: "none" }}>
+    <Card className="lab-rise" style={{ animationDelay: "180ms", display: "flex", gap: 12, background: "var(--accent-dim)", border: "none", boxShadow: "none" }}>
       <div style={{ fontSize: "1.4rem" }}>💡</div>
       <div style={{ fontSize: "0.87rem", lineHeight: 1.5 }}>{tip}</div>
     </Card>
@@ -495,7 +570,8 @@ function JourneyView({ s, wins, today, onPhase, onPlan, goTab }: {
   const offsets = [0, 1, 1.4, 1, 0, -1, -1.4, -1]
   const last = wins[wins.length - 1]
   const done = last && today > last.end
-  const kept = Object.values(s.verdicts).filter(v => v.decision === "keep").length
+  const kept = stackMembers(s, false).length
+  const constants = s.supps.filter(x => x.mode === "konstant")
   return (
     <div>
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 6 }}>
@@ -505,6 +581,11 @@ function JourneyView({ s, wins, today, onPhase, onPlan, goTab }: {
         </div>
         <Btn variant="soft" onClick={onPlan} style={{ padding: "9px 14px", fontSize: "0.82rem" }}>✏️ Plan</Btn>
       </div>
+      {constants.length > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: "0.75rem", color: "var(--text-dim)", marginTop: 8 }}>
+          📌 Läuft durchgehend: {constants.map(x => <Capsule key={x.id} supp={x} size="sm" />)}
+        </div>
+      )}
 
       <div style={{ position: "relative", width: 300, maxWidth: "100%", margin: "0 auto", padding: "20px 0 10px" }}>
         {wins.map((w, i) => {
@@ -564,7 +645,7 @@ function JourneyView({ s, wins, today, onPhase, onPlan, goTab }: {
             boxShadow: done ? "0 12px 30px rgba(237,161,0,.45)" : "none",
           }}>🏆</button>
           <div style={{ fontWeight: 900, marginTop: 8 }}>Dein Stack</div>
-          <div style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>{kept ? `${kept} Supplement${kept > 1 ? "s" : ""} behalten` : "wartet auf deine Urteile"}</div>
+          <div style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>{kept ? `${kept} Supplement${kept > 1 ? "s" : ""} im Stack` : "wartet auf deine Urteile"}</div>
         </div>
       </div>
     </div>
@@ -574,10 +655,10 @@ function JourneyView({ s, wins, today, onPhase, onPlan, goTab }: {
 function PhaseSheet({ s, w, today, onClose, update, onVerdict }: {
   s: LabState; w: PhaseWindow | null; today: string; onClose: () => void; update: Update; onVerdict: (id: string) => void
 }) {
-  if (!w) return <Sheet open={false} onClose={onClose}>{null}</Sheet>
+  if (!w) return null
   const state = today > w.end ? "done" : today >= w.start ? "active" : "future"
   const supp = s.supps.find(x => x.id === w.suppId)
-  const lib = supp?.lib ? LIB_BY_ID[supp.lib] : undefined
+  const lib = libOf(supp)
   const r = w.kind === "test" && w.suppId ? testResult(s, w.suppId) : null
   const elapsed = diffDays(w.start, today)
   const setDays = (days: number) => update(p => { p.phases = p.phases.map(x => x.id === w.id ? { ...x, days } : x); return p })
@@ -590,7 +671,7 @@ function PhaseSheet({ s, w, today, onClose, update, onVerdict }: {
         <Card style={{ marginBottom: 12 }}>
           <div style={{ fontSize: "0.88rem", lineHeight: 1.55 }}>
             <div><b>Wirkung:</b> {lib.effect}</div>
-            <div style={{ marginTop: 6 }}><b>Dosis:</b> {supp?.dose || lib.dose}</div>
+            <div style={{ marginTop: 6 }}><b>Dosis:</b> {supp?.dose || lib.dose}{lib.route ? ` · ${ROUTE_INFO[lib.route].emoji} ${ROUTE_INFO[lib.route].label}` : ""}</div>
             <div style={{ marginTop: 6 }}><b>Einnahme:</b> {lib.timing}</div>
             <div style={{ marginTop: 6 }}><b>Wirkungseintritt:</b> {ONSET_INFO[lib.onset].label}</div>
             {lib.caution && <div style={{ marginTop: 6, color: "var(--warning)" }}>⚠️ {lib.caution}</div>}
@@ -600,7 +681,7 @@ function PhaseSheet({ s, w, today, onClose, update, onVerdict }: {
       {r?.delta && r.avg && r.base && (
         <Card style={{ marginBottom: 12 }}>
           <Label style={{ marginBottom: 10 }}>Vergleich mit deinem Reset · {r.n} Check-ins</Label>
-          <DeltaBars delta={r.delta} avg={r.avg} base={r.base} />
+          <DeltaBars delta={r.delta} avg={r.avg} base={r.base} dims={r.dims} />
         </Card>
       )}
       {state === "active" && (
@@ -647,6 +728,7 @@ function PlanSheet({ s, today, onClose, update }: { s: LabState; today: string; 
       })
       p.phases = kept
       p.settings.washoutDays = washout
+      p.supps = p.supps.map(x => order.includes(x.id) ? { ...x, mode: "test" } : x)
       return p
     })
     onClose()
@@ -661,7 +743,7 @@ function PlanSheet({ s, today, onClose, update }: { s: LabState; today: string; 
 
       {unplanned.length > 0 && (
         <div style={{ marginTop: 16 }}>
-          <Label style={{ marginBottom: 8 }}>Noch nicht eingeplant</Label>
+          <Label style={{ marginBottom: 8 }}>Noch nicht eingeplant · tippen zum Hinzufügen</Label>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {unplanned.map(x => <Capsule key={x.id} supp={x} size="sm" onClick={() => { setOrder(o => [...o, x.id]); setDays(d => ({ ...d, [x.id]: d[x.id] ?? defaultDays(x) })) }} right={<span style={{ color: "var(--accent)" }}>＋</span>} />)}
           </div>
@@ -669,8 +751,10 @@ function PlanSheet({ s, today, onClose, update }: { s: LabState; today: string; 
       )}
       <div style={{ marginTop: 16 }}>
         {adding ? (
-          <SuppPicker selected={s.supps} onAddCustom={name => update(p => { p.supps.push(makeSupp(null, name, p.supps)); return p })}
-            onToggle={(lib: LibSupp) => update(p => { if (!p.supps.some(x => x.lib === lib.id)) p.supps.push(makeSupp(lib, lib.name, p.supps)); return p })} />
+          <SuppPicker selected={s.supps} goals={s.goals}
+            onAddCustom={name => update(p => { p.supps.push({ ...makeSupp(null, name, p.supps), mode: "pause" }); return p })}
+            onPasteAdd={items => update(p => { items.forEach(it => { if (!it.lib || !p.supps.some(x => x.lib === it.lib!.id)) p.supps.push({ ...makeSupp(it.lib, it.name, p.supps, it.dose), mode: "pause" }) }); return p })}
+            onToggle={(lib: LibSupp) => update(p => { if (!p.supps.some(x => x.lib === lib.id)) p.supps.push({ ...makeSupp(lib, lib.name, p.supps), mode: "pause" }); return p })} />
         ) : <Btn variant="ghost" full onClick={() => setAdding(true)}>+ Neues Supplement hinzufügen</Btn>}
       </div>
       <Card style={{ marginTop: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -694,6 +778,10 @@ function DataView({ s, wins, onVerdict, onCheckin }: { s: LabState; wins: PhaseW
     .map(w => ({ w, r: testResult(s, w.suppId!) }))
     .filter(x => x.r?.delta)
     .sort((a, b) => b.r!.total - a.r!.total), [s, tested])
+  const base = wins.find(w => w.kind === "baseline")
+  const baseAvg = base ? checkinsIn(s, base).map(daySum) : []
+  const last7 = Object.values(s.checkins).filter(c => c.date > addDays(todayIso(), -7)).map(daySum)
+  const mean = (a: number[]) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null
 
   if (!nCheck) {
     return (
@@ -705,16 +793,34 @@ function DataView({ s, wins, onVerdict, onCheckin }: { s: LabState; wins: PhaseW
     )
   }
 
+  const tiles: [string, number | null, string][] = [
+    ["Ø Reset", mean(baseAvg), "dein Normal"],
+    ["Ø letzte 7 Tage", mean(last7), last7.length ? `${last7.length} Check-ins` : "—"],
+    ["Check-ins", nCheck, `🔥 ${streak(s)} am Stück`],
+  ]
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div>
         <div style={{ fontSize: "1.5rem", fontWeight: 900 }}>Deine Daten</div>
-        <div style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>{nCheck} Check-ins · jede Farbe ist ein Test</div>
+        <div style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>Automatisch ausgewertet · jede Farbe ist ein Test</div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+        {tiles.map(([l, v, sub], i) => (
+          <Card key={l} style={{ padding: 12 }}>
+            <div style={{ fontSize: "0.68rem", fontWeight: 800, color: "var(--text-dim)" }}>{l}</div>
+            <div style={{ fontSize: "1.5rem", fontWeight: 900, lineHeight: 1.2, fontVariantNumeric: "tabular-nums" }}>
+              {v == null ? "—" : i < 2 ? <>{fmt(v)}<span style={{ color: "#f5b400", fontSize: "1rem" }}> ★</span></> : v}
+            </div>
+            <div style={{ fontSize: "0.65rem", color: "var(--text-dim)" }}>{sub}</div>
+          </Card>
+        ))}
       </div>
 
       <Card style={{ padding: "16px 12px" }}>
         <div className="lab-scroll" style={{ display: "flex", gap: 6, overflowX: "auto", marginBottom: 12, paddingBottom: 2 }}>
-          {([{ id: "gesamt", emoji: "✨", label: "Gesamt" }, ...DIMS] as { id: Dim | "gesamt"; emoji: string; label: string }[]).map(d => (
+          {([{ id: "gesamt", emoji: "✨", label: "Gesamt" }, ...activeDims(s)] as { id: Dim | "gesamt"; emoji: string; label: string }[]).map(d => (
             <button key={d.id} className="lab-press" onClick={() => setDim(d.id)} style={{
               flexShrink: 0, padding: "7px 12px", borderRadius: 999, fontSize: "0.8rem", fontWeight: dim === d.id ? 800 : 600,
               border: dim === d.id ? "2px solid var(--accent)" : "1px solid var(--border)",
@@ -739,23 +845,23 @@ function DataView({ s, wins, onVerdict, onCheckin }: { s: LabState; wins: PhaseW
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <Capsule supp={supp} size="sm" />
                     <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 3 }}>
-                      {sig.emoji} {sig.text}{sig.focus && r!.delta![sig.focus] > 0.2 ? ` · stärkster Effekt: ${DIMS.find(d => d.id === sig.focus)?.label} ${fmt(r!.delta![sig.focus], true)}` : ""}
+                      {sig.emoji} {sig.text}{sig.focus && (r!.delta![sig.focus] ?? 0) > 0.2 ? ` · stärkster Effekt: ${DIMS.find(d => d.id === sig.focus)?.label} ${fmt(r!.delta![sig.focus]!, true)}` : ""}
                     </div>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ fontWeight: 900, fontVariantNumeric: "tabular-nums", color: r!.total >= 0 ? "#1baf7a" : "#e34948" }}>{fmt(r!.total, true)}</div>
-                    <div style={{ fontSize: "0.65rem", color: "var(--text-dim)" }}>{verdict ? DECISIONS.find(d => d.id === verdict.decision)?.label : "offen"}</div>
+                    {r!.overall.test != null && <div style={{ fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>{fmt(r!.overall.test)}<span style={{ color: "#f5b400" }}>★</span></div>}
+                    <div style={{ fontSize: "0.68rem", fontWeight: 800, color: r!.total >= 0 ? "#1baf7a" : "#e34948" }}>{fmt(r!.total, true)} · {verdict ? DECISIONS.find(d => d.id === verdict.decision)?.label : "offen"}</div>
                   </div>
                 </div>
               )
             })}
           </div>
-          <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginTop: 12 }}>Summe der Veränderungen über alle 7 Bereiche. Tippen für Details.</div>
+          <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginTop: 12 }}>★ = Tagesdurchschnitt im Test · +/− = Summe der Veränderung gegenüber Reset. Tippen für Details.</div>
         </Card>
       )}
 
       <Card>
-        <Label style={{ marginBottom: 12 }}>Stimmungs-Kalender</Label>
+        <Label style={{ marginBottom: 12 }}>Stimmungs-Kalender · tippen zum Bearbeiten</Label>
         <MoodCalendar s={s} onPick={onCheckin} />
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 12, fontSize: "0.72rem", color: "var(--text-dim)" }}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 12, height: 4, borderRadius: 2, background: "var(--text-dim)" }} />Reset</span>
@@ -773,9 +879,11 @@ function DataView({ s, wins, onVerdict, onCheckin }: { s: LabState; wins: PhaseW
           <Card key={w.id}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, gap: 8 }}>
               <Capsule supp={supp} />
-              <span style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>{r.n} Check-ins</span>
+              <span style={{ fontSize: "0.72rem", color: "var(--text-dim)", whiteSpace: "nowrap" }}>
+                {r.overall.base != null && r.overall.test != null ? `${fmt(r.overall.base)}★ → ${fmt(r.overall.test)}★ · ` : ""}{r.n} Check-ins
+              </span>
             </div>
-            <DeltaBars delta={r.delta} avg={r.avg} base={r.base} />
+            <DeltaBars delta={r.delta} avg={r.avg} base={r.base} dims={r.dims} />
             {r.tags.length > 0 && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
                 {r.tags.slice(0, 5).map(([t, n]) => <span key={t} style={{ fontSize: "0.72rem", padding: "3px 9px", borderRadius: 999, background: "var(--surface-2)", fontWeight: 700 }}>{t} ×{n}</span>)}
@@ -793,12 +901,12 @@ function DataView({ s, wins, onVerdict, onCheckin }: { s: LabState; wins: PhaseW
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function VerdictSheet({ s, suppId, onClose, onSave }: { s: LabState; suppId: string; onClose: () => void; onSave: (id: string, d: Decision, note: string) => void }) {
-  const [decision, setDecision] = useState<Decision | null>(s.verdicts[suppId]?.decision ?? null)
+  const sig = signal(s, suppId)
+  const [decision, setDecision] = useState<Decision | null>(s.verdicts[suppId]?.decision ?? sig.suggestion)
   const [note, setNote] = useState(s.verdicts[suppId]?.note ?? "")
   const supp = s.supps.find(x => x.id === suppId)
   const r = testResult(s, suppId)
-  const sig = signal(s, suppId)
-  const lib = supp?.lib ? LIB_BY_ID[supp.lib] : undefined
+  const lib = libOf(supp)
   return (
     <Sheet open onClose={onClose} title="⚖️ Dein Urteil">
       <div style={{ display: "flex", justifyContent: "center", margin: "4px 0 16px" }}><Capsule supp={supp} /></div>
@@ -807,15 +915,18 @@ function VerdictSheet({ s, suppId, onClose, onSave }: { s: LabState; suppId: str
           <Card style={{ marginBottom: 12, textAlign: "center", background: "var(--surface-2)", border: "none", boxShadow: "none" }}>
             <div style={{ fontSize: "2rem" }}>{sig.emoji}</div>
             <div style={{ fontWeight: 900, fontSize: "1.1rem" }}>Die Daten sagen: {sig.text}</div>
-            {sig.focus && r.delta[sig.focus] > 0.2 && (
+            {r.overall.base != null && r.overall.test != null && (
+              <div style={{ fontSize: "0.9rem", marginTop: 4, fontWeight: 800 }}>{fmt(r.overall.base)}★ im Reset → {fmt(r.overall.test)}★ im Test</div>
+            )}
+            {sig.focus && (r.delta[sig.focus] ?? 0) > 0.2 && (
               <div style={{ fontSize: "0.85rem", color: "var(--text-dim)", marginTop: 4 }}>
-                Am meisten verändert: {DIMS.find(d => d.id === sig.focus)?.emoji} {DIMS.find(d => d.id === sig.focus)?.label} {fmt(r.delta[sig.focus], true)}
+                Am meisten verändert: {DIMS.find(d => d.id === sig.focus)?.emoji} {DIMS.find(d => d.id === sig.focus)?.label} {fmt(r.delta[sig.focus]!, true)}
               </div>
             )}
           </Card>
           <Card style={{ marginBottom: 12 }}>
             <Label style={{ marginBottom: 10 }}>Test vs. Reset · {r.n} Check-ins</Label>
-            <DeltaBars delta={r.delta} avg={r.avg} base={r.base} />
+            <DeltaBars delta={r.delta} avg={r.avg} base={r.base} dims={r.dims} />
           </Card>
         </>
       ) : (
@@ -825,7 +936,7 @@ function VerdictSheet({ s, suppId, onClose, onSave }: { s: LabState; suppId: str
             : "Keine Testdaten für dieses Supplement. Du kannst trotzdem nach Bauchgefühl entscheiden."}
         </Card>
       )}
-      <div style={{ fontWeight: 800, margin: "16px 0 10px" }}>Und was sagt dein Bauchgefühl?</div>
+      <div style={{ fontWeight: 800, margin: "16px 0 10px" }}>{sig.suggestion ? "Vorschlag ist markiert — 1 Tipp zum Bestätigen oder ändern:" : "Was sagt dein Bauchgefühl?"}</div>
       <div style={{ display: "flex", gap: 8 }}>
         {DECISIONS.map(d => {
           const on = decision === d.id
@@ -834,14 +945,15 @@ function VerdictSheet({ s, suppId, onClose, onSave }: { s: LabState; suppId: str
               flex: 1, padding: "14px 6px", borderRadius: 18, fontWeight: 800, fontSize: "0.85rem", color: "var(--text)",
               border: on ? `2px solid ${d.color}` : "1px solid var(--border)",
               background: on ? `color-mix(in srgb, ${d.color} 16%, var(--surface))` : "var(--surface)",
-              transform: on ? "scale(1.04)" : undefined,
+              transform: on ? "scale(1.04)" : undefined, position: "relative",
             }}>
+              {sig.suggestion === d.id && <span style={{ position: "absolute", top: -9, left: "50%", transform: "translateX(-50%)", fontSize: "0.6rem", background: "var(--accent)", color: "#fff", padding: "2px 6px", borderRadius: 6, whiteSpace: "nowrap" }}>Vorschlag</span>}
               <div style={{ fontSize: "1.7rem", marginBottom: 4 }}>{d.emoji}</div>{d.label}
             </button>
           )
         })}
       </div>
-      <textarea value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder="Warum? (z. B. „schlafe tiefer“)"
+      <textarea value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder="Warum? (optional)"
         style={{ width: "100%", padding: 12, borderRadius: 14, fontSize: "0.92rem", marginTop: 12, resize: "none" }} />
       <div style={{ marginTop: 14 }}><Btn full disabled={!decision} onClick={() => decision && onSave(suppId, decision, note.trim())}>Urteil speichern</Btn></div>
     </Sheet>
@@ -858,8 +970,9 @@ function StackView({ s, update, onVerdict }: { s: LabState; update: Update; onVe
   const keep = s.supps.filter(x => s.verdicts[x.id]?.decision === "keep")
   const maybe = s.supps.filter(x => s.verdicts[x.id]?.decision === "maybe")
   const drop = s.supps.filter(x => s.verdicts[x.id]?.decision === "drop")
-  const open = s.supps.filter(x => !s.verdicts[x.id])
-  const inStack = [...keep, ...(withMaybe ? maybe : [])]
+  const constant = s.supps.filter(x => !s.verdicts[x.id] && x.mode === "konstant")
+  const open = s.supps.filter(x => !s.verdicts[x.id] && x.mode !== "konstant")
+  const inStack = stackMembers(s, withMaybe)
   const plan = buildStack(inStack.map(x => x.id), s)
 
   const cycleSlot = (id: string, current: string) => {
@@ -876,8 +989,13 @@ function StackView({ s, update, onVerdict }: { s: LabState; update: Update; onVe
       lines.push(`${slotTime(slot.id, s.settings)} · ${slot.label}`)
       items.forEach(p => { const x = s.supps.find(q => q.id === p.suppId)!; lines.push(`  • ${x.name}${x.dose ? ` (${x.dose})` : ""}`) })
     })
+    if (plan.weekly.length) lines.push("", `Wöchentlich: ${plan.weekly.map(id => s.supps.find(x => x.id === id)?.name).join(", ")}`)
     if (drop.length) lines.push("", `Rausgeflogen: ${drop.map(x => x.name).join(", ")}`)
-    try { await navigator.clipboard.writeText(lines.join("\n")); setCopied(true); setTimeout(() => setCopied(false), 1600) } catch {}
+    try {
+      if (navigator.share) await navigator.share({ title: "Mein Supplement-Stack", text: lines.join("\n") })
+      else await navigator.clipboard.writeText(lines.join("\n"))
+      setCopied(true); setTimeout(() => setCopied(false), 1600)
+    } catch {}
   }
 
   const group = (title: string, items: MySupp[], emoji: string) => items.length ? (
@@ -893,12 +1011,11 @@ function StackView({ s, update, onVerdict }: { s: LabState; update: Update; onVe
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div>
         <div style={{ fontSize: "1.5rem", fontWeight: 900 }}>Dein Stack 🏆</div>
-        <div style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>Was wirkt, bleibt. Mit dem perfekten Timing.</div>
+        <div style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>Automatisch gebaut aus deinen Urteilen — mit perfektem Timing.</div>
       </div>
 
-      {/* Scoreboard */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-        {[["💚", keep.length, "behalten"], ["🤔", maybe.length, "vielleicht"], ["✂️", drop.length, "rausgeflogen"]].map(([e, n, l]) => (
+        {[["💚", keep.length + constant.length, "im Stack"], ["🤔", maybe.length, "vielleicht"], ["✂️", drop.length, "rausgeflogen"]].map(([e, n, l]) => (
           <Card key={l as string} style={{ padding: 14, textAlign: "center" }}>
             <div style={{ fontSize: "1.3rem" }}>{e}</div>
             <div style={{ fontSize: "1.8rem", fontWeight: 900, lineHeight: 1.1 }}>{n}</div>
@@ -909,13 +1026,13 @@ function StackView({ s, update, onVerdict }: { s: LabState; update: Update; onVe
 
       <Card>
         {group("Behalten", keep, "💚")}
+        {group("Durchgehend", constant, "📌")}
         {group("Vielleicht", maybe, "🤔")}
         {group("Fliegt raus", drop, "✂️")}
-        {group("Noch offen, tippen zum Bewerten", open, "⏳")}
+        {group("Noch offen · tippen zum Bewerten", open, "⏳")}
         {drop.length > 0 && <div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>💸 {drop.length} Supplement{drop.length > 1 ? "s" : ""} weniger: weniger Geld, weniger Pillen, mehr Klarheit.</div>}
       </Card>
 
-      {/* Perfekter Tag */}
       <Card style={{ padding: "18px 16px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, gap: 8 }}>
           <div>
@@ -934,7 +1051,7 @@ function StackView({ s, update, onVerdict }: { s: LabState; update: Update; onVe
           <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-dim)" }}>
             <div style={{ fontSize: "2.4rem" }}>🫙</div>
             <div style={{ fontWeight: 800, color: "var(--text)", marginTop: 6 }}>Noch leer</div>
-            <div style={{ fontSize: "0.85rem", marginTop: 4 }}>Sobald du ein Supplement mit 💚 bewertest, landet es hier, direkt im richtigen Zeitfenster.</div>
+            <div style={{ fontSize: "0.85rem", marginTop: 4 }}>Sobald du ein Supplement mit 💚 bewertest, landet es hier — direkt im richtigen Zeitfenster.</div>
           </div>
         ) : (
           <div style={{ position: "relative", paddingLeft: 58 }}>
@@ -942,46 +1059,53 @@ function StackView({ s, update, onVerdict }: { s: LabState; update: Update; onVe
             {SLOTS.filter(slot => slot.id !== "training" || s.settings.training).map(slot => {
               const items = plan.placements.filter(p => p.slot === slot.id)
               const empty = !items.length
+              if (empty) return null
               return (
-                <div key={slot.id} style={{ position: "relative", marginBottom: empty ? 8 : 16, opacity: empty ? 0.45 : 1 }}>
+                <div key={slot.id} style={{ position: "relative", marginBottom: 16 }}>
                   <div style={{
-                    position: "absolute", left: -58, top: 0, width: 46, height: 46, borderRadius: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                    background: empty ? "var(--surface-2)" : "var(--surface)", border: empty ? "none" : "2px solid var(--accent)", fontSize: empty ? "1rem" : "1.2rem",
+                    position: "absolute", left: -58, top: 0, width: 46, height: 46, borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center",
+                    background: "var(--surface)", border: "2px solid var(--accent)", fontSize: "1.2rem",
                   }}>{slot.emoji}</div>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8, minHeight: 20 }}>
                     <span style={{ fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>{slotTime(slot.id, s.settings)}</span>
                     <span style={{ fontWeight: 700, fontSize: "0.85rem" }}>{slot.label}</span>
                   </div>
-                  <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginBottom: empty ? 0 : 8 }}>{slot.hint}</div>
-                  {!empty && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {items.map(p => {
-                        const x = s.supps.find(q => q.id === p.suppId)!
-                        const lib = x.lib ? LIB_BY_ID[x.lib] : undefined
-                        const isMaybe = s.verdicts[x.id]?.decision === "maybe"
-                        return (
-                          <div key={x.id} className="lab-press lab-pop" onClick={() => cycleSlot(x.id, p.slot)} style={{
-                            display: "flex", alignItems: "center", gap: 10, padding: 10, borderRadius: 16,
-                            background: `color-mix(in srgb, ${suppColor(x)} 12%, var(--surface))`, border: `1px ${isMaybe ? "dashed" : "solid"} color-mix(in srgb, ${suppColor(x)} 45%, transparent)`,
-                          }}>
-                            <div style={{ width: 34, height: 34, borderRadius: 12, background: suppColor(x), display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.05rem", flexShrink: 0 }}>{x.emoji}</div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontWeight: 800, fontSize: "0.9rem" }}>{x.name}{isMaybe && <span style={{ fontSize: "0.7rem", color: "var(--text-dim)" }}> · vielleicht</span>}</div>
-                              <div style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>{x.dose || lib?.dose}{lib?.withFat ? " · mit fetthaltigem Essen" : ""}</div>
+                  <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginBottom: 8 }}>{slot.hint}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {items.map(p => {
+                      const x = s.supps.find(q => q.id === p.suppId)!
+                      const lib = libOf(x)
+                      const isMaybe = s.verdicts[x.id]?.decision === "maybe"
+                      return (
+                        <div key={x.id} className="lab-press lab-pop" onClick={() => cycleSlot(x.id, p.slot)} style={{
+                          display: "flex", alignItems: "center", gap: 10, padding: 10, borderRadius: 16,
+                          background: `color-mix(in srgb, ${suppColor(x)} 12%, var(--surface))`, border: `1px ${isMaybe ? "dashed" : "solid"} color-mix(in srgb, ${suppColor(x)} 45%, transparent)`,
+                        }}>
+                          <div style={{ width: 34, height: 34, borderRadius: 12, background: suppColor(x), display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.05rem", flexShrink: 0 }}>{x.emoji}</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 800, fontSize: "0.9rem" }}>{x.name}{isMaybe && <span style={{ fontSize: "0.7rem", color: "var(--text-dim)" }}> · vielleicht</span>}</div>
+                            <div style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>
+                              {x.dose || lib?.dose}{lib?.withFat ? " · mit fetthaltigem Essen" : ""}{lib?.route && lib.route !== "oral" ? ` · ${ROUTE_INFO[lib.route].emoji} ${ROUTE_INFO[lib.route].label}` : ""}
                             </div>
-                            <span style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>⇅</span>
                           </div>
-                        )
-                      })}
-                    </div>
-                  )}
+                          <span style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>⇅</span>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               )
             })}
           </div>
         )}
+        {plan.weekly.length > 0 && (
+          <div style={{ marginTop: 6, padding: 12, borderRadius: 16, background: "var(--surface-2)" }}>
+            <Label style={{ marginBottom: 8 }}>📅 1× pro Woche</Label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{plan.weekly.map(id => <Capsule key={id} supp={s.supps.find(x => x.id === id)} size="sm" />)}</div>
+          </div>
+        )}
         {Object.keys(s.slotOverrides).length > 0 && inStack.length > 0 && (
-          <button onClick={() => update(p => { p.slotOverrides = {}; return p })} style={{ background: "none", border: "none", color: "var(--text-dim)", fontSize: "0.78rem", cursor: "pointer", marginTop: 4 }}>↺ Automatisch planen</button>
+          <button onClick={() => update(p => { p.slotOverrides = {}; return p })} style={{ background: "none", border: "none", color: "var(--text-dim)", fontSize: "0.78rem", cursor: "pointer", marginTop: 8 }}>↺ Automatisch planen</button>
         )}
       </Card>
 
@@ -1000,16 +1124,18 @@ function StackView({ s, update, onVerdict }: { s: LabState; update: Update; onVe
         </Card>
       ))}
 
-      {inStack.length > 0 && <Btn full variant="soft" onClick={copy}>{copied ? "✓ Kopiert!" : "📋 Plan als Text kopieren"}</Btn>}
-
-      <TimeSettings settings={s.settings} onChange={st => update(p => { p.settings = st; return p })} />
+      {inStack.length > 0 && <Btn full variant="soft" onClick={copy}>{copied ? "✓ Geteilt!" : "📤 Plan teilen / kopieren"}</Btn>}
 
       <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", lineHeight: 1.5, padding: "0 4px" }}>
-        ⚕️ Das Lab ersetzt keine ärztliche Beratung. Selbstbeobachtung ist subjektiv; Placebo, Wetter, Stress und Schlaf spielen mit. Mangel-Themen (Vitamin D, B12, Eisen) lieber per Blutbild klären.
+        ⚕️ Das Lab ersetzt keine ärztliche Beratung. Selbstbeobachtung ist subjektiv; Placebo, Wetter, Stress und Schlaf spielen mit. Mangel-Themen (Vitamin D, B12, Eisen) lieber per Blutbild klären. Peptide nur mit ärztlicher Begleitung.
       </div>
     </div>
   )
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EINSTELLUNGEN
+// ═══════════════════════════════════════════════════════════════════════════════
 
 function TimeSettings({ settings, onChange }: { settings: Settings; onChange: (s: Settings) => void }) {
   return (
@@ -1034,23 +1160,123 @@ function TimeSettings({ settings, onChange }: { settings: Settings; onChange: (s
   )
 }
 
-function SettingsSheet({ s, onClose, update, onReset, onDemo }: { s: LabState; onClose: () => void; update: Update; onReset: () => void; onDemo: () => void }) {
+function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnableReminders }: {
+  s: LabState; onClose: () => void; update: Update; onReset: () => void; onDemo: () => void
+  onImport: (s: LabState) => void; onEnableReminders: (withCalendar: boolean) => void
+}) {
   const [confirm, setConfirm] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const perm = typeof Notification === "undefined" ? "unsupported" : Notification.permission
+
+  const exportData = async () => {
+    const json = JSON.stringify(s, null, 1)
+    const file = new File([json], `supplement-lab-${todayIso()}.json`, { type: "application/json" })
+    try {
+      if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: "Supplement Lab Backup" }); return }
+    } catch { /* Abbruch → Download */ }
+    const url = URL.createObjectURL(file)
+    const a = document.createElement("a"); a.href = url; a.download = file.name; a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+    setMsg("✓ Backup gespeichert")
+  }
+  const importData = async (f: File) => {
+    try {
+      const parsed = JSON.parse(await f.text())
+      if (!parsed || typeof parsed !== "object" || !("supps" in parsed)) throw new Error()
+      onImport(hydrate(parsed))
+    } catch { setMsg("⚠️ Datei konnte nicht gelesen werden") }
+  }
+  const testNotif = () => {
+    navigator.serviceWorker?.ready.then(reg => reg.showNotification("🧪 So sieht deine Erinnerung aus", {
+      body: "1 Tipp auf die Benachrichtigung öffnet den Check-in.", icon: "/icon-192.png", tag: "true-lab-test", data: { url: "/lab?checkin=1" },
+    })).catch(() => setMsg("⚠️ Benachrichtigungen werden hier nicht unterstützt"))
+  }
+
   return (
     <Sheet open onClose={onClose} title="⚙️ Einstellungen">
-      <TimeSettings settings={s.settings} onChange={st => update(p => { p.settings = st; return p })} />
-      <Card style={{ marginTop: 12 }}>
-        <Label style={{ marginBottom: 8 }}>Deine Supplements</Label>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {/* Erinnerungen */}
+      <Card style={{ marginBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <Label>🔔 Erinnerungen</Label>
+          <button className="lab-press" aria-label="Erinnerungen an/aus" onClick={() => s.reminders.enabled ? update(p => { p.reminders.enabled = false; return p }) : onEnableReminders(false)} style={{
+            width: 48, height: 28, borderRadius: 999, border: "none", position: "relative", background: s.reminders.enabled ? "var(--accent)" : "var(--surface-2)",
+          }}>
+            <span style={{ position: "absolute", top: 3, left: s.reminders.enabled ? 23 : 3, width: 22, height: 22, borderRadius: 999, background: "#fff", transition: "left .2s" }} />
+          </button>
+        </div>
+        {s.reminders.enabled && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ fontWeight: 700, fontSize: "0.9rem" }}>📝 Check-in um</span>
+              <input type="time" value={s.reminders.checkin} onChange={e => { const v = e.target.value; update(p => { p.reminders.checkin = v; return p }) }} style={{ padding: "6px 10px", borderRadius: 10, fontWeight: 700 }} />
+            </div>
+            <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, fontWeight: 700, fontSize: "0.9rem" }}>
+              💊 Einnahme-Erinnerungen
+              <input type="checkbox" checked={s.reminders.intake} onChange={e => { const v = e.target.checked; update(p => { p.reminders.intake = v; return p }) }} style={{ width: 20, height: 20, accentColor: "var(--accent)" }} />
+            </label>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <Btn variant="soft" onClick={() => downloadIcs(s)} style={{ fontSize: "0.82rem", padding: "10px 12px" }}>📅 In Kalender eintragen</Btn>
+              {perm === "granted" ? <Btn variant="ghost" onClick={testNotif} style={{ fontSize: "0.82rem", padding: "10px 12px" }}>Test senden</Btn>
+                : perm === "default" ? <Btn variant="ghost" onClick={() => onEnableReminders(false)} style={{ fontSize: "0.82rem", padding: "10px 12px" }}>Benachrichtigungen erlauben</Btn> : null}
+            </div>
+            <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 8, lineHeight: 1.45 }}>
+              Der Kalender erinnert dich zuverlässig, auch wenn die App zu ist. App-Benachrichtigungen kommen, sobald TRUE offen oder als App installiert ist.{perm === "denied" ? " Benachrichtigungen sind im Browser blockiert — nutze den Kalender." : ""}
+            </div>
+          </>
+        )}
+      </Card>
+
+      {/* Ziele */}
+      <Card style={{ marginBottom: 12 }}>
+        <Label style={{ marginBottom: 8 }}>🎯 Deine Ziele</Label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {GOALS.map(g => {
+            const on = s.goals.includes(g.id)
+            return (
+              <button key={g.id} className="lab-press" onClick={() => update(p => { p.goals = on ? p.goals.filter(x => x !== g.id) : [...p.goals, g.id]; return p })} style={{
+                padding: "6px 10px", borderRadius: 999, fontSize: "0.78rem", fontWeight: on ? 800 : 600, color: "var(--text)",
+                border: on ? "2px solid var(--accent)" : "1px solid var(--border)", background: on ? "var(--accent-dim)" : "var(--surface)",
+              }}>{g.emoji} {g.label}</button>
+            )
+          })}
+        </div>
+      </Card>
+
+      {/* Supplements */}
+      <Card style={{ marginBottom: 12 }}>
+        <Label style={{ marginBottom: 8 }}>💊 Deine Supplements</Label>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {s.supps.map(x => (
-            <div key={x.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}><Capsule supp={x} size="sm" /></div>
-              <input value={x.dose} placeholder="Dosis" onChange={e => { const v = e.target.value; update(p => { p.supps = p.supps.map(q => q.id === x.id ? { ...q, dose: v } : q); return p }) }}
-                style={{ width: 130, padding: "6px 10px", borderRadius: 10, fontSize: "0.8rem" }} />
+            <div key={x.id}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <div style={{ flex: 1, minWidth: 0 }}><Capsule supp={x} size="sm" /></div>
+                <input value={x.dose} placeholder="Dosis" onChange={e => { const v = e.target.value; update(p => { p.supps = p.supps.map(q => q.id === x.id ? { ...q, dose: v } : q); return p }) }}
+                  style={{ width: 120, padding: "6px 10px", borderRadius: 10, fontSize: "0.8rem" }} />
+              </div>
+              {x.mode !== "test" || !phaseWindows(s).some(w => w.suppId === x.id && w.kind === "test") ? (
+                <Segmented value={x.mode} onChange={m => update(p => { p.supps = p.supps.map(q => q.id === x.id ? { ...q, mode: m } : q); return p })}
+                  options={MODE_OPTIONS.filter(o => o.id !== "test")} />
+              ) : <div style={{ fontSize: "0.7rem", color: "var(--text-dim)" }}>🔬 Im Testplan (Reihenfolge unter „Reise → Plan“)</div>}
             </div>
           ))}
         </div>
       </Card>
+
+      <TimeSettings settings={s.settings} onChange={st => update(p => { p.settings = st; return p })} />
+
+      {/* Daten */}
+      <Card style={{ marginTop: 12 }}>
+        <Label style={{ marginBottom: 8 }}>📦 Daten übertragen</Label>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Btn variant="soft" onClick={exportData} style={{ fontSize: "0.82rem", padding: "10px 12px" }}>📤 Backup teilen</Btn>
+          <Btn variant="soft" onClick={() => fileRef.current?.click()} style={{ fontSize: "0.82rem", padding: "10px 12px" }}>📥 Backup laden</Btn>
+          <input ref={fileRef} type="file" accept="application/json,.json" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) importData(f); e.target.value = "" }} />
+        </div>
+        <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 8 }}>Daten liegen nur auf diesem Gerät. Mit dem Backup ziehst du sie in Sekunden aufs Handy oder den Laptop um.</div>
+        {msg && <div style={{ fontSize: "0.8rem", fontWeight: 700, marginTop: 8 }}>{msg}</div>}
+      </Card>
+
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
         {s.demo && <Btn full onClick={onReset}>Demo beenden</Btn>}
         {!s.demo && <Btn full variant="ghost" onClick={onDemo}>Demo-Daten ansehen (deine Daten werden gesichert)</Btn>}
@@ -1058,7 +1284,7 @@ function SettingsSheet({ s, onClose, update, onReset, onDemo }: { s: LabState; o
           ? <Btn full variant="danger" onClick={onReset}>Wirklich alles löschen?</Btn>
           : <Btn full variant="ghost" onClick={() => setConfirm(true)}>Experiment zurücksetzen</Btn>)}
       </div>
-      <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 14, lineHeight: 1.5 }}>Alle Daten bleiben nur auf diesem Gerät gespeichert.</div>
     </Sheet>
   )
 }
+

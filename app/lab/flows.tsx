@@ -2,92 +2,115 @@
 import React, { useMemo, useState } from "react"
 import Link from "next/link"
 import {
-  DIMS, FACES, TAGS, LIBRARY, LIB_BY_ID, ONSET_INFO, SUPP_COLORS,
-  buildPhases, todayIso, addDays, fmtDate, diffDays,
-  type CheckIn, type Dim, type LabState, type MySupp, type Settings, type LibSupp,
+  FACES, FACE_LABELS, TAGS, LIBRARY, ONSET_INFO, ROUTE_INFO, SUPP_COLORS, CATEGORIES, GOALS, RHYTHMS, TRAININGS,
+  buildPhases, todayIso, addDays, fmtDate, diffDays, makeSupp, autoOrder, defaultDays, parseSuppList, goalRelevance,
+  activeDims, defaultCheckinTime, libOf, daySum,
+  type CheckIn, type Dim, type LabState, type MySupp, type Settings, type LibSupp, type GoalId, type SuppMode, type Scores,
 } from "@/lib/supplementLab"
-import { Btn, Capsule, Card, Label, Stepper } from "./ui"
+import { Btn, Capsule, Card, FaceRow, Label, Segmented, Stars, Stepper } from "./ui"
 
-// ── Supplement-Auswahl (auch später aus „Reise“ nutzbar) ────────────────────────
+export const MODE_OPTIONS: { id: SuppMode; label: string }[] = [
+  { id: "test", label: "🔬 Testen" },
+  { id: "konstant", label: "📌 Weiter nehmen" },
+  { id: "pause", label: "⏸️ Pause" },
+]
 
-const CATS = ["Schlaf & Ruhe", "Energie & Fokus", "Stress & Adaptogene", "Vitamine & Mineralien", "Training", "Darm & Immun"] as const
+// ── Supplement-Auswahl: antippen oder Liste einfügen ───────────────────────────
 
-export function SuppPicker({ selected, onToggle, onAddCustom }: {
-  selected: MySupp[]; onToggle: (lib: LibSupp) => void; onAddCustom: (name: string) => void
+export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd }: {
+  selected: MySupp[]; goals: GoalId[]
+  onToggle: (lib: LibSupp) => void; onAddCustom: (name: string) => void
+  onPasteAdd: (items: { lib: LibSupp | null; name: string; dose: string }[]) => void
 }) {
-  const [custom, setCustom] = useState("")
+  const [mode, setMode] = useState<"tap" | "paste">("tap")
   const [q, setQ] = useState("")
+  const [paste, setPaste] = useState("")
   const sel = new Set(selected.map(s => s.lib ?? s.id))
   const ql = q.trim().toLowerCase()
+  const parsed = useMemo(() => parseSuppList(paste), [paste])
+  const suggested = goals.length ? LIBRARY.filter(l => goalRelevance(l.id, goals) > 0).sort((a, b) => goalRelevance(b.id, goals) - goalRelevance(a.id, goals)) : []
+
+  const chip = (l: LibSupp) => {
+    const on = sel.has(l.id)
+    const idx = selected.findIndex(s => s.lib === l.id)
+    const c = on ? SUPP_COLORS[selected[idx].color % SUPP_COLORS.length] : undefined
+    return (
+      <button key={l.id} className="lab-press" onClick={() => onToggle(l)} style={{
+        display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 12px", borderRadius: 999,
+        border: on ? `2px solid ${c}` : "1px solid var(--border)",
+        background: on ? `color-mix(in srgb, ${c} 16%, var(--surface))` : "var(--surface)",
+        color: "var(--text)", fontWeight: on ? 800 : 600, fontSize: "0.85rem",
+      }}>
+        <span>{l.emoji}</span>{l.name}
+        {l.route && l.route !== "oral" && <span style={{ fontSize: "0.75rem" }}>{ROUTE_INFO[l.route].emoji}</span>}
+        {on && <span>✓</span>}
+      </button>
+    )
+  }
+
   return (
     <div>
-      <input
-        value={q} onChange={e => setQ(e.target.value)} placeholder="🔍 Suchen … (z. B. Magnesium)"
-        style={{ width: "100%", padding: "12px 14px", borderRadius: 14, fontSize: "0.95rem", marginBottom: 14 }}
-      />
-      {CATS.map(cat => {
-        const items = LIBRARY.filter(l => l.category === cat && (!ql || l.name.toLowerCase().includes(ql)))
-        if (!items.length) return null
-        return (
-          <div key={cat} style={{ marginBottom: 16 }}>
-            <Label style={{ marginBottom: 8 }}>{cat}</Label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {items.map(l => {
-                const on = sel.has(l.id)
-                const idx = selected.findIndex(s => s.lib === l.id)
-                const c = on ? SUPP_COLORS[selected[idx].color % SUPP_COLORS.length] : undefined
-                return (
-                  <button key={l.id} className="lab-press" onClick={() => onToggle(l)} style={{
-                    display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 999,
-                    border: on ? `2px solid ${c}` : "1px solid var(--border)",
-                    background: on ? `color-mix(in srgb, ${c} 16%, var(--surface))` : "var(--surface)",
-                    color: "var(--text)", fontWeight: on ? 800 : 600, fontSize: "0.85rem",
-                  }}>
-                    <span>{l.emoji}</span>{l.name}{on && <span style={{ marginLeft: 2 }}>✓</span>}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )
-      })}
-      <Label style={{ marginBottom: 8 }}>Nicht dabei?</Label>
-      <div style={{ display: "flex", gap: 8 }}>
-        <input value={custom} onChange={e => setCustom(e.target.value)} placeholder="Eigenes Supplement"
-          onKeyDown={e => { if (e.key === "Enter" && custom.trim()) { onAddCustom(custom.trim()); setCustom("") } }}
-          style={{ flex: 1, minWidth: 0, padding: "12px 14px", borderRadius: 14, fontSize: "0.95rem" }} />
-        <Btn variant="soft" onClick={() => { if (custom.trim()) { onAddCustom(custom.trim()); setCustom("") } }}>+ Hinzufügen</Btn>
+      <div style={{ marginBottom: 14 }}>
+        <Segmented value={mode} onChange={setMode} options={[{ id: "tap", label: "👆 Antippen" }, { id: "paste", label: "📋 Liste einfügen" }]} />
       </div>
-      {selected.filter(s => !s.lib).length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
-          {selected.filter(s => !s.lib).map(s => <Capsule key={s.id} supp={s} size="sm" />)}
+
+      {mode === "paste" ? (
+        <div className="lab-rise">
+          <textarea value={paste} onChange={e => setPaste(e.target.value)} rows={5} autoFocus
+            placeholder={"Einfach reinkopieren, z. B.:\nMagnesium 400mg, Vitamin D3, Omega 3\nBPC-157, Kreatin 5g, Ashwagandha"}
+            style={{ width: "100%", padding: 14, borderRadius: 16, fontSize: "0.95rem", resize: "vertical" }} />
+          {parsed.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <Label style={{ marginBottom: 8 }}>Erkannt · {parsed.length}</Label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {parsed.map((p, i) => (
+                  <span key={i} style={{
+                    padding: "7px 11px", borderRadius: 999, fontSize: "0.82rem", fontWeight: 700,
+                    background: p.lib ? "var(--accent-dim)" : "var(--surface-2)", border: p.lib ? "1px solid var(--accent)" : "1px dashed var(--border)",
+                  }}>{p.lib?.emoji ?? "💊"} {p.name}{p.dose && <span style={{ color: "var(--text-dim)", fontWeight: 600 }}> · {p.dose}</span>}{!p.lib && <span style={{ color: "var(--text-dim)", fontWeight: 600 }}> · eigenes</span>}</span>
+                ))}
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <Btn full onClick={() => { onPasteAdd(parsed); setPaste(""); setMode("tap") }}>✓ Alle {parsed.length} übernehmen</Btn>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="lab-rise">
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="🔍 Suchen … (z. B. Magnesium, BPC)"
+            style={{ width: "100%", padding: "12px 14px", borderRadius: 14, fontSize: "0.95rem", marginBottom: 14 }} />
+          {!ql && suggested.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <Label style={{ marginBottom: 8, color: "var(--accent)" }}>⭐ Passt zu deinen Zielen</Label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{suggested.slice(0, 12).map(chip)}</div>
+            </div>
+          )}
+          {CATEGORIES.map(cat => {
+            const items = LIBRARY.filter(l => l.category === cat && (!ql || l.name.toLowerCase().includes(ql) || l.aliases.some(a => a.includes(ql))))
+            if (!items.length) return null
+            return (
+              <div key={cat} style={{ marginBottom: 16 }}>
+                <Label style={{ marginBottom: 8 }}>{cat === "Peptide" ? "🧬 Peptide" : cat}</Label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{items.map(chip)}</div>
+              </div>
+            )
+          })}
+          {ql && !LIBRARY.some(l => l.name.toLowerCase().includes(ql)) && (
+            <Btn variant="soft" full onClick={() => { onAddCustom(q.trim()); setQ("") }}>+ „{q.trim()}“ als eigenes hinzufügen</Btn>
+          )}
+          {selected.filter(s => !s.lib).length > 0 && (
+            <div style={{ marginTop: 6 }}>
+              <Label style={{ marginBottom: 8 }}>Eigene</Label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {selected.filter(s => !s.lib).map(s => <Capsule key={s.id} supp={s} size="sm" />)}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
   )
-}
-
-export function makeSupp(lib: LibSupp | null, name: string, existing: MySupp[]): MySupp {
-  const used = new Set(existing.map(s => s.color))
-  let color = 0
-  while (used.has(color) && color < SUPP_COLORS.length) color++
-  if (color >= SUPP_COLORS.length) color = existing.length % SUPP_COLORS.length
-  if (lib) return { id: lib.id, name: lib.name, emoji: lib.emoji, dose: lib.dose, lib: lib.id, color }
-  return { id: `custom-${Date.now().toString(36)}`, name, emoji: "💊", dose: "", color }
-}
-
-export function defaultDays(s: MySupp) {
-  const lib = s.lib ? LIB_BY_ID[s.lib] : undefined
-  return lib ? { schnell: 4, mittel: 7, langsam: 10 }[lib.onset] : 5
-}
-
-const ONSET_RANK = { schnell: 0, mittel: 1, langsam: 2 }
-export function sortForTesting(supps: MySupp[]) {
-  return [...supps].sort((a, b) => {
-    const oa = a.lib ? ONSET_RANK[LIB_BY_ID[a.lib].onset] : 1
-    const ob = b.lib ? ONSET_RANK[LIB_BY_ID[b.lib].onset] : 1
-    return oa - ob
-  })
 }
 
 // ── Test-Reihenfolge bearbeiten ────────────────────────────────────────────────
@@ -106,23 +129,19 @@ export function OrderEditor({ order, supps, days, onOrder, onDays, onRemove }: {
       {order.map((id, i) => {
         const s = supps.find(x => x.id === id)
         if (!s) return null
-        const lib = s.lib ? LIB_BY_ID[s.lib] : undefined
+        const lib = libOf(s)
         return (
-          <div key={id} className="lab-card lab-rise" style={{ padding: 12, display: "flex", gap: 10, alignItems: "center", animationDelay: `${i * 40}ms` }}>
+          <div key={id} className="lab-card" style={{ padding: 12, display: "flex", gap: 10, alignItems: "center" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <button className="lab-press" onClick={() => move(i, -1)} aria-label="nach oben" style={arrowBtn}>▲</button>
               <button className="lab-press" onClick={() => move(i, 1)} aria-label="nach unten" style={arrowBtn}>▼</button>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, minWidth: 0 }}>
                 <span style={{ fontSize: "0.7rem", fontWeight: 900, color: "var(--text-dim)" }}>#{i + 1}</span>
                 <Capsule supp={s} size="sm" />
               </div>
-              {lib && (
-                <div style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>
-                  {lib.onset === "schnell" ? "⚡" : lib.onset === "mittel" ? "⏳" : "🐢"} {ONSET_INFO[lib.onset].label}
-                </div>
-              )}
+              {lib && <div style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>{ONSET_INFO[lib.onset].emoji} {ONSET_INFO[lib.onset].label}</div>}
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
               <Stepper value={days[id] ?? 5} min={2} max={28} onChange={v => onDays(id, v)} suffix=" T" />
@@ -136,74 +155,125 @@ export function OrderEditor({ order, supps, days, onOrder, onDays, onRemove }: {
 }
 const arrowBtn: React.CSSProperties = { width: 26, height: 22, borderRadius: 7, border: "none", background: "var(--surface-2)", color: "var(--text-dim)", fontSize: "0.6rem" }
 
-// ── Onboarding-Wizard ─────────────────────────────────────────────────────────
+// ── Onboarding ────────────────────────────────────────────────────────────────
 
-export function Onboarding({ onStart, onDemo }: { onStart: (s: Partial<LabState>) => void; onDemo: () => void }) {
+export interface OnboardResult { state: Partial<LabState>; wantsCalendar: boolean }
+
+export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) => void; onDemo: () => void }) {
   const [step, setStep] = useState(0)
+  const [goals, setGoals] = useState<GoalId[]>([])
   const [supps, setSupps] = useState<MySupp[]>([])
+  const [rhythm, setRhythm] = useState("normal")
+  const [settings, setSettings] = useState<Settings>({ wake: "07:00", bed: "23:00", training: null, washoutDays: 2 })
+  const [remind, setRemind] = useState(true)
+  const [calendar, setCalendar] = useState(true)
   const [order, setOrder] = useState<string[]>([])
   const [days, setDays] = useState<Record<string, number>>({})
-  const [settings, setSettings] = useState<Settings>({ wake: "07:00", bed: "23:00", training: null, washoutDays: 2 })
   const [baseline, setBaseline] = useState(7)
-  const [startIn, setStartIn] = useState(0)
+  const [tweak, setTweak] = useState(false)
 
-  const toggle = (lib: LibSupp) => setSupps(prev => prev.some(s => s.lib === lib.id) ? prev.filter(s => s.lib !== lib.id) : [...prev, makeSupp(lib, lib.name, prev)])
+  const toggleSupp = (lib: LibSupp) => setSupps(prev => prev.some(s => s.lib === lib.id) ? prev.filter(s => s.lib !== lib.id) : [...prev, makeSupp(lib, lib.name, prev)])
   const addCustom = (name: string) => setSupps(prev => [...prev, makeSupp(null, name, prev)])
+  const pasteAdd = (items: { lib: LibSupp | null; name: string; dose: string }[]) => setSupps(prev => {
+    const next = [...prev]
+    for (const it of items) {
+      if (it.lib && next.some(s => s.lib === it.lib!.id)) continue
+      next.push(makeSupp(it.lib, it.name, next, it.dose))
+    }
+    return next
+  })
 
-  const goOrder = () => {
-    const sorted = sortForTesting(supps)
-    setOrder(sorted.map(s => s.id))
+  // Plan automatisch vorbereiten
+  const goPlan = () => {
+    const tests = autoOrder(supps.filter(s => s.mode === "test"), goals)
+    setOrder(tests.map(s => s.id))
     setDays(Object.fromEntries(supps.map(s => [s.id, days[s.id] ?? defaultDays(s)])))
-    setStep(2)
+    setStep(4)
+  }
+  const setMode = (id: string, mode: SuppMode) => {
+    setSupps(p => p.map(s => s.id === id ? { ...s, mode } : s))
+    setOrder(o => mode === "test" ? (o.includes(id) ? o : [...o, id]) : o.filter(x => x !== id))
+    setDays(d => ({ ...d, [id]: d[id] ?? defaultDays(supps.find(s => s.id === id)!) }))
   }
 
   const totalDays = baseline + order.reduce((a, id) => a + (days[id] ?? 5), 0) + Math.max(0, order.length - 1) * settings.washoutDays
-  const start = addDays(todayIso(), startIn)
-  const end = addDays(start, totalDays - 1)
-  const slow = order.filter(id => { const s = supps.find(x => x.id === id); return s?.lib && LIB_BY_ID[s.lib].onset === "langsam" })
+  const peptides = supps.filter(s => libOf(s)?.category === "Peptide")
+  const rx = supps.filter(s => libOf(s)?.rx)
+  const slow = order.filter(id => libOf(supps.find(x => x.id === id))?.onset === "langsam")
 
-  const finish = () => onStart({
-    startDate: start, supps, settings,
-    phases: buildPhases(order, days, settings.washoutDays, baseline),
-  })
+  const start = (inDays: number) => {
+    onStart({
+      wantsCalendar: remind && calendar,
+      state: {
+        startDate: addDays(todayIso(), inDays), goals, supps, settings,
+        reminders: { enabled: remind, checkin: defaultCheckinTime(settings), intake: true },
+        phases: buildPhases(order, days, settings.washoutDays, baseline),
+      },
+    })
+    if (remind && "Notification" in window && Notification.permission === "default") Notification.requestPermission().catch(() => {})
+  }
 
-  const steps = 5
+  const steps = 4
+  const bar = step > 0 && (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+      <button className="lab-press" onClick={() => setStep(s => s - 1)} aria-label="Zurück" style={{ width: 34, height: 34, borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text)", flexShrink: 0 }}>←</button>
+      <div style={{ flex: 1, display: "flex", gap: 6 }}>
+        {Array.from({ length: steps }).map((_, i) => (
+          <div key={i} style={{ flex: 1, height: 5, borderRadius: 3, background: i < step ? "var(--accent)" : "var(--border)", transition: "background .3s" }} />
+        ))}
+      </div>
+    </div>
+  )
+  const title = (t: string, sub: string) => (
+    <>
+      <div style={{ fontSize: "1.6rem", fontWeight: 900, marginBottom: 6, lineHeight: 1.15 }}>{t}</div>
+      <div style={{ color: "var(--text-dim)", marginBottom: 18, lineHeight: 1.45 }}>{sub}</div>
+    </>
+  )
+  const footer = (children: React.ReactNode) => (
+    <div style={{ position: "sticky", bottom: 0, paddingTop: 16, paddingBottom: 4, marginTop: "auto", background: "linear-gradient(transparent, var(--background) 35%)" }}>{children}</div>
+  )
+  const tile = (on: boolean, onClick: () => void, emoji: string, label: string, sub?: string) => (
+    <button className="lab-press" onClick={onClick} style={{
+      padding: "14px 6px", borderRadius: 18, textAlign: "center", color: "var(--text)", minWidth: 0,
+      border: on ? "2px solid var(--accent)" : "1px solid var(--border)", background: on ? "var(--accent-dim)" : "var(--surface)",
+      display: "flex", flexDirection: "column", alignItems: "center", gap: 4, position: "relative",
+    }}>
+      <span style={{ fontSize: "1.7rem" }}>{emoji}</span>
+      <span style={{ fontWeight: 800, fontSize: "0.8rem", lineHeight: 1.2, overflowWrap: "anywhere" }}>{label}</span>
+      {sub && <span style={{ fontSize: "0.68rem", color: "var(--text-dim)" }}>{sub}</span>}
+      {on && <span style={{ position: "absolute", top: 6, right: 8, color: "var(--accent)", fontWeight: 900 }}>✓</span>}
+    </button>
+  )
+
   return (
-    <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", maxWidth: 560, margin: "0 auto", padding: "18px 18px 28px" }}>
-      {step > 0 && (
-        <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
-          {Array.from({ length: steps - 1 }).map((_, i) => (
-            <div key={i} style={{ flex: 1, height: 5, borderRadius: 3, background: i < step ? "var(--accent)" : "var(--border)", transition: "background .3s" }} />
-          ))}
-        </div>
-      )}
+    <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", maxWidth: 560, margin: "0 auto", padding: "18px 18px 24px" }}>
+      {bar}
 
       {step === 0 && (
         <div className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           <Link href="/home" style={{ color: "var(--text-dim)", textDecoration: "none", fontWeight: 700, fontSize: "0.85rem", alignSelf: "flex-start" }}>← TRUE</Link>
-          <div style={{ position: "relative", height: 230, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ position: "relative", height: 220, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <div className="lab-float" style={{
-              width: 150, height: 150, borderRadius: 48, background: "var(--lab-grad)", display: "flex", alignItems: "center",
-              justifyContent: "center", fontSize: "4.4rem", boxShadow: "0 20px 60px rgba(46,204,138,.45)",
+              width: 140, height: 140, borderRadius: 44, background: "var(--lab-grad)", display: "flex", alignItems: "center",
+              justifyContent: "center", fontSize: "4.2rem", boxShadow: "0 20px 60px rgba(46,204,138,.45)",
             }}>🧪</div>
-            {["💊", "🌙", "⚡", "🌿", "🐟"].map((e, i) => (
+            {["💊", "🌙", "💉", "🌿", "🧬"].map((e, i) => (
               <span key={i} className="lab-float" style={{
                 position: "absolute", fontSize: "1.6rem", animationDelay: `${i * 0.5}s`,
-                left: `${[12, 78, 20, 82, 50][i]}%`, top: `${[18, 14, 72, 70, 2][i]}%`,
+                left: `${[12, 78, 18, 80, 48][i]}%`, top: `${[18, 14, 72, 70, 0][i]}%`,
               }}>{e}</span>
             ))}
           </div>
-          <div style={{ fontSize: "2rem", fontWeight: 900, lineHeight: 1.1, marginBottom: 10 }}>
-            Supplement Lab
-          </div>
+          <div style={{ fontSize: "2rem", fontWeight: 900, lineHeight: 1.1, marginBottom: 10 }}>Supplement Lab</div>
           <div style={{ fontSize: "1.05rem", color: "var(--text-dim)", lineHeight: 1.5, marginBottom: 22 }}>
-            Du nimmst viel und weißt nicht mehr, was wirkt? Wir finden es raus — ein Supplement nach dem anderen.
+            Finde raus, was bei dir wirklich wirkt — Supplements & Peptide, eins nach dem anderen. Du tippst, die App plant.
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 26 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
             {[
-              ["🧘", "Reset-Woche", "7 Tage nichts nehmen. So lernst du dein echtes Normal kennen."],
-              ["🔬", "Einzeln testen", "Je ein Supplement für ein paar Tage. Jeden Tag 1 Minute einchecken."],
-              ["🏆", "Dein Stack", "Was wirkt, bleibt. Dazu bekommst du den perfekten Tagesplan."],
+              ["🎯", "4 Fragen, 1 Minute", "Ziele und Stack antippen oder einfach als Liste reinkopieren."],
+              ["👆", "1 Klick pro Tag", "Abends ein Tipp: Wie war dein Tag? Erinnerung kommt automatisch."],
+              ["🏆", "Automatisch zum Stack", "Die App wertet aus, schlägt vor und plant deinen perfekten Tag."],
             ].map(([e, t, d], i) => (
               <div key={t} className="lab-card lab-rise" style={{ padding: 14, display: "flex", gap: 12, alignItems: "center", animationDelay: `${120 + i * 90}ms` }}>
                 <div style={{ width: 44, height: 44, borderRadius: 14, background: "var(--accent-dim)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", flexShrink: 0 }}>{e}</div>
@@ -212,7 +282,7 @@ export function Onboarding({ onStart, onDemo }: { onStart: (s: Partial<LabState>
             ))}
           </div>
           <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
-            <Btn full onClick={() => setStep(1)}>Experiment starten 🚀</Btn>
+            <Btn full onClick={() => setStep(1)}>Los geht&apos;s 🚀</Btn>
             <Btn full variant="ghost" onClick={onDemo}>Erst mal mit Demo-Daten reinschnuppern</Btn>
           </div>
         </div>
@@ -220,109 +290,83 @@ export function Onboarding({ onStart, onDemo }: { onStart: (s: Partial<LabState>
 
       {step === 1 && (
         <div className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          <div style={{ fontSize: "1.6rem", fontWeight: 900, marginBottom: 6 }}>Was nimmst du aktuell? 💊</div>
-          <div style={{ color: "var(--text-dim)", marginBottom: 18 }}>Tippe alles an, was du gerade nimmst oder zuletzt genommen hast.</div>
-          <SuppPicker selected={supps} onToggle={toggle} onAddCustom={addCustom} />
-          <div style={{ position: "sticky", bottom: 0, paddingTop: 16, marginTop: "auto", background: "linear-gradient(transparent, var(--background) 30%)" }}>
-            <Btn full disabled={!supps.length} onClick={goOrder}>{supps.length ? `Weiter mit ${supps.length} Supplement${supps.length > 1 ? "s" : ""}` : "Wähle mind. 1 aus"}</Btn>
+          {title("Was willst du erreichen? 🎯", "Tippe alles an, was dir wichtig ist. Danach sortiert die App Vorschläge und Fragen passend für dich.")}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+            {GOALS.map(g => tile(goals.includes(g.id), () => setGoals(p => p.includes(g.id) ? p.filter(x => x !== g.id) : [...p, g.id]), g.emoji, g.label))}
           </div>
+          {footer(<Btn full onClick={() => setStep(2)}>{goals.length ? `Weiter mit ${goals.length} Ziel${goals.length > 1 ? "en" : ""}` : "Überspringen"}</Btn>)}
         </div>
       )}
 
       {step === 2 && (
         <div className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          <div style={{ fontSize: "1.6rem", fontWeight: 900, marginBottom: 6 }}>Deine Testreihenfolge 🧬</div>
-          <div style={{ color: "var(--text-dim)", marginBottom: 14, lineHeight: 1.5 }}>
-            Schnell wirkende Supplements stehen vorne. Mit ▲▼ änderst du die Reihenfolge, rechts stellst du die Testtage ein.
-          </div>
-          <OrderEditor order={order} supps={supps} days={days} onOrder={setOrder} onDays={(id, d) => setDays(p => ({ ...p, [id]: d }))}
-            onRemove={id => setOrder(o => o.filter(x => x !== id))} />
-          {slow.length > 0 && (
-            <Card style={{ marginTop: 14, background: "var(--warning-dim)", border: "none", boxShadow: "none" }}>
-              <div style={{ fontWeight: 800, marginBottom: 4 }}>🐢 Die Langsamen</div>
-              <div style={{ fontSize: "0.85rem", lineHeight: 1.5 }}>
-                {slow.map(id => supps.find(s => s.id === id)?.name).join(", ")} wirken über Wochen. In 3–5 Tagen merkst du davon meist nichts.
-                Teste sie länger oder lass lieber ein Blutbild machen (z. B. Vitamin D, B12, Ferritin).
+          {title("Was nimmst du? 💊", "Antippen oder deine Liste reinkopieren — Dosis wird mit erkannt. Peptide findest du ganz oben.")}
+          {supps.length > 0 && (
+            <div className="lab-card" style={{ padding: 12, marginBottom: 14 }}>
+              <Label style={{ marginBottom: 8 }}>Dein Stack · {supps.length}</Label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {supps.map(s => <Capsule key={s.id} supp={s} size="sm" onClick={() => setSupps(p => p.filter(x => x.id !== s.id))} right={<span style={{ color: "var(--text-dim)" }}>✕</span>} />)}
               </div>
-            </Card>
-          )}
-          <Card style={{ marginTop: 14 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-              <div><div style={{ fontWeight: 800 }}>💧 Auswaschpause</div><div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>Pause zwischen zwei Tests, damit nichts nachwirkt</div></div>
-              <Stepper value={settings.washoutDays} min={0} max={7} onChange={v => setSettings(s => ({ ...s, washoutDays: v }))} suffix=" T" />
             </div>
-          </Card>
-          <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-            <Btn variant="ghost" onClick={() => setStep(1)}>←</Btn>
-            <Btn full disabled={!order.length} onClick={() => setStep(3)}>Weiter</Btn>
-          </div>
+          )}
+          <SuppPicker selected={supps} goals={goals} onToggle={toggleSupp} onAddCustom={addCustom} onPasteAdd={pasteAdd} />
+          {footer(<Btn full disabled={!supps.length} onClick={() => setStep(3)}>{supps.length ? `Weiter mit ${supps.length} Supplement${supps.length > 1 ? "s" : ""}` : "Wähle mind. 1 aus"}</Btn>)}
         </div>
       )}
 
       {step === 3 && (
         <div className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          <div style={{ fontSize: "1.6rem", fontWeight: 900, marginBottom: 6 }}>Wie sieht dein Tag aus? ⏰</div>
-          <div style={{ color: "var(--text-dim)", marginBottom: 18 }}>Daraus berechne ich später die besten Einnahmezeiten.</div>
-          {([["wake", "🌅", "Aufstehen"], ["bed", "🛌", "Schlafen gehen"]] as const).map(([k, e, l]) => (
-            <Card key={k} style={{ marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ fontWeight: 800 }}>{e} {l}</div>
-              <input type="time" value={settings[k]} onChange={ev => setSettings(s => ({ ...s, [k]: ev.target.value }))}
-                style={{ padding: "8px 10px", borderRadius: 12, fontSize: "1rem", fontWeight: 700 }} />
-            </Card>
-          ))}
-          <Card style={{ marginBottom: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ fontWeight: 800 }}>🏋️ Training</div>
-              <button className="lab-press" onClick={() => setSettings(s => ({ ...s, training: s.training ? null : "18:00" }))} style={{
-                width: 52, height: 30, borderRadius: 999, border: "none", position: "relative",
-                background: settings.training ? "var(--accent)" : "var(--surface-2)",
-              }} aria-label="Training an/aus">
-                <span style={{ position: "absolute", top: 3, left: settings.training ? 25 : 3, width: 24, height: 24, borderRadius: 999, background: "#fff", transition: "left .2s" }} />
-              </button>
-            </div>
-            {settings.training && (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12 }}>
-                <div style={{ fontSize: "0.85rem", color: "var(--text-dim)" }}>Meistens um</div>
-                <input type="time" value={settings.training} onChange={ev => setSettings(s => ({ ...s, training: ev.target.value }))}
-                  style={{ padding: "8px 10px", borderRadius: 12, fontSize: "1rem", fontWeight: 700 }} />
-              </div>
-            )}
-          </Card>
-          <div style={{ display: "flex", gap: 10, marginTop: "auto", paddingTop: 20 }}>
-            <Btn variant="ghost" onClick={() => setStep(2)}>←</Btn>
-            <Btn full onClick={() => setStep(4)}>Weiter</Btn>
+          {title("Dein Tag ⏰", "Zwei Tipps — daraus berechnet die App alle Einnahme- und Erinnerungszeiten.")}
+          <Label style={{ marginBottom: 8 }}>Rhythmus</Label>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, marginBottom: 8 }}>
+            {RHYTHMS.map(r => tile(rhythm === r.id, () => { setRhythm(r.id); setSettings(s => ({ ...s, wake: r.wake, bed: r.bed })) }, r.emoji, r.label, `${r.wake}–${r.bed}`))}
           </div>
+          <button onClick={() => setRhythm("custom")} style={{ background: "none", border: "none", color: "var(--text-dim)", fontSize: "0.8rem", fontWeight: 700, textAlign: "left", padding: "4px 0", marginBottom: 6, cursor: "pointer" }}>
+            {rhythm === "custom" ? "Eigene Zeiten:" : "✏️ Eigene Zeiten"}
+          </button>
+          {rhythm === "custom" && (
+            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+              {([["wake", "🌅"], ["bed", "🛌"]] as const).map(([k, e]) => (
+                <label key={k} style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, fontWeight: 800 }}>{e}
+                  <input type="time" value={settings[k]} onChange={ev => setSettings(s => ({ ...s, [k]: ev.target.value }))} style={{ flex: 1, padding: "8px", borderRadius: 12, fontWeight: 700 }} />
+                </label>
+              ))}
+            </div>
+          )}
+          <Label style={{ margin: "10px 0 8px" }}>Training</Label>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6, marginBottom: 18 }}>
+            {TRAININGS.map(t => tile(settings.training === t.time, () => setSettings(s => ({ ...s, training: t.time })), t.emoji, t.label))}
+          </div>
+          <button className="lab-press" onClick={() => setRemind(r => !r)} style={{
+            display: "flex", alignItems: "center", gap: 12, padding: 16, borderRadius: 20, textAlign: "left", color: "var(--text)",
+            border: remind ? "2px solid var(--accent)" : "1px solid var(--border)", background: remind ? "var(--accent-dim)" : "var(--surface)",
+          }}>
+            <span className={remind ? "lab-wiggle" : undefined} style={{ fontSize: "1.8rem", display: "inline-block" }}>🔔</span>
+            <span style={{ flex: 1 }}>
+              <span style={{ display: "block", fontWeight: 900 }}>Erinnere mich automatisch</span>
+              <span style={{ display: "block", fontSize: "0.8rem", color: "var(--text-dim)" }}>Einnahme zur richtigen Zeit + Check-in um {defaultCheckinTime(settings)} Uhr</span>
+            </span>
+            <span style={{ width: 48, height: 28, borderRadius: 999, background: remind ? "var(--accent)" : "var(--surface-2)", position: "relative", flexShrink: 0 }}>
+              <span style={{ position: "absolute", top: 3, left: remind ? 23 : 3, width: 22, height: 22, borderRadius: 999, background: "#fff", transition: "left .2s" }} />
+            </span>
+          </button>
+          {footer(<Btn full onClick={goPlan}>Plan erstellen ✨</Btn>)}
         </div>
       )}
 
       {step === 4 && (
         <div className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          <div style={{ fontSize: "1.6rem", fontWeight: 900, marginBottom: 6 }}>Bereit für den Reset? 🧘</div>
-          <div style={{ color: "var(--text-dim)", marginBottom: 18, lineHeight: 1.5 }}>
-            In der Reset-Phase nimmst du <b>gar nichts</b>. Das ist deine Vergleichsbasis. Alles danach wird daran gemessen.
-          </div>
-          <Card style={{ marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div><div style={{ fontWeight: 800 }}>Dauer der Reset-Phase</div><div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>Empfohlen: 7 Tage</div></div>
-            <Stepper value={baseline} min={3} max={14} onChange={setBaseline} suffix=" T" />
-          </Card>
-          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-            {[["Heute", 0], ["Morgen", 1]].map(([l, v]) => (
-              <button key={l} className="lab-press" onClick={() => setStartIn(v as number)} style={{
-                flex: 1, padding: 14, borderRadius: 16, fontWeight: 800, fontSize: "0.95rem",
-                border: startIn === v ? "2px solid var(--accent)" : "1px solid var(--border)",
-                background: startIn === v ? "var(--accent-dim)" : "var(--surface)", color: "var(--text)",
-              }}>Start {l}</button>
-            ))}
-          </div>
-          <Card style={{ background: "var(--lab-grad)", border: "none", color: "#fff" }}>
+          {title("Dein Plan ist fertig ✨", "Automatisch sortiert: Schnell wirkende zuerst, deine Ziele priorisiert. Pro Supplement 1 Tipp, ob es getestet wird.")}
+
+          <Card style={{ background: "var(--lab-grad)", border: "none", color: "#fff", marginBottom: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
               <div>
-                <div style={{ fontSize: "0.75rem", fontWeight: 800, opacity: 0.85, textTransform: "uppercase", letterSpacing: ".08em" }}>Dein Experiment</div>
+                <div style={{ fontSize: "0.72rem", fontWeight: 800, opacity: 0.85, textTransform: "uppercase", letterSpacing: ".08em" }}>Dein Experiment</div>
                 <div style={{ fontSize: "2.4rem", fontWeight: 900, lineHeight: 1 }}>{totalDays} Tage</div>
               </div>
-              <div style={{ textAlign: "right", fontSize: "0.85rem", fontWeight: 700 }}>{fmtDate(start)}<br />→ {fmtDate(end)}</div>
+              <div style={{ textAlign: "right", fontSize: "0.82rem", fontWeight: 700 }}>🧘 {baseline} T Reset<br />🔬 {order.length} Tests</div>
             </div>
-            <div style={{ display: "flex", gap: 3, marginTop: 14, height: 10 }}>
+            <div style={{ display: "flex", gap: 3, marginTop: 14, height: 12 }}>
               <div style={{ flex: baseline, background: "rgba(255,255,255,.9)", borderRadius: 4 }} />
               {order.map((id, i) => (
                 <React.Fragment key={id}>
@@ -332,108 +376,171 @@ export function Onboarding({ onStart, onDemo }: { onStart: (s: Partial<LabState>
               ))}
             </div>
           </Card>
-          <div style={{ fontSize: "0.75rem", color: "var(--text-dim)", marginTop: 14, lineHeight: 1.5 }}>
-            ⚕️ Kein medizinischer Rat. Verschreibungspflichtige Medikamente nie eigenmächtig absetzen. Bei Vorerkrankungen, Schwangerschaft oder Medikamenten vorher ärztlich abklären.
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+            {[...supps].sort((a, b) => (order.includes(a.id) ? order.indexOf(a.id) : 99) - (order.includes(b.id) ? order.indexOf(b.id) : 99)).map(s => {
+              const lib = libOf(s)
+              const pos = order.indexOf(s.id)
+              return (
+                <div key={s.id} className="lab-card" style={{ padding: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8, minWidth: 0 }}>
+                    <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                      {pos >= 0 && <span style={{ fontSize: "0.7rem", fontWeight: 900, color: "var(--text-dim)" }}>#{pos + 1}</span>}
+                      <Capsule supp={s} size="sm" />
+                    </div>
+                    <span style={{ fontSize: "0.7rem", color: "var(--text-dim)", whiteSpace: "nowrap" }}>
+                      {s.mode === "test" ? `${days[s.id] ?? defaultDays(s)} Tage · ` : ""}{lib ? `${ONSET_INFO[lib.onset].emoji}` : ""}{lib?.route && lib.route !== "oral" ? ` ${ROUTE_INFO[lib.route].emoji}` : ""}
+                    </span>
+                  </div>
+                  <Segmented value={s.mode} onChange={m => setMode(s.id, m)} options={MODE_OPTIONS} />
+                  {lib?.rx && <div style={{ fontSize: "0.72rem", color: "var(--warning)", marginTop: 6 }}>⚕️ Verschreibungspflichtig — läuft automatisch weiter, nie eigenmächtig absetzen.</div>}
+                </div>
+              )
+            })}
           </div>
-          <div style={{ display: "flex", gap: 10, marginTop: "auto", paddingTop: 20 }}>
-            <Btn variant="ghost" onClick={() => setStep(3)}>←</Btn>
-            <Btn full onClick={finish}>Los geht&apos;s 🚀</Btn>
+
+          {slow.length > 0 && (
+            <div style={{ fontSize: "0.8rem", lineHeight: 1.5, padding: "10px 12px", borderRadius: 14, background: "var(--warning-dim)", marginBottom: 10 }}>
+              🐢 <b>{slow.map(id => supps.find(s => s.id === id)?.name).join(", ")}</b> wirken langsam — im Kurztest merkt man davon oft wenig.
+              <button className="lab-press" onClick={() => slow.forEach(id => setMode(id, "konstant"))} style={{
+                display: "block", width: "100%", marginTop: 8, padding: "10px 12px", borderRadius: 12, border: "none",
+                background: "var(--surface)", color: "var(--text)", fontWeight: 800, fontSize: "0.82rem",
+              }}>⚡ Schnell-Modus: Langsame einfach weiter nehmen (−{slow.reduce((a, id) => a + (days[id] ?? 10) + settings.washoutDays, 0)} Tage)</button>
+            </div>
+          )}
+          {(peptides.length > 0 || rx.length > 0) && (
+            <div style={{ fontSize: "0.8rem", lineHeight: 1.5, padding: "10px 12px", borderRadius: 14, background: "var(--danger-dim)", marginBottom: 10 }}>
+              🧬 <b>Peptide:</b> Die meisten sind nicht als Arzneimittel zugelassen und kaum am Menschen untersucht; Reinheit schwankt stark. Nur mit ärztlicher Begleitung, sterilem Material und geprüfter Quelle. Dosis & Protokoll trägst du selbst ein.
+            </div>
+          )}
+
+          <button onClick={() => setTweak(t => !t)} style={{ background: "none", border: "none", color: "var(--text-dim)", fontWeight: 800, fontSize: "0.85rem", padding: "6px 0", cursor: "pointer", textAlign: "left" }}>
+            {tweak ? "▾" : "▸"} Feinjustieren (Reihenfolge, Tage, Pausen)
+          </button>
+          {tweak && (
+            <div className="lab-rise" style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 8 }}>
+              <OrderEditor order={order} supps={supps} days={days} onOrder={setOrder} onDays={(id, d) => setDays(p => ({ ...p, [id]: d }))} />
+              <Card style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: 14 }}>
+                <div style={{ fontWeight: 800 }}>🧘 Reset-Phase</div>
+                <Stepper value={baseline} min={3} max={14} onChange={setBaseline} suffix=" T" />
+              </Card>
+              <Card style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: 14 }}>
+                <div style={{ fontWeight: 800 }}>💧 Pause zwischen Tests</div>
+                <Stepper value={settings.washoutDays} min={0} max={7} onChange={v => setSettings(s => ({ ...s, washoutDays: v }))} suffix=" T" />
+              </Card>
+            </div>
+          )}
+
+          {remind && (
+            <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: "0.85rem", fontWeight: 700, margin: "8px 0" }}>
+              <input type="checkbox" checked={calendar} onChange={e => setCalendar(e.target.checked)} style={{ width: 20, height: 20, accentColor: "var(--accent)" }} />
+              📅 Alle Termine direkt in meinen Kalender (klappt auch bei geschlossener App)
+            </label>
+          )}
+          <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", lineHeight: 1.5, margin: "4px 0 6px" }}>
+            ⚕️ Kein medizinischer Rat. Verschriebene Medikamente nie eigenmächtig absetzen. Bei Vorerkrankungen, Schwangerschaft oder Medikamenten vorher ärztlich abklären.
           </div>
+          {footer(
+            <div style={{ display: "flex", gap: 8 }}>
+              <Btn full onClick={() => start(0)}>Heute starten 🚀</Btn>
+              <Btn variant="soft" onClick={() => start(1)} style={{ whiteSpace: "nowrap" }}>Morgen</Btn>
+            </div>
+          )}
         </div>
       )}
     </div>
   )
 }
 
-// ── Täglicher Check-in (Karte für Karte) ──────────────────────────────────────
+// ── Check-in: 1 Screen, Gesichter + Sterne ────────────────────────────────────
 
-export function CheckInFlow({ date, existing, phaseLabel, onDone, onClose }: {
-  date: string; existing?: CheckIn; phaseLabel: string; onDone: (c: CheckIn) => void; onClose: () => void
+export function CheckInSheet({ s, date, phaseLabel, onDone, onClose }: {
+  s: LabState; date: string; phaseLabel: string; onDone: (c: CheckIn) => void; onClose: () => void
 }) {
-  const [i, setI] = useState(0)
-  const [scores, setScores] = useState<Partial<Record<Dim, number>>>(existing?.scores ?? {})
+  const existing = s.checkins[date]
+  const yesterday = s.checkins[addDays(date, -1)]
+  const dims = activeDims(s)
+  const [scores, setScores] = useState<Scores>(existing?.scores ?? {})
+  const [touched, setTouched] = useState<Set<Dim>>(new Set(existing && !existing.quick ? (Object.keys(existing.scores) as Dim[]) : []))
+  const [overall, setOverall] = useState<number | undefined>(existing ? Math.round(daySum(existing)) : undefined)
   const [tags, setTags] = useState<string[]>(existing?.tags ?? [])
   const [note, setNote] = useState(existing?.note ?? "")
-  const total = DIMS.length + 1
-  const dim = DIMS[i]
-  const isToday = date === todayIso()
-  const dayLabel = isToday ? "Heute" : diffDays(date, todayIso()) === 1 ? "Gestern" : fmtDate(date)
+  const [showTags, setShowTags] = useState(!!existing?.tags.length)
+  const dayLabel = date === todayIso() ? "Heute" : diffDays(date, todayIso()) === 1 ? "Gestern" : fmtDate(date)
 
-  const pick = (v: number) => {
-    setScores(s => ({ ...s, [dim.id]: v }))
-    setTimeout(() => setI(x => x + 1), 220)
+  const pickOverall = (v: number) => {
+    setOverall(v)
+    setScores(prev => { const n = { ...prev }; dims.forEach(d => { if (!touched.has(d.id)) n[d.id] = v }); return n })
   }
-  const done = () => {
-    const full = {} as Record<Dim, number>
-    DIMS.forEach(d => { full[d.id] = scores[d.id] ?? 3 })
-    onDone({ date, scores: full, tags, note: note.trim() })
-  }
+  const setDim = (d: Dim, v: number) => { setScores(p => ({ ...p, [d]: v })); setTouched(t => new Set(t).add(d)) }
+  const filled = dims.filter(d => scores[d.id] != null)
+  const avg = filled.length ? filled.reduce((a, d) => a + scores[d.id]!, 0) / filled.length : null
 
-  const hue = useMemo(() => ["#e34948", "#eb6834", "#eda100", "#1baf7a", "#2ECC8A"], [])
+  const save = () => {
+    const full: Scores = {}
+    dims.forEach(d => { full[d.id] = scores[d.id] ?? overall ?? 3 })
+    onDone({ date, scores: full, tags, note: note.trim(), quick: touched.size === 0 })
+  }
 
   return (
-    <div className="lab-fade" style={{ position: "fixed", inset: 0, zIndex: 450, background: "var(--background)", display: "flex", flexDirection: "column" }}>
-      <div style={{ maxWidth: 560, width: "100%", margin: "0 auto", padding: "16px 18px", flex: 1, display: "flex", flexDirection: "column" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-          <button className="lab-press" onClick={() => (i === 0 ? onClose() : setI(x => x - 1))} aria-label="Zurück" style={{
-            width: 38, height: 38, borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text)", fontSize: "1rem",
-          }}>{i === 0 ? "✕" : "←"}</button>
-          <div style={{ flex: 1, height: 8, borderRadius: 4, background: "var(--surface-2)", overflow: "hidden" }}>
-            <div style={{ width: `${(i / total) * 100}%`, height: "100%", background: "var(--lab-grad)", borderRadius: 4, transition: "width .35s cubic-bezier(.2,.9,.3,1)" }} />
+    <div className="lab-fade" style={{ position: "fixed", inset: 0, zIndex: 450, background: "var(--background)", overflowY: "auto" }}>
+      <div style={{ maxWidth: 560, margin: "0 auto", padding: "14px 18px calc(24px + env(safe-area-inset-bottom))" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <div>
+            <div style={{ fontSize: "1.3rem", fontWeight: 900 }}>Check-in · {dayLabel}</div>
+            <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", fontWeight: 700 }}>{phaseLabel}</div>
           </div>
-          <div style={{ fontSize: "0.8rem", fontWeight: 800, color: "var(--text-dim)", fontVariantNumeric: "tabular-nums" }}>{Math.min(i + 1, total)}/{total}</div>
+          <button className="lab-press" onClick={onClose} aria-label="Schließen" style={{ width: 38, height: 38, borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text)" }}>✕</button>
         </div>
-        <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", fontWeight: 700, marginBottom: 20 }}>{dayLabel} · {phaseLabel}</div>
 
-        {dim && (
-          <div key={dim.id} className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", paddingBottom: 60 }}>
-            <div className="lab-pop" style={{ fontSize: "4rem", textAlign: "center", marginBottom: 12 }}>{dim.emoji}</div>
-            <div style={{ fontSize: "0.8rem", fontWeight: 900, letterSpacing: ".1em", textTransform: "uppercase", textAlign: "center", color: "var(--accent)" }}>{dim.label}</div>
-            <div style={{ fontSize: "1.5rem", fontWeight: 900, textAlign: "center", margin: "6px 0 30px", lineHeight: 1.25 }}>{dim.question}</div>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-              {FACES.map((f, v) => {
-                const val = v + 1
-                const on = scores[dim.id] === val
-                return (
-                  <button key={v} className="lab-press" onClick={() => pick(val)} aria-label={`${val} von 5`} style={{
-                    flex: 1, aspectRatio: "1", maxWidth: 76, borderRadius: 22, fontSize: "2rem",
-                    border: on ? `3px solid ${hue[v]}` : "1px solid var(--border)",
-                    background: on ? `color-mix(in srgb, ${hue[v]} 18%, var(--surface))` : "var(--surface)",
-                    transform: on ? "scale(1.12)" : undefined, boxShadow: on ? `0 8px 24px color-mix(in srgb, ${hue[v]} 40%, transparent)` : "var(--shadow)",
-                  }}>{f}</button>
-                )
-              })}
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: "0.78rem", color: "var(--text-dim)", fontWeight: 700 }}>
-              <span>{dim.low}</span><span>{dim.high}</span>
-            </div>
+        <Card style={{ marginBottom: 12 }}>
+          <div style={{ fontWeight: 900, marginBottom: 10 }}>Wie war {dayLabel === "Heute" ? "dein Tag" : "der Tag"} insgesamt?</div>
+          <FaceRow value={overall} onPick={pickOverall} faces={FACES} labels={FACE_LABELS} />
+          {yesterday && !existing && (
+            <button className="lab-press" onClick={() => { setScores({ ...yesterday.scores }); setOverall(Math.round(daySum(yesterday))); setTouched(new Set(Object.keys(yesterday.scores) as Dim[])) }}
+              style={{ marginTop: 10, background: "none", border: "1px dashed var(--border)", borderRadius: 12, padding: "8px 12px", color: "var(--text-dim)", fontWeight: 700, fontSize: "0.8rem", width: "100%" }}>
+              ↺ Wie gestern übernehmen
+            </button>
+          )}
+        </Card>
+
+        <Card style={{ marginBottom: 12, padding: "12px 14px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+            <Label>Feintuning (optional)</Label>
+            {avg != null && <span style={{ fontSize: "0.85rem", fontWeight: 900, color: "#f5b400" }}>Ø ★ {avg.toFixed(1).replace(".", ",")}</span>}
           </div>
-        )}
+          {dims.map(d => (
+            <div key={d.id} title={d.question} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 0", borderTop: "1px solid var(--border)" }}>
+              <span style={{ fontWeight: 700, fontSize: "0.9rem", whiteSpace: "nowrap" }}>{d.emoji} {d.label}</span>
+              <Stars value={scores[d.id]} onChange={v => setDim(d.id, v)} size={24} />
+            </div>
+          ))}
+        </Card>
 
-        {!dim && (
-          <div className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-            <div style={{ fontSize: "1.5rem", fontWeight: 900, marginBottom: 6 }}>Ist dir was aufgefallen? 🔎</div>
-            <div style={{ color: "var(--text-dim)", marginBottom: 16, fontSize: "0.9rem" }}>Tippe an, was passt. Auch Störfaktoren wie Alkohol oder Stress, damit die Auswertung fair bleibt.</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 18 }}>
+        <button onClick={() => setShowTags(v => !v)} style={{ background: "none", border: "none", color: "var(--text-dim)", fontWeight: 800, fontSize: "0.85rem", padding: "4px 0 10px", cursor: "pointer" }}>
+          {showTags ? "▾" : "▸"} Besonderheiten {tags.length ? `(${tags.length})` : "(Kopfschmerz, Alkohol, Training …)"}
+        </button>
+        {showTags && (
+          <div className="lab-rise" style={{ marginBottom: 12 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 10 }}>
               {TAGS.map(t => {
                 const on = tags.includes(t)
                 return (
                   <button key={t} className="lab-press" onClick={() => setTags(p => on ? p.filter(x => x !== t) : [...p, t])} style={{
-                    padding: "9px 13px", borderRadius: 999, fontSize: "0.85rem", fontWeight: on ? 800 : 600,
-                    border: on ? "2px solid var(--accent)" : "1px solid var(--border)",
-                    background: on ? "var(--accent-dim)" : "var(--surface)", color: "var(--text)",
+                    padding: "8px 12px", borderRadius: 999, fontSize: "0.8rem", fontWeight: on ? 800 : 600,
+                    border: on ? "2px solid var(--accent)" : "1px solid var(--border)", background: on ? "var(--accent-dim)" : "var(--surface)", color: "var(--text)",
                   }}>{t}</button>
                 )
               })}
             </div>
-            <textarea value={note} onChange={e => setNote(e.target.value)} rows={3} placeholder="Notiz (optional): Wie war der Tag? Was war anders?"
-              style={{ width: "100%", padding: 14, borderRadius: 16, fontSize: "0.95rem", resize: "none" }} />
-            <div style={{ marginTop: "auto", paddingTop: 20 }}>
-              <Btn full onClick={done}>Check-in abschließen ✨</Btn>
-            </div>
+            <textarea value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder="Notiz (optional)"
+              style={{ width: "100%", padding: 12, borderRadius: 14, fontSize: "0.92rem", resize: "none" }} />
           </div>
         )}
+
+        <Btn full disabled={overall == null && !filled.length} onClick={save}>{existing ? "Speichern" : "Check-in abschließen ✨"}</Btn>
       </div>
     </div>
   )
 }
+

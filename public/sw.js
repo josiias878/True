@@ -1,6 +1,6 @@
 // TRUE Service Worker — Push Notifications + Offline Cache
 
-const CACHE = "true-v13"
+const CACHE = "true-v14"
 const PRECACHE = ["/home", "/scan", "/offline"]
 
 self.addEventListener("install", e => {
@@ -62,7 +62,10 @@ self.addEventListener("push", e => {
 self.addEventListener("notificationclick", e => {
   e.notification.close()
   if (e.action === "dismiss") return
-  const url = e.notification.data?.url ?? "/home"
+  let url = e.notification.data?.url ?? "/home"
+  // Supplement Lab: 1-Klick-Aktionen direkt aus der Benachrichtigung
+  if (e.action && e.action.startsWith("lab-rate-")) url = "/lab?rate=" + e.action.slice(9)
+  if (e.action === "lab-taken" && e.notification.data?.taken) url = "/lab?taken=" + encodeURIComponent(e.notification.data.taken)
   e.waitUntil(
     clients.matchAll({ type: "window" }).then(list => {
       const w = list.find(c => c.url.includes(url) && "focus" in c)
