@@ -12,6 +12,8 @@ const fmt = (n: number, sign = false) => `${sign && n > 0 ? "+" : ""}${n.toFixed
 function phaseName(s: LabState, kind: string, suppId?: string) {
   if (kind === "baseline") return "Reset"
   if (kind === "washout") return "Pause"
+  if (kind === "stack") return "Stack"
+  if (kind === "check") return `Ohne ${s.supps.find(x => x.id === suppId)?.name ?? "?"}`
   return s.supps.find(x => x.id === suppId)?.name ?? "Test"
 }
 
@@ -192,9 +194,10 @@ export function DeltaBars({ delta, avg, base, dims }: { delta: Scores; avg: Scor
 export function MoodCalendar({ s, onPick }: { s: LabState; onPick?: (date: string) => void }) {
   const wins = phaseWindows(s)
   if (!s.startDate || !wins.length) return null
-  const lastEnd = wins[wins.length - 1].end
-  const n = diffDays(s.startDate, lastEnd) + 1
   const today = todayIso()
+  const lastEnd = wins[wins.length - 1].end
+  const calEnd = lastEnd < addDays(today, 6) ? lastEnd : addDays(today, 6) // offene Phasen (Stack) nicht endlos zeigen
+  const n = diffDays(s.startDate, calEnd > today ? calEnd : today) + 1
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
       {Array.from({ length: n }, (_, i) => {
@@ -276,3 +279,97 @@ export function ProCon({ s, suppId }: { s: LabState; suppId: string }) {
     </div>
   )
 }
+
+// ── Wohlfühl-Kurve fürs Dashboard: letzte 14 Tage ─────────────────────────────
+
+export function MoodCurve({ s, days = 14 }: { s: LabState; days?: number }) {
+  const wrap = useRef<HTMLDivElement>(null)
+  const [width, setWidth] = useState(320)
+  const [hover, setHover] = useState<number | null>(null)
+  useEffect(() => {
+    const el = wrap.current
+    if (!el) return
+    const ro = new ResizeObserver(([e]) => setWidth(Math.max(240, Math.round(e.contentRect.width))))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  const today = todayIso()
+  const wins = phaseWindows(s)
+  if (!s.startDate) return null
+  const firstDay = s.startDate > addDays(today, -(days - 1)) ? s.startDate : addDays(today, -(days - 1))
+  const n = Math.max(1, diffDays(firstDay, today) + 1)
+  const pts = Array.from({ length: n }, (_, i) => {
+    const date = addDays(firstDay, i)
+    const c = s.checkins[date]
+    return { i, date, v: c ? daySum(c) : null, w: wins.find(x => date >= x.start && date <= x.end) }
+  })
+  const base = wins.find(w => w.kind === "baseline")
+  const baseVals = base ? Object.values(s.checkins).filter(c => c.date >= base.start && c.date <= base.end).map(daySum) : []
+  const baseAvg = baseVals.length ? baseVals.reduce((a, b) => a + b, 0) / baseVals.length : null
+
+  const W = width, H = 150, L = 8, R = 8, T = 14, B = 26
+  const iw = W - L - R, ih = H - T - B
+  const x = (i: number) => L + (n > 1 ? (i / (n - 1)) * iw : iw / 2)
+  const y = (v: number) => T + ih - ((v - 1) / 4) * ih
+  const valid = pts.filter(p => p.v != null) as { i: number; date: string; v: number }[]
+  // weiche Kurve durch die vorhandenen Punkte
+  const path = valid.map((p, k) => {
+    if (k === 0) return `M${x(p.i)},${y(p.v)}`
+    const prev = valid[k - 1]
+    const cx = (x(prev.i) + x(p.i)) / 2
+    return `C${cx},${y(prev.v)} ${cx},${y(p.v)} ${x(p.i)},${y(p.v)}`
+  }).join(" ")
+  const area = valid.length > 1 ? `${path} L${x(valid[valid.length - 1].i)},${T + ih} L${x(valid[0].i)},${T + ih} Z` : ""
+  const lastPt = valid[valid.length - 1]
+  const hp = hover != null ? pts[hover] : null
+
+  const onMove = (e: React.PointerEvent) => {
+    const r = wrap.current?.getBoundingClientRect()
+    if (!r) return
+    const i = Math.round(((e.clientX - r.left - L) / iw) * (n - 1))
+    setHover(Math.max(0, Math.min(n - 1, i)))
+  }
+  const phaseCol = (w?: PhaseWindowLike) => !w ? "var(--border)" : w.kind === "test" || w.kind === "check" ? suppColor(s.supps.find(q => q.id === w.suppId)) : w.kind === "stack" ? "#f5b400" : w.kind === "baseline" ? "var(--text-dim)" : "var(--border)"
+
+  return (
+    <div ref={wrap} style={{ position: "relative", touchAction: "pan-y" }} onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={() => setHover(null)}>
+      <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} style={{ display: "block", overflow: "visible" }} role="img" aria-label={`Wohlfühl-Kurve der letzten ${n} Tage`}>
+        <defs>
+          <linearGradient id="moodArea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#2ECC8A" stopOpacity="0.35" />
+            <stop offset="1" stopColor="#2ECC8A" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id="moodLine" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stopColor="#2ECC8A" />
+            <stop offset="1" stopColor="#3987e5" />
+          </linearGradient>
+        </defs>
+        {[1, 3, 5].map(v => <line key={v} x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke="var(--border)" strokeWidth={1} opacity={0.7} />)}
+        {baseAvg != null && (
+          <g>
+            <line x1={L} x2={W - R} y1={y(baseAvg)} y2={y(baseAvg)} stroke="var(--text-dim)" strokeWidth={1.5} opacity={0.6} />
+            <text x={L + 2} y={y(baseAvg) - 5} fontSize="10" fontWeight={700} fill="var(--text-dim)">Ø Reset {fmt(baseAvg)}★</text>
+          </g>
+        )}
+        {area && <path d={area} fill="url(#moodArea)" />}
+        {path && <path d={path} fill="none" stroke="url(#moodLine)" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />}
+        {valid.map(p => <circle key={p.i} cx={x(p.i)} cy={y(p.v)} r={hover === p.i ? 5.5 : p === lastPt ? 5 : 2.5} fill={p === lastPt ? "#3987e5" : "#2ECC8A"} stroke="var(--surface)" strokeWidth={2} />)}
+        {/* Phasen-Streifen */}
+        {pts.map(p => <rect key={p.i} x={x(p.i) - iw / (2 * Math.max(1, n - 1))} y={H - 12} width={Math.max(2, iw / Math.max(1, n - 1) - 2)} height={5} rx={2.5} fill={phaseCol(p.w)} opacity={p.w?.kind === "washout" ? 0.4 : 0.9} />)}
+        {hp && <line x1={x(hp.i)} x2={x(hp.i)} y1={T} y2={T + ih} stroke="var(--text-dim)" strokeWidth={1} opacity={0.5} />}
+      </svg>
+      {!valid.length && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", color: "var(--text-dim)" }}>Nach deinem ersten Check-in erscheint hier deine Kurve.</div>}
+      {hp && (
+        <div style={{
+          position: "absolute", top: -6, pointerEvents: "none", left: `${(x(hp.i) / W) * 100}%`, transform: `translateX(${hp.i > n / 2 ? "-105%" : "5%"})`,
+          background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "6px 9px", boxShadow: "var(--shadow)", fontSize: "0.75rem", whiteSpace: "nowrap",
+        }}>
+          <div style={{ fontWeight: 800 }}>{fmtDate(hp.date)}</div>
+          <div style={{ color: "var(--text-dim)" }}>{hp.w ? phaseName(s, hp.w.kind, hp.w.suppId) : "—"}</div>
+          <div style={{ fontWeight: 800 }}>{hp.v != null ? `${FACES[Math.round(hp.v) - 1]} ${fmt(hp.v)}★` : "kein Check-in"}</div>
+        </div>
+      )}
+    </div>
+  )
+}
+type PhaseWindowLike = { kind: string; suppId?: string }

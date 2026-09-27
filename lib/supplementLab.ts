@@ -19,20 +19,20 @@ export type Dim =
   | "energie" | "fokus" | "stimmung" | "ruhe" | "schlaf" | "koerper" | "verdauung"
   | "appetit" | "haut" | "gelenke" | "libido"
 
-export interface DimInfo { id: Dim; label: string; emoji: string; question: string; core?: boolean }
+export interface DimInfo { id: Dim; label: string; emoji: string; question: string; hint: string; core?: boolean }
 
 export const DIMS: DimInfo[] = [
-  { id: "energie",   label: "Energie",     emoji: "⚡", question: "Wie viel Energie hattest du?", core: true },
-  { id: "fokus",     label: "Fokus",       emoji: "🎯", question: "Wie klar war dein Kopf?", core: true },
-  { id: "stimmung",  label: "Stimmung",    emoji: "☀️", question: "Wie war deine Stimmung?", core: true },
-  { id: "ruhe",      label: "Ruhe",        emoji: "🌊", question: "Wie entspannt warst du?", core: true },
-  { id: "schlaf",    label: "Schlaf",      emoji: "🌙", question: "Wie gut hast du geschlafen?", core: true },
-  { id: "koerper",   label: "Körper",      emoji: "💪", question: "Wie fit hat sich dein Körper angefühlt?", core: true },
-  { id: "verdauung", label: "Verdauung",   emoji: "🌿", question: "Wie lief deine Verdauung?", core: true },
-  { id: "appetit",   label: "Appetit",     emoji: "🍽️", question: "Wie gut hattest du Hunger im Griff?" },
-  { id: "haut",      label: "Haut & Haar", emoji: "✨", question: "Wie sahen Haut & Haare aus?" },
-  { id: "gelenke",   label: "Gelenke",     emoji: "🦴", question: "Wie schmerzfrei waren Gelenke & Sehnen?" },
-  { id: "libido",    label: "Libido",      emoji: "🔥", question: "Wie war deine Libido?" },
+  { id: "energie",   label: "Energie",     emoji: "⚡", question: "Wie viel Energie hattest du?", hint: "Wie wach und leistungsfähig warst du?", core: true },
+  { id: "fokus",     label: "Fokus",       emoji: "🎯", question: "Wie klar war dein Kopf?", hint: "Konzentration, klarer Kopf, kein Nebel", core: true },
+  { id: "stimmung",  label: "Stimmung",    emoji: "☀️", question: "Wie war deine Stimmung?", hint: "Gut gelaunt oder eher niedergeschlagen?", core: true },
+  { id: "ruhe",      label: "Ruhe",        emoji: "🌊", question: "Wie entspannt warst du?", hint: "5 = entspannt, 1 = gestresst oder nervös", core: true },
+  { id: "schlaf",    label: "Schlaf",      emoji: "🌙", question: "Wie gut hast du geschlafen?", hint: "Letzte Nacht: Einschlafen, Durchschlafen, Aufwachen", core: true },
+  { id: "koerper",   label: "Körper",      emoji: "💪", question: "Wie fit hat sich dein Körper angefühlt?", hint: "Kraft, Fitness, Erholung nach dem Sport", core: true },
+  { id: "verdauung", label: "Verdauung",   emoji: "🌿", question: "Wie lief deine Verdauung?", hint: "Bauchgefühl im wörtlichen Sinn: Blähungen, Toilette", core: true },
+  { id: "appetit",   label: "Appetit",     emoji: "🍽️", question: "Wie gut hattest du Hunger im Griff?", hint: "5 = kein Heißhunger, gut satt", },
+  { id: "haut",      label: "Haut & Haar", emoji: "✨", question: "Wie sahen Haut & Haare aus?", hint: "Hautbild, Pickel, Haare" },
+  { id: "gelenke",   label: "Gelenke",     emoji: "🦴", question: "Wie schmerzfrei waren Gelenke & Sehnen?", hint: "5 = keine Schmerzen, 1 = starke Schmerzen" },
+  { id: "libido",    label: "Lust",        emoji: "🔥", question: "Wie war deine Lust auf Sex (Libido)?", hint: "Lust auf Sex (Libido)" },
 ]
 export const DIM_BY_ID = Object.fromEntries(DIMS.map(d => [d.id, d])) as Record<Dim, DimInfo>
 
@@ -222,9 +222,9 @@ export type Onset = "schnell" | "mittel" | "langsam"
 export type Route = "oral" | "subkutan" | "nasal" | "topisch"
 
 export const ONSET_INFO: Record<Onset, { label: string; days: number; text: string; emoji: string }> = {
-  schnell: { label: "Spürbar in Stunden–Tagen", days: 4,  emoji: "⚡", text: "Ideal für den 3–5-Tage-Test." },
-  mittel:  { label: "Spürbar nach 1–3 Wochen",  days: 7,  emoji: "⏳", text: "Braucht einen etwas längeren Testblock." },
-  langsam: { label: "Wirkt über Wochen–Monate", days: 10, emoji: "🐢", text: "Kaum im Kurztest fühlbar — Blutwerte sagen oft mehr als Gefühl." },
+  schnell: { label: "Spürbar in Stunden–Tagen", days: 3,  emoji: "⚡", text: "Ideal für den 3–5-Tage-Test." },
+  mittel:  { label: "Spürbar nach 1–3 Wochen",  days: 5,  emoji: "⏳", text: "Braucht einen etwas längeren Testblock." },
+  langsam: { label: "Wirkt über Wochen–Monate", days: 7, emoji: "🐢", text: "Kaum im Kurztest fühlbar — Blutwerte sagen oft mehr als Gefühl." },
 }
 
 export const ROUTE_INFO: Record<Route, { emoji: string; label: string }> = {
@@ -513,9 +513,14 @@ export interface MySupp {
   mode: SuppMode
 }
 
-export type PhaseKind = "baseline" | "test" | "washout"
+/**
+ * baseline = nichts nehmen · test = ein Supplement allein · washout = Pause nach einem Test
+ * stack = alle behaltenen zusammen (offen) · check = Stack ohne ein Supplement (beobachten)
+ */
+export type PhaseKind = "baseline" | "test" | "washout" | "stack" | "check"
 
-export interface Phase { id: string; kind: PhaseKind; suppId?: string; days: number }
+/** Phasen werden Schritt für Schritt gestartet; `start` = Startdatum (ältere Daten: fortlaufend). */
+export interface Phase { id: string; kind: PhaseKind; suppId?: string; days: number; start?: string; open?: boolean }
 
 export interface CheckIn {
   date: string // YYYY-MM-DD
@@ -524,6 +529,7 @@ export interface CheckIn {
   sides?: Record<string, number> // Nebenwirkung → 1 leicht / 2 stark
   note: string
   quick?: boolean // 1-Klick-Check-in (alle Bereiche = Gesamtgefühl)
+  at?: string     // Uhrzeit des Check-ins (HH:MM), automatisch
 }
 
 export type Decision = "keep" | "maybe" | "drop"
@@ -541,6 +547,7 @@ export interface LabState {
   verdicts: Record<string, Verdict>
   slotOverrides: Record<string, SlotId>
   took: Record<string, string[]> // Datum → eingenommene Supplement-IDs
+  tookAt: Record<string, Record<string, string>> // Datum → Supplement → Uhrzeit (HH:MM)
   settings: Settings
   reminders: Reminders
   xp: number
@@ -553,7 +560,7 @@ export const STORAGE_KEY = "true-supplement-lab-v1"
 export function emptyState(): LabState {
   return {
     v: 2, startDate: null, goals: [], supps: [], phases: [], checkins: {}, verdicts: {},
-    slotOverrides: {}, took: {}, settings: { ...DEFAULT_SETTINGS },
+    slotOverrides: {}, took: {}, tookAt: {}, settings: { ...DEFAULT_SETTINGS },
     reminders: { enabled: false, checkin: "22:00", intake: true }, xp: 0, badges: [],
   }
 }
@@ -568,6 +575,7 @@ export function hydrate(raw: unknown): LabState {
     reminders: { ...emptyState().reminders, ...p.reminders },
     supps: (p.supps ?? []).map(x => ({ ...x, mode: x.mode ?? "test" })),
     took: p.took ?? {},
+    tookAt: p.tookAt ?? {},
   }
   for (const c of Object.values(s.checkins)) {
     const legacy = c.tags.filter(t => LEGACY_TAG_SIDES[t])
@@ -641,8 +649,8 @@ export function phaseWindows(s: Pick<LabState, "startDate" | "phases">): PhaseWi
   if (!s.startDate) return []
   let cursor = s.startDate
   return s.phases.map((p, index) => {
-    const start = cursor
-    const end = addDays(start, p.days - 1)
+    const start = p.start ?? cursor
+    const end = addDays(start, Math.max(1, p.days) - 1)
     cursor = addDays(end, 1)
     return { ...p, start, end, index }
   })
@@ -688,8 +696,13 @@ export function intakeOn(s: LabState, date: string): string[] {
   // Wöchentliche (z. B. GLP-1) nur am Wochentag des Experiment-Starts
   const sameWeekday = diffDays(first.start, date) % 7 === 0
   const ids = s.supps.filter(x => x.mode === "konstant" && (!libOf(x)?.weekly || sameWeekday)).map(x => x.id)
-  const t = testSuppOn(s, date)
-  if (t && !ids.includes(t)) ids.unshift(t)
+  const w = phaseAt(s, date)
+  if (w?.kind === "test" && w.suppId && !ids.includes(w.suppId)) ids.unshift(w.suppId)
+  if (w?.kind === "stack" || w?.kind === "check") {
+    const kept = s.supps.filter(x => s.verdicts[x.id]?.decision === "keep" && !ids.includes(x.id) && !(w.kind === "check" && x.id === w.suppId))
+      .filter(x => !libOf(x)?.weekly || sameWeekday)
+    ids.unshift(...kept.map(x => x.id))
+  }
   return ids
 }
 
@@ -954,6 +967,141 @@ export function buildStack(suppIds: string[], s: LabState): { placements: StackP
   return { placements, weekly, issues, combos }
 }
 
+// ── Schritt-für-Schritt-Ablauf ─────────────────────────────────────────────────
+
+export function nowTime(d = new Date()) {
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+}
+
+export function activePhase(s: LabState, today = todayIso()): PhaseWindow | null {
+  return phaseAt(s, today)
+}
+
+export function lastPhase(s: LabState): PhaseWindow | null {
+  const w = phaseWindows(s)
+  return w[w.length - 1] ?? null
+}
+
+/** Welche Supplements warten noch auf ihren Test? (automatisch sortiert) */
+export function nextCandidates(s: LabState): MySupp[] {
+  const tested = new Set(phaseWindows(s).filter(w => w.kind === "test").map(w => w.suppId))
+  return autoOrder(s.supps.filter(x => x.mode === "test" && !s.verdicts[x.id] && !tested.has(x.id)), s.goals)
+}
+
+export type SuppStatusKey = "waiting" | "testing" | "kept" | "maybe" | "dropped" | "constant" | "paused" | "observing" | "verdict"
+
+export function suppStatus(s: LabState, id: string, today = todayIso()): { key: SuppStatusKey; label: string; emoji: string } {
+  const w = phaseAt(s, today)
+  const x = s.supps.find(q => q.id === id)
+  const v = s.verdicts[id]?.decision
+  if (w?.kind === "test" && w.suppId === id) return { key: "testing", label: `Im Test · Tag ${diffDays(w.start, today) + 1}/${w.days}`, emoji: "🔬" }
+  if (w?.kind === "check" && w.suppId === id) return { key: "observing", label: "Pausiert zum Beobachten", emoji: "👀" }
+  if (v === "keep") return { key: "kept", label: "Behalten", emoji: "💚" }
+  if (v === "maybe") return { key: "maybe", label: "Vielleicht", emoji: "🤔" }
+  if (v === "drop") return { key: "dropped", label: "Rausgeflogen", emoji: "✂️" }
+  if (x?.mode === "konstant") return { key: "constant", label: "Läuft durchgehend", emoji: "📌" }
+  if (x?.mode === "pause") return { key: "paused", label: "Pausiert", emoji: "⏸️" }
+  if (phaseWindows(s).some(p => p.kind === "test" && p.suppId === id && p.end < today)) return { key: "verdict", label: "Urteil fällig", emoji: "⚖️" }
+  return { key: "waiting", label: "Wartet auf Test", emoji: "⏳" }
+}
+
+/** Einnahme-Dauer: an wie vielen Tagen genommen, seit wann. */
+export function takingInfo(s: LabState, id: string) {
+  const dates = Object.keys(s.took).filter(d => s.took[d]?.includes(id)).sort()
+  return { days: dates.length, since: dates[0] ?? null }
+}
+
+/** Ø Einnahme-Uhrzeit in Minuten (aus den automatisch gespeicherten Zeiten). */
+export function avgIntakeMinutes(s: LabState, id: string): number | null {
+  const times = Object.values(s.tookAt).map(m => m[id]).filter(Boolean).map(toMin)
+  if (times.length < 2) return null
+  return Math.round(times.reduce((a, b) => a + b, 0) / times.length)
+}
+
+/** Ende einer Phase (letzter Tag, 23:59) als Zeitstempel. */
+export function phaseEndsAt(w: { end: string }) {
+  const [y, m, d] = w.end.split("-").map(Number)
+  return new Date(y, m - 1, d, 23, 59, 59).getTime()
+}
+
+export function fmtCountdown(ms: number) {
+  if (ms <= 0) return "jetzt"
+  const min = Math.floor(ms / 60000)
+  const d = Math.floor(min / 1440), h = Math.floor((min % 1440) / 60), m = min % 60
+  if (d > 0) return `${d} T ${h} Std`
+  if (h > 0) return `${h} Std ${m} Min`
+  return `${m} Min`
+}
+
+/** Aktive Phase beenden (heute mitgerechnet oder nicht). Gibt den neuen Zustand zurück. */
+export function closeActive(s: LabState, today: string, includeToday: boolean): LabState {
+  const w = phaseAt(s, today)
+  if (!w) return s
+  const days = diffDays(w.start, today) + (includeToday ? 1 : 0)
+  s.phases = days <= 0
+    ? s.phases.filter((_, i) => i !== w.index)
+    : s.phases.map((p, i) => i === w.index ? { ...p, start: w.start, days, open: false } : p)
+  return s
+}
+
+/** Explizite Startdaten für alle Phasen festschreiben (damit neue Phasen frei starten können). */
+function pinStarts(s: LabState) {
+  const wins = phaseWindows(s)
+  s.phases = s.phases.map((p, i) => ({ ...p, start: wins[i].start }))
+}
+
+export function startTest(s: LabState, suppId: string, today: string, days?: number): LabState {
+  pinStarts(s)
+  closeActive(s, today, false)
+  const supp = s.supps.find(x => x.id === suppId)
+  s.phases.push({ id: `test-${suppId}-${today}`, kind: "test", suppId, start: today, days: days ?? (supp ? defaultDays(supp) : 3) })
+  s.supps = s.supps.map(x => x.id === suppId ? { ...x, mode: "test" } : x)
+  return s
+}
+
+export function startStack(s: LabState, today: string): LabState {
+  pinStarts(s)
+  closeActive(s, today, false)
+  s.phases.push({ id: `stack-${today}`, kind: "stack", start: today, days: 3650, open: true })
+  return s
+}
+
+export function startCheck(s: LabState, suppId: string, today: string, days = 3): LabState {
+  pinStarts(s)
+  closeActive(s, today, false)
+  s.phases.push({ id: `check-${suppId}-${today}`, kind: "check", suppId, start: today, days })
+  return s
+}
+
+/** Urteil speichern; nach einem Test automatisch eine kurze Pause einplanen. */
+export function applyVerdict(s: LabState, suppId: string, decision: Decision, note: string, today: string): LabState {
+  s.verdicts[suppId] = { decision, note, date: today }
+  const w = [...phaseWindows(s)].reverse().find(p => p.kind === "test" && p.suppId === suppId)
+  if (!w) return s
+  pinStarts(s)
+  if (today <= w.end) closeActive(s, today, true) // früher beendet → heute ist der letzte Testtag
+  const testEnd = today <= w.end ? today : w.end
+  const isLast = phaseWindows(s)[phaseWindows(s).length - 1]?.index === w.index
+  const wash = s.settings.washoutDays
+  if (isLast && wash > 0) {
+    const start = addDays(testEnd, 1)
+    const end = addDays(start, wash - 1)
+    if (end >= today) s.phases.push({ id: `wash-${suppId}-${start}`, kind: "washout", suppId, start, days: wash })
+  }
+  return s
+}
+
+/** Nach dem Beobachten: war das Supplement nötig? */
+export function resolveCheck(s: LabState, suppId: string, keepIt: boolean, today: string): LabState {
+  if (!keepIt) s.verdicts[suppId] = { decision: "drop", note: "Beim Stack-Check weggelassen, ohne dass etwas gefehlt hat", date: today }
+  return startStack(s, today)
+}
+
+/** Ø Tages-Score einer Liste von Tagen. */
+export function meanScore(cs: CheckIn[]): number | null {
+  return cs.length ? cs.map(daySum).reduce((a, b) => a + b, 0) / cs.length : null
+}
+
 // ── Demo-Daten ─────────────────────────────────────────────────────────────────
 
 export function demoState(): LabState {
@@ -964,12 +1112,20 @@ export function demoState(): LabState {
   const picks = ["magnesium", "theanin", third, "kreatin", "vitd", STORE_MODE ? "glycin" : "cjc-ipa"]
   s.supps = picks.map((id, i) => ({ ...makeSupp(LIB_BY_ID[id], LIB_BY_ID[id].name, []), color: i }))
   s.supps.find(x => x.id === "vitd")!.mode = "konstant"
-  s.supps[5].mode = "pause"
-  s.phases = buildPhases(["magnesium", "theanin", third, "kreatin"], { magnesium: 5, theanin: 4, [third]: 7, kreatin: 10 }, 2)
-  s.settings = { ...DEFAULT_SETTINGS, training: "18:00" }
+  s.settings = { ...DEFAULT_SETTINGS, training: "18:00", washoutDays: 1 }
   s.reminders = { enabled: true, checkin: "22:00", intake: true }
-  const total = 7 + 5 + 2 + 4 + 2 + 3 // mitten im BPC-157-Test
-  s.startDate = addDays(todayIso(), -total)
+  // Reset 5 T → Magnesium 3 T → Pause 1 T → L-Theanin 3 T → Pause 1 T → jetzt Tag 2 im dritten Test
+  const total = 5 + 3 + 1 + 3 + 1 + 1
+  const start = addDays(todayIso(), -total)
+  s.startDate = start
+  s.phases = [
+    { id: "baseline", kind: "baseline", start, days: 5 },
+    { id: "test-magnesium", kind: "test", suppId: "magnesium", start: addDays(start, 5), days: 3 },
+    { id: "wash-magnesium", kind: "washout", suppId: "magnesium", start: addDays(start, 8), days: 1 },
+    { id: "test-theanin", kind: "test", suppId: "theanin", start: addDays(start, 9), days: 3 },
+    { id: "wash-theanin", kind: "washout", suppId: "theanin", start: addDays(start, 12), days: 1 },
+    { id: `test-${third}`, kind: "test", suppId: third, start: addDays(start, 13), days: STORE_MODE ? 5 : 5 },
+  ]
   const effects: Record<string, Scores> = {
     magnesium: { schlaf: 1.3, ruhe: 0.9, koerper: 0.4 },
     theanin: { ruhe: 0.8, fokus: 0.6, stimmung: 0.2 },
@@ -981,7 +1137,7 @@ export function demoState(): LabState {
   const windows = phaseWindows(s)
   const dims = activeDims(s)
   for (let i = 0; i < total; i++) {
-    const date = addDays(s.startDate, i)
+    const date = addDays(start, i)
     const w = windows.find(x => date >= x.start && date <= x.end)
     const eff = w?.kind === "test" && w.suppId ? effects[w.suppId] ?? {} : {}
     const scores: Scores = {}
@@ -992,19 +1148,19 @@ export function demoState(): LabState {
     const tags: string[] = []
     const sides: Record<string, number> = {}
     if (i < 3) sides.kopfschmerz = i === 0 ? 2 : 1 // Koffein-Entzug im Reset
-    if (w?.suppId === "magnesium" && rnd() > 0.5) sides.traeume = 1
-    if (w?.suppId === "magnesium" && rnd() > 0.7) sides.durchfall = 1
-    if (w?.suppId === "theanin" && rnd() > 0.4) sides.muede = 1
+    if (w?.suppId === "magnesium" && w.kind === "test" && rnd() > 0.5) sides.traeume = 1
+    if (w?.suppId === "theanin" && w.kind === "test" && rnd() > 0.4) sides.muede = 1
     if (w?.suppId === "bpc157" && rnd() > 0.3) sides.einstich = 1
     if (w?.suppId === "ashwagandha" && rnd() > 0.5) sides.muede = 1
     if (rnd() > 0.8) tags.push("Training")
     if (rnd() > 0.9) tags.push("Alkohol")
-    s.checkins[date] = { date, scores, tags, sides, note: "" }
+    s.checkins[date] = { date, scores, tags, sides, note: "", at: `2${Math.floor(rnd() * 3)}:${String(Math.floor(rnd() * 60)).padStart(2, "0")}` }
     s.took[date] = intakeOn(s, date)
+    s.tookAt[date] = Object.fromEntries(s.took[date].map(id => [id, fromMin(slotMinutes(slotFor(id, s), s.settings) + Math.round((rnd() - 0.3) * 60))]))
   }
   s.verdicts = {
-    magnesium: { decision: "keep", note: "Schlafe tiefer, wache ruhiger auf.", date: addDays(s.startDate, 12) },
-    theanin: { decision: "maybe", note: "Ruhiger mit Kaffee, aber kein Wow.", date: addDays(s.startDate, 18) },
+    magnesium: { decision: "keep", note: "Schlafe tiefer, wache ruhiger auf.", date: addDays(start, 8) },
+    theanin: { decision: "maybe", note: "Ruhiger mit Kaffee, aber kein Wow.", date: addDays(start, 12) },
   }
   s.xp = 20 * total + 180
   s.badges = computeBadges(s)

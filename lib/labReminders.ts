@@ -39,14 +39,18 @@ function event(uid: string, start: string, title: string, desc: string, until?: 
 export function buildIcs(s: LabState): string {
   const wins = phaseWindows(s)
   if (!wins.length) return ""
-  const last = wins[wins.length - 1]
   const today = todayIso()
   const from = wins[0].start > today ? wins[0].start : today
+  // Schritte werden nach und nach gestartet → Erinnerungen für die nächsten 60 Tage
+  const horizon = addDays(from, 60)
+  const lastEnd = wins.map(w => w.end).sort().pop()!
+  const last = { end: lastEnd < horizon ? lastEnd : horizon }
+  const checkinUntil = horizon
   const ev: string[] = []
 
   // Täglicher Check-in
   ev.push(event("checkin", icsDate(from, s.reminders.checkin), "🧪 Supplement-Check-in (1 Klick)",
-    "Wie war dein Tag? Einmal tippen, fertig.", icsDate(last.end, "23:59")))
+    "Wie war dein Tag? Einmal tippen, fertig.", icsDate(checkinUntil, "23:59")))
 
   // Einnahmen pro Test-Phase
   if (s.reminders.intake) {
@@ -55,12 +59,13 @@ export function buildIcs(s: LabState): string {
         const supp = s.supps.find(x => x.id === w.suppId)
         if (!supp) continue
         const start = w.start > from ? w.start : from
+        if (start > horizon) continue
         const time = fromMin(slotMinutes(slotFor(supp.id, s), s.settings))
         const lib = supp.lib ? LIB_BY_ID[supp.lib] : undefined
         ev.push(event(`take-${w.id}`, icsDate(start, time), `${supp.emoji} ${supp.name} nehmen`,
           `${supp.dose ? supp.dose + " · " : ""}${lib?.timing ?? ""}`, icsDate(w.end, "23:59")))
       }
-      if (w.kind !== "test" && w.start >= from) {
+      if ((w.kind === "baseline" || w.kind === "washout") && w.start >= from) {
         ev.push(event(`phase-${w.id}`, icsDate(w.start, s.settings.wake),
           w.kind === "baseline" ? "🧘 Reset startet: heute nichts nehmen" : "💧 Auswaschpause: heute nichts testen",
           "Einfach wie gewohnt einchecken."))
@@ -69,6 +74,14 @@ export function buildIcs(s: LabState): string {
         const supp = s.supps.find(x => x.id === w.suppId)
         ev.push(event(`verdict-${w.id}`, icsDate(addDays(w.end, 1), "10:00"), `⚖️ Urteil fällig: ${supp?.name ?? "Test"}`,
           "Die App hat schon einen Vorschlag für dich — 1 Klick zum Bestätigen."))
+      }
+    }
+    // Stack-Phase: alle behaltenen täglich
+    const stack = wins.find(w => w.kind === "stack" && w.end >= from)
+    if (stack) {
+      for (const supp of s.supps.filter(x => s.verdicts[x.id]?.decision === "keep" && x.mode !== "konstant")) {
+        const time = fromMin(slotMinutes(slotFor(supp.id, s), s.settings))
+        ev.push(event(`stack-${supp.id}`, icsDate(stack.start > from ? stack.start : from, time), `${supp.emoji} ${supp.name} nehmen`, supp.dose || "", icsDate(last.end, "23:59")))
       }
     }
     // Durchgehende Supplements
@@ -114,7 +127,7 @@ export function dueReminders(s: LabState, now = new Date()): DueReminder[] {
   if (!s.reminders.enabled || !s.startDate) return []
   const today = todayIso()
   const wins = phaseWindows(s)
-  if (!wins.length || today < wins[0].start || today > wins[wins.length - 1].end) return []
+  if (!wins.length || today < wins[0].start) return []
   const minutes = now.getHours() * 60 + now.getMinutes()
   const wakeMin = toMin(s.settings.wake)
   const nowRel = minutes < wakeMin ? minutes + 1440 : minutes
@@ -196,7 +209,7 @@ export function upcomingNotifications(s: LabState, days = 10, now = new Date()):
   const today = todayIso()
   for (let i = 0; i < days; i++) {
     const date = addDays(today, i)
-    if (date < wins[0].start || date > wins[wins.length - 1].end) continue
+    if (date < wins[0].start) continue
     if (s.reminders.intake) {
       for (const id of intakeOn(s, date)) {
         const supp = s.supps.find(x => x.id === id)
