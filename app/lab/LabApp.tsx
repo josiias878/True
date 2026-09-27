@@ -1,0 +1,1064 @@
+"use client"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
+import Link from "next/link"
+import Confetti from "@/components/Confetti"
+import {
+  DIMS, FACES, LIB_BY_ID, ONSET_INFO, SLOTS, BADGES,
+  loadState, saveState, emptyState, demoState, computeBadges, levelFor, streak,
+  phaseWindows, phaseAt, testSuppOn, testResult, checkinsIn, buildStack, allowedSlots, slotTime,
+  todayIso, addDays, diffDays, fmtDate, suppColor, daySum,
+  type LabState, type Decision, type Dim, type PhaseWindow, type Phase, type MySupp, type LibSupp, type Settings,
+} from "@/lib/supplementLab"
+import { LAB_CSS, Btn, Capsule, Card, Label, Sheet, Stepper, XpToast } from "./ui"
+import { CheckInFlow, Onboarding, OrderEditor, SuppPicker, makeSupp, defaultDays } from "./flows"
+import { DeltaBars, DimLineChart, MoodCalendar } from "./charts"
+
+type Tab = "heute" | "reise" | "daten" | "stack"
+
+const fmt = (n: number, sign = false) => `${sign && n > 0 ? "+" : ""}${n.toFixed(1).replace(".", ",")}`
+
+function phaseTitle(s: LabState, w: { kind: string; suppId?: string }) {
+  if (w.kind === "baseline") return "Reset-Woche"
+  if (w.kind === "washout") return "Auswaschpause"
+  return `Test: ${s.supps.find(x => x.id === w.suppId)?.name ?? "?"}`
+}
+function phaseEmoji(s: LabState, w: { kind: string; suppId?: string }) {
+  if (w.kind === "baseline") return "🧘"
+  if (w.kind === "washout") return "💧"
+  return s.supps.find(x => x.id === w.suppId)?.emoji ?? "💊"
+}
+
+/** Wie deutlich ist das Signal? */
+function signal(s: LabState, suppId: string) {
+  const r = testResult(s, suppId)
+  if (!r || !r.delta) return { key: "none", text: "Noch keine Vergleichsdaten", emoji: "⏳", focus: null as Dim | null }
+  const supp = s.supps.find(x => x.id === suppId)
+  const lib = supp?.lib ? LIB_BY_ID[supp.lib] : undefined
+  const watch = lib?.watch ?? DIMS.map(d => d.id)
+  const key = watch.reduce((a, d) => a + r.delta![d], 0) / watch.length
+  const best = DIMS.map(d => d.id).sort((a, b) => r.delta![b] - r.delta![a])[0]
+  if (r.n < 3) return { key: "few", text: `Erst ${r.n} Check-in${r.n === 1 ? "" : "s"} — noch wenig aussagekräftig`, emoji: "🤏", focus: best }
+  if (key >= 0.5) return { key: "strong", text: "Deutliches Plus", emoji: "💚", focus: best }
+  if (key >= 0.2) return { key: "light", text: "Leichtes Plus", emoji: "🌱", focus: best }
+  if (key <= -0.3) return { key: "neg", text: "Eher negativ", emoji: "⚠️", focus: best }
+  return { key: "flat", text: lib?.onset === "langsam" ? "Kein klarer Effekt, wirkt aber auch langsam" : "Kein klarer Effekt", emoji: "😶", focus: best }
+}
+
+const DECISIONS: { id: Decision; emoji: string; label: string; color: string }[] = [
+  { id: "keep",  emoji: "💚", label: "Behalten",  color: "#1baf7a" },
+  { id: "maybe", emoji: "🤔", label: "Vielleicht", color: "#eda100" },
+  { id: "drop",  emoji: "✂️", label: "Fliegt raus", color: "#e34948" },
+]
+
+function initialTab(): Tab {
+  try { return (localStorage.getItem("true-lab-tab") as Tab | null) ?? "heute" } catch { return "heute" }
+}
+
+// Wird nur im Browser gerendert (siehe page.tsx), daher darf der State direkt aus localStorage kommen.
+export default function LabApp() {
+  const [s, setS] = useState<LabState | null>(() => loadState())
+  const [tab, setTab] = useState<Tab>(initialTab)
+  const [checkinDate, setCheckinDate] = useState<string | null>(null)
+  const [verdictFor, setVerdictFor] = useState<string | null>(null)
+  const [phaseSheet, setPhaseSheet] = useState<PhaseWindow | null>(null)
+  const [planOpen, setPlanOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [toast, setToast] = useState<{ amount: number; label: string; k: number } | null>(null)
+  const [newBadge, setNewBadge] = useState<string | null>(null)
+  const [confetti, setConfetti] = useState(false)
+
+  useEffect(() => { try { localStorage.setItem("true-lab-tab", tab) } catch {} }, [tab])
+
+  const update = useCallback((fn: (prev: LabState) => LabState, xp?: { amount: number; label: string }) => {
+    setS(prev => {
+      if (!prev) return prev
+      let next = fn(structuredClone(prev))
+      if (xp) next.xp += xp.amount
+      const badges = computeBadges(next)
+      const fresh = badges.filter(b => !next.badges.includes(b))
+      if (fresh.length) {
+        next = { ...next, badges, xp: next.xp + fresh.length * 30 }
+        setTimeout(() => { setNewBadge(fresh[0]); setConfetti(true) }, xp ? 900 : 100)
+      }
+      saveState(next)
+      return next
+    })
+    if (xp) {
+      const k = Date.now()
+      setToast({ ...xp, k })
+      setTimeout(() => setToast(t => (t?.k === k ? null : t)), 1800)
+    }
+  }, [])
+
+  if (!s) return <div style={{ minHeight: "100dvh", background: "var(--background)" }} />
+
+  // ── Onboarding ──
+  if (!s.startDate) {
+    return (
+      <div className="lab" style={{ minHeight: "100dvh", background: "var(--background)", color: "var(--text)" }}>
+        <style>{LAB_CSS}</style>
+        <Onboarding
+          onDemo={() => { const d = demoState(); saveState(d); setS(d); setTab("heute") }}
+          onStart={partial => {
+            const next: LabState = { ...emptyState(), ...partial }
+            saveState(next); setS(next); setTab("heute"); setConfetti(true)
+          }}
+        />
+        {confetti && <Confetti onDone={() => setConfetti(false)} />}
+      </div>
+    )
+  }
+
+  const wins = phaseWindows(s)
+  const today = todayIso()
+  const lvl = levelFor(s.xp)
+  const st = streak(s)
+
+  return (
+    <div className="lab" style={{ minHeight: "100dvh", background: "var(--background)", color: "var(--text)" }}>
+      <style>{LAB_CSS}</style>
+
+      {/* ── Header ── */}
+      <header style={{
+        position: "sticky", top: 0, zIndex: 100, background: "var(--nav-bg)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+        borderBottom: "1px solid var(--border)",
+      }}>
+        <div style={{ maxWidth: 640, margin: "0 auto", padding: "10px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+          <Link href="/home" aria-label="Zurück zu TRUE" style={{ color: "var(--text-dim)", textDecoration: "none", fontSize: "1.1rem", padding: "4px 6px 4px 0" }}>←</Link>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 900, fontSize: "1.05rem", lineHeight: 1.1 }}>Supplement Lab {s.demo && <span style={{ fontSize: "0.65rem", background: "var(--warning-dim)", color: "var(--warning)", padding: "2px 6px", borderRadius: 6, verticalAlign: "middle" }}>DEMO</span>}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+              <span style={{ fontSize: "0.7rem", fontWeight: 800, color: "var(--text-dim)", whiteSpace: "nowrap" }}>{lvl.emoji} {lvl.name}</span>
+              <div style={{ flex: 1, maxWidth: 120, height: 5, borderRadius: 3, background: "var(--surface-2)", overflow: "hidden" }}>
+                <div style={{ width: `${lvl.progress * 100}%`, height: "100%", background: "var(--lab-grad)", transition: "width .8s" }} />
+              </div>
+              <span style={{ fontSize: "0.68rem", color: "var(--text-dim)", fontVariantNumeric: "tabular-nums" }}>{s.xp} XP</span>
+            </div>
+          </div>
+          <div title={`${st} Tage Streak`} style={{
+            display: "flex", alignItems: "center", gap: 4, padding: "6px 10px", borderRadius: 999,
+            background: st ? "rgba(235,104,52,.14)" : "var(--surface-2)", fontWeight: 900, fontSize: "0.85rem",
+          }}>
+            <span className={st ? "lab-wiggle" : undefined} style={{ filter: st ? undefined : "grayscale(1)", display: "inline-block" }}>🔥</span>{st}
+          </div>
+          <button onClick={() => setSettingsOpen(true)} className="lab-press" aria-label="Einstellungen" style={{
+            width: 36, height: 36, borderRadius: 999, border: "none", background: "var(--surface-2)", fontSize: "1rem",
+          }}>⚙️</button>
+        </div>
+      </header>
+
+      <main style={{ maxWidth: 640, margin: "0 auto", padding: "16px 16px calc(110px + env(safe-area-inset-bottom))" }}>
+        {tab === "heute" && <TodayView s={s} wins={wins} today={today} onCheckin={setCheckinDate} onVerdict={setVerdictFor} update={update} goTab={setTab} />}
+        {tab === "reise" && <JourneyView s={s} wins={wins} today={today} onPhase={setPhaseSheet} onPlan={() => setPlanOpen(true)} goTab={setTab} />}
+        {tab === "daten" && <DataView s={s} wins={wins} onVerdict={setVerdictFor} onCheckin={setCheckinDate} />}
+        {tab === "stack" && <StackView s={s} update={update} onVerdict={setVerdictFor} />}
+      </main>
+
+      {/* ── Tab-Leiste ── */}
+      <nav style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200, background: "var(--nav-bg)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+        borderTop: "1px solid var(--border)", paddingBottom: "env(safe-area-inset-bottom)",
+      }}>
+        <div style={{ maxWidth: 640, margin: "0 auto", display: "flex", height: 66 }}>
+          {([["heute", "🧪", "Heute"], ["reise", "🗺️", "Reise"], ["daten", "📈", "Daten"], ["stack", "🏆", "Stack"]] as const).map(([id, e, l]) => {
+            const on = tab === id
+            return (
+              <button key={id} onClick={() => setTab(id)} className="lab-press" style={{
+                flex: 1, border: "none", background: "none", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3,
+                color: on ? "var(--accent)" : "var(--text-dim)", fontWeight: on ? 800 : 600, fontSize: "0.68rem",
+              }}>
+                <span style={{
+                  fontSize: "1.25rem", width: 50, height: 30, borderRadius: 15, display: "flex", alignItems: "center", justifyContent: "center",
+                  background: on ? "var(--accent-dim)" : "transparent", filter: on ? undefined : "grayscale(.6)", transition: "all .2s",
+                }}>{e}</span>
+                {l}
+              </button>
+            )
+          })}
+        </div>
+      </nav>
+
+      {/* ── Overlays ── */}
+      {checkinDate && (
+        <CheckInFlow
+          date={checkinDate}
+          existing={s.checkins[checkinDate]}
+          phaseLabel={(() => { const w = phaseAt(s, checkinDate); return w ? phaseTitle(s, w) : "Außerhalb des Experiments" })()}
+          onClose={() => setCheckinDate(null)}
+          onDone={c => {
+            const isNew = !s.checkins[c.date]
+            update(p => { p.checkins[c.date] = c; return p }, isNew ? { amount: 20, label: "Check-in" } : undefined)
+            setCheckinDate(null)
+            if (isNew) setConfetti(true)
+          }}
+        />
+      )}
+      {verdictFor && <VerdictSheet key={verdictFor} s={s} suppId={verdictFor} onClose={() => setVerdictFor(null)} onSave={(id, decision, note) => {
+        const isNew = !s.verdicts[id]
+        update(p => { p.verdicts[id] = { decision, note, date: today }; return p }, isNew ? { amount: 50, label: "Urteil gefällt" } : undefined)
+        setVerdictFor(null)
+      }} />}
+      <PhaseSheet s={s} w={phaseSheet} today={today} onClose={() => setPhaseSheet(null)} update={update} onVerdict={id => { setPhaseSheet(null); setVerdictFor(id) }} />
+      {planOpen && <PlanSheet s={s} today={today} onClose={() => setPlanOpen(false)} update={update} />}
+      {settingsOpen && <SettingsSheet s={s} onClose={() => setSettingsOpen(false)} update={update}
+        onReset={() => { const e = s.demo ? restoreBackup() : emptyState(); saveState(e); setS(e); setSettingsOpen(false) }}
+        onDemo={() => { backup(s); const d = demoState(); saveState(d); setS(d); setSettingsOpen(false) }} />}
+
+      {newBadge && (() => {
+        const b = BADGES.find(x => x.id === newBadge)!
+        return (
+          <div className="lab-fade" onClick={() => setNewBadge(null)} style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(5,5,12,.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+            <div className="lab-pop lab-card" style={{ padding: 28, textAlign: "center", maxWidth: 320 }}>
+              <div style={{ fontSize: "0.75rem", fontWeight: 900, letterSpacing: ".1em", color: "var(--accent)" }}>NEUES ABZEICHEN</div>
+              <div className="lab-float" style={{ fontSize: "4.5rem", margin: "12px 0" }}>{b.emoji}</div>
+              <div style={{ fontSize: "1.4rem", fontWeight: 900 }}>{b.name}</div>
+              <div style={{ color: "var(--text-dim)", margin: "6px 0 18px" }}>{b.desc}</div>
+              <Btn full onClick={() => setNewBadge(null)}>Nice! +30 XP</Btn>
+            </div>
+          </div>
+        )
+      })()}
+      {toast && <XpToast key={toast.k} amount={toast.amount} label={toast.label} />}
+      {confetti && <Confetti onDone={() => setConfetti(false)} />}
+    </div>
+  )
+}
+
+// Echte Daten sichern, wenn man zwischendurch die Demo anschaut
+const BACKUP_KEY = "true-supplement-lab-v1-backup"
+function backup(s: LabState) {
+  if (s.demo || !s.startDate) return
+  try { localStorage.setItem(BACKUP_KEY, JSON.stringify(s)) } catch {}
+}
+function restoreBackup(): LabState {
+  try {
+    const raw = localStorage.getItem(BACKUP_KEY)
+    localStorage.removeItem(BACKUP_KEY)
+    if (raw) return { ...emptyState(), ...JSON.parse(raw) }
+  } catch {}
+  return emptyState()
+}
+
+type Update = (fn: (prev: LabState) => LabState, xp?: { amount: number; label: string }) => void
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HEUTE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function TodayView({ s, wins, today, onCheckin, onVerdict, update, goTab }: {
+  s: LabState; wins: PhaseWindow[]; today: string; onCheckin: (d: string) => void; onVerdict: (id: string) => void; update: Update; goTab: (t: Tab) => void
+}) {
+  const w = wins.find(x => today >= x.start && today <= x.end) ?? null
+  const first = wins[0]
+  const last = wins[wins.length - 1]
+  const notStarted = first && today < first.start
+  const finished = last && today > last.end
+  const pending = wins.filter(x => x.kind === "test" && x.suppId && x.end < today && !s.verdicts[x.suppId])
+  const checked = s.checkins[today]
+  const yesterday = addDays(today, -1)
+  const missedYesterday = first && yesterday >= first.start && !s.checkins[yesterday] && (!last || yesterday <= last.end)
+  const testId = testSuppOn(s, today)
+  const testSupp = s.supps.find(x => x.id === testId)
+  const lib = testSupp?.lib ? LIB_BY_ID[testSupp.lib] : undefined
+  const taken = !!s.taken[today]
+  const dayNo = w ? diffDays(w.start, today) + 1 : 0
+  const totalDays = first && last ? diffDays(first.start, last.end) + 1 : 0
+  const expDay = first ? Math.min(totalDays, Math.max(0, diffDays(first.start, today) + 1)) : 0
+
+  const color = w?.kind === "test" ? suppColor(testSupp) : "#2ECC8A"
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Mission-Karte */}
+      <div className="lab-rise" style={{
+        borderRadius: 28, padding: 20, color: "#fff", position: "relative", overflow: "hidden",
+        background: w?.kind === "test"
+          ? `linear-gradient(135deg, ${color} 0%, color-mix(in srgb, ${color} 55%, #0b0b1a) 100%)`
+          : w?.kind === "washout" ? "linear-gradient(135deg, #3987e5 0%, #1c3f7a 100%)" : "var(--lab-grad)",
+        boxShadow: `0 16px 40px color-mix(in srgb, ${color} 40%, transparent)`,
+      }}>
+        <div style={{ position: "absolute", right: -20, top: -20, width: 160, height: 160, borderRadius: 999, background: "rgba(255,255,255,.1)" }} />
+        <div style={{ position: "absolute", right: 40, bottom: -50, width: 110, height: 110, borderRadius: 999, background: "rgba(255,255,255,.08)" }} />
+        <div style={{ position: "relative" }}>
+          <div style={{ fontSize: "0.72rem", fontWeight: 900, letterSpacing: ".1em", opacity: 0.85 }}>
+            {notStarted ? "STARTET BALD" : finished ? "EXPERIMENT ABGESCHLOSSEN" : `TAG ${expDay} VON ${totalDays}`}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 10 }}>
+            <div className="lab-float" style={{ fontSize: "3.2rem", lineHeight: 1 }}>{notStarted ? "⏳" : finished ? "🏆" : w ? phaseEmoji(s, w) : "🧪"}</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: "1.5rem", fontWeight: 900, lineHeight: 1.15 }}>
+                {notStarted ? `Reset startet ${fmtDate(first.start)}` : finished ? "Du hast es durchgezogen!" : w ? phaseTitle(s, w) : "—"}
+              </div>
+              {w && !finished && (
+                <div style={{ fontSize: "0.88rem", opacity: 0.9, marginTop: 4 }}>
+                  Tag {dayNo} von {w.days} · noch {diffDays(today, w.end)} {diffDays(today, w.end) === 1 ? "Tag" : "Tage"}
+                </div>
+              )}
+            </div>
+          </div>
+          {w && !finished && (
+            <div style={{ display: "flex", gap: 4, marginTop: 14 }}>
+              {Array.from({ length: w.days }).map((_, i) => {
+                const d = addDays(w.start, i)
+                const has = !!s.checkins[d]
+                return <div key={i} style={{ flex: 1, height: 8, borderRadius: 4, background: d < today || has ? "rgba(255,255,255,.95)" : d === today ? "rgba(255,255,255,.5)" : "rgba(255,255,255,.2)" }} />
+              })}
+            </div>
+          )}
+          {finished && <div style={{ marginTop: 14 }}><Btn variant="soft" onClick={() => goTab("stack")} style={{ background: "rgba(255,255,255,.2)", color: "#fff" }}>Zu deinem Stack →</Btn></div>}
+        </div>
+      </div>
+
+      {/* Urteil fällig */}
+      {pending.map(p => {
+        const supp = s.supps.find(x => x.id === p.suppId)
+        const sig = signal(s, p.suppId!)
+        return (
+          <Card key={p.id} className="lab-rise" onClick={() => onVerdict(p.suppId!)} style={{ border: `2px solid ${suppColor(supp)}`, display: "flex", gap: 12, alignItems: "center" }}>
+            <div className="lab-wiggle" style={{ fontSize: "2rem" }}>⚖️</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 900 }}>Urteil fällig: {supp?.name}</div>
+              <div style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>{sig.emoji} {sig.text} · Tippen zum Auswerten</div>
+            </div>
+            <span style={{ fontWeight: 900, color: "var(--accent)" }}>+50</span>
+          </Card>
+        )
+      })}
+
+      {/* Heute nehmen */}
+      {w && !finished && (
+        <Card className="lab-rise" style={{ animationDelay: "60ms" }}>
+          <Label style={{ marginBottom: 10 }}>Heute einnehmen</Label>
+          {w.kind === "test" && testSupp ? (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 54, height: 54, borderRadius: 18, background: suppColor(testSupp), display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.7rem", flexShrink: 0 }}>{testSupp.emoji}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 900, fontSize: "1.05rem" }}>{testSupp.name}</div>
+                  <div style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>
+                    {testSupp.dose || "deine übliche Dosis"}{lib ? ` · ${SLOTS.find(x => x.id === allowedSlots(testSupp.id, s)[0])?.emoji} ${slotTime(allowedSlots(testSupp.id, s)[0], s.settings)} Uhr` : ""}
+                  </div>
+                </div>
+                <button className="lab-press" onClick={() => update(p => { p.taken[today] = !taken; return p }, taken ? undefined : { amount: 5, label: "Eingenommen" })} style={{
+                  width: 54, height: 54, borderRadius: 18, border: taken ? "none" : "2px dashed var(--border)", flexShrink: 0,
+                  background: taken ? "var(--accent)" : "transparent", color: taken ? "#fff" : "var(--text-dim)", fontSize: "1.4rem", fontWeight: 900,
+                }} aria-label="Eingenommen abhaken">{taken ? "✓" : "○"}</button>
+              </div>
+              {lib && (
+                <div style={{ marginTop: 12, fontSize: "0.83rem", lineHeight: 1.5, color: "var(--text-dim)" }}>
+                  ⏰ {lib.timing}<br />
+                  👀 Achte besonders auf: <b style={{ color: "var(--text)" }}>{lib.watch.map(d => DIMS.find(x => x.id === d)?.label).join(", ")}</b>
+                  {lib.onset !== "schnell" && <><br />🐢 {ONSET_INFO[lib.onset].label}: {ONSET_INFO[lib.onset].text}</>}
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ fontSize: "2.2rem" }}>🙅</div>
+              <div>
+                <div style={{ fontWeight: 900 }}>Heute: gar nichts</div>
+                <div style={{ fontSize: "0.83rem", color: "var(--text-dim)", lineHeight: 1.45 }}>
+                  {w.kind === "baseline"
+                    ? "Reset-Phase: kein Supplement. So misst du dein echtes Normal."
+                    : "Pause, damit das letzte Supplement nicht in den nächsten Test reinwirkt."}
+                </div>
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Check-in */}
+      {!notStarted && (!finished || !checked) && (w || missedYesterday) && (
+        checked ? (
+          <Card className="lab-rise" style={{ animationDelay: "120ms" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <div>
+                <Label>Heutiger Check-in</Label>
+                <div style={{ fontWeight: 900, fontSize: "1.1rem", marginTop: 2 }}>{FACES[Math.round(daySum(checked)) - 1]} Erledigt, stark!</div>
+              </div>
+              <Btn variant="soft" onClick={() => onCheckin(today)} style={{ padding: "8px 14px", fontSize: "0.8rem" }}>Bearbeiten</Btn>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
+              {DIMS.map(d => (
+                <div key={d.id} style={{ textAlign: "center" }}>
+                  <div style={{ height: 54, display: "flex", alignItems: "flex-end", justifyContent: "center", background: "var(--surface-2)", borderRadius: 10, overflow: "hidden" }}>
+                    <div style={{ width: "100%", height: `${(checked.scores[d.id] / 5) * 100}%`, background: "var(--lab-grad)", borderRadius: "4px 4px 0 0", transition: "height .6s" }} />
+                  </div>
+                  <div style={{ fontSize: "0.9rem", marginTop: 4 }} title={d.label}>{d.emoji}</div>
+                </div>
+              ))}
+            </div>
+            {checked.tags.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+                {checked.tags.map(t => <span key={t} style={{ fontSize: "0.72rem", padding: "3px 9px", borderRadius: 999, background: "var(--surface-2)", fontWeight: 700 }}>{t}</span>)}
+              </div>
+            )}
+          </Card>
+        ) : w ? (
+          <button className="lab-press lab-rise lab-pulse" onClick={() => onCheckin(today)} style={{
+            animationDelay: "120ms", border: "none", borderRadius: 24, padding: "20px 18px", textAlign: "left",
+            background: "var(--surface)", color: "var(--text)", display: "flex", alignItems: "center", gap: 14,
+            boxShadow: "var(--shadow)", outline: "2px solid var(--accent)",
+          }}>
+            <div style={{ width: 56, height: 56, borderRadius: 18, background: "var(--lab-grad)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem" }}>📝</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 900, fontSize: "1.1rem" }}>Tages-Check-in</div>
+              <div style={{ fontSize: "0.83rem", color: "var(--text-dim)" }}>7 Fragen · 1 Minute · hält deine Streak am Leben 🔥</div>
+            </div>
+            <div style={{ fontWeight: 900, color: "var(--accent)" }}>+20 XP</div>
+          </button>
+        ) : null
+      )}
+      {missedYesterday && (
+        <button className="lab-press" onClick={() => onCheckin(yesterday)} style={{
+          border: "1px dashed var(--border)", borderRadius: 16, padding: "12px 14px", background: "transparent", color: "var(--text-dim)", fontWeight: 700, fontSize: "0.85rem",
+        }}>🕐 Gestern vergessen? Jetzt nachtragen</button>
+      )}
+
+      {/* Phasen-Tipp */}
+      {w && !finished && <PhaseTip s={s} w={w} dayNo={dayNo} />}
+
+      {/* Als nächstes */}
+      {(() => {
+        const next = wins.find(x => x.start > today)
+        if (!next || finished) return null
+        return (
+          <Card className="lab-rise" onClick={() => goTab("reise")} style={{ animationDelay: "180ms", display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ fontSize: "1.6rem" }}>{phaseEmoji(s, next)}</div>
+            <div style={{ flex: 1 }}>
+              <Label>Als Nächstes · {fmtDate(next.start)}</Label>
+              <div style={{ fontWeight: 800 }}>{phaseTitle(s, next)} ({next.days} Tage)</div>
+            </div>
+            <span style={{ color: "var(--text-dim)" }}>→</span>
+          </Card>
+        )
+      })()}
+
+      {/* Abzeichen */}
+      <Card className="lab-rise" style={{ animationDelay: "240ms" }}>
+        <Label style={{ marginBottom: 10 }}>Abzeichen · {s.badges.length}/{BADGES.length}</Label>
+        <div className="lab-scroll" style={{ display: "flex", gap: 10, overflowX: "auto" }}>
+          {BADGES.map(b => {
+            const got = s.badges.includes(b.id)
+            return (
+              <div key={b.id} title={`${b.name}: ${b.desc}`} style={{ flexShrink: 0, width: 70, textAlign: "center" }}>
+                <div style={{
+                  width: 56, height: 56, margin: "0 auto", borderRadius: 18, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.7rem",
+                  background: got ? "var(--accent-dim)" : "var(--surface-2)", filter: got ? undefined : "grayscale(1)", opacity: got ? 1 : 0.4,
+                }}>{got ? b.emoji : "🔒"}</div>
+                <div style={{ fontSize: "0.62rem", fontWeight: 700, marginTop: 4, color: got ? "var(--text)" : "var(--text-dim)", lineHeight: 1.2 }}>{b.name}</div>
+              </div>
+            )
+          })}
+        </div>
+      </Card>
+    </div>
+  )
+}
+
+function PhaseTip({ s, w, dayNo }: { s: LabState; w: PhaseWindow; dayNo: number }) {
+  let tip = ""
+  if (w.kind === "baseline") {
+    const tips = [
+      "Tag 1 fühlt sich evtl. komisch an, vor allem ohne Koffein. Kopfschmerzen in den ersten Tagen sind normal.",
+      "Check-in möglichst immer zur gleichen Uhrzeit, z. B. abends vor dem Schlafen.",
+      "Ehrlich bewerten, nicht schönreden. Eine 3 ist ein völlig normaler Tag.",
+      "Störfaktoren wie Alkohol, wenig Schlaf oder Stress als Tag markieren. So bleibt die Auswertung fair.",
+      "Halbzeit! Dein Normal nimmt Form an. Schau mal in „Daten“.",
+      "Bleib bei deiner Routine: gleiches Essen, gleicher Sport. Dann siehst du später echte Unterschiede.",
+      "Letzter Reset-Tag! Morgen beginnt der erste Test. 🔬",
+    ]
+    tip = tips[Math.min(dayNo - 1, tips.length - 1)]
+  } else if (w.kind === "washout") {
+    tip = "Kurze Pause, damit der nächste Test sauber startet. Check-ins trotzdem machen, sie zeigen, ob etwas nachwirkt."
+  } else {
+    const supp = s.supps.find(x => x.id === w.suppId)
+    const lib = supp?.lib ? LIB_BY_ID[supp.lib] : undefined
+    tip = lib ? `Was du erwarten kannst: ${lib.effect}${lib.caution ? ` ⚠️ ${lib.caution}` : ""}` : "Achte auf alles, was sich anders anfühlt als in der Reset-Woche, und notiere es."
+  }
+  return (
+    <Card className="lab-rise" style={{ animationDelay: "150ms", display: "flex", gap: 12, background: "var(--accent-dim)", border: "none", boxShadow: "none" }}>
+      <div style={{ fontSize: "1.4rem" }}>💡</div>
+      <div style={{ fontSize: "0.87rem", lineHeight: 1.5 }}>{tip}</div>
+    </Card>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// REISE (Phasen-Pfad)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function JourneyView({ s, wins, today, onPhase, onPlan, goTab }: {
+  s: LabState; wins: PhaseWindow[]; today: string; onPhase: (w: PhaseWindow) => void; onPlan: () => void; goTab: (t: Tab) => void
+}) {
+  const offsets = [0, 1, 1.4, 1, 0, -1, -1.4, -1]
+  const last = wins[wins.length - 1]
+  const done = last && today > last.end
+  const kept = Object.values(s.verdicts).filter(v => v.decision === "keep").length
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 6 }}>
+        <div>
+          <div style={{ fontSize: "1.5rem", fontWeight: 900 }}>Deine Reise</div>
+          <div style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>{wins.length} Etappen · bis {last ? fmtDate(last.end) : "—"}</div>
+        </div>
+        <Btn variant="soft" onClick={onPlan} style={{ padding: "9px 14px", fontSize: "0.82rem" }}>✏️ Plan</Btn>
+      </div>
+
+      <div style={{ position: "relative", width: 300, maxWidth: "100%", margin: "0 auto", padding: "20px 0 10px" }}>
+        {wins.map((w, i) => {
+          const state = today > w.end ? "done" : today >= w.start ? "active" : "future"
+          const supp = s.supps.find(x => x.id === w.suppId)
+          const col = w.kind === "test" ? suppColor(supp) : w.kind === "baseline" ? "#2ECC8A" : "#3987e5"
+          const off = offsets[i % offsets.length] * 60
+          const prevOff = i > 0 ? offsets[(i - 1) % offsets.length] * 60 : off
+          const verdict = w.suppId && w.kind === "test" ? s.verdicts[w.suppId] : undefined
+          const nCheck = checkinsIn(s, w).length
+          const size = w.kind === "washout" ? 54 : 78
+          const GAP = 40
+          return (
+            <div key={w.id} style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: i > 0 ? GAP : 0 }}>
+              {i > 0 && (
+                <svg width={300} height={GAP - 8} viewBox={`0 0 300 ${GAP - 8}`} style={{ position: "absolute", top: 4, left: "50%", marginLeft: -150, overflow: "visible" }} aria-hidden>
+                  <path d={`M${150 + prevOff},0 C${150 + prevOff},${GAP * 0.6} ${150 + off},${GAP * 0.1} ${150 + off},${GAP - 8}`}
+                    fill="none" stroke={state === "future" ? "var(--border)" : "var(--accent)"} strokeWidth={4} strokeLinecap="round" strokeDasharray={state === "future" ? "2 8" : undefined} opacity={0.7} />
+                </svg>
+              )}
+              <div style={{ transform: `translateX(${off}px)`, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <button className={`lab-press lab-pop ${state === "active" ? "lab-pulse" : ""}`} onClick={() => onPhase(w)}
+                  aria-label={phaseTitle(s, w)}
+                  style={{
+                    animationDelay: `${i * 60}ms`,
+                    width: size, height: size, borderRadius: 999, border: "none", position: "relative",
+                    background: state === "future" ? "var(--surface-2)" : col,
+                    boxShadow: state === "future" ? "inset 0 -5px 0 rgba(0,0,0,.08)" : `inset 0 -6px 0 rgba(0,0,0,.18), 0 8px 20px color-mix(in srgb, ${col} 40%, transparent)`,
+                    fontSize: w.kind === "washout" ? "1.4rem" : "2.1rem", filter: state === "future" ? "grayscale(.7)" : undefined, opacity: state === "future" ? 0.75 : 1,
+                  }}>
+                  {phaseEmoji(s, w)}
+                  {state === "done" && (
+                    <span style={{ position: "absolute", right: -4, bottom: -4, width: 26, height: 26, borderRadius: 999, background: "var(--surface)", border: "2px solid var(--accent)", fontSize: "0.8rem", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {verdict ? DECISIONS.find(d => d.id === verdict.decision)?.emoji : "✓"}
+                    </span>
+                  )}
+                </button>
+                <div style={{ textAlign: "center", marginTop: 6, whiteSpace: "nowrap" }}>
+                  <div style={{ fontWeight: 800, fontSize: w.kind === "washout" ? "0.72rem" : "0.88rem", color: state === "future" ? "var(--text-dim)" : "var(--text)" }}>
+                    {w.kind === "test" ? supp?.name : w.kind === "washout" ? `Pause · ${w.days} T` : phaseTitle(s, w)}
+                  </div>
+                  {w.kind !== "washout" && (
+                    <div style={{ fontSize: "0.7rem", color: "var(--text-dim)" }}>
+                      {state === "active" ? `läuft · Tag ${diffDays(w.start, today) + 1}/${w.days}` : state === "done" ? `${nCheck} Check-ins` : `${fmtDate(w.start)} · ${w.days} T`}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+        {/* Ziel */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 34 }}>
+          <button className={`lab-press ${done ? "lab-float" : ""}`} onClick={() => goTab("stack")} style={{
+            width: 96, height: 96, borderRadius: 30, border: "none", fontSize: "2.8rem",
+            background: done ? "linear-gradient(135deg,#ffd76a,#eda100)" : "var(--surface-2)", filter: done ? undefined : "grayscale(.8)",
+            boxShadow: done ? "0 12px 30px rgba(237,161,0,.45)" : "none",
+          }}>🏆</button>
+          <div style={{ fontWeight: 900, marginTop: 8 }}>Dein Stack</div>
+          <div style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>{kept ? `${kept} Supplement${kept > 1 ? "s" : ""} behalten` : "wartet auf deine Urteile"}</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PhaseSheet({ s, w, today, onClose, update, onVerdict }: {
+  s: LabState; w: PhaseWindow | null; today: string; onClose: () => void; update: Update; onVerdict: (id: string) => void
+}) {
+  if (!w) return <Sheet open={false} onClose={onClose}>{null}</Sheet>
+  const state = today > w.end ? "done" : today >= w.start ? "active" : "future"
+  const supp = s.supps.find(x => x.id === w.suppId)
+  const lib = supp?.lib ? LIB_BY_ID[supp.lib] : undefined
+  const r = w.kind === "test" && w.suppId ? testResult(s, w.suppId) : null
+  const elapsed = diffDays(w.start, today)
+  const setDays = (days: number) => update(p => { p.phases = p.phases.map(x => x.id === w.id ? { ...x, days } : x); return p })
+  return (
+    <Sheet open onClose={onClose} title={`${phaseEmoji(s, w)} ${w.kind === "test" ? supp?.name : phaseTitle(s, w)}`}>
+      <div style={{ color: "var(--text-dim)", fontSize: "0.88rem", marginBottom: 14 }}>
+        {fmtDate(w.start)} → {fmtDate(w.end)} · {w.days} Tage · {state === "done" ? "abgeschlossen" : state === "active" ? "läuft gerade" : "geplant"}
+      </div>
+      {lib && (
+        <Card style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: "0.88rem", lineHeight: 1.55 }}>
+            <div><b>Wirkung:</b> {lib.effect}</div>
+            <div style={{ marginTop: 6 }}><b>Dosis:</b> {supp?.dose || lib.dose}</div>
+            <div style={{ marginTop: 6 }}><b>Einnahme:</b> {lib.timing}</div>
+            <div style={{ marginTop: 6 }}><b>Wirkungseintritt:</b> {ONSET_INFO[lib.onset].label}</div>
+            {lib.caution && <div style={{ marginTop: 6, color: "var(--warning)" }}>⚠️ {lib.caution}</div>}
+          </div>
+        </Card>
+      )}
+      {r?.delta && r.avg && r.base && (
+        <Card style={{ marginBottom: 12 }}>
+          <Label style={{ marginBottom: 10 }}>Vergleich mit deinem Reset · {r.n} Check-ins</Label>
+          <DeltaBars delta={r.delta} avg={r.avg} base={r.base} />
+        </Card>
+      )}
+      {state === "active" && (
+        <Card style={{ marginBottom: 12 }}>
+          <Label style={{ marginBottom: 10 }}>Phase anpassen</Label>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Btn variant="soft" onClick={() => setDays(w.days + 1)} style={{ fontSize: "0.85rem" }}>+1 Tag verlängern</Btn>
+            {elapsed >= 1 && <Btn variant="soft" onClick={() => { setDays(elapsed); onClose() }} style={{ fontSize: "0.85rem" }}>⏭ Nächste Phase heute starten</Btn>}
+          </div>
+        </Card>
+      )}
+      {state === "future" && (
+        <Card style={{ marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ fontWeight: 800 }}>Dauer</div>
+          <Stepper value={w.days} min={1} max={28} onChange={setDays} suffix=" T" />
+        </Card>
+      )}
+      {w.kind === "test" && w.suppId && state !== "future" && (
+        <Btn full onClick={() => onVerdict(w.suppId!)}>{s.verdicts[w.suppId] ? "Urteil ändern" : "⚖️ Urteil fällen"}</Btn>
+      )}
+    </Sheet>
+  )
+}
+
+function PlanSheet({ s, today, onClose, update }: { s: LabState; today: string; onClose: () => void; update: Update }) {
+  const wins = phaseWindows(s)
+  const fixed = wins.filter(w => w.start <= today)
+  const fixedTests = new Set(fixed.filter(w => w.kind === "test").map(w => w.suppId))
+  const [order, setOrder] = useState<string[]>(() => wins.filter(w => w.start > today && w.kind === "test").map(w => w.suppId!))
+  const [days, setDays] = useState<Record<string, number>>(() => Object.fromEntries(wins.filter(w => w.kind === "test").map(w => [w.suppId!, w.days])))
+  const [adding, setAdding] = useState(false)
+  const [washout, setWashout] = useState(s.settings.washoutDays)
+
+  const unplanned = s.supps.filter(x => !fixedTests.has(x.id) && !order.includes(x.id))
+
+  const save = () => {
+    update(p => {
+      const kept: Phase[] = fixed.map(({ id, kind, suppId, days }) => ({ id, kind, suppId, days }))
+      const lastFixed = kept[kept.length - 1]
+      if (lastFixed?.kind === "test" && order.length && washout > 0) kept.push({ id: `wash-${lastFixed.suppId}`, kind: "washout", suppId: lastFixed.suppId, days: washout })
+      order.forEach((id, i) => {
+        kept.push({ id: `test-${id}`, kind: "test", suppId: id, days: days[id] ?? 5 })
+        if (washout > 0 && i < order.length - 1) kept.push({ id: `wash-${id}`, kind: "washout", suppId: id, days: washout })
+      })
+      p.phases = kept
+      p.settings.washoutDays = washout
+      return p
+    })
+    onClose()
+  }
+
+  return (
+    <Sheet open onClose={onClose} title="✏️ Plan bearbeiten">
+      <div style={{ color: "var(--text-dim)", fontSize: "0.85rem", marginBottom: 14 }}>Laufende und abgeschlossene Phasen bleiben, alles Kommende kannst du umbauen.</div>
+      {order.length ? (
+        <OrderEditor order={order} supps={s.supps} days={days} onOrder={setOrder} onDays={(id, d) => setDays(p => ({ ...p, [id]: d }))} onRemove={id => setOrder(o => o.filter(x => x !== id))} />
+      ) : <div style={{ color: "var(--text-dim)", fontSize: "0.9rem", padding: "10px 0" }}>Keine weiteren Tests geplant.</div>}
+
+      {unplanned.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <Label style={{ marginBottom: 8 }}>Noch nicht eingeplant</Label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {unplanned.map(x => <Capsule key={x.id} supp={x} size="sm" onClick={() => { setOrder(o => [...o, x.id]); setDays(d => ({ ...d, [x.id]: d[x.id] ?? defaultDays(x) })) }} right={<span style={{ color: "var(--accent)" }}>＋</span>} />)}
+          </div>
+        </div>
+      )}
+      <div style={{ marginTop: 16 }}>
+        {adding ? (
+          <SuppPicker selected={s.supps} onAddCustom={name => update(p => { p.supps.push(makeSupp(null, name, p.supps)); return p })}
+            onToggle={(lib: LibSupp) => update(p => { if (!p.supps.some(x => x.lib === lib.id)) p.supps.push(makeSupp(lib, lib.name, p.supps)); return p })} />
+        ) : <Btn variant="ghost" full onClick={() => setAdding(true)}>+ Neues Supplement hinzufügen</Btn>}
+      </div>
+      <Card style={{ marginTop: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ fontWeight: 800 }}>💧 Auswaschpause</div>
+        <Stepper value={washout} min={0} max={7} onChange={setWashout} suffix=" T" />
+      </Card>
+      <div style={{ marginTop: 16 }}><Btn full onClick={save}>Plan speichern</Btn></div>
+    </Sheet>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DATEN
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function DataView({ s, wins, onVerdict, onCheckin }: { s: LabState; wins: PhaseWindow[]; onVerdict: (id: string) => void; onCheckin: (d: string) => void }) {
+  const [dim, setDim] = useState<Dim | "gesamt">("gesamt")
+  const nCheck = Object.keys(s.checkins).length
+  const tested = wins.filter(w => w.kind === "test" && checkinsIn(s, w).length > 0)
+  const ranking = useMemo(() => tested
+    .map(w => ({ w, r: testResult(s, w.suppId!) }))
+    .filter(x => x.r?.delta)
+    .sort((a, b) => b.r!.total - a.r!.total), [s, tested])
+
+  if (!nCheck) {
+    return (
+      <Card style={{ textAlign: "center", padding: 32 }}>
+        <div className="lab-float" style={{ fontSize: "3.5rem" }}>📈</div>
+        <div style={{ fontWeight: 900, fontSize: "1.2rem", marginTop: 10 }}>Noch keine Daten</div>
+        <div style={{ color: "var(--text-dim)", marginTop: 6 }}>Nach deinem ersten Check-in erscheinen hier deine Kurven.</div>
+      </Card>
+    )
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div>
+        <div style={{ fontSize: "1.5rem", fontWeight: 900 }}>Deine Daten</div>
+        <div style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>{nCheck} Check-ins · jede Farbe ist ein Test</div>
+      </div>
+
+      <Card style={{ padding: "16px 12px" }}>
+        <div className="lab-scroll" style={{ display: "flex", gap: 6, overflowX: "auto", marginBottom: 12, paddingBottom: 2 }}>
+          {([{ id: "gesamt", emoji: "✨", label: "Gesamt" }, ...DIMS] as { id: Dim | "gesamt"; emoji: string; label: string }[]).map(d => (
+            <button key={d.id} className="lab-press" onClick={() => setDim(d.id)} style={{
+              flexShrink: 0, padding: "7px 12px", borderRadius: 999, fontSize: "0.8rem", fontWeight: dim === d.id ? 800 : 600,
+              border: dim === d.id ? "2px solid var(--accent)" : "1px solid var(--border)",
+              background: dim === d.id ? "var(--accent-dim)" : "var(--surface)", color: "var(--text)",
+            }}>{d.emoji} {d.label}</button>
+          ))}
+        </div>
+        <DimLineChart s={s} dim={dim} />
+      </Card>
+
+      {ranking.length > 0 && (
+        <Card>
+          <Label style={{ marginBottom: 12 }}>🏅 Bestenliste · Wirkung vs. Reset</Label>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {ranking.map(({ w, r }, i) => {
+              const supp = s.supps.find(x => x.id === w.suppId)
+              const sig = signal(s, w.suppId!)
+              const verdict = s.verdicts[w.suppId!]
+              return (
+                <div key={w.id} className="lab-press" onClick={() => onVerdict(w.suppId!)} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 26, textAlign: "center", fontSize: i < 3 ? "1.3rem" : "0.9rem", fontWeight: 900 }}>{["🥇", "🥈", "🥉"][i] ?? i + 1}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Capsule supp={supp} size="sm" />
+                    <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 3 }}>
+                      {sig.emoji} {sig.text}{sig.focus && r!.delta![sig.focus] > 0.2 ? ` · stärkster Effekt: ${DIMS.find(d => d.id === sig.focus)?.label} ${fmt(r!.delta![sig.focus], true)}` : ""}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontWeight: 900, fontVariantNumeric: "tabular-nums", color: r!.total >= 0 ? "#1baf7a" : "#e34948" }}>{fmt(r!.total, true)}</div>
+                    <div style={{ fontSize: "0.65rem", color: "var(--text-dim)" }}>{verdict ? DECISIONS.find(d => d.id === verdict.decision)?.label : "offen"}</div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginTop: 12 }}>Summe der Veränderungen über alle 7 Bereiche. Tippen für Details.</div>
+        </Card>
+      )}
+
+      <Card>
+        <Label style={{ marginBottom: 12 }}>Stimmungs-Kalender</Label>
+        <MoodCalendar s={s} onPick={onCheckin} />
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 12, fontSize: "0.72rem", color: "var(--text-dim)" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 12, height: 4, borderRadius: 2, background: "var(--text-dim)" }} />Reset</span>
+          {s.supps.filter(x => wins.some(w => w.suppId === x.id && w.kind === "test")).map(x => (
+            <span key={x.id} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 12, height: 4, borderRadius: 2, background: suppColor(x) }} />{x.name}</span>
+          ))}
+        </div>
+      </Card>
+
+      {tested.map(w => {
+        const r = testResult(s, w.suppId!)
+        const supp = s.supps.find(x => x.id === w.suppId)
+        if (!r?.delta || !r.avg || !r.base) return null
+        return (
+          <Card key={w.id}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, gap: 8 }}>
+              <Capsule supp={supp} />
+              <span style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>{r.n} Check-ins</span>
+            </div>
+            <DeltaBars delta={r.delta} avg={r.avg} base={r.base} />
+            {r.tags.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+                {r.tags.slice(0, 5).map(([t, n]) => <span key={t} style={{ fontSize: "0.72rem", padding: "3px 9px", borderRadius: 999, background: "var(--surface-2)", fontWeight: 700 }}>{t} ×{n}</span>)}
+              </div>
+            )}
+          </Card>
+        )
+      })}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// URTEIL
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function VerdictSheet({ s, suppId, onClose, onSave }: { s: LabState; suppId: string; onClose: () => void; onSave: (id: string, d: Decision, note: string) => void }) {
+  const [decision, setDecision] = useState<Decision | null>(s.verdicts[suppId]?.decision ?? null)
+  const [note, setNote] = useState(s.verdicts[suppId]?.note ?? "")
+  const supp = s.supps.find(x => x.id === suppId)
+  const r = testResult(s, suppId)
+  const sig = signal(s, suppId)
+  const lib = supp?.lib ? LIB_BY_ID[supp.lib] : undefined
+  return (
+    <Sheet open onClose={onClose} title="⚖️ Dein Urteil">
+      <div style={{ display: "flex", justifyContent: "center", margin: "4px 0 16px" }}><Capsule supp={supp} /></div>
+      {r?.delta && r.avg && r.base ? (
+        <>
+          <Card style={{ marginBottom: 12, textAlign: "center", background: "var(--surface-2)", border: "none", boxShadow: "none" }}>
+            <div style={{ fontSize: "2rem" }}>{sig.emoji}</div>
+            <div style={{ fontWeight: 900, fontSize: "1.1rem" }}>Die Daten sagen: {sig.text}</div>
+            {sig.focus && r.delta[sig.focus] > 0.2 && (
+              <div style={{ fontSize: "0.85rem", color: "var(--text-dim)", marginTop: 4 }}>
+                Am meisten verändert: {DIMS.find(d => d.id === sig.focus)?.emoji} {DIMS.find(d => d.id === sig.focus)?.label} {fmt(r.delta[sig.focus], true)}
+              </div>
+            )}
+          </Card>
+          <Card style={{ marginBottom: 12 }}>
+            <Label style={{ marginBottom: 10 }}>Test vs. Reset · {r.n} Check-ins</Label>
+            <DeltaBars delta={r.delta} avg={r.avg} base={r.base} />
+          </Card>
+        </>
+      ) : (
+        <Card style={{ marginBottom: 12, background: "var(--surface-2)", border: "none", boxShadow: "none", fontSize: "0.88rem", lineHeight: 1.5 }}>
+          {lib?.onset === "langsam"
+            ? `🐢 ${supp?.name} wirkt eher über Wochen. Entscheide nach Bauchgefühl, Blutwerten oder ärztlichem Rat.`
+            : "Keine Testdaten für dieses Supplement. Du kannst trotzdem nach Bauchgefühl entscheiden."}
+        </Card>
+      )}
+      <div style={{ fontWeight: 800, margin: "16px 0 10px" }}>Und was sagt dein Bauchgefühl?</div>
+      <div style={{ display: "flex", gap: 8 }}>
+        {DECISIONS.map(d => {
+          const on = decision === d.id
+          return (
+            <button key={d.id} className="lab-press" onClick={() => setDecision(d.id)} style={{
+              flex: 1, padding: "14px 6px", borderRadius: 18, fontWeight: 800, fontSize: "0.85rem", color: "var(--text)",
+              border: on ? `2px solid ${d.color}` : "1px solid var(--border)",
+              background: on ? `color-mix(in srgb, ${d.color} 16%, var(--surface))` : "var(--surface)",
+              transform: on ? "scale(1.04)" : undefined,
+            }}>
+              <div style={{ fontSize: "1.7rem", marginBottom: 4 }}>{d.emoji}</div>{d.label}
+            </button>
+          )
+        })}
+      </div>
+      <textarea value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder="Warum? (z. B. „schlafe tiefer“)"
+        style={{ width: "100%", padding: 12, borderRadius: 14, fontSize: "0.92rem", marginTop: 12, resize: "none" }} />
+      <div style={{ marginTop: 14 }}><Btn full disabled={!decision} onClick={() => decision && onSave(suppId, decision, note.trim())}>Urteil speichern</Btn></div>
+    </Sheet>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STACK
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function StackView({ s, update, onVerdict }: { s: LabState; update: Update; onVerdict: (id: string) => void }) {
+  const [withMaybe, setWithMaybe] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const keep = s.supps.filter(x => s.verdicts[x.id]?.decision === "keep")
+  const maybe = s.supps.filter(x => s.verdicts[x.id]?.decision === "maybe")
+  const drop = s.supps.filter(x => s.verdicts[x.id]?.decision === "drop")
+  const open = s.supps.filter(x => !s.verdicts[x.id])
+  const inStack = [...keep, ...(withMaybe ? maybe : [])]
+  const plan = buildStack(inStack.map(x => x.id), s)
+
+  const cycleSlot = (id: string, current: string) => {
+    const allowed = allowedSlots(id, s)
+    const next = allowed[(allowed.indexOf(current as never) + 1) % allowed.length]
+    update(p => { p.slotOverrides[id] = next; return p })
+  }
+
+  const copy = async () => {
+    const lines = ["Mein Supplement-Stack (TRUE Supplement Lab)", ""]
+    SLOTS.forEach(slot => {
+      const items = plan.placements.filter(p => p.slot === slot.id)
+      if (!items.length) return
+      lines.push(`${slotTime(slot.id, s.settings)} · ${slot.label}`)
+      items.forEach(p => { const x = s.supps.find(q => q.id === p.suppId)!; lines.push(`  • ${x.name}${x.dose ? ` (${x.dose})` : ""}`) })
+    })
+    if (drop.length) lines.push("", `Rausgeflogen: ${drop.map(x => x.name).join(", ")}`)
+    try { await navigator.clipboard.writeText(lines.join("\n")); setCopied(true); setTimeout(() => setCopied(false), 1600) } catch {}
+  }
+
+  const group = (title: string, items: MySupp[], emoji: string) => items.length ? (
+    <div style={{ marginBottom: 12 }}>
+      <Label style={{ marginBottom: 8 }}>{emoji} {title} · {items.length}</Label>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {items.map(x => <Capsule key={x.id} supp={x} size="sm" onClick={() => onVerdict(x.id)} />)}
+      </div>
+    </div>
+  ) : null
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div>
+        <div style={{ fontSize: "1.5rem", fontWeight: 900 }}>Dein Stack 🏆</div>
+        <div style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>Was wirkt, bleibt. Mit dem perfekten Timing.</div>
+      </div>
+
+      {/* Scoreboard */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+        {[["💚", keep.length, "behalten"], ["🤔", maybe.length, "vielleicht"], ["✂️", drop.length, "rausgeflogen"]].map(([e, n, l]) => (
+          <Card key={l as string} style={{ padding: 14, textAlign: "center" }}>
+            <div style={{ fontSize: "1.3rem" }}>{e}</div>
+            <div style={{ fontSize: "1.8rem", fontWeight: 900, lineHeight: 1.1 }}>{n}</div>
+            <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", fontWeight: 700 }}>{l}</div>
+          </Card>
+        ))}
+      </div>
+
+      <Card>
+        {group("Behalten", keep, "💚")}
+        {group("Vielleicht", maybe, "🤔")}
+        {group("Fliegt raus", drop, "✂️")}
+        {group("Noch offen, tippen zum Bewerten", open, "⏳")}
+        {drop.length > 0 && <div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>💸 {drop.length} Supplement{drop.length > 1 ? "s" : ""} weniger: weniger Geld, weniger Pillen, mehr Klarheit.</div>}
+      </Card>
+
+      {/* Perfekter Tag */}
+      <Card style={{ padding: "18px 16px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, gap: 8 }}>
+          <div>
+            <div style={{ fontWeight: 900, fontSize: "1.1rem" }}>☀️ Dein perfekter Tag</div>
+            <div style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>Tippe ein Supplement an, um es zu verschieben</div>
+          </div>
+          {maybe.length > 0 && (
+            <button className="lab-press" onClick={() => setWithMaybe(v => !v)} style={{
+              padding: "7px 11px", borderRadius: 999, fontSize: "0.72rem", fontWeight: 800, whiteSpace: "nowrap",
+              border: withMaybe ? "2px solid #eda100" : "1px solid var(--border)", background: withMaybe ? "rgba(237,161,0,.14)" : "var(--surface)", color: "var(--text)",
+            }}>🤔 {withMaybe ? "inkl. Vielleicht" : "+ Vielleicht"}</button>
+          )}
+        </div>
+
+        {inStack.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-dim)" }}>
+            <div style={{ fontSize: "2.4rem" }}>🫙</div>
+            <div style={{ fontWeight: 800, color: "var(--text)", marginTop: 6 }}>Noch leer</div>
+            <div style={{ fontSize: "0.85rem", marginTop: 4 }}>Sobald du ein Supplement mit 💚 bewertest, landet es hier, direkt im richtigen Zeitfenster.</div>
+          </div>
+        ) : (
+          <div style={{ position: "relative", paddingLeft: 58 }}>
+            <div style={{ position: "absolute", left: 22, top: 8, bottom: 8, width: 3, borderRadius: 2, background: "linear-gradient(#ffd76a, #2ECC8A 40%, #3987e5 75%, #4a3aa7)" }} />
+            {SLOTS.filter(slot => slot.id !== "training" || s.settings.training).map(slot => {
+              const items = plan.placements.filter(p => p.slot === slot.id)
+              const empty = !items.length
+              return (
+                <div key={slot.id} style={{ position: "relative", marginBottom: empty ? 8 : 16, opacity: empty ? 0.45 : 1 }}>
+                  <div style={{
+                    position: "absolute", left: -58, top: 0, width: 46, height: 46, borderRadius: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                    background: empty ? "var(--surface-2)" : "var(--surface)", border: empty ? "none" : "2px solid var(--accent)", fontSize: empty ? "1rem" : "1.2rem",
+                  }}>{slot.emoji}</div>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, minHeight: 20 }}>
+                    <span style={{ fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>{slotTime(slot.id, s.settings)}</span>
+                    <span style={{ fontWeight: 700, fontSize: "0.85rem" }}>{slot.label}</span>
+                  </div>
+                  <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginBottom: empty ? 0 : 8 }}>{slot.hint}</div>
+                  {!empty && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {items.map(p => {
+                        const x = s.supps.find(q => q.id === p.suppId)!
+                        const lib = x.lib ? LIB_BY_ID[x.lib] : undefined
+                        const isMaybe = s.verdicts[x.id]?.decision === "maybe"
+                        return (
+                          <div key={x.id} className="lab-press lab-pop" onClick={() => cycleSlot(x.id, p.slot)} style={{
+                            display: "flex", alignItems: "center", gap: 10, padding: 10, borderRadius: 16,
+                            background: `color-mix(in srgb, ${suppColor(x)} 12%, var(--surface))`, border: `1px ${isMaybe ? "dashed" : "solid"} color-mix(in srgb, ${suppColor(x)} 45%, transparent)`,
+                          }}>
+                            <div style={{ width: 34, height: 34, borderRadius: 12, background: suppColor(x), display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.05rem", flexShrink: 0 }}>{x.emoji}</div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: 800, fontSize: "0.9rem" }}>{x.name}{isMaybe && <span style={{ fontSize: "0.7rem", color: "var(--text-dim)" }}> · vielleicht</span>}</div>
+                              <div style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>{x.dose || lib?.dose}{lib?.withFat ? " · mit fetthaltigem Essen" : ""}</div>
+                            </div>
+                            <span style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>⇅</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+        {Object.keys(s.slotOverrides).length > 0 && inStack.length > 0 && (
+          <button onClick={() => update(p => { p.slotOverrides = {}; return p })} style={{ background: "none", border: "none", color: "var(--text-dim)", fontSize: "0.78rem", cursor: "pointer", marginTop: 4 }}>↺ Automatisch planen</button>
+        )}
+      </Card>
+
+      {plan.issues.map((iss, k) => (
+        <Card key={`i${k}`} style={{ background: "var(--warning-dim)", border: "none", boxShadow: "none", display: "flex", gap: 10 }}>
+          <span style={{ fontSize: "1.2rem" }}>⚠️</span>
+          <div style={{ fontSize: "0.85rem", lineHeight: 1.45 }}>
+            <b>{s.supps.find(x => x.id === iss.a)?.name} + {s.supps.find(x => x.id === iss.b)?.name}:</b> {iss.text} Verschieb eins davon in ein anderes Zeitfenster.
+          </div>
+        </Card>
+      ))}
+      {plan.combos.map((c, k) => (
+        <Card key={`c${k}`} style={{ background: "var(--accent-dim)", border: "none", boxShadow: "none", display: "flex", gap: 10 }}>
+          <span style={{ fontSize: "1.2rem" }}>🤝</span>
+          <div style={{ fontSize: "0.85rem", lineHeight: 1.45 }}><b>Combo:</b> {c.text}</div>
+        </Card>
+      ))}
+
+      {inStack.length > 0 && <Btn full variant="soft" onClick={copy}>{copied ? "✓ Kopiert!" : "📋 Plan als Text kopieren"}</Btn>}
+
+      <TimeSettings settings={s.settings} onChange={st => update(p => { p.settings = st; return p })} />
+
+      <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", lineHeight: 1.5, padding: "0 4px" }}>
+        ⚕️ Das Lab ersetzt keine ärztliche Beratung. Selbstbeobachtung ist subjektiv; Placebo, Wetter, Stress und Schlaf spielen mit. Mangel-Themen (Vitamin D, B12, Eisen) lieber per Blutbild klären.
+      </div>
+    </div>
+  )
+}
+
+function TimeSettings({ settings, onChange }: { settings: Settings; onChange: (s: Settings) => void }) {
+  return (
+    <Card>
+      <Label style={{ marginBottom: 10 }}>Dein Tagesrhythmus</Label>
+      {([["wake", "🌅 Aufstehen"], ["bed", "🛌 Schlafen"]] as const).map(([k, l]) => (
+        <div key={k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <span style={{ fontWeight: 700, fontSize: "0.9rem" }}>{l}</span>
+          <input type="time" value={settings[k]} onChange={e => onChange({ ...settings, [k]: e.target.value })} style={{ padding: "6px 10px", borderRadius: 10, fontWeight: 700 }} />
+        </div>
+      ))}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontWeight: 700, fontSize: "0.9rem" }}>🏋️ Training</span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {settings.training && <input type="time" value={settings.training} onChange={e => onChange({ ...settings, training: e.target.value })} style={{ padding: "6px 10px", borderRadius: 10, fontWeight: 700 }} />}
+          <button className="lab-press" onClick={() => onChange({ ...settings, training: settings.training ? null : "18:00" })} style={{
+            padding: "6px 10px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--surface-2)", color: "var(--text)", fontWeight: 700, fontSize: "0.8rem",
+          }}>{settings.training ? "Aus" : "Hinzufügen"}</button>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+function SettingsSheet({ s, onClose, update, onReset, onDemo }: { s: LabState; onClose: () => void; update: Update; onReset: () => void; onDemo: () => void }) {
+  const [confirm, setConfirm] = useState(false)
+  return (
+    <Sheet open onClose={onClose} title="⚙️ Einstellungen">
+      <TimeSettings settings={s.settings} onChange={st => update(p => { p.settings = st; return p })} />
+      <Card style={{ marginTop: 12 }}>
+        <Label style={{ marginBottom: 8 }}>Deine Supplements</Label>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {s.supps.map(x => (
+            <div key={x.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}><Capsule supp={x} size="sm" /></div>
+              <input value={x.dose} placeholder="Dosis" onChange={e => { const v = e.target.value; update(p => { p.supps = p.supps.map(q => q.id === x.id ? { ...q, dose: v } : q); return p }) }}
+                style={{ width: 130, padding: "6px 10px", borderRadius: 10, fontSize: "0.8rem" }} />
+            </div>
+          ))}
+        </div>
+      </Card>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
+        {s.demo && <Btn full onClick={onReset}>Demo beenden</Btn>}
+        {!s.demo && <Btn full variant="ghost" onClick={onDemo}>Demo-Daten ansehen (deine Daten werden gesichert)</Btn>}
+        {!s.demo && (confirm
+          ? <Btn full variant="danger" onClick={onReset}>Wirklich alles löschen?</Btn>
+          : <Btn full variant="ghost" onClick={() => setConfirm(true)}>Experiment zurücksetzen</Btn>)}
+      </div>
+      <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 14, lineHeight: 1.5 }}>Alle Daten bleiben nur auf diesem Gerät gespeichert.</div>
+    </Sheet>
+  )
+}

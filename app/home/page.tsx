@@ -2147,6 +2147,16 @@ export default function HomePage() {
                   </div>
                 )}
 
+                {/* ── Supplement Lab ── */}
+                <Link href="/lab" style={{ marginTop: 20, display: "flex", alignItems: "center", gap: 12, background: "linear-gradient(135deg, #2ECC8A 0%, #1baf9a 45%, #3987e5 100%)", borderRadius: 18, padding: "14px 16px", textDecoration: "none", color: "#fff", boxShadow: "0 8px 24px rgba(46,204,138,0.3)" }}>
+                  <span style={{ fontSize: "1.8rem" }}>🧪</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 900, fontSize: "0.95rem" }}>Supplement Lab</div>
+                    <div style={{ fontSize: "0.74rem", opacity: 0.9, marginTop: 2 }}>Teste, welche Supplements bei dir wirklich wirken</div>
+                  </div>
+                  <span style={{ fontSize: "1.1rem", flexShrink: 0 }}>›</span>
+                </Link>
+
                 {/* ── Trennlinie + Schlagzeilen Toggle ── */}
                 <div style={{ marginTop: 28, marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
