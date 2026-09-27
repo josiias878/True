@@ -1,7 +1,7 @@
 "use client"
 import React, { useEffect, useMemo, useRef, useState } from "react"
 import {
-  DIMS, FACES, addDays, diffDays, fmtDate, todayIso, phaseWindows, daySum, suppColor,
+  DIMS, FACES, SIDE_BY_ID, addDays, diffDays, fmtDate, todayIso, phaseWindows, daySum, suppColor, testResult, signal,
   type Dim, type LabState, type Scores,
 } from "@/lib/supplementLab"
 
@@ -218,6 +218,61 @@ export function MoodCalendar({ s, onPick }: { s: LabState; onPick?: (date: strin
           </button>
         )
       })}
+    </div>
+  )
+}
+
+// ── Nutzen ↔ Nebenwirkungen: Waage + Pro/Contra ────────────────────────────────
+
+export function ProCon({ s, suppId }: { s: LabState; suppId: string }) {
+  const r = testResult(s, suppId)
+  const sig = signal(s, suppId)
+  if (!r) return null
+  const tilt = Math.max(-12, Math.min(12, sig.net * 14)) // + = Nutzen-Seite sinkt
+  const W = 340, cx = 170, beamY = 30, half = 105
+  const rad = (tilt * Math.PI) / 180
+  const lx = cx - half * Math.cos(rad), ly = beamY + half * Math.sin(rad)
+  const rx = cx + half * Math.cos(rad), ry = beamY - half * Math.sin(rad)
+  const pan = (x: number, y: number, col: string, label: string, value: string) => (
+    <g>
+      <line x1={x} y1={y} x2={x - 26} y2={y + 30} stroke="var(--text-dim)" strokeWidth={1} opacity={0.6} />
+      <line x1={x} y1={y} x2={x + 26} y2={y + 30} stroke="var(--text-dim)" strokeWidth={1} opacity={0.6} />
+      <path d={`M${x - 32},${y + 30} Q${x},${y + 48} ${x + 32},${y + 30} Z`} fill={col} opacity={0.9} />
+      <text x={x} y={y + 60} textAnchor="middle" fontSize="12" fontWeight={800} fill="var(--text)">{label}</text>
+      <text x={x} y={y + 75} textAnchor="middle" fontSize="12" fill="var(--text-dim)">{value}</text>
+    </g>
+  )
+  const n = Math.max(1, r.n)
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} 136`} width="100%" style={{ display: "block", maxWidth: 360, margin: "0 auto" }} role="img"
+        aria-label={`Nutzen ${fmt(sig.benefit, true)} Sterne gegen Nebenwirkungen ${fmt(sig.cost)} pro Tag`}>
+        <path d={`M${cx - 18},100 L${cx + 18},100 L${cx + 4},${beamY} L${cx - 4},${beamY} Z`} fill="var(--surface-2)" stroke="var(--border)" />
+        <line x1={lx} y1={ly} x2={rx} y2={ry} stroke="var(--text-dim)" strokeWidth={3} strokeLinecap="round" style={{ transition: "all .8s" }} />
+        <circle cx={cx} cy={beamY} r={5} fill="var(--text-dim)" />
+        {pan(lx, ly, POS, "Nutzen", `${fmt(sig.benefit, true)} ★`)}
+        {pan(rx, ry, NEG, "Nebenwirk.", sig.cost > 0.05 ? `+${fmt(sig.cost)} / Tag` : "keine extra")}
+      </svg>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 8 }}>
+        <div>
+          <div style={{ fontSize: "0.72rem", fontWeight: 900, color: POS, marginBottom: 4 }}>✅ PRO</div>
+          {sig.pros.length ? sig.pros.map(d => (
+            <div key={d} style={{ fontSize: "0.8rem", padding: "2px 0" }}>{DIMS.find(x => x.id === d)?.emoji} {DIMS.find(x => x.id === d)?.label} <b>{fmt(r.delta![d]!, true)}</b></div>
+          )) : <div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>kein spürbarer Vorteil</div>}
+        </div>
+        <div>
+          <div style={{ fontSize: "0.72rem", fontWeight: 900, color: NEG, marginBottom: 4 }}>❌ CONTRA</div>
+          {sig.cons.map(d => (
+            <div key={d} style={{ fontSize: "0.8rem", padding: "2px 0" }}>{DIMS.find(x => x.id === d)?.emoji} {DIMS.find(x => x.id === d)?.label} <b>{fmt(r.delta![d]!, true)}</b></div>
+          ))}
+          {r.sides.list.map(x => (
+            <div key={x.id} style={{ fontSize: "0.8rem", padding: "2px 0" }}>
+              {SIDE_BY_ID[x.id]?.emoji} {SIDE_BY_ID[x.id]?.label} <b>{x.days}/{n} T</b>{x.strong ? <span style={{ color: NEG, fontWeight: 800 }}> · {x.strong}× stark</span> : ""}
+            </div>
+          ))}
+          {!sig.cons.length && !r.sides.list.length && <div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>keine Nachteile bemerkt 🎉</div>}
+        </div>
+      </div>
     </div>
   )
 }

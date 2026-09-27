@@ -230,3 +230,42 @@ export function Segmented<T extends string>({ value, options, onChange }: { valu
     </div>
   )
 }
+
+/** Nebenwirkungs-Chips: Tipp = leicht, nochmal = stark, nochmal = weg. */
+export function SideChips({ value, onChange, suggested, all, compact }: {
+  value: Record<string, number>; onChange: (v: Record<string, number>) => void
+  suggested: { id: string; label: string; emoji: string }[]; all?: { id: string; label: string; emoji: string }[]; compact?: boolean
+}) {
+  const [more, setMore] = React.useState(false)
+  const none = Object.values(value).every(v => !v)
+  const cycle = (id: string) => {
+    const cur = value[id] ?? 0
+    const next = { ...value, [id]: (cur + 1) % 3 }
+    if (!next[id]) delete next[id]
+    onChange(next)
+  }
+  const list = more && all ? [...suggested, ...all.filter(a => !suggested.some(x => x.id === a.id))] : suggested
+  const chip = (x: { id: string; label: string; emoji: string }) => {
+    const sev = value[x.id] ?? 0
+    const col = sev === 2 ? "var(--danger)" : sev === 1 ? "var(--warning)" : undefined
+    return (
+      <button key={x.id} className="lab-press" onClick={() => cycle(x.id)} style={{
+        padding: compact ? "7px 10px" : "8px 12px", borderRadius: 999, fontSize: "0.8rem", fontWeight: sev ? 800 : 600, color: "var(--text)",
+        border: sev ? `2px solid ${col}` : "1px solid var(--border)",
+        background: sev === 2 ? "var(--danger-dim)" : sev === 1 ? "var(--warning-dim)" : "var(--surface)",
+      }}>{x.emoji} {x.label}{sev === 1 ? " · leicht" : sev === 2 ? " · stark" : ""}</button>
+    )
+  }
+  return (
+    <div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+        <button className="lab-press" onClick={() => onChange({})} style={{
+          padding: compact ? "7px 10px" : "8px 12px", borderRadius: 999, fontSize: "0.8rem", fontWeight: 800, color: "var(--text)",
+          border: none ? "2px solid var(--accent)" : "1px solid var(--border)", background: none ? "var(--accent-dim)" : "var(--surface)",
+        }}>✓ Keine</button>
+        {list.map(chip)}
+        {all && !more && <button onClick={() => setMore(true)} style={{ background: "none", border: "none", color: "var(--text-dim)", fontWeight: 800, fontSize: "0.8rem", cursor: "pointer" }}>+ mehr</button>}
+      </div>
+    </div>
+  )
+}

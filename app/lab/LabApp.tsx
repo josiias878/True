@@ -3,16 +3,16 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import Confetti from "@/components/Confetti"
 import {
-  DIMS, FACES, FACE_LABELS, ONSET_INFO, ROUTE_INFO, SLOTS, BADGES, GOALS,
+  DIMS, FACES, FACE_LABELS, ONSET_INFO, SIDE_EFFECTS, SIDE_BY_ID, LIB_SIDES, knownSides, ROUTE_INFO, SLOTS, BADGES, GOALS,
   loadState, saveState, emptyState, demoState, computeBadges, levelFor, streak, hydrate,
   phaseWindows, phaseAt, testResult, checkinsIn, buildStack, allowedSlots, slotTime, slotFor, stackMembers, intakeOn,
   todayIso, addDays, diffDays, fmtDate, suppColor, daySum, activeDims, signal, libOf, makeSupp, defaultDays, defaultCheckinTime,
   type LabState, type Decision, type Dim, type PhaseWindow, type Phase, type MySupp, type LibSupp, type Settings, type CheckIn, type Scores,
 } from "@/lib/supplementLab"
 import { checkLabReminders, downloadIcs } from "@/lib/labReminders"
-import { LAB_CSS, Btn, Capsule, Card, FaceRow, Label, Segmented, Sheet, Stars, Stepper, XpToast } from "./ui"
+import { LAB_CSS, Btn, Capsule, Card, FaceRow, Label, Segmented, Sheet, SideChips, Stars, Stepper, XpToast } from "./ui"
 import { CheckInSheet, MODE_OPTIONS, Onboarding, OrderEditor, SuppPicker } from "./flows"
-import { DeltaBars, DimLineChart, MoodCalendar } from "./charts"
+import { DeltaBars, DimLineChart, MoodCalendar, ProCon } from "./charts"
 
 type Tab = "heute" | "reise" | "daten" | "stack"
 
@@ -314,6 +314,7 @@ function TodayView({ s, wins, today, onCheckin, onQuick, onVerdict, update, goTa
   const expDay = first ? Math.min(totalDays, Math.max(0, diffDays(first.start, today) + 1)) : 0
   const color = w?.kind === "test" ? suppColor(testSupp) : "#2ECC8A"
 
+  const [dismissed, setDismissed] = useState(false)
   const toggleTook = (id: string) => {
     const on = took.includes(id)
     update(p => { const cur = p.took[today] ?? []; p.took[today] = on ? cur.filter(x => x !== id) : [...cur, id]; return p }, on ? undefined : { amount: 5, label: "Eingenommen" })
@@ -379,6 +380,13 @@ function TodayView({ s, wins, today, onCheckin, onQuick, onVerdict, update, goTa
               </div>
               <Btn variant="soft" onClick={() => onCheckin(today)} style={{ padding: "8px 12px", fontSize: "0.78rem" }}>{checked.quick ? "✨ Verfeinern +10" : "Bearbeiten"}</Btn>
             </div>
+            {intake.length > 0 && (
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+                <div style={{ fontSize: "0.8rem", fontWeight: 800, marginBottom: 8 }}>Nebenwirkungen heute? <span style={{ color: "var(--text-dim)", fontWeight: 600 }}>1× leicht · 2× stark</span></div>
+                <SideChips compact value={checked.sides ?? {}} onChange={v => update(p => { p.checkins[today] = { ...p.checkins[today], sides: v }; return p })}
+                  suggested={(knownSides(s, intake).length ? knownSides(s, intake) : SIDE_EFFECTS.slice(0, 5).map(x => x.id)).map(id => SIDE_BY_ID[id])} all={SIDE_EFFECTS} />
+              </div>
+            )}
           </Card>
         ) : (
           <div className="lab-rise lab-card" style={{ animationDelay: "60ms", padding: 18, outline: "2px solid var(--accent)", boxShadow: "0 10px 30px rgba(46,204,138,.18)" }}>
@@ -399,6 +407,29 @@ function TodayView({ s, wins, today, onCheckin, onQuick, onVerdict, update, goTa
           <FaceRow onPick={v => onQuick(yesterday, v)} faces={FACES} size={44} />
         </div>
       )}
+
+      {/* Warnung bei starken Nebenwirkungen im laufenden Test */}
+      {w?.kind === "test" && testSupp && !dismissed && (() => {
+        const strong = checkinsIn(s, w).flatMap(c => Object.entries(c.sides ?? {}).filter(([, v]) => v >= 2).map(([id]) => id))
+        if (!strong.length) return null
+        const names = [...new Set(strong)].map(id => SIDE_BY_ID[id]?.label).join(", ")
+        return (
+          <Card className="lab-rise" style={{ background: "var(--danger-dim)", border: "2px solid var(--danger)", boxShadow: "none" }}>
+            <div style={{ fontWeight: 900, marginBottom: 4 }}>⚠️ Starke Nebenwirkung unter {testSupp.name}</div>
+            <div style={{ fontSize: "0.85rem", lineHeight: 1.45, marginBottom: 12 }}>
+              {names}. Wenn es dir damit nicht gut geht: Test abbrechen und bei anhaltenden Beschwerden ärztlich abklären.
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <Btn variant="danger" full onClick={() => update(p => {
+                p.phases = p.phases.map(x => x.id === w.id ? { ...x, days: dayNo } : x)
+                p.verdicts[testSupp.id] = { decision: "drop", note: `Abgebrochen wegen Nebenwirkungen: ${names}`, date: today }
+                return p
+              }, { amount: 20, label: "Auf dich gehört" })} style={{ fontSize: "0.85rem", padding: "12px", whiteSpace: "nowrap" }}>✋ Abbrechen</Btn>
+              <Btn variant="ghost" full onClick={() => setDismissed(true)} style={{ fontSize: "0.85rem", padding: "12px", whiteSpace: "nowrap" }}>Weiter testen</Btn>
+            </div>
+          </Card>
+        )
+      })()}
 
       {/* Urteil fällig — mit automatischem Vorschlag */}
       {pending.map(p => {
@@ -475,6 +506,7 @@ function TodayView({ s, wins, today, onCheckin, onQuick, onVerdict, update, goTa
             <div style={{ marginTop: 12, fontSize: "0.8rem", lineHeight: 1.5, color: "var(--text-dim)", borderTop: "1px solid var(--border)", paddingTop: 10 }}>
               ⏰ {lib.timing}<br />
               👀 Achte auf: <b style={{ color: "var(--text)" }}>{lib.watch.map(d => DIMS.find(x => x.id === d)?.label).join(", ")}</b>
+              {LIB_SIDES[lib.id]?.length ? <><br />⚠️ Mögliche Nebenwirkungen: {LIB_SIDES[lib.id].map(id => SIDE_BY_ID[id]?.label).join(", ")}</> : null}
             </div>
           )}
         </Card>
@@ -674,8 +706,15 @@ function PhaseSheet({ s, w, today, onClose, update, onVerdict }: {
             <div style={{ marginTop: 6 }}><b>Dosis:</b> {supp?.dose || lib.dose}{lib.route ? ` · ${ROUTE_INFO[lib.route].emoji} ${ROUTE_INFO[lib.route].label}` : ""}</div>
             <div style={{ marginTop: 6 }}><b>Einnahme:</b> {lib.timing}</div>
             <div style={{ marginTop: 6 }}><b>Wirkungseintritt:</b> {ONSET_INFO[lib.onset].label}</div>
+            {LIB_SIDES[lib.id]?.length ? <div style={{ marginTop: 6 }}><b>Mögliche Nebenwirkungen:</b> {LIB_SIDES[lib.id].map(id => `${SIDE_BY_ID[id]?.emoji} ${SIDE_BY_ID[id]?.label}`).join(" · ")}</div> : null}
             {lib.caution && <div style={{ marginTop: 6, color: "var(--warning)" }}>⚠️ {lib.caution}</div>}
           </div>
+        </Card>
+      )}
+      {r?.delta && r.avg && r.base && (
+        <Card style={{ marginBottom: 12 }}>
+          <Label style={{ marginBottom: 6 }}>Nutzen ↔ Nebenwirkungen</Label>
+          <ProCon s={s} suppId={w.suppId!} />
         </Card>
       )}
       {r?.delta && r.avg && r.base && (
@@ -777,7 +816,7 @@ function DataView({ s, wins, onVerdict, onCheckin }: { s: LabState; wins: PhaseW
   const ranking = useMemo(() => tested
     .map(w => ({ w, r: testResult(s, w.suppId!) }))
     .filter(x => x.r?.delta)
-    .sort((a, b) => b.r!.total - a.r!.total), [s, tested])
+    .sort((a, b) => signal(s, b.w.suppId!).net - signal(s, a.w.suppId!).net), [s, tested])
   const base = wins.find(w => w.kind === "baseline")
   const baseAvg = base ? checkinsIn(s, base).map(daySum) : []
   const last7 = Object.values(s.checkins).filter(c => c.date > addDays(todayIso(), -7)).map(daySum)
@@ -850,13 +889,15 @@ function DataView({ s, wins, onVerdict, onCheckin }: { s: LabState; wins: PhaseW
                   </div>
                   <div style={{ textAlign: "right" }}>
                     {r!.overall.test != null && <div style={{ fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>{fmt(r!.overall.test)}<span style={{ color: "#f5b400" }}>★</span></div>}
-                    <div style={{ fontSize: "0.68rem", fontWeight: 800, color: r!.total >= 0 ? "#1baf7a" : "#e34948" }}>{fmt(r!.total, true)} · {verdict ? DECISIONS.find(d => d.id === verdict.decision)?.label : "offen"}</div>
+                    <div style={{ fontSize: "0.68rem", fontWeight: 800, color: sig.net >= 0 ? "#1baf7a" : "#e34948" }}>
+                      {fmt(sig.net, true)}{r!.sides.list.length ? ` · ⚠️${r!.sides.list.length}` : ""} · {verdict ? DECISIONS.find(d => d.id === verdict.decision)?.label : "offen"}
+                    </div>
                   </div>
                 </div>
               )
             })}
           </div>
-          <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginTop: 12 }}>★ = Tagesdurchschnitt im Test · +/− = Summe der Veränderung gegenüber Reset. Tippen für Details.</div>
+          <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginTop: 12 }}>★ = Tagesdurchschnitt im Test · +/− = Netto-Wirkung (Nutzen minus Nebenwirkungen) · ⚠️ = Nebenwirkungen. Tippen für Details.</div>
         </Card>
       )}
 
@@ -883,9 +924,14 @@ function DataView({ s, wins, onVerdict, onCheckin }: { s: LabState; wins: PhaseW
                 {r.overall.base != null && r.overall.test != null ? `${fmt(r.overall.base)}★ → ${fmt(r.overall.test)}★ · ` : ""}{r.n} Check-ins
               </span>
             </div>
+            <ProCon s={s} suppId={w.suppId!} />
+            <div style={{ height: 1, background: "var(--border)", margin: "14px 0" }} />
             <DeltaBars delta={r.delta} avg={r.avg} base={r.base} dims={r.dims} />
             {r.tags.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+              <div style={{ fontSize: "0.7rem", fontWeight: 800, color: "var(--text-dim)", marginTop: 12 }}>STÖRFAKTOREN</div>
+            )}
+            {r.tags.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
                 {r.tags.slice(0, 5).map(([t, n]) => <span key={t} style={{ fontSize: "0.72rem", padding: "3px 9px", borderRadius: 999, background: "var(--surface-2)", fontWeight: 700 }}>{t} ×{n}</span>)}
               </div>
             )}
@@ -923,6 +969,10 @@ function VerdictSheet({ s, suppId, onClose, onSave }: { s: LabState; suppId: str
                 Am meisten verändert: {DIMS.find(d => d.id === sig.focus)?.emoji} {DIMS.find(d => d.id === sig.focus)?.label} {fmt(r.delta[sig.focus]!, true)}
               </div>
             )}
+          </Card>
+          <Card style={{ marginBottom: 12 }}>
+            <Label style={{ marginBottom: 6 }}>Nutzen ↔ Nebenwirkungen</Label>
+            <ProCon s={s} suppId={suppId} />
           </Card>
           <Card style={{ marginBottom: 12 }}>
             <Label style={{ marginBottom: 10 }}>Test vs. Reset · {r.n} Check-ins</Label>

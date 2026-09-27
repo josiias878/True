@@ -29,11 +29,79 @@ export const DIM_BY_ID = Object.fromEntries(DIMS.map(d => [d.id, d])) as Record<
 export const FACES = ["😣", "😕", "😐", "🙂", "🤩"]
 export const FACE_LABELS = ["Mies", "Meh", "Okay", "Gut", "Top"]
 
-export const TAGS = [
-  "Kopfschmerzen", "Müde am Nachmittag", "Unruhig / nervös", "Lebhafte Träume", "Früh wach",
-  "Heißhunger", "Blähungen", "Übelkeit", "Guter Pump", "Motiviert", "Gereizt", "Kribbeln",
-  "Wassereinlagerung", "Einstichstelle gereizt", "Wenig geschlafen", "Viel Stress", "Training", "Alkohol", "Krank",
+/** Störfaktoren: machen einen Tag „unfair“ — werden in der Auswertung markiert. */
+export const TAGS = ["Wenig geschlafen", "Viel Stress", "Training", "Alkohol", "Krank", "Reise", "Spät gegessen", "Motiviert", "Guter Pump"]
+
+// ── Nebenwirkungen ─────────────────────────────────────────────────────────────
+
+export interface SideInfo { id: string; label: string; emoji: string }
+export const SIDE_EFFECTS: SideInfo[] = [
+  { id: "kopfschmerz",  label: "Kopfschmerzen",        emoji: "🤕" },
+  { id: "uebelkeit",    label: "Übelkeit",             emoji: "🤢" },
+  { id: "durchfall",    label: "Durchfall",            emoji: "💩" },
+  { id: "verstopfung",  label: "Verstopfung",          emoji: "🧱" },
+  { id: "blaehungen",   label: "Blähungen / Magen",    emoji: "🎈" },
+  { id: "unruhe",       label: "Unruhe / nervös",      emoji: "😬" },
+  { id: "herzrasen",    label: "Herzrasen",            emoji: "💓" },
+  { id: "schlafprob",   label: "Schlafprobleme",       emoji: "😵‍💫" },
+  { id: "traeume",      label: "Intensive Träume",     emoji: "🌀" },
+  { id: "muede",        label: "Müde / benommen",      emoji: "🥱" },
+  { id: "schwindel",    label: "Schwindel",            emoji: "💫" },
+  { id: "kribbeln",     label: "Kribbeln / Taubheit",  emoji: "✋" },
+  { id: "wasser",       label: "Wassereinlagerung",    emoji: "💧" },
+  { id: "haut",         label: "Haut / Juckreiz",      emoji: "🔴" },
+  { id: "einstich",     label: "Einstichstelle gereizt", emoji: "📍" },
+  { id: "hunger",       label: "Heißhunger",           emoji: "🍩" },
+  { id: "stimmungstief", label: "Gereizt / Stimmungstief", emoji: "🌧️" },
+  { id: "libido_runter", label: "Libido ↓",            emoji: "📉" },
 ]
+export const SIDE_BY_ID = Object.fromEntries(SIDE_EFFECTS.map(x => [x.id, x])) as Record<string, SideInfo>
+
+/** Bekannte mögliche Nebenwirkungen pro Supplement (werden beim Check-in zuerst angeboten). */
+export const LIB_SIDES: Record<string, string[]> = {
+  bpc157: ["einstich", "uebelkeit", "schwindel", "muede"],
+  tb500: ["einstich", "muede", "kopfschmerz"],
+  ghkcu: ["einstich", "haut"],
+  "cjc-ipa": ["wasser", "kribbeln", "hunger", "einstich", "muede", "kopfschmerz"],
+  semax: ["unruhe", "kopfschmerz", "schlafprob"],
+  selank: ["muede", "kopfschmerz"],
+  motsc: ["einstich", "herzrasen", "schlafprob"],
+  epitalon: ["einstich", "muede"],
+  ta1: ["einstich", "muede"],
+  kpv: ["uebelkeit", "blaehungen"],
+  glp1: ["uebelkeit", "verstopfung", "durchfall", "blaehungen", "muede", "stimmungstief"],
+  magnesium: ["durchfall", "blaehungen", "traeume", "muede"],
+  glycin: ["blaehungen", "muede"],
+  melatonin: ["muede", "kopfschmerz", "traeume", "schwindel", "stimmungstief"],
+  theanin: ["muede", "kopfschmerz"],
+  koffein: ["unruhe", "herzrasen", "schlafprob", "kopfschmerz", "blaehungen"],
+  rhodiola: ["unruhe", "schlafprob", "kopfschmerz"],
+  ashwagandha: ["muede", "blaehungen", "stimmungstief", "libido_runter"],
+  vitd: ["uebelkeit", "kopfschmerz"],
+  omega3: ["blaehungen", "uebelkeit", "durchfall"],
+  zink: ["uebelkeit", "blaehungen"],
+  eisen: ["verstopfung", "uebelkeit", "blaehungen"],
+  b12: ["unruhe", "haut", "schlafprob"],
+  bkomplex: ["unruhe", "uebelkeit", "schlafprob"],
+  vitc: ["durchfall", "blaehungen"],
+  probiotika: ["blaehungen", "durchfall"],
+  kreatin: ["wasser", "blaehungen", "durchfall"],
+  citrullin: ["blaehungen", "durchfall"],
+  betaalanin: ["kribbeln"],
+  elektrolyte: ["blaehungen", "durchfall"],
+  kollagen: ["blaehungen"],
+  q10: ["blaehungen", "schlafprob"],
+  lionsmane: ["blaehungen", "haut"],
+  curcumin: ["blaehungen", "uebelkeit", "durchfall"],
+  calcium: ["verstopfung", "blaehungen"],
+}
+
+// Alte Freitext-Tags (v1) → Nebenwirkungen
+const LEGACY_TAG_SIDES: Record<string, string> = {
+  "Kopfschmerzen": "kopfschmerz", "Übelkeit": "uebelkeit", "Blähungen": "blaehungen", "Unruhig / nervös": "unruhe",
+  "Lebhafte Träume": "traeume", "Kribbeln": "kribbeln", "Wassereinlagerung": "wasser", "Einstichstelle gereizt": "einstich",
+  "Heißhunger": "hunger", "Gereizt": "stimmungstief", "Müde am Nachmittag": "muede", "Früh wach": "schlafprob",
+}
 
 // ── Ziele ──────────────────────────────────────────────────────────────────────
 
@@ -432,7 +500,8 @@ export interface Phase { id: string; kind: PhaseKind; suppId?: string; days: num
 export interface CheckIn {
   date: string // YYYY-MM-DD
   scores: Partial<Record<Dim, number>> // 1–5
-  tags: string[]
+  tags: string[]              // Störfaktoren
+  sides?: Record<string, number> // Nebenwirkung → 1 leicht / 2 stark
   note: string
   quick?: boolean // 1-Klick-Check-in (alle Bereiche = Gesamtgefühl)
 }
@@ -479,6 +548,12 @@ export function hydrate(raw: unknown): LabState {
     reminders: { ...emptyState().reminders, ...p.reminders },
     supps: (p.supps ?? []).map(x => ({ ...x, mode: x.mode ?? "test" })),
     took: p.took ?? {},
+  }
+  for (const c of Object.values(s.checkins)) {
+    const legacy = c.tags.filter(t => LEGACY_TAG_SIDES[t])
+    if (!legacy.length) continue
+    c.sides = { ...Object.fromEntries(legacy.map(t => [LEGACY_TAG_SIDES[t], 1])), ...c.sides }
+    c.tags = c.tags.filter(t => !LEGACY_TAG_SIDES[t])
   }
   if (p.taken) {
     for (const [date, v] of Object.entries(p.taken)) {
@@ -630,6 +705,27 @@ export function daySum(c: CheckIn) {
   return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 3
 }
 
+export interface SideStat { id: string; days: number; strong: number }
+
+/** Nebenwirkungs-Last: Ø Schwere pro Tag (0 = nichts, 1 = eine leichte …) und Häufigkeit je Symptom. */
+export function sideStats(cs: CheckIn[]) {
+  const m = new Map<string, SideStat>()
+  let load = 0
+  for (const c of cs) for (const [id, sev] of Object.entries(c.sides ?? {})) {
+    if (!sev) continue
+    const x = m.get(id) ?? { id, days: 0, strong: 0 }
+    x.days++; if (sev >= 2) x.strong++
+    m.set(id, x)
+    load += sev
+  }
+  return { load: cs.length ? load / cs.length : 0, list: [...m.values()].sort((a, b) => b.strong - a.strong || b.days - a.days) }
+}
+
+export function knownSides(s: LabState, suppIds: string[]): string[] {
+  const ids = suppIds.flatMap(id => LIB_SIDES[libOf(s.supps.find(x => x.id === id))?.id ?? ""] ?? [])
+  return [...new Set(ids)]
+}
+
 export function testResult(s: LabState, suppId: string) {
   const w = phaseWindows(s).find(p => p.kind === "test" && p.suppId === suppId)
   if (!w) return null
@@ -641,7 +737,13 @@ export function testResult(s: LabState, suppId: string) {
   const testDay = cs.map(daySum)
   const mean = (a: number[]) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null
   const overall = { base: mean(baseDay), test: mean(testDay) }
-  if (!avg || !base) return { window: w, n: cs.length, avg, base, delta: null, dims: [] as Dim[], total: 0, overall, tags: tagCounts(cs) }
+  const sTest = sideStats(cs)
+  const sBase = sideStats(baseW ? checkinsIn(s, baseW) : [])
+  const baseRate = new Map(sBase.list.map(x => [x.id, baseW ? x.days / Math.max(1, checkinsIn(s, baseW).length) : 0]))
+  // Nebenwirkungen, die im Test häufiger sind als im Reset
+  const newSides = sTest.list.filter(x => x.days / Math.max(1, cs.length) > (baseRate.get(x.id) ?? 0) + 0.15 || x.strong > 0)
+  const sides = { load: sTest.load, baseLoad: sBase.load, extra: Math.max(0, sTest.load - sBase.load), list: newSides, strongDays: cs.filter(c => Object.values(c.sides ?? {}).some(v => v >= 2)).length }
+  if (!avg || !base) return { window: w, n: cs.length, avg, base, delta: null, dims: [] as Dim[], total: 0, overall, sides, tags: tagCounts(cs) }
   const delta: Scores = {}
   const dims: Dim[] = []
   let total = 0
@@ -651,7 +753,7 @@ export function testResult(s: LabState, suppId: string) {
     dims.push(d.id)
     total += delta[d.id]!
   }
-  return { window: w, n: cs.length, avg, base, delta, dims, total, overall, tags: tagCounts(cs) }
+  return { window: w, n: cs.length, avg, base, delta, dims, total, overall, sides, tags: tagCounts(cs) }
 }
 
 function tagCounts(cs: CheckIn[]) {
@@ -660,12 +762,21 @@ function tagCounts(cs: CheckIn[]) {
   return Object.entries(m).sort((a, b) => b[1] - a[1])
 }
 
-export interface Signal { key: "none" | "few" | "strong" | "light" | "flat" | "neg"; text: string; emoji: string; focus: Dim | null; suggestion: Decision | null }
+export interface Signal {
+  key: "none" | "few" | "strong" | "light" | "flat" | "neg" | "tradeoff"
+  text: string; emoji: string; focus: Dim | null; suggestion: Decision | null
+  benefit: number   // gewichteter Nutzen (Ø Sterne-Veränderung)
+  cost: number      // zusätzliche Nebenwirkungs-Last
+  net: number
+  pros: Dim[]; cons: Dim[]
+}
 
-/** Wie deutlich ist der Effekt — gewichtet nach den Bereichen, die für das Supplement & deine Ziele zählen. */
+/** Nutzen vs. Nebenwirkungen — gewichtet nach den Bereichen, die für das Supplement & deine Ziele zählen. */
 export function signal(s: LabState, suppId: string): Signal {
   const r = testResult(s, suppId)
-  if (!r || !r.delta || !r.dims.length) return { key: "none", text: "Noch keine Vergleichsdaten", emoji: "⏳", focus: null, suggestion: null }
+  const cost = r?.sides.extra ?? 0
+  const empty = { benefit: 0, cost, net: -cost, pros: [] as Dim[], cons: [] as Dim[] }
+  if (!r || !r.delta || !r.dims.length) return { key: "none", text: "Noch keine Vergleichsdaten", emoji: "⏳", focus: null, suggestion: null, ...empty }
   const lib = libOf(s.supps.find(x => x.id === suppId))
   const goalDims = s.goals.flatMap(g => GOAL_BY_ID[g]?.dims ?? [])
   const weights = new Map<Dim, number>()
@@ -674,13 +785,24 @@ export function signal(s: LabState, suppId: string): Signal {
   goalDims.forEach(d => weights.has(d) && weights.set(d, weights.get(d)! + 1))
   let wsum = 0, acc = 0
   weights.forEach((w, d) => { wsum += w; acc += w * r.delta![d]! })
-  const key = acc / wsum
+  const benefit = acc / wsum
+  // 1 leichte Nebenwirkung pro Tag kostet etwa so viel wie ½ Stern Nutzen; starke Tage extra
+  const net = benefit - 0.5 * cost - 0.15 * r.sides.strongDays
+  const pros = r.dims.filter(d => r.delta![d]! >= 0.3).sort((a, b) => r.delta![b]! - r.delta![a]!)
+  const cons = r.dims.filter(d => r.delta![d]! <= -0.3).sort((a, b) => r.delta![a]! - r.delta![b]!)
   const best = [...r.dims].sort((a, b) => r.delta![b]! - r.delta![a]!)[0]
-  if (r.n < 3) return { key: "few", text: `Erst ${r.n} Check-in${r.n === 1 ? "" : "s"} — noch wenig aussagekräftig`, emoji: "🤏", focus: best, suggestion: "maybe" }
-  if (key >= 0.45) return { key: "strong", text: "Deutliches Plus", emoji: "💚", focus: best, suggestion: "keep" }
-  if (key >= 0.2) return { key: "light", text: "Leichtes Plus", emoji: "🌱", focus: best, suggestion: "keep" }
-  if (key <= -0.25) return { key: "neg", text: "Eher negativ", emoji: "⚠️", focus: best, suggestion: "drop" }
-  return { key: "flat", text: lib?.onset === "langsam" ? "Kein klarer Effekt — wirkt aber auch langsam" : "Kein klarer Effekt", emoji: "😶", focus: best, suggestion: lib?.onset === "langsam" ? "maybe" : "drop" }
+  const base = { focus: best, benefit, cost, net, pros, cons }
+  const hasSides = r.sides.list.length > 0 && (cost >= 0.4 || r.sides.strongDays > 0)
+  if (r.n < 3) return { key: "few", text: `Erst ${r.n} Check-in${r.n === 1 ? "" : "s"} — noch wenig aussagekräftig`, emoji: "🤏", suggestion: "maybe", ...base }
+  if (hasSides && benefit >= 0.2) {
+    return net >= 0.2
+      ? { key: "tradeoff", text: "Wirkt — aber mit Nebenwirkungen", emoji: "⚖️", suggestion: "maybe", ...base }
+      : { key: "tradeoff", text: "Nebenwirkungen fressen den Nutzen auf", emoji: "⚠️", suggestion: "drop", ...base }
+  }
+  if (net >= 0.45) return { key: "strong", text: "Deutliches Plus", emoji: "💚", suggestion: "keep", ...base }
+  if (net >= 0.2) return { key: "light", text: "Leichtes Plus", emoji: "🌱", suggestion: "keep", ...base }
+  if (net <= -0.25) return { key: "neg", text: hasSides ? "Eher negativ — vor allem Nebenwirkungen" : "Eher negativ", emoji: "⚠️", suggestion: "drop", ...base }
+  return { key: "flat", text: lib?.onset === "langsam" ? "Kein klarer Effekt — wirkt aber auch langsam" : "Kein klarer Effekt", emoji: "😶", suggestion: lib?.onset === "langsam" ? "maybe" : "drop", ...base }
 }
 
 export function streak(s: LabState): number {
@@ -846,10 +968,15 @@ export function demoState(): LabState {
       scores[d.id] = Math.max(1, Math.min(5, Math.round(base + (eff[d.id] ?? 0) + (rnd() - 0.5) * 1.6)))
     }
     const tags: string[] = []
-    if (i < 3) tags.push("Kopfschmerzen")
-    if (w?.suppId === "magnesium" && rnd() > 0.5) tags.push("Lebhafte Träume")
+    const sides: Record<string, number> = {}
+    if (i < 3) sides.kopfschmerz = i === 0 ? 2 : 1 // Koffein-Entzug im Reset
+    if (w?.suppId === "magnesium" && rnd() > 0.5) sides.traeume = 1
+    if (w?.suppId === "magnesium" && rnd() > 0.7) sides.durchfall = 1
+    if (w?.suppId === "theanin" && rnd() > 0.4) sides.muede = 1
+    if (w?.suppId === "bpc157" && rnd() > 0.3) sides.einstich = 1
     if (rnd() > 0.8) tags.push("Training")
-    s.checkins[date] = { date, scores, tags, note: "" }
+    if (rnd() > 0.9) tags.push("Alkohol")
+    s.checkins[date] = { date, scores, tags, sides, note: "" }
     s.took[date] = intakeOn(s, date)
   }
   s.verdicts = {

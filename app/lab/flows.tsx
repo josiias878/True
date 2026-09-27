@@ -2,12 +2,12 @@
 import React, { useMemo, useState } from "react"
 import Link from "next/link"
 import {
-  FACES, FACE_LABELS, TAGS, LIBRARY, ONSET_INFO, ROUTE_INFO, SUPP_COLORS, CATEGORIES, GOALS, RHYTHMS, TRAININGS,
+  FACES, FACE_LABELS, TAGS, LIBRARY, SIDE_EFFECTS, SIDE_BY_ID, knownSides, intakeOn, ONSET_INFO, ROUTE_INFO, SUPP_COLORS, CATEGORIES, GOALS, RHYTHMS, TRAININGS,
   buildPhases, todayIso, addDays, fmtDate, diffDays, makeSupp, autoOrder, defaultDays, parseSuppList, goalRelevance,
   activeDims, defaultCheckinTime, libOf, daySum,
   type CheckIn, type Dim, type LabState, type MySupp, type Settings, type LibSupp, type GoalId, type SuppMode, type Scores,
 } from "@/lib/supplementLab"
-import { Btn, Capsule, Card, FaceRow, Label, Segmented, Stars, Stepper } from "./ui"
+import { Btn, Capsule, Card, FaceRow, Label, Segmented, SideChips, Stars, Stepper } from "./ui"
 
 export const MODE_OPTIONS: { id: SuppMode; label: string }[] = [
   { id: "test", label: "🔬 Testen" },
@@ -465,6 +465,8 @@ export function CheckInSheet({ s, date, phaseLabel, onDone, onClose }: {
   const [overall, setOverall] = useState<number | undefined>(existing ? Math.round(daySum(existing)) : undefined)
   const [tags, setTags] = useState<string[]>(existing?.tags ?? [])
   const [note, setNote] = useState(existing?.note ?? "")
+  const [sides, setSides] = useState<Record<string, number>>(existing?.sides ?? {})
+  const suggestedSides = knownSides(s, intakeOn(s, date)).map(id => SIDE_BY_ID[id]).filter(Boolean)
   const [showTags, setShowTags] = useState(!!existing?.tags.length)
   const dayLabel = date === todayIso() ? "Heute" : diffDays(date, todayIso()) === 1 ? "Gestern" : fmtDate(date)
 
@@ -479,7 +481,7 @@ export function CheckInSheet({ s, date, phaseLabel, onDone, onClose }: {
   const save = () => {
     const full: Scores = {}
     dims.forEach(d => { full[d.id] = scores[d.id] ?? overall ?? 3 })
-    onDone({ date, scores: full, tags, note: note.trim(), quick: touched.size === 0 })
+    onDone({ date, scores: full, tags, sides, note: note.trim(), quick: touched.size === 0 })
   }
 
   return (
@@ -517,8 +519,16 @@ export function CheckInSheet({ s, date, phaseLabel, onDone, onClose }: {
           ))}
         </Card>
 
+        <Card style={{ marginBottom: 12, padding: "12px 14px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+            <Label>Nebenwirkungen?</Label>
+            <span style={{ fontSize: "0.68rem", color: "var(--text-dim)" }}>1× leicht · 2× stark</span>
+          </div>
+          <SideChips value={sides} onChange={setSides} suggested={suggestedSides.length ? suggestedSides : SIDE_EFFECTS.slice(0, 6)} all={SIDE_EFFECTS} />
+        </Card>
+
         <button onClick={() => setShowTags(v => !v)} style={{ background: "none", border: "none", color: "var(--text-dim)", fontWeight: 800, fontSize: "0.85rem", padding: "4px 0 10px", cursor: "pointer" }}>
-          {showTags ? "▾" : "▸"} Besonderheiten {tags.length ? `(${tags.length})` : "(Kopfschmerz, Alkohol, Training …)"}
+          {showTags ? "▾" : "▸"} Störfaktoren & Notiz {tags.length ? `(${tags.length})` : "(Alkohol, Stress, krank …)"}
         </button>
         {showTags && (
           <div className="lab-rise" style={{ marginBottom: 12 }}>
