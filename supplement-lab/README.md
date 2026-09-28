@@ -8,6 +8,7 @@ hier aber als eigene App im **Store-Modus** gebaut:
 - kein Link zurück zu TRUE
 - echte Push-Erinnerungen über `@capacitor/local-notifications` (auch bei geschlossener App,
   mit 1-Tipp-Bewertung direkt aus der Benachrichtigung)
+- optionale Anbindung an Apple Health / Google Health Connect (nur Schlaf + HRV, siehe unten)
 - alle Daten bleiben lokal auf dem Gerät
 
 ## Im Browser testen
@@ -46,6 +47,20 @@ npx cap add android      # nur beim ersten Mal
 npm run assets
 npm run android          # öffnet Android Studio
 ```
+
+## Apple Health / Google Health Connect (optional)
+
+Eigenes, kleines lokales Plugin unter `packages/capacitor-supp-health/` — liest **nur**
+Schlafdauer und HRV, sonst nichts (kein Training, keine Schritte). Es gibt kein fertiges
+Capacitor-Plugin, das beides auf beiden Plattformen abdeckt, deshalb ist das selbst geschrieben.
+
+⚠️ **Neu und ungetestet** — Swift/Kotlin lassen sich hier nicht kompilieren. Baue es einmal in
+Xcode/Android Studio; bei Fehlern einfach die Meldung zurückschicken.
+
+Setup-Schritte (HealthKit-Capability, Info.plist-Eintrag, Android-Manifest-Permissions):
+siehe [`packages/capacitor-supp-health/README.md`](./packages/capacitor-supp-health/README.md).
+Ohne dieses Setup bleibt `isAvailable()` einfach `false` und die App fragt gar nicht erst danach —
+nichts bricht, wenn man es auslässt.
 
 ## Store-Fahrplan
 

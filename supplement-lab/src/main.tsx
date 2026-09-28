@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client"
 import "./app.css"
 import LabApp from "@/app/lab/LabApp"
 import { initNative } from "./native"
+import { initHealth } from "./health"
 
 // System-Theme live übernehmen (solange keins fest gewählt ist)
 try {
@@ -16,6 +17,7 @@ try {
 
 async function boot() {
   const native = await initNative().catch(() => false)
+  await initHealth().catch(() => false)
   // Web/PWA: Service Worker für Offline & Benachrichtigungen
   if (!native && "serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js").catch(() => {})

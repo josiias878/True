@@ -12,6 +12,7 @@ import {
   type LabState, type Decision, type Dim, type PhaseWindow, type MySupp, type LibSupp, type Settings, type CheckIn, type Scores, type SuppStatusKey,
 } from "@/lib/supplementLab"
 import { checkLabReminders, downloadIcs, hasNativeReminders, syncNativeReminders } from "@/lib/labReminders"
+import { fetchHealthSince, hasHealthProvider, healthCompare, mergeHealthDay, requestHealthPermission } from "@/lib/health"
 import { coach, type CoachAction, type CoachMsg } from "@/lib/labCoach"
 import { LAB_CSS, Btn, Capsule, Card, FaceRow, Label, Sheet, SideChips, Stars, Stepper, XpToast } from "./ui"
 import { CheckInSheet, Onboarding, SuppPicker } from "./flows"
@@ -199,6 +200,28 @@ export default function LabApp() {
     if ("Notification" in window && Notification.permission === "default") Notification.requestPermission().catch(() => {})
   }, [s, update])
 
+  // Apple Health / Health Connect: bei Bedarf Berechtigung holen, dann regelmäßig synchronisieren (nur Store-App)
+  const toggleHealth = useCallback(async () => {
+    if (!s.healthEnabled) {
+      const granted = await requestHealthPermission().catch(() => false)
+      if (!granted) { setFlash("⚠️ Zugriff auf Health nicht erlaubt"); return }
+    }
+    update(p => { p.healthEnabled = !p.healthEnabled; return p })
+  }, [s.healthEnabled, update])
+
+  useEffect(() => {
+    if (!s.healthEnabled || !s.startDate) return
+    let cancelled = false
+    const run = async () => {
+      const data = await fetchHealthSince(s.startDate!, todayIso())
+      if (cancelled || !Object.keys(data).length) return
+      update(p => { for (const [date, d] of Object.entries(data)) mergeHealthDay(p, date, d); return p })
+    }
+    run()
+    const id = setInterval(run, 60 * 60_000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [s.healthEnabled, s.startDate, update])
+
   const today = todayIso()
   const toggleTook = useCallback((id: string) => {
     const on = (s.took[today] ?? []).includes(id)
@@ -362,6 +385,7 @@ export default function LabApp() {
       {helpOpen && <HelpSheet msgs={msgs} onAction={runAction} onClose={() => setHelpOpen(false)} />}
       {settingsOpen && <SettingsSheet s={s} onClose={() => setSettingsOpen(false)} update={update}
         onEnableReminders={enableReminders}
+        onToggleHealth={toggleHealth}
         onImport={next => { saveState(next); setS(next); setSettingsOpen(false); setFlash("✓ Daten importiert") }}
         onReset={() => { const e = s.demo ? restoreBackup() : emptyState(); saveState(e); setS(e); setSettingsOpen(false) }}
         onDemo={() => { backup(s); const d = demoState(); saveState(d); setS(d); setSettingsOpen(false) }} />}
@@ -865,6 +889,27 @@ function JourneyView({ s, wins, today, onPhase, goTab }: {
   )
 }
 
+/** Ø Schlaf/HRV aus Apple Health/Health Connect, Reset vs. Test — nur sichtbar, wenn Health-Daten vorliegen. */
+function HealthCompareCard({ s, base, test }: { s: LabState; base?: { start: string; end: string }; test: { start: string; end: string } }) {
+  const cmp = healthCompare(s, base, test)
+  if (!cmp || (cmp.testSleep == null && cmp.testHrv == null)) return null
+  const row = (emoji: string, label: string, baseV: number | null, testV: number | null, unit: string, decimals: number) => testV == null ? null : (
+    <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 0" }}>
+      <span style={{ fontWeight: 700, fontSize: "0.85rem" }}>{emoji} {label}</span>
+      <span style={{ fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>
+        {baseV != null ? `${baseV.toFixed(decimals)}${unit} → ` : ""}{testV.toFixed(decimals)}{unit}
+      </span>
+    </div>
+  )
+  return (
+    <Card style={{ marginBottom: 12 }}>
+      <Label style={{ marginBottom: 6 }}>🍎 Objektive Werte</Label>
+      {row("😴", "Schlaf", cmp.baseSleep, cmp.testSleep, " h", 1)}
+      {row("❤️", "HRV", cmp.baseHrv, cmp.testHrv, " ms", 0)}
+    </Card>
+  )
+}
+
 function PhaseSheet({ s, w, today, onClose, update, onVerdict }: {
   s: LabState; w: PhaseWindow | null; today: string; onClose: () => void; update: Update; onVerdict: (id: string) => void
 }) {
@@ -901,6 +946,7 @@ function PhaseSheet({ s, w, today, onClose, update, onVerdict }: {
             <Label style={{ marginBottom: 10 }}>Vergleich mit deinem Reset · {r.n} Check-ins</Label>
             <DeltaBars delta={r.delta} avg={r.avg} base={r.base} dims={r.dims} />
           </Card>
+          <HealthCompareCard s={s} base={phaseWindows(s).find(x => x.kind === "baseline")} test={w} />
         </>
       )}
       {state === "active" && !w.open && (
@@ -1067,6 +1113,8 @@ function VerdictSheet({ s, suppId, onClose, onSave }: { s: LabState; suppId: str
   const supp = s.supps.find(x => x.id === suppId)
   const r = testResult(s, suppId)
   const lib = libOf(supp)
+  const testWin = [...phaseWindows(s)].reverse().find(p => p.kind === "test" && p.suppId === suppId)
+  const baseWin = phaseWindows(s).find(p => p.kind === "baseline")
   return (
     <Sheet open onClose={onClose} title="⚖️ Dein Urteil">
       <div style={{ display: "flex", justifyContent: "center", margin: "4px 0 16px" }}><Capsule supp={supp} /></div>
@@ -1092,6 +1140,7 @@ function VerdictSheet({ s, suppId, onClose, onSave }: { s: LabState; suppId: str
             <Label style={{ marginBottom: 10 }}>Test vs. Reset · {r.n} Check-ins</Label>
             <DeltaBars delta={r.delta} avg={r.avg} base={r.base} dims={r.dims} />
           </Card>
+          {testWin && <HealthCompareCard s={s} base={baseWin} test={testWin} />}
         </>
       ) : (
         <Card style={{ marginBottom: 12, background: "var(--surface-2)", border: "none", boxShadow: "none", fontSize: "0.88rem", lineHeight: 1.5 }}>
@@ -1335,9 +1384,9 @@ function TimeSettings({ settings, onChange }: { settings: Settings; onChange: (s
   )
 }
 
-function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnableReminders }: {
+function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnableReminders, onToggleHealth }: {
   s: LabState; onClose: () => void; update: Update; onReset: () => void; onDemo: () => void
-  onImport: (s: LabState) => void; onEnableReminders: (withCalendar: boolean) => void
+  onImport: (s: LabState) => void; onEnableReminders: (withCalendar: boolean) => void; onToggleHealth: () => void
 }) {
   const [confirm, setConfirm] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
@@ -1401,6 +1450,23 @@ function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnable
           </>
         )}
       </Card>
+
+      {/* Apple Health / Health Connect — nur in der Store-App verfügbar */}
+      {hasHealthProvider() && (
+        <Card style={{ marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <Label>🍎 Apple Health / Health Connect</Label>
+            <button className="lab-press" aria-label="Health an/aus" onClick={onToggleHealth} style={{
+              width: 48, height: 28, borderRadius: 999, border: "none", position: "relative", background: s.healthEnabled ? "var(--accent)" : "var(--surface-2)",
+            }}>
+              <span style={{ position: "absolute", top: 3, left: s.healthEnabled ? 23 : 3, width: 22, height: 22, borderRadius: 999, background: "#fff", transition: "left .2s" }} />
+            </button>
+          </div>
+          <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", lineHeight: 1.45 }}>
+            Liest nur <b>Schlafdauer</b> und <b>HRV</b> — sonst nichts, kein Training, keine Schritte. Ergänzt deine gefühlte Bewertung um einen objektiven Wert. Bleibt komplett auf deinem Gerät, nie eine Voraussetzung.
+          </div>
+        </Card>
+      )}
 
       {/* Ziele */}
       <Card style={{ marginBottom: 12 }}>

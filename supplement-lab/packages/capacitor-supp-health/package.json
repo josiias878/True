@@ -1,0 +1,25 @@
+{
+  "name": "capacitor-supp-health",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Schlankes, lokales Capacitor-Plugin für Supplement Lab: liest nur Schlafdauer und HRV aus Apple Health (iOS) und Google Health Connect (Android). Nichts weiter — keine Schritte, kein Training.",
+  "main": "src/index.ts",
+  "module": "src/index.ts",
+  "types": "src/index.ts",
+  "files": [
+    "android/src/main/",
+    "android/build.gradle",
+    "src/",
+    "ios/Plugin",
+    "CapacitorSuppHealth.podspec"
+  ],
+  "author": "",
+  "license": "UNLICENSED",
+  "capacitor": {
+    "ios": { "src": "ios" },
+    "android": { "src": "android" }
+  },
+  "peerDependencies": {
+    "@capacitor/core": ">=8.0.0"
+  }
+}

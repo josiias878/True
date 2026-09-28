@@ -10,6 +10,8 @@ Preis-Entscheidung: **Reset-Woche gratis, dann 1,99 €/Monat oder Jahresabo**.
 - [x] Native lokale Benachrichtigungen (Check-in + Einnahme, mit Aktions-Buttons)
 - [x] Daten nur lokal, Backup-Export/-Import
 - [x] App-Icon & Splash (`assets/`) — ggf. später durch finales Branding ersetzen
+- [x] Apple Health / Health Connect (Schlaf + HRV) — eigenes Plugin, **ungetestet**,
+      muss einmal in Xcode/Android Studio gebaut werden
 
 ## 🔜 Als Nächstes (Code)
 - [ ] **Paywall & Abo** über RevenueCat (`@revenuecat/purchases-capacitor`):
@@ -19,7 +21,6 @@ Preis-Entscheidung: **Reset-Woche gratis, dann 1,99 €/Monat oder Jahresabo**.
 - [ ] Datenschutzerklärung + Impressum als Seiten in der App (Pflicht-Links)
 - [ ] Onboarding-Hinweis beim ersten Start: „Kein medizinischer Rat“ bestätigen
 - [ ] Englische Version (größerer Markt)
-- [ ] Optional: Apple Health / Health Connect (Schlafdaten automatisch)
 
 ## 🔜 Als Nächstes (du, einmalig)
 - [ ] **App-Name final** festlegen (prüfen, ob im Store frei) und Bundle-ID in
@@ -37,6 +38,7 @@ Preis-Entscheidung: **Reset-Woche gratis, dann 1,99 €/Monat oder Jahresabo**.
 | Medizinische Versprechen | Nur „kann …“-Formulierungen, deutlicher Hinweis „kein medizinischer Rat“, keine Diagnosen |
 | Gesundheitsdaten (DSGVO Art. 9) | Alles lokal, kein Tracking → Privacy-Label „Keine Daten erfasst“ |
 | Abo ohne Mehrwert | Reset-Woche vollständig gratis nutzbar, klare Paywall-Texte, Wiederherstellen-Button |
+| HealthKit-Auflagen (Apple darf Health-Daten nie für Werbung nutzen/verkaufen) | Nur lokal, nie hochgeladen, kein Tracking, in der App und Datenschutzerklärung klar benennen |
 
 ## Preisrechnung (Deutschland)
 1,99 € brutto → 1,67 € netto (19 % USt) → abzüglich 15 % Store-Gebühr ≈ **1,42 € pro Monat und Nutzer**.

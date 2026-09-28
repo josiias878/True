@@ -537,6 +537,9 @@ export interface Verdict { decision: Decision; note: string; date: string }
 
 export interface Reminders { enabled: boolean; checkin: string; intake: boolean }
 
+/** Objektive Tageswerte aus Apple Health / Google Health Connect (nur Store-App, optional). */
+export interface HealthDay { sleepHours?: number; hrvMs?: number }
+
 export interface LabState {
   v: 2
   startDate: string | null
@@ -553,6 +556,8 @@ export interface LabState {
   xp: number
   badges: string[]
   demo?: boolean
+  health: Record<string, HealthDay> // Datum → Schlaf/HRV aus Apple Health / Health Connect
+  healthEnabled: boolean
 }
 
 export const STORAGE_KEY = "true-supplement-lab-v1"
@@ -562,6 +567,7 @@ export function emptyState(): LabState {
     v: 2, startDate: null, goals: [], supps: [], phases: [], checkins: {}, verdicts: {},
     slotOverrides: {}, took: {}, tookAt: {}, settings: { ...DEFAULT_SETTINGS },
     reminders: { enabled: false, checkin: "22:00", intake: true }, xp: 0, badges: [],
+    health: {}, healthEnabled: false,
   }
 }
 
@@ -576,6 +582,8 @@ export function hydrate(raw: unknown): LabState {
     supps: (p.supps ?? []).map(x => ({ ...x, mode: x.mode ?? "test" })),
     took: p.took ?? {},
     tookAt: p.tookAt ?? {},
+    health: p.health ?? {},
+    healthEnabled: p.healthEnabled ?? false,
   }
   for (const c of Object.values(s.checkins)) {
     const legacy = c.tags.filter(t => LEGACY_TAG_SIDES[t])
