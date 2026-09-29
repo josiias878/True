@@ -618,12 +618,23 @@ export function saveState(s: LabState) {
 export const SUPP_COLORS = ["#3987e5", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#9085e9", "#e34948", "#008300"]
 export function suppColor(s: MySupp | undefined) { return s ? SUPP_COLORS[s.color % SUPP_COLORS.length] : "#8a8a99" }
 
+/**
+ * Kolbis Standard-Empfehlung: Langsam wirkende Nicht-Peptide (Vitamine, Mineralien, Kreatin …)
+ * lassen sich in ein paar Tagen kaum sinnvoll testen — die nimmt man einfach durchgehend.
+ * Peptide bleiben immer Testkandidaten, auch bei langsamem Wirkeintritt (bewusste Kur).
+ */
+export function defaultMode(lib: LibSupp): SuppMode {
+  if (lib.rx) return "konstant"
+  if (lib.onset === "langsam" && lib.category !== "Peptide") return "konstant"
+  return "test"
+}
+
 export function makeSupp(lib: LibSupp | null, name: string, existing: MySupp[], dose = ""): MySupp {
   const used = new Set(existing.map(s => s.color))
   let color = 0
   while (used.has(color) && color < SUPP_COLORS.length) color++
   if (color >= SUPP_COLORS.length) color = existing.length % SUPP_COLORS.length
-  if (lib) return { id: lib.id, name: lib.name, emoji: lib.emoji, dose: dose || lib.dose, lib: lib.id, color, mode: lib.rx ? "konstant" : "test" }
+  if (lib) return { id: lib.id, name: lib.name, emoji: lib.emoji, dose: dose || lib.dose, lib: lib.id, color, mode: defaultMode(lib) }
   return { id: `custom-${Date.now().toString(36)}-${existing.length}`, name, emoji: "💊", dose, color, mode: "test" }
 }
 

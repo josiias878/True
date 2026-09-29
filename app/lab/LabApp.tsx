@@ -249,6 +249,7 @@ export default function LabApp() {
       case "check": update(p => startCheck(p, a.suppId, today, 3), { amount: 10, label: "Beobachtung gestartet" }); break
       case "resolveCheck": update(p => resolveCheck(p, a.suppId, a.keep, today), { amount: 20, label: "Entschieden" }); break
       case "konstant": update(p => { p.supps = p.supps.map(x => x.id === a.suppId ? { ...x, mode: "konstant" } : x); return p }); break
+      case "konstantAll": update(p => { p.supps = p.supps.map(x => a.suppIds.includes(x.id) ? { ...x, mode: "konstant" } : x); return p }); break
       case "take": toggleTook(a.suppId); break
       case "reminders": enableReminders(true); break
       case "dismiss": {
@@ -419,6 +420,48 @@ export default function LabApp() {
 // ÜBERSICHT (Dashboard)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/** Sperrt den Check-in bis zur gewünschten Uhrzeit — Countdown, Freischalten nur per Long-Press
+ *  (statt eines normalen Buttons), damit niemand aus Versehen vorzeitig etwas eintippt. */
+function LockedCheckin({ unlockAt, now, onUnlock }: { unlockAt: string; now: Date; onUnlock: () => void }) {
+  const HOLD_MS = 900
+  const [pressing, setPressing] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const start = () => {
+    setPressing(true)
+    timerRef.current = setTimeout(onUnlock, HOLD_MS)
+  }
+  const cancel = () => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null }
+    setPressing(false)
+  }
+  const [h, m] = unlockAt.split(":").map(Number)
+  const target = new Date(now); target.setHours(h, m, 0, 0)
+  const remaining = Math.max(0, target.getTime() - now.getTime())
+  const R = 30, C = 2 * Math.PI * R
+  return (
+    <div className="lab-rise lab-card" style={{ padding: 18, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, textAlign: "center" }}>
+      <div style={{ fontWeight: 900, fontSize: "1.05rem" }}>🔒 Check-in ab {unlockAt} Uhr</div>
+      <div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>
+        Noch <b style={{ color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>{fmtCountdown(remaining)}</b>
+      </div>
+      <button
+        onPointerDown={start} onPointerUp={cancel} onPointerLeave={cancel} onPointerCancel={cancel}
+        aria-label="Lange drücken zum vorzeitigen Freischalten"
+        style={{ width: 72, height: 72, borderRadius: "50%", border: "none", background: "none", position: "relative", cursor: "pointer", marginTop: 6, touchAction: "none" }}
+      >
+        <svg width={72} height={72} style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
+          <circle cx={36} cy={36} r={R} fill="none" stroke="var(--border)" strokeWidth={5} />
+          <circle cx={36} cy={36} r={R} fill="none" stroke="var(--accent)" strokeWidth={5} strokeLinecap="round"
+            strokeDasharray={C} strokeDashoffset={pressing ? 0 : C}
+            style={{ transition: pressing ? `stroke-dashoffset ${HOLD_MS}ms linear` : "none" }} />
+        </svg>
+        <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem" }}>🔓</span>
+      </button>
+      <div style={{ fontSize: "0.68rem", color: "var(--text-dim)" }}>Lange drücken zum vorzeitigen Freischalten</div>
+    </div>
+  )
+}
+
 function Dashboard({ s, wins, today, now, msgs, onAction, onHelp, onCheckin, onQuick, onTake, onSupp, onPhase, update, goTab }: {
   s: LabState; wins: PhaseWindow[]; today: string; now: Date; msgs: CoachMsg[]
   onAction: (a: CoachAction, id: string) => void; onHelp: () => void
@@ -436,6 +479,16 @@ function Dashboard({ s, wins, today, now, msgs, onAction, onHelp, onCheckin, onQ
   const tookAt = s.tookAt[today] ?? {}
   const color = w?.kind === "test" || w?.kind === "check" ? suppColor(s.supps.find(x => x.id === w.suppId)) : w?.kind === "stack" ? "#eda100" : w?.kind === "washout" ? "#3987e5" : "#2ECC8A"
   const top = msgs[0]
+
+  // Check-in erst ab der gewünschten Uhrzeit — früher nur per Long-Press entsperrbar
+  const [unlockedFor, setUnlockedFor] = useState<string | null>(null)
+  const checkinTargetMs = useMemo(() => {
+    if (!s.reminders.enabled) return null
+    const [h, m] = s.reminders.checkin.split(":").map(Number)
+    const d = new Date(now); d.setHours(h, m, 0, 0)
+    return d.getTime()
+  }, [s.reminders.enabled, s.reminders.checkin, now])
+  const checkinLocked = checkinTargetMs != null && now.getTime() < checkinTargetMs && unlockedFor !== today
 
   // Countdown bis zum Ende der aktuellen Phase bzw. bis zum Start
   const target = notStarted ? new Date(first.start + "T00:00:00").getTime() : w && !w.open ? phaseEndsAt(w) : null
@@ -507,16 +560,17 @@ function Dashboard({ s, wins, today, now, msgs, onAction, onHelp, onCheckin, onQ
             </div>
           )}
         </Card>
+      ) : checkinLocked ? (
+        <LockedCheckin unlockAt={s.reminders.checkin} now={now} onUnlock={() => setUnlockedFor(today)} />
       ) : (
         <div className="lab-rise lab-card" style={{ padding: 18, outline: "2px solid var(--accent)", boxShadow: "0 10px 30px rgba(46,204,138,.18)" }}>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12 }}>
             <div style={{ fontWeight: 900, fontSize: "1.15rem" }}>Wie war dein Tag?</div>
-            <div style={{ fontWeight: 900, color: "var(--accent)", fontSize: "0.8rem" }}>1 Tipp · +20 XP</div>
+            <div style={{ fontWeight: 900, color: "var(--accent)", fontSize: "0.8rem" }}>+20 XP</div>
           </div>
-          <FaceRow onPick={v => onQuick(today, v)} faces={FACES} labels={FACE_LABELS} />
-          <button onClick={() => onCheckin(today)} style={{ background: "none", border: "none", color: "var(--text-dim)", fontWeight: 700, fontSize: "0.8rem", marginTop: 10, cursor: "pointer" }}>
-            oder einzeln bewerten: Schlaf, Energie, Stimmung … →
-          </button>
+          {/* Führt direkt in die einzelnen Bereiche (Schlaf, Energie, …) — das grobe Gesamtgefühl
+              allein hilft beim Einordnen der Supplements kaum. */}
+          <FaceRow onPick={() => onCheckin(today)} faces={FACES} labels={FACE_LABELS} />
         </div>
       ))}
       {missedYesterday && (
@@ -581,8 +635,13 @@ function Dashboard({ s, wins, today, now, msgs, onAction, onHelp, onCheckin, onQ
           <Label>Deine Supplements · {s.supps.length}</Label>
           <button onClick={() => onAction({ kind: "pickNext" }, "list")} style={{ background: "none", border: "none", color: "var(--accent)", fontWeight: 800, fontSize: "0.78rem", cursor: "pointer" }}>+ Hinzufügen</button>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {supps.map(x => {
+        {(() => {
+          const groups: { label: string; keys: SuppStatusKey[] }[] = [
+            { label: "Fest im Stack", keys: ["constant"] },
+            { label: "Im Test", keys: ["testing", "waiting", "observing", "verdict", "kept", "maybe"] },
+            { label: "Pausiert", keys: ["paused", "dropped"] },
+          ]
+          const row = (x: MySupp) => {
             const st = suppStatus(s, x.id, today)
             const info = takingInfo(s, x.id)
             const style = STATUS_STYLE[st.key]
@@ -603,8 +662,24 @@ function Dashboard({ s, wins, today, now, msgs, onAction, onHelp, onCheckin, onQ
                 <span style={{ color: "var(--text-dim)", fontSize: "1rem" }}>›</span>
               </button>
             )
-          })}
-        </div>
+          }
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {groups.map(g => {
+                const items = supps.filter(x => g.keys.includes(suppStatus(s, x.id, today).key))
+                if (!items.length) return null
+                return (
+                  <div key={g.label}>
+                    <div style={{ fontSize: "0.7rem", fontWeight: 900, letterSpacing: ".04em", color: "var(--text-dim)", marginBottom: 4 }}>
+                      {g.label.toUpperCase()} · {items.length}
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>{items.map(row)}</div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
       </Card>
 
       {/* Abzeichen */}
