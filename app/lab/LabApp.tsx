@@ -14,11 +14,12 @@ import {
 import { checkLabReminders, downloadIcs, hasNativeReminders, syncNativeReminders } from "@/lib/labReminders"
 import { fetchHealthSince, hasHealthProvider, healthCompare, mergeHealthDay, requestHealthPermission } from "@/lib/health"
 import { coach, type CoachAction, type CoachMsg } from "@/lib/labCoach"
-import { LAB_CSS, Btn, Capsule, Card, FaceRow, Label, Sheet, SideChips, Stars, Stepper, XpToast } from "./ui"
+import { LAB_CSS, Btn, Capsule, Card, FaceRow, Icon, IconBtn, Label, Sheet, SideChips, Stars, Stepper, XpToast } from "./ui"
 import { CheckInSheet, Onboarding, SuppPicker } from "./flows"
 import { DeltaBars, DimLineChart, MoodCalendar, MoodCurve, ProCon } from "./charts"
-import { CoachBubble, FloatingMascot, HelpSheet, Mascot } from "./mascot"
+import { CoachBubble, HelpSheet, MASCOT_NAME, Mascot } from "./mascot"
 import { InstallHint } from "./install"
+import { DailyRound, dayProgress, roundSteps, type RoundStep } from "./round"
 
 type Tab = "heute" | "reise" | "daten" | "stack"
 
@@ -149,6 +150,8 @@ export default function LabApp() {
   const [flash, setFlash] = useState<string | null>(init.flash)
   const [newBadge, setNewBadge] = useState<string | null>(null)
   const [confetti, setConfetti] = useState(false)
+  const [round, setRound] = useState<RoundStep[] | null>(null)
+  const [unlockedFor, setUnlockedFor] = useState<string | null>(null)
   const now = useNow()
 
   useEffect(() => { try { localStorage.setItem("true-lab-tab", tab) } catch {} }, [tab])
@@ -266,6 +269,15 @@ export default function LabApp() {
 
   const msgs = useMemo(() => coach(s, now, dismissed), [s, now, dismissed])
 
+  // Check-in erst ab der gewünschten Uhrzeit — früher nur per Long-Press entsperrbar
+  const checkinLocked = useMemo(() => {
+    if (!s.reminders.enabled || unlockedFor === today) return false
+    const [h, m] = s.reminders.checkin.split(":").map(Number)
+    const d = new Date(now); d.setHours(h, m, 0, 0)
+    return now.getTime() < d.getTime()
+  }, [s.reminders.enabled, s.reminders.checkin, unlockedFor, today, now])
+  const pending = useMemo(() => roundSteps(s, today, now, checkinLocked), [s, today, now, checkinLocked])
+
   // ── Onboarding ──
   if (!s.startDate) {
     return (
@@ -298,64 +310,64 @@ export default function LabApp() {
         position: "sticky", top: 0, zIndex: 100, background: "var(--nav-bg)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
         borderBottom: "1px solid var(--border)",
       }}>
-        <div style={{ maxWidth: 640, margin: "0 auto", padding: "10px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ maxWidth: 640, margin: "0 auto", padding: "10px 16px", display: "flex", alignItems: "center", gap: 8 }}>
           {!STORE_MODE && <Link href="/home" aria-label="Zurück zu TRUE" style={{ color: "var(--text-dim)", textDecoration: "none", fontSize: "1.1rem", padding: "4px 6px 4px 0" }}>←</Link>}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 900, fontSize: "1.05rem", lineHeight: 1.1 }}>Supplement Lab {s.demo && <span style={{ fontSize: "0.65rem", background: "var(--warning-dim)", color: "var(--warning)", padding: "2px 6px", borderRadius: 6, verticalAlign: "middle" }}>BEISPIEL</span>}</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-              <span style={{ fontSize: "0.7rem", fontWeight: 800, color: "var(--text-dim)", whiteSpace: "nowrap" }}>{lvl.emoji} {lvl.name}</span>
-              <div style={{ flex: 1, maxWidth: 120, height: 5, borderRadius: 3, background: "var(--surface-2)", overflow: "hidden" }}>
-                <div style={{ width: `${lvl.progress * 100}%`, height: "100%", background: "var(--lab-grad)", transition: "width .8s" }} />
-              </div>
-              <span style={{ fontSize: "0.68rem", color: "var(--text-dim)", fontVariantNumeric: "tabular-nums" }}>{s.xp} XP</span>
-            </div>
+            <div style={{ fontWeight: 900, fontSize: "1.1rem", letterSpacing: "-.01em", lineHeight: 1.1 }}>Supplement Lab {s.demo && <span style={{ fontSize: "0.62rem", background: "var(--warning-dim)", color: "var(--warning)", padding: "2px 6px", borderRadius: 6, verticalAlign: "middle" }}>BEISPIEL</span>}</div>
+            <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-dim)", marginTop: 2 }}>{lvl.emoji} {lvl.name}</div>
           </div>
           <div title={`${st} Tage am Stück eingecheckt`} style={{
-            display: "flex", alignItems: "center", gap: 4, padding: "6px 10px", borderRadius: 999,
+            display: "flex", alignItems: "center", gap: 4, height: 36, padding: "0 12px", borderRadius: 999,
             background: st ? "rgba(235,104,52,.14)" : "var(--surface-2)", fontWeight: 900, fontSize: "0.85rem",
           }}>
-            <span className={st ? "lab-wiggle" : undefined} style={{ filter: st ? undefined : "grayscale(1)", display: "inline-block" }}>🔥</span>{st}
+            <span style={{ filter: st ? undefined : "grayscale(1)", display: "inline-block" }}>🔥</span>{st}
           </div>
-          <button onClick={() => setSettingsOpen(true)} className="lab-press" aria-label="Einstellungen" style={{
-            width: 36, height: 36, borderRadius: 999, border: "none", background: "var(--surface-2)", fontSize: "1rem",
-          }}>⚙️</button>
+          <IconBtn label={`${MASCOT_NAME} fragen: Tipps und Hilfe`} onClick={() => setHelpOpen(true)}><Mascot mood={msgs[0]?.mood ?? "happy"} size={26} /></IconBtn>
+          <IconBtn label="Einstellungen" onClick={() => setSettingsOpen(true)}><Icon name="settings" /></IconBtn>
         </div>
       </header>
 
-      <main style={{ maxWidth: 640, margin: "0 auto", padding: "16px 16px calc(150px + env(safe-area-inset-bottom))" }}>
+      <main style={{ maxWidth: 640, margin: "0 auto", padding: "16px 16px calc(120px + env(safe-area-inset-bottom))" }}>
         {tab === "heute" && <Dashboard s={s} wins={wins} today={today} now={now} msgs={msgs} onAction={runAction} onHelp={() => setHelpOpen(true)}
           onCheckin={setCheckinDate} onQuick={(d, v) => saveCheckin(quickCheckin(s, d, v))} onTake={toggleTook} onSupp={setSuppSheet}
-          onPhase={setPhaseSheet} update={update} goTab={setTab} />}
+          onPhase={setPhaseSheet} update={update} goTab={setTab}
+          pending={pending} onRound={() => setRound(pending)} checkinLocked={checkinLocked} onUnlock={() => { setUnlockedFor(today); setRound(roundSteps(s, today, now, false)) }} />}
         {tab === "reise" && <JourneyView s={s} wins={wins} today={today} onPhase={setPhaseSheet} goTab={setTab} />}
         {tab === "daten" && <DataView s={s} wins={wins} onVerdict={setVerdictFor} onCheckin={setCheckinDate} />}
         {tab === "stack" && <StackView s={s} update={update} onVerdict={setVerdictFor} onStartStack={() => runAction({ kind: "startStack" }, "stack")} />}
       </main>
 
-      <FloatingMascot mood={msgs[0]?.mood ?? "happy"} badge={msgs.filter(m => m.mood === "alert" || m.id.startsWith("verdict-") || m.id.startsWith("resolve-")).length} onClick={() => setHelpOpen(true)} />
-
-      {/* ── Tab-Leiste ── */}
-      <nav style={{
-        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200, background: "var(--nav-bg)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
-        borderTop: "1px solid var(--border)", paddingBottom: "env(safe-area-inset-bottom)",
+      {/* ── Tab-Leiste: schwebende Pille ── */}
+      <nav aria-label="Bereiche" style={{
+        position: "fixed", left: 0, right: 0, bottom: "calc(12px + env(safe-area-inset-bottom))", zIndex: 200,
+        display: "flex", justifyContent: "center", padding: "0 16px", pointerEvents: "none",
       }}>
-        <div style={{ maxWidth: 640, margin: "0 auto", display: "flex", height: 66 }}>
-          {([["heute", "🏠", "Übersicht"], ["reise", "🗺️", "Verlauf"], ["daten", "📈", "Auswertung"], ["stack", "🏆", "Stack"]] as const).map(([id, e, l]) => {
+        <div style={{
+          pointerEvents: "auto", display: "flex", gap: 4, padding: 6, borderRadius: 26, width: "100%", maxWidth: 420,
+          background: "var(--nav-bg)", backdropFilter: "blur(24px) saturate(1.4)", WebkitBackdropFilter: "blur(24px) saturate(1.4)",
+          border: "1px solid color-mix(in srgb, var(--border) 70%, transparent)", boxShadow: "0 12px 36px rgba(0,0,0,.18)",
+        }}>
+          {([["heute", "home", "Heute"], ["reise", "path", "Verlauf"], ["daten", "chart", "Auswertung"], ["stack", "trophy", "Stack"]] as const).map(([id, icon, l]) => {
             const on = tab === id
             return (
-              <button key={id} onClick={() => setTab(id)} className="lab-press" style={{
-                flex: 1, border: "none", background: "none", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3,
-                color: on ? "var(--accent)" : "var(--text-dim)", fontWeight: on ? 800 : 600, fontSize: "0.68rem",
+              <button key={id} onClick={() => setTab(id)} className="lab-press" aria-current={on ? "page" : undefined} style={{
+                flex: on ? 1.6 : 1, height: 50, border: "none", borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+                background: on ? "var(--accent)" : "transparent", color: on ? "#fff" : "var(--text-dim)",
+                fontWeight: 800, fontSize: "0.78rem", transition: "flex .3s cubic-bezier(.3,.9,.3,1), background .25s, color .25s", overflow: "hidden", whiteSpace: "nowrap",
               }}>
-                <span style={{
-                  fontSize: "1.25rem", width: 50, height: 30, borderRadius: 15, display: "flex", alignItems: "center", justifyContent: "center",
-                  background: on ? "var(--accent-dim)" : "transparent", filter: on ? undefined : "grayscale(.6)", transition: "all .2s",
-                }}>{e}</span>
-                {l}
+                <Icon name={icon} />
+                {on && <span className="lab-fade">{l}</span>}
               </button>
             )
           })}
         </div>
       </nav>
+
+      {round && <DailyRound s={s} today={today} steps={round}
+        onTake={id => update(p => { markTaken(p, today, id); return p }, { amount: 5, label: "Eingenommen" })}
+        onCheckin={saveCheckin}
+        onVerdict={(id, d) => { update(p => applyVerdict(p, id, d, "In der Tagesrunde entschieden", today), { amount: 50, label: "Urteil gefällt" }); if (d === "keep") setConfetti(true) }}
+        onClose={() => setRound(null)} />}
 
       {/* ── Overlays ── */}
       {checkinDate && (
@@ -402,7 +414,7 @@ export default function LabApp() {
         onReset={() => { const e = s.demo ? restoreBackup() : emptyState(); saveState(e); setS(e); setSettingsOpen(false) }}
         onDemo={() => { backup(s); const d = demoState(); saveState(d); setS(d); setSettingsOpen(false) }} />}
 
-      {newBadge && (() => {
+      {newBadge && !round && (() => {
         const b = BADGES.find(x => x.id === newBadge)!
         return (
           <div className="lab-fade" onClick={() => setNewBadge(null)} style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(5,5,12,.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
@@ -473,11 +485,65 @@ function LockedCheckin({ unlockAt, now, onUnlock }: { unlockAt: string; now: Dat
   )
 }
 
-function Dashboard({ s, wins, today, now, msgs, onAction, onHelp, onCheckin, onQuick, onTake, onSupp, onPhase, update, goTab }: {
+/** Großer Kolbi oben auf „Heute“: Füllstand = Tagesfortschritt, Tipp startet die Tagesrunde. */
+function KolbiHero({ s, today, pending, sleepy, lockedUntil, onRound }: {
+  s: LabState; today: string; pending: RoundStep[]; sleepy: boolean; lockedUntil: string | null; onRound: () => void
+}) {
+  const [tapped, setTapped] = useState(false)
+  const fill = dayProgress(s, today)
+  const st = streak(s)
+  const n = pending.length
+  const reveal = pending.some(p => p.kind === "reveal")
+  const mood = n ? (reveal ? "think" : sleepy ? "sleepy" : "happy") : fill >= 1 ? "party" : sleepy ? "sleepy" : "happy"
+  const go = () => {
+    if (!n || tapped) return
+    setTapped(true)
+    setTimeout(() => { onRound(); setTapped(false) }, 380)
+  }
+  const title = n
+    ? reveal && n === 1 ? "Ein Ergebnis wartet auf dich" : `${n} ${n === 1 ? "Sache" : "Dinge"} für jetzt`
+    : fill >= 1 ? "Heute alles erledigt" : "Gerade nichts zu tun"
+  const sub = n
+    ? "Tipp mich an, ich führe dich durch."
+    : fill >= 1 ? (st > 1 ? `${st} Tage am Stück. Stark!` : "Bis morgen!")
+    : lockedUntil ? `Check-in ab ${lockedUntil} Uhr` : "Ich melde mich, wenn wieder etwas dran ist."
+  return (
+    <div role={n ? "button" : undefined} tabIndex={n ? 0 : undefined} aria-label={n ? `Tagesrunde starten: ${title}` : undefined}
+      onClick={go} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") go() }}
+      className={`lab-rise ${n ? "lab-press" : ""}`} style={{
+        position: "relative", overflow: "hidden", borderRadius: 30, padding: "22px 20px 20px", textAlign: "center",
+        background: "radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--accent) 16%, var(--surface)) 0%, var(--surface) 70%)",
+        border: "1px solid color-mix(in srgb, var(--border) 70%, transparent)", boxShadow: "0 1px 2px rgba(0,0,0,.04), 0 12px 32px rgba(0,0,0,.07)",
+        cursor: n ? "pointer" : "default",
+      }}>
+      <div style={{ position: "relative", width: 140, height: 140, margin: "0 auto 6px" }}>
+        {n > 0 && <span className="lab-pulse" style={{ position: "absolute", inset: 18, borderRadius: 999 }} />}
+        <div className={tapped ? "lab-squish" : "lab-float"} style={{ position: "relative" }}>
+          <Mascot mood={mood} size={140} fill={0.12 + fill * 0.88} glow={st >= 3} murky={sleepy} />
+        </div>
+        {tapped && [42, 50, 58].map((l, k) => <span key={l} className="lab-drip" style={{ left: `${l}%`, top: "86%", animationDelay: `${k * 0.07}s` }} />)}
+      </div>
+      <div style={{ fontSize: "1.3rem", fontWeight: 900, letterSpacing: "-.01em" }}>{title}</div>
+      <div style={{ fontSize: "0.86rem", color: "var(--text-dim)", marginTop: 4 }}>{sub}</div>
+      {n > 0 && (
+        <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
+          {pending.map((p, k) => {
+            const x = p.kind === "take" ? s.supps.find(q => q.id === p.id) : p.kind === "reveal" ? s.supps.find(q => q.id === p.suppId) : null
+            const e = p.kind === "take" ? x?.emoji : p.kind === "checkin" ? "⭐" : p.kind === "sides" ? "🩺" : "🎁"
+            return <span key={k} style={{ width: 32, height: 32, borderRadius: 11, background: "var(--surface-2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem" }}>{e}</span>
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Dashboard({ s, wins, today, now, msgs, onAction, onHelp, onCheckin, onQuick, onTake, onSupp, onPhase, update, goTab, pending, onRound, checkinLocked, onUnlock }: {
   s: LabState; wins: PhaseWindow[]; today: string; now: Date; msgs: CoachMsg[]
   onAction: (a: CoachAction, id: string) => void; onHelp: () => void
   onCheckin: (d: string) => void; onQuick: (d: string, v: number) => void; onTake: (id: string) => void; onSupp: (id: string) => void
   onPhase: (w: PhaseWindow) => void; update: Update; goTab: (t: Tab) => void
+  pending: RoundStep[]; onRound: () => void; checkinLocked: boolean; onUnlock: () => void
 }) {
   const w = wins.find(x => today >= x.start && today <= x.end) ?? null
   const first = wins[0]
@@ -489,17 +555,10 @@ function Dashboard({ s, wins, today, now, msgs, onAction, onHelp, onCheckin, onQ
   const took = s.took[today] ?? []
   const tookAt = s.tookAt[today] ?? {}
   const color = w?.kind === "test" || w?.kind === "check" ? suppColor(s.supps.find(x => x.id === w.suppId)) : w?.kind === "stack" ? "#eda100" : w?.kind === "washout" ? "#3987e5" : "#2ECC8A"
-  const top = msgs[0]
-
-  // Check-in erst ab der gewünschten Uhrzeit — früher nur per Long-Press entsperrbar
-  const [unlockedFor, setUnlockedFor] = useState<string | null>(null)
-  const checkinTargetMs = useMemo(() => {
-    if (!s.reminders.enabled) return null
-    const [h, m] = s.reminders.checkin.split(":").map(Number)
-    const d = new Date(now); d.setHours(h, m, 0, 0)
-    return d.getTime()
-  }, [s.reminders.enabled, s.reminders.checkin, now])
-  const checkinLocked = checkinTargetMs != null && now.getTime() < checkinTargetMs && unlockedFor !== today
+  // Was die Tagesrunde abdeckt, muss Kolbi nicht zusätzlich als Tipp anzeigen
+  const inRound = (id: string) => id === "checkin" || id.startsWith("take-") || id.startsWith("verdict-")
+  const tips = msgs.filter(m => !inRound(m.id))
+  const top = tips[0]
 
   // Countdown bis zum Ende der aktuellen Phase bzw. bis zum Start
   const target = notStarted ? new Date(first.start + "T00:00:00").getTime() : w && !w.open ? phaseEndsAt(w) : null
@@ -514,8 +573,10 @@ function Dashboard({ s, wins, today, now, msgs, onAction, onHelp, onCheckin, onQ
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {/* Kolbi sagt, was dran ist */}
-      {top && <CoachBubble msg={top} onAction={onAction} more={msgs.length - 1} onMore={onHelp} />}
+      {!notStarted && <KolbiHero s={s} today={today} pending={pending} sleepy={!!missedYesterday && !checked}
+        lockedUntil={!checked && checkinLocked ? s.reminders.checkin : null} onRound={onRound} />}
+      {/* Kolbi sagt, was sonst noch ansteht */}
+      {top && <CoachBubble msg={top} onAction={onAction} more={tips.length - 1} onMore={onHelp} compact={!notStarted} />}
       {STORE_MODE && !hasNativeReminders() && <InstallHint compact />}
 
       {/* Status + Countdown */}
@@ -572,18 +633,8 @@ function Dashboard({ s, wins, today, now, msgs, onAction, onHelp, onCheckin, onQ
           )}
         </Card>
       ) : checkinLocked ? (
-        <LockedCheckin unlockAt={s.reminders.checkin} now={now} onUnlock={() => setUnlockedFor(today)} />
-      ) : (
-        <div className="lab-rise lab-card" style={{ padding: 18, outline: "2px solid var(--accent)", boxShadow: "0 10px 30px rgba(46,204,138,.18)" }}>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12 }}>
-            <div style={{ fontWeight: 900, fontSize: "1.15rem" }}>Wie war dein Tag?</div>
-            <div style={{ fontWeight: 900, color: "var(--accent)", fontSize: "0.8rem" }}>+20 XP</div>
-          </div>
-          {/* Führt direkt in die einzelnen Bereiche (Schlaf, Energie, …) — das grobe Gesamtgefühl
-              allein hilft beim Einordnen der Supplements kaum. */}
-          <FaceRow onPick={() => onCheckin(today)} faces={FACES} labels={FACE_LABELS} />
-        </div>
-      ))}
+        <LockedCheckin unlockAt={s.reminders.checkin} now={now} onUnlock={onUnlock} />
+      ) : null)}
       {missedYesterday && (
         <div className="lab-card" style={{ padding: 14 }}>
           <div style={{ fontSize: "0.85rem", fontWeight: 800, marginBottom: 8 }}>🕐 Gestern vergessen? 1 Tipp zum Nachtragen</div>

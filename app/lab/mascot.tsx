@@ -7,7 +7,11 @@ export const MASCOT_NAME = "Kolbi"
 
 // ── Kolbi: kleiner Laborkolben mit Gesicht ─────────────────────────────────────
 
-export function Mascot({ mood = "happy", size = 56 }: { mood?: Mood; size?: number }) {
+/**
+ * fill: Füllstand 0–1 (Tamagotchi: wie viel heute erledigt ist) · glow: Serie läuft · murky: vernachlässigt
+ */
+export function Mascot({ mood = "happy", size = 56, fill, glow, murky }: { mood?: Mood; size?: number; fill?: number; glow?: boolean; murky?: boolean }) {
+  const level = fill == null ? 0 : -8 + (1 - Math.max(0, Math.min(1, fill))) * 52
   const uid = useId().replace(/:/g, "")
   const eyes = {
     happy: <><ellipse cx="41" cy="60" rx="4" ry="5" fill="#1a1c20" /><ellipse cx="59" cy="60" rx="4" ry="5" fill="#1a1c20" /><circle cx="42.5" cy="58" r="1.4" fill="#fff" /><circle cx="60.5" cy="58" r="1.4" fill="#fff" /></>,
@@ -24,11 +28,14 @@ export function Mascot({ mood = "happy", size = 56 }: { mood?: Mood; size?: numb
     sleepy: <path d="M46 71 q4 3 8 0" stroke="#1a1c20" strokeWidth="2.4" fill="none" strokeLinecap="round" />,
   }[mood]
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" role="img" aria-label={`${MASCOT_NAME}, dein Lab-Coach`} style={{ display: "block", overflow: "visible" }}>
+    <svg width={size} height={size} viewBox="0 0 100 100" role="img" aria-label={`${MASCOT_NAME}, dein Lab-Coach`} style={{
+      display: "block", overflow: "visible",
+      filter: glow ? "drop-shadow(0 0 10px rgba(46,204,138,.75))" : undefined, transition: "filter .6s",
+    }}>
       <defs>
         <linearGradient id={`liq-${uid}`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#2ECC8A" />
-          <stop offset="1" stopColor="#3987e5" />
+          <stop offset="0" stopColor={murky ? "#8f9a7a" : "#2ECC8A"} />
+          <stop offset="1" stopColor={murky ? "#6b7280" : "#3987e5"} />
         </linearGradient>
         <clipPath id={`clip-${uid}`}>
           <path d="M40 14 h20 v22 l20 36 c5 9 -1 20 -11 20 H31 c-10 0 -16 -11 -11 -20 l20 -36 z" />
@@ -37,7 +44,9 @@ export function Mascot({ mood = "happy", size = 56 }: { mood?: Mood; size?: numb
       {/* Glas */}
       <path d="M40 14 h20 v22 l20 36 c5 9 -1 20 -11 20 H31 c-10 0 -16 -11 -11 -20 l20 -36 z" fill="#eafaf3" />
       <g clipPath={`url(#clip-${uid})`}>
-        <path d="M10 50 C 28 44, 40 54, 52 49 S 78 44, 92 50 V 100 H10 Z" fill={`url(#liq-${uid})`} />
+        <g style={{ transform: `translateY(${level}px)`, transition: "transform 1s cubic-bezier(.3,.9,.3,1)" }}>
+          <path className="lab-wave" d="M-20 50 C -2 44, 10 54, 22 49 S 48 44, 62 50 S 88 56, 100 49 S 124 44, 140 50 V 160 H-20 Z" fill={`url(#liq-${uid})`} />
+        </g>
         <circle cx="34" cy="82" r="3" fill="#fff" opacity=".5" />
         <circle cx="66" cy="78" r="2.2" fill="#fff" opacity=".5" />
       </g>
@@ -61,15 +70,16 @@ export function Mascot({ mood = "happy", size = 56 }: { mood?: Mood; size?: numb
 
 // ── Coach-Karte mit Sprechblase (oben im Dashboard) ───────────────────────────
 
-export function CoachBubble({ msg, onAction, more, onMore }: { msg: CoachMsg; onAction: (a: CoachAction, id: string) => void; more: number; onMore: () => void }) {
+export function CoachBubble({ msg, onAction, more, onMore, compact }: { msg: CoachMsg; onAction: (a: CoachAction, id: string) => void; more: number; onMore: () => void; compact?: boolean }) {
   return (
     <div className="lab-rise" style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-      <div className="lab-float" style={{ flexShrink: 0, marginTop: 4 }}><Mascot mood={msg.mood} size={58} /></div>
-      <div style={{
+      {!compact && <div className="lab-float" style={{ flexShrink: 0, marginTop: 4 }}><Mascot mood={msg.mood} size={58} /></div>}
+      <div className={compact ? "lab-card" : undefined} style={compact ? { flex: 1, minWidth: 0, padding: "14px 16px" } : {
         position: "relative", flex: 1, minWidth: 0, background: "var(--surface)", border: "1px solid var(--border)",
         borderRadius: "20px 20px 20px 6px", padding: "12px 14px", boxShadow: "var(--shadow)",
       }}>
-        <span aria-hidden style={{ position: "absolute", left: -7, top: 22, width: 14, height: 14, background: "var(--surface)", borderLeft: "1px solid var(--border)", borderBottom: "1px solid var(--border)", transform: "rotate(45deg)" }} />
+        {!compact && <span aria-hidden style={{ position: "absolute", left: -7, top: 22, width: 14, height: 14, background: "var(--surface)", borderLeft: "1px solid var(--border)", borderBottom: "1px solid var(--border)", transform: "rotate(45deg)" }} />}
+        {compact && <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.68rem", fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--text-dim)", marginBottom: 6 }}><Mascot mood={msg.mood} size={18} /> {MASCOT_NAME} meint</div>}
         <div style={{ fontWeight: 900, fontSize: "0.98rem", marginBottom: 3 }}>{msg.title}</div>
         <div style={{ fontSize: "0.86rem", lineHeight: 1.45, color: "var(--text-dim)" }}>{msg.text}</div>
         {msg.actions && (

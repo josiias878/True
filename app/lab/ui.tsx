@@ -6,8 +6,8 @@ import { suppColor } from "@/lib/supplementLab"
 // ── Lab-Styles (Animationen & wiederverwendbare Klassen) ────────────────────────
 
 export const LAB_CSS = `
-.lab { --lab-grad: linear-gradient(135deg, #2ECC8A 0%, #1baf9a 45%, #3987e5 100%); --lab-radius: 22px; }
-.lab-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--lab-radius); box-shadow: var(--shadow); }
+.lab { --lab-grad: linear-gradient(135deg, #2ECC8A 0%, #1baf9a 45%, #3987e5 100%); --lab-radius: 24px; }
+.lab-card { background: var(--surface); border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); border-radius: var(--lab-radius); box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.06); }
 .lab-press { transition: transform .15s ease, box-shadow .15s ease, background-color .2s, border-color .2s; -webkit-tap-highlight-color: transparent; cursor: pointer; }
 .lab-press:active { transform: scale(.96); }
 .lab-pop { animation: labPop .45s cubic-bezier(.2,1.4,.4,1) both; }
@@ -28,12 +28,54 @@ export const LAB_CSS = `
 @keyframes labShine { from { background-position: 200% 0 } to { background-position: -200% 0 } }
 @keyframes labSlideUp { from { transform: translateY(100%) } to { transform: translateY(0) } }
 @keyframes labBubble { 0% { transform: translateY(0) scale(1); opacity: .9 } 100% { transform: translateY(-60px) scale(.4); opacity: 0 } }
+.lab-wave { animation: labWave 3.2s ease-in-out infinite alternate; }
+@keyframes labWave { from { transform: translateX(0) } to { transform: translateX(-38px) } }
+.lab-squish { animation: labSquish .4s ease; }
+@keyframes labSquish { 0% { transform: scale(1,1) } 40% { transform: scale(1.12,.84) translateY(8px) } 100% { transform: scale(1,1) } }
+.lab-drip { position: absolute; width: 9px; height: 12px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: linear-gradient(#2ECC8A, #3987e5); opacity: 0; pointer-events: none; animation: labDrip .7s ease-in forwards; }
+@keyframes labDrip { 0% { opacity: 1; transform: translateY(0) scale(1) } 100% { opacity: 0; transform: translateY(170px) scale(.4) } }
+.lab-flood { position: fixed; inset: 0; z-index: 470; pointer-events: none; background: linear-gradient(200deg, #2ECC8A 0%, #1baf9a 50%, #3987e5 100%); animation: labFlood 1.15s cubic-bezier(.6,0,.3,1) forwards; }
+.lab-flood::before { content: ""; position: absolute; left: -10%; right: -10%; top: -38px; height: 40px; border-radius: 50% 50% 0 0 / 100% 100% 0 0; background: inherit; }
+@keyframes labFlood { 0% { transform: translateY(105%) } 42%, 55% { transform: translateY(0) } 100% { transform: translateY(-110%) } }
+.lab-late { animation: labFade .35s ease .55s both; }
+.lab-flip { perspective: 1200px; }
+.lab-flip-inner { position: relative; transition: transform .7s cubic-bezier(.3,1.3,.5,1); transform-style: preserve-3d; }
+.lab-flip-inner.on { transform: rotateY(180deg); }
+.lab-flip-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.lab-flip-back { position: absolute; inset: 0; transform: rotateY(180deg); }
+@keyframes labCheck { 0% { transform: scale(.6) } 60% { transform: scale(1.15) } 100% { transform: scale(1) } }
 @media (prefers-reduced-motion: reduce) {
-  .lab-pop, .lab-rise, .lab-fade, .lab-float, .lab-pulse, .lab-wiggle, .lab-shine { animation: none !important; }
+  .lab-pop, .lab-rise, .lab-fade, .lab-float, .lab-pulse, .lab-wiggle, .lab-shine, .lab-wave, .lab-squish, .lab-late { animation: none !important; }
+  .lab-flood { animation-duration: .01s !important; }
 }
 `
 
 // ── Primitives ─────────────────────────────────────────────────────────────────
+
+const ICONS: Record<string, React.ReactNode> = {
+  home: <><path d="M4 11.5 12 5l8 6.5" /><path d="M6 10v9h12v-9" /><path d="M10 19v-5h4v5" /></>,
+  path: <><circle cx="6" cy="19" r="2" /><circle cx="18" cy="5" r="2" /><path d="M6 17v-4a3 3 0 0 1 3-3h6a3 3 0 0 0 3-3" /></>,
+  chart: <><path d="M4 19h16" /><path d="M6 15l4-5 3 3 5-7" /></>,
+  trophy: <><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" /><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4" /><path d="M12 13v4M9 20h6" /></>,
+  settings: <><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></>,
+}
+
+export function Icon({ name, size = 22 }: { name: keyof typeof ICONS | string; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flexShrink: 0 }}>
+      {ICONS[name]}
+    </svg>
+  )
+}
+
+export function IconBtn({ children, onClick, label }: { children: React.ReactNode; onClick: () => void; label: string }) {
+  return (
+    <button onClick={onClick} className="lab-press" aria-label={label} style={{
+      width: 38, height: 38, borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text-dim)",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0,
+    }}>{children}</button>
+  )
+}
 
 export function Card({ children, style, className = "", onClick }: { children: React.ReactNode; style?: React.CSSProperties; className?: string; onClick?: () => void }) {
   return (
