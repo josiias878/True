@@ -141,6 +141,7 @@ export default function LabApp() {
   const [suppSheet, setSuppSheet] = useState<string | null>(null)
   const [pickOpen, setPickOpen] = useState(false)
   const [testSetup, setTestSetup] = useState<string | null>(null)
+  const [reclassifyIds, setReclassifyIds] = useState<string[] | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [dismissed, setDismissed] = useState<string[]>(loadDismissed)
@@ -250,6 +251,8 @@ export default function LabApp() {
       case "resolveCheck": update(p => resolveCheck(p, a.suppId, a.keep, today), { amount: 20, label: "Entschieden" }); break
       case "konstant": update(p => { p.supps = p.supps.map(x => x.id === a.suppId ? { ...x, mode: "konstant" } : x); return p }); break
       case "konstantAll": update(p => { p.supps = p.supps.map(x => a.suppIds.includes(x.id) ? { ...x, mode: "konstant" } : x); return p }); break
+      case "reclassifyPick": setReclassifyIds(a.suppIds); break
+      case "keepTesting": update(p => { p.supps = p.supps.map(x => a.suppIds.includes(x.id) ? { ...x, mode: "test", keepTesting: true } : x); return p }); break
       case "take": toggleTook(a.suppId); break
       case "reminders": enableReminders(true); break
       case "dismiss": {
@@ -370,6 +373,14 @@ export default function LabApp() {
       }} />}
       <PhaseSheet s={s} w={phaseSheet} today={today} onClose={() => setPhaseSheet(null)} update={update} onVerdict={id => { setPhaseSheet(null); setVerdictFor(id) }} />
       {suppSheet && <SuppSheet s={s} id={suppSheet} today={today} onClose={() => setSuppSheet(null)} update={update} onAction={a => { setSuppSheet(null); runAction(a, "supp") }} onVerdict={id => { setSuppSheet(null); setVerdictFor(id) }} />}
+      {reclassifyIds && <ReclassifySheet s={s} ids={reclassifyIds} onClose={() => setReclassifyIds(null)} onApply={konstant => {
+        update(p => {
+          p.supps = p.supps.map(x => !reclassifyIds.includes(x.id) ? x
+            : konstant.includes(x.id) ? { ...x, mode: "konstant" } : { ...x, mode: "test", keepTesting: true })
+          return p
+        })
+        setReclassifyIds(null)
+      }} />}
       {pickOpen && <PickNextSheet s={s} onClose={() => setPickOpen(false)} update={update} onStart={id => { setPickOpen(false); runAction({ kind: "startTest", suppId: id }, "pick") }} />}
       {testSetup && <TestSetupSheet s={s} suppId={testSetup} onClose={() => setTestSetup(null)}
         onConfirm={days => {
@@ -741,7 +752,7 @@ function SuppSheet({ s, id, today, onClose, update, onAction, onVerdict }: {
         {(st.key === "kept" || st.key === "maybe" || st.key === "dropped" || st.key === "verdict") && <Btn variant={st.key === "verdict" ? "primary" : "soft"} full onClick={() => onVerdict(id)}>{st.key === "verdict" ? "⚖️ Ergebnis ansehen" : "Ergebnis & Urteil ändern"}</Btn>}
         {st.key === "kept" && w?.kind === "stack" && <Btn variant="soft" full onClick={() => onAction({ kind: "check", suppId: id })}>👀 3 Tage weglassen & beobachten</Btn>}
         {(st.key === "waiting" || st.key === "paused") && !lib?.rx && <Btn variant="soft" full onClick={() => { update(p => { p.supps = p.supps.map(q => q.id === id ? { ...q, mode: "konstant" } : q); return p }); onClose() }}>📌 Nicht testen, einfach weiter nehmen</Btn>}
-        {st.key === "constant" && !lib?.rx && <Btn variant="soft" full onClick={() => { update(p => { p.supps = p.supps.map(q => q.id === id ? { ...q, mode: "test" } : q); return p }); onClose() }}>🔬 Doch einzeln testen</Btn>}
+        {st.key === "constant" && !lib?.rx && <Btn variant="soft" full onClick={() => { update(p => { p.supps = p.supps.map(q => q.id === id ? { ...q, mode: "test", keepTesting: true } : q); return p }); onClose() }}>🔬 Doch einzeln testen</Btn>}
       </div>
 
       <Card style={{ marginBottom: 12 }}>
@@ -811,6 +822,48 @@ function PickNextSheet({ s, onClose, update, onStart }: { s: LabState; onClose: 
 }
 
 // ── Bevor ein Test startet: Kolbi empfiehlt eine Dauer, du entscheidest ────────
+
+/** Kolbis Vorschlag „durchgehend statt testen“ — pro Supplement selbst entscheiden. */
+function ReclassifySheet({ s, ids, onClose, onApply }: { s: LabState; ids: string[]; onClose: () => void; onApply: (konstant: string[]) => void }) {
+  const items = ids.map(id => s.supps.find(x => x.id === id)).filter((x): x is MySupp => !!x)
+  const [konstant, setKonstant] = useState<string[]>(ids)
+  const set = (id: string, on: boolean) => setKonstant(k => on ? [...new Set([...k, id])] : k.filter(x => x !== id))
+  const testing = items.length - konstant.length
+  return (
+    <Sheet open onClose={onClose} title="Durchgehend oder testen?">
+      <div style={{ fontSize: "0.86rem", color: "var(--text-dim)", lineHeight: 1.5, marginBottom: 14 }}>
+        Diese wirken erst über Wochen, deshalb empfehle ich „durchgehend“. Willst du eins trotzdem testen, stell es auf 🔬.
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
+        {items.map(x => {
+          const on = konstant.includes(x.id)
+          const lib = libOf(x)
+          return (
+            <div key={x.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ width: 38, height: 38, borderRadius: 12, background: suppColor(x), display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.15rem", flexShrink: 0 }}>{x.emoji}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", fontWeight: 800, fontSize: "0.9rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{x.name}</span>
+                {lib && <span style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>{ONSET_INFO[lib.onset].emoji} {ONSET_INFO[lib.onset].label}</span>}
+              </span>
+              <div style={{ display: "flex", borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)", flexShrink: 0 }}>
+                {([[true, "📌"], [false, "🔬"]] as const).map(([v, icon]) => (
+                  <button key={icon} className="lab-press" onClick={() => set(x.id, v)} aria-pressed={on === v}
+                    aria-label={`${x.name} ${v ? "durchgehend nehmen" : "testen"}`} style={{
+                      padding: "8px 12px", border: "none", fontSize: "1rem",
+                      background: on === v ? "var(--accent)" : "var(--surface)", color: on === v ? "#fff" : "var(--text-dim)",
+                    }}>{icon}</button>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <Btn full onClick={() => onApply(konstant)}>
+        Übernehmen · {konstant.length} durchgehend{testing ? `, ${testing} testen` : ""}
+      </Btn>
+    </Sheet>
+  )
+}
 
 function TestSetupSheet({ s, suppId, onClose, onConfirm, onKonstant }: {
   s: LabState; suppId: string; onClose: () => void; onConfirm: (days: number) => void; onKonstant: () => void

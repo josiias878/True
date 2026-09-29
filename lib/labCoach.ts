@@ -23,6 +23,8 @@ export type CoachAction =
   | { kind: "resolveCheck"; suppId: string; keep: boolean }
   | { kind: "konstant"; suppId: string }
   | { kind: "konstantAll"; suppIds: string[] }
+  | { kind: "reclassifyPick"; suppIds: string[] }
+  | { kind: "keepTesting"; suppIds: string[] }
   | { kind: "take"; suppId: string }
   | { kind: "reminders" }
   | { kind: "dismiss" }
@@ -99,7 +101,7 @@ export function coach(s: LabState, now = new Date(), dismissed: string[] = []): 
 
   // ── Supplements, die eigentlich keinen Test brauchen (z. B. nach einem Update neu erkannt)
   const reclassify = s.supps.filter(x => {
-    if (x.mode !== "test" || s.verdicts[x.id]) return false
+    if (x.mode !== "test" || x.keepTesting || s.verdicts[x.id]) return false
     const lib = libOf(x)
     if (!lib || defaultMode(lib) !== "konstant") return false
     return !phaseWindows(s).some(p => p.suppId === x.id)
@@ -110,10 +112,13 @@ export function coach(s: LabState, now = new Date(), dismissed: string[] = []): 
     push({ id: `reclassify-${reclassify.map(x => x.id).join("-")}`, mood: "think", prio: 3,
       title: many ? `${reclassify.length} Supplements brauchen keinen Test` : `${first.name} braucht keinen Test`,
       text: `${reclassify.map(x => x.name).join(", ")} wirk${many ? "en" : "t"} erst über Wochen — ein kurzer Test bringt da wenig. Mein Vorschlag: einfach durchgehend nehmen, kein Test nötig.`,
-      actions: [
-        { label: many ? "📌 Alle auf „durchgehend“ setzen" : `📌 ${first.name} durchgehend nehmen`,
-          action: many ? { kind: "konstantAll", suppIds: reclassify.map(x => x.id) } : { kind: "konstant", suppId: first.id }, primary: true },
-        { label: "Doch einzeln testen", action: { kind: "dismiss" } },
+      actions: many ? [
+        { label: "📌 Alle durchgehend", action: { kind: "konstantAll", suppIds: reclassify.map(x => x.id) }, primary: true },
+        { label: "☑️ Selbst auswählen", action: { kind: "reclassifyPick", suppIds: reclassify.map(x => x.id) } },
+        { label: "🔬 Alle testen", action: { kind: "keepTesting", suppIds: reclassify.map(x => x.id) } },
+      ] : [
+        { label: `📌 ${first.name} durchgehend`, action: { kind: "konstant", suppId: first.id }, primary: true },
+        { label: "🔬 Doch testen", action: { kind: "keepTesting", suppIds: [first.id] } },
       ] })
   }
 

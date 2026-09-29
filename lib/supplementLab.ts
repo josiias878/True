@@ -511,6 +511,8 @@ export interface MySupp {
   lib?: string
   color: number
   mode: SuppMode
+  /** Bewusst zum Testen behalten — Kolbi schlägt „durchgehend nehmen“ dafür nicht mehr vor. */
+  keepTesting?: boolean
 }
 
 /**
