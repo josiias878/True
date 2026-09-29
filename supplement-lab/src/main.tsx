@@ -1,5 +1,6 @@
 import React from "react"
 import { createRoot } from "react-dom/client"
+import { inject } from "@vercel/analytics"
 import "./app.css"
 import LabApp from "@/app/lab/LabApp"
 import { initNative } from "./native"
@@ -18,6 +19,9 @@ try {
 async function boot() {
   const native = await initNative().catch(() => false)
   await initHealth().catch(() => false)
+  // Anonyme Öffnungs-Zählung (nur Web/PWA, kein Tracking-Profil, keine Health-Daten) —
+  // sichtbar als aggregierte Zahl im Vercel-Dashboard, nicht pro Person
+  if (!native) inject()
   // Web/PWA: Service Worker für Offline & Benachrichtigungen
   if (!native && "serviceWorker" in navigator) {
     // Sobald eine neue Version die Kontrolle übernimmt, die Seite neu laden —

@@ -10,6 +10,19 @@ hier aber als eigene App im **Store-Modus** gebaut:
   mit 1-Tipp-Bewertung direkt aus der Benachrichtigung)
 - optionale Anbindung an Apple Health / Google Health Connect (nur Schlaf + HRV, siehe unten)
 - alle Daten bleiben lokal auf dem Gerät
+- anonyme Öffnungs-Zählung über Vercel Web Analytics (nur „wie oft geöffnet“, keine Namen,
+  keine Profile, keine Health-Daten) — siehe unten
+
+## Wie oft wird die App geöffnet? (Vercel Web Analytics)
+
+Da es keine Accounts gibt, ist die einzige Möglichkeit zu sehen, ob die App überhaupt genutzt
+wird, eine **anonyme** Zählung über [Vercel Web Analytics](https://vercel.com/docs/analytics) —
+läuft über den bestehenden Vercel-Account, kein neuer Drittanbieter-Login nötig.
+
+**Einmalig aktivieren:** im Vercel-Dashboard beim Projekt → Tab **Analytics** → *Enable*.
+Danach siehst du dort aggregierte Zahlen wie „342 Besuche diese Woche“ — keine Namen, keine
+IPs im Klartext, keine Verknüpfung zu den App-Daten (die bleiben ja weiterhin nur lokal auf
+dem Gerät). Ohne diesen Klick im Dashboard sammelt sich nichts an, obwohl der Code schon drin ist.
 
 ## Im Browser testen
 
