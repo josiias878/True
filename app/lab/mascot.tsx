@@ -99,6 +99,20 @@ export function CoachBubble({ msg, onAction, more, onMore, compact }: { msg: Coa
   )
 }
 
+// ── Kleiner Kolbi-Tipp (z. B. beste Einnahmezeit) ─────────────────────────────
+
+export function KolbiTip({ title, children, mood = "happy" }: { title: React.ReactNode; children?: React.ReactNode; mood?: Mood }) {
+  return (
+    <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px", borderRadius: 18, background: "var(--accent-dim)", textAlign: "left" }}>
+      <span style={{ flexShrink: 0, marginTop: 1 }}><Mascot mood={mood} size={30} /></span>
+      <span style={{ minWidth: 0 }}>
+        <span style={{ display: "block", fontWeight: 900, fontSize: "0.88rem" }}>{title}</span>
+        {children && <span style={{ display: "block", fontSize: "0.8rem", color: "var(--text-dim)", lineHeight: 1.45, marginTop: 2 }}>{children}</span>}
+      </span>
+    </div>
+  )
+}
+
 // ── Schwebender Kolbi unten rechts → Hilfe & alle Tipps ────────────────────────
 
 export function FloatingMascot({ mood, badge, onClick }: { mood: Mood; badge: number; onClick: () => void }) {

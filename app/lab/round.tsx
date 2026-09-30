@@ -2,12 +2,12 @@
 // ── Tagesrunde: Kolbi führt Schritt für Schritt durch alles, was gerade dran ist ──
 import React, { useEffect, useRef, useState } from "react"
 import {
-  FACES, SIDE_BY_ID, SIDE_EFFECTS, DIM_BY_ID, SLOTS,
-  activeDims, intakeOn, knownSides, phaseWindows, signal, testResult, slotFor, slotMinutes, slotTime, toMin, suppColor, streak,
+  FACES, SIDE_BY_ID, SIDE_EFFECTS, DIM_BY_ID,
+  activeDims, intakeOn, knownSides, phaseWindows, signal, testResult, slotFor, slotMinutes, toMin, suppColor, streak, timeTip,
   type LabState, type CheckIn, type Scores, type Decision, type Dim,
 } from "@/lib/supplementLab"
 import { Btn, SideChips, Stars } from "./ui"
-import { Mascot } from "./mascot"
+import { KolbiTip, Mascot } from "./mascot"
 
 export type RoundStep =
   | { kind: "take"; id: string }
@@ -124,11 +124,11 @@ function TakeStep({ s, id, onDone, onSkip }: { s: LabState; id: string; onDone: 
   const x = s.supps.find(q => q.id === id)
   const [ok, setOk] = useState(false)
   if (!x) return null
-  const slot = slotFor(id, s)
+  const tip = timeTip(s, id)
   const c = suppColor(x)
   return (
     <>
-      <Title sub={`${SLOTS.find(q => q.id === slot)?.emoji} geplant ${slotTime(slot, s.settings)} Uhr${x.dose ? ` · ${x.dose}` : ""}`}>Zeit für {x.name}</Title>
+      <Title sub={`${tip.emoji} ${tip.label} · ${tip.time} Uhr${x.dose ? ` · ${x.dose}` : ""}`}>Zeit für {x.name}</Title>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 22, marginTop: 8 }}>
         <div style={{ width: 112, height: 112, borderRadius: 34, background: `linear-gradient(145deg, ${c}, color-mix(in srgb, ${c} 60%, #0b0b1a))`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "3.4rem", boxShadow: `0 18px 40px color-mix(in srgb, ${c} 40%, transparent)` }}>{x.emoji}</div>
         <button className="lab-press" aria-label={`${x.name} genommen`} onClick={() => { if (ok) return; setOk(true); onDone() }} style={{
@@ -138,6 +138,7 @@ function TakeStep({ s, id, onDone, onSkip }: { s: LabState; id: string; onDone: 
         }}>{ok ? "✓" : ""}</button>
         <div style={{ fontSize: "0.82rem", color: "var(--text-dim)", fontWeight: 700 }}>Tippen, wenn genommen</div>
       </div>
+      <KolbiTip title={tip.own ? `⏰ Deine Zeit: ${tip.label}` : "⏰ Warum jetzt?"}>{tip.why}</KolbiTip>
       <button onClick={onSkip} style={{ alignSelf: "center", background: "none", border: "none", color: "var(--text-dim)", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", marginTop: 8 }}>Später</button>
     </>
   )

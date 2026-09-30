@@ -8,8 +8,8 @@ import {
   phaseWindows, phaseAt, testResult, checkinsIn, buildStack, allowedSlots, slotTime, slotFor, stackMembers, intakeOn,
   STORE_MODE, LAB_BASE, todayIso, addDays, diffDays, fmtDate, suppColor, daySum, activeDims, signal, libOf, makeSupp, defaultCheckinTime,
   nextCandidates, suppStatus, takingInfo, avgIntakeMinutes, phaseEndsAt, fmtCountdown, nowTime, closeActive, looksPrescribed,
-  startTest, startStack, startCheck, applyVerdict, resolveCheck, fromMin,
-  type LabState, type Decision, type Dim, type PhaseWindow, type MySupp, type LibSupp, type Settings, type CheckIn, type Scores, type SuppStatusKey,
+  startTest, startStack, startCheck, applyVerdict, resolveCheck, fromMin, timeTip,
+  type SlotId, type LabState, type Decision, type Dim, type PhaseWindow, type MySupp, type LibSupp, type Settings, type CheckIn, type Scores, type SuppStatusKey,
 } from "@/lib/supplementLab"
 import { checkLabReminders, downloadIcs, hasNativeReminders, syncNativeReminders } from "@/lib/labReminders"
 import { fetchHealthSince, hasHealthProvider, healthCompare, mergeHealthDay, requestHealthPermission } from "@/lib/health"
@@ -17,7 +17,7 @@ import { coach, type CoachAction, type CoachMsg } from "@/lib/labCoach"
 import { LAB_CSS, Btn, Capsule, Card, FaceRow, Icon, IconBtn, Label, Sheet, SideChips, Stars, Stepper, XpToast } from "./ui"
 import { CheckInSheet, Onboarding, SuppPicker } from "./flows"
 import { DeltaBars, DimLineChart, MoodCalendar, MoodCurve, ProCon } from "./charts"
-import { CoachBubble, HelpSheet, MASCOT_NAME, Mascot } from "./mascot"
+import { CoachBubble, HelpSheet, KolbiTip, MASCOT_NAME, Mascot } from "./mascot"
 import { InstallHint } from "./install"
 import { DailyRound, dayProgress, roundSteps, type RoundStep } from "./round"
 
@@ -812,14 +812,41 @@ function SuppSheet({ s, id, today, onClose, update, onAction, onVerdict }: {
           <input value={x.dose} placeholder="z. B. 400 mg" onChange={e => { const v = e.target.value; update(p => { p.supps = p.supps.map(q => q.id === id ? { ...q, dose: v } : q); return p }) }}
             style={{ width: 150, padding: "8px 10px", borderRadius: 10, fontSize: "0.85rem" }} />
         </label>
-        <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", marginTop: 8 }}>⏰ Beste Zeit: {SLOTS.find(q => q.id === slotFor(id, s))?.label} · {slotTime(slotFor(id, s), s.settings)} Uhr</div>
       </Card>
+
+      {(() => {
+        const tip = timeTip(s, id)
+        const slots = SLOTS.filter(q => q.id !== "training" || s.settings.training || tip.slot === "training")
+        const pick = (slot: SlotId) => update(p => {
+          if (slot === tip.recommended) delete p.slotOverrides[id]; else p.slotOverrides[id] = slot
+          return p
+        })
+        return (
+          <Card style={{ marginBottom: 12 }}>
+            <KolbiTip title={`⏰ Mein Tipp: ${tip.recEmoji} ${tip.recLabel} · ${tip.recTime} Uhr`}>{tip.why}</KolbiTip>
+            <Label style={{ margin: "14px 0 8px" }}>Wann nimmst du es?</Label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {slots.map(q => {
+                const on = tip.slot === q.id
+                return (
+                  <button key={q.id} className="lab-press" onClick={() => pick(q.id)} aria-pressed={on} style={{
+                    padding: "8px 11px", borderRadius: 999, fontSize: "0.78rem", fontWeight: on ? 800 : 600, color: "var(--text)", position: "relative",
+                    border: on ? "2px solid var(--accent)" : "1px solid var(--border)", background: on ? "var(--accent-dim)" : "var(--surface)",
+                  }}>
+                    {q.emoji} {q.label} <span style={{ color: "var(--text-dim)", fontWeight: 700 }}>{slotTime(q.id, s.settings)}</span>
+                    {q.id === tip.recommended && <span style={{ position: "absolute", top: -8, right: 8, fontSize: "0.55rem", background: "var(--accent)", color: "#fff", padding: "1px 6px", borderRadius: 6 }}>Tipp</span>}
+                  </button>
+                )
+              })}
+            </div>
+          </Card>
+        )
+      })()}
 
       {lib && (
         <Card style={{ marginBottom: 12 }}>
           <div style={{ fontSize: "0.86rem", lineHeight: 1.55 }}>
             <div><b>Was es kann:</b> {lib.effect}</div>
-            <div style={{ marginTop: 6 }}><b>Einnahme:</b> {lib.timing}</div>
             <div style={{ marginTop: 6 }}><b>Wirkt:</b> {ONSET_INFO[lib.onset].emoji} {ONSET_INFO[lib.onset].label}</div>
             {LIB_SIDES[lib.id]?.length ? <div style={{ marginTop: 6 }}><b>Mögliche Nebenwirkungen:</b> {LIB_SIDES[lib.id].map(sid => SIDE_BY_ID[sid]?.label).join(", ")}</div> : null}
             {lib.caution && <div style={{ marginTop: 6, color: "var(--warning)" }}>⚠️ {lib.caution}</div>}

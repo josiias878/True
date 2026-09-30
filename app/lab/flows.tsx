@@ -4,12 +4,12 @@ import Link from "next/link"
 import {
   FACES, FACE_LABELS, TAGS, LIBRARY, SIDE_EFFECTS, SIDE_BY_ID, knownSides, intakeOn, ROUTE_INFO, SUPP_COLORS, CATEGORIES, GOALS, RHYTHMS, TRAININGS,
   todayIso, addDays, fmtDate, diffDays, makeSupp, autoOrder, parseSuppList, goalRelevance,
-  activeDims, defaultCheckinTime, libOf, daySum, STORE_MODE,
+  activeDims, defaultCheckinTime, libOf, daySum, libTimeTip, STORE_MODE,
   type CheckIn, type Dim, type LabState, type MySupp, type Settings, type LibSupp, type GoalId, type Scores,
 } from "@/lib/supplementLab"
 import { hasNativeReminders } from "@/lib/labReminders"
 import { Btn, Capsule, Card, FaceRow, Label, Segmented, SideChips, Stars } from "./ui"
-import { MASCOT_NAME, Mascot } from "./mascot"
+import { KolbiTip, MASCOT_NAME, Mascot } from "./mascot"
 import { InstallHint } from "./install"
 import type { Mood } from "@/lib/labCoach"
 
@@ -22,6 +22,7 @@ export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd 
 }) {
   const [mode, setMode] = useState<"tap" | "paste">("tap")
   const [q, setQ] = useState("")
+  const [lastAdded, setLastAdded] = useState<LibSupp | null>(null)
   const [paste, setPaste] = useState("")
   const sel = new Set(selected.map(s => s.lib ?? s.id))
   const ql = q.trim().toLowerCase()
@@ -33,7 +34,7 @@ export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd 
     const idx = selected.findIndex(s => s.lib === l.id)
     const c = on ? SUPP_COLORS[selected[idx].color % SUPP_COLORS.length] : undefined
     return (
-      <button key={l.id} className="lab-press" onClick={() => onToggle(l)} style={{
+      <button key={l.id} className="lab-press" onClick={() => { setLastAdded(on ? null : l); onToggle(l) }} style={{
         display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 12px", borderRadius: 999,
         border: on ? `2px solid ${c}` : "1px solid var(--border)",
         background: on ? `color-mix(in srgb, ${c} 16%, var(--surface))` : "var(--surface)",
@@ -78,6 +79,14 @@ export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd 
         <div className="lab-rise">
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="🔍 Suchen … (z. B. Magnesium, BPC)"
             style={{ width: "100%", padding: "12px 14px", borderRadius: 14, fontSize: "0.95rem", marginBottom: 14 }} />
+          {lastAdded && sel.has(lastAdded.id) && (() => {
+            const tip = libTimeTip(lastAdded)
+            return (
+              <div key={lastAdded.id} className="lab-rise" style={{ position: "sticky", top: 8, zIndex: 2, marginBottom: 14 }}>
+                <KolbiTip title={`${lastAdded.emoji} ${lastAdded.name}: am besten ${tip.emoji} ${tip.label.charAt(0).toLowerCase()}${tip.label.slice(1)}`}>{tip.why}</KolbiTip>
+              </div>
+            )
+          })()}
           {!ql && suggested.length > 0 && (
             <div style={{ marginBottom: 16 }}>
               <Label style={{ marginBottom: 8, color: "var(--accent)" }}>⭐ Passt zu deinen Zielen</Label>
