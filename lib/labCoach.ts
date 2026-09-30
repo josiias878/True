@@ -8,6 +8,7 @@ import {
   avgIntakeMinutes, meanScore, libOf, defaultMode, todayIso, addDays, diffDays, fmtDate, fromMin, toMin, daySum,
   type LabState, type Decision, type PhaseWindow,
 } from "./supplementLab"
+import { partnerTips, recentSides, sideCauses } from "./labKnowledge"
 
 export type Mood = "happy" | "think" | "alert" | "party" | "sleepy"
 
@@ -25,6 +26,8 @@ export type CoachAction =
   | { kind: "konstantAll"; suppIds: string[] }
   | { kind: "reclassifyPick"; suppIds: string[] }
   | { kind: "keepTesting"; suppIds: string[] }
+  | { kind: "addSupp"; libId: string; tipId?: string }
+  | { kind: "gotIt"; tipId: string }
   | { kind: "take"; suppId: string }
   | { kind: "reminders" }
   | { kind: "dismiss" }
@@ -120,6 +123,41 @@ export function coach(s: LabState, now = new Date(), dismissed: string[] = []): 
         { label: `📌 ${first.name} durchgehend`, action: { kind: "konstant", suppId: first.id }, primary: true },
         { label: "🔬 Doch testen", action: { kind: "keepTesting", suppIds: [first.id] } },
       ] })
+  }
+
+  // ── Kolbi erklärt: Nebenwirkung → mögliche Ursache, und passende Partner
+  const seen = new Set(s.learned)
+  const taking = [...new Set([...intakeOn(s, today), ...(w?.kind === "test" && w.suppId ? [w.suppId] : [])])]
+  const sides = recentSides(s, 3)
+  let causeShown = false
+  for (const id of taking) {
+    if (causeShown) break
+    for (const c of sideCauses(s, id, sides)) {
+      const tipId = `cause:${c.lib}:${c.matched.join("+")}`
+      if (seen.has(tipId)) continue
+      const label = c.matched.map(x => SIDE_BY_ID[x]?.label).filter(Boolean).join(", ")
+      const addName = c.add ? LIB_BY_ID[c.add]?.name : undefined
+      const has = c.add ? s.supps.some(x => (x.lib ?? x.id) === c.add) : true
+      push({ id: tipId, mood: "think", prio: 3, title: `${label} – liegt's an ${name(s, id)}?`, text: c.text,
+        actions: [
+          ...(c.add && addName && !has ? [{ label: `➕ ${addName} hinzufügen`, action: { kind: "addSupp" as const, libId: c.add, tipId } }] : []),
+          { label: "👍 Gut zu wissen", action: { kind: "gotIt", tipId }, primary: !c.add || has },
+        ] })
+      causeShown = true
+      break
+    }
+  }
+  for (const id of taking) {
+    const p = partnerTips(s, id)[0]
+    if (!p) continue
+    const tipId = `partner:${libOf(s.supps.find(x => x.id === id))?.id}:${p.with}`
+    if (seen.has(tipId)) continue
+    push({ id: tipId, mood: "happy", prio: 8, title: `💡 ${p.title}`, text: p.text,
+      actions: [
+        { label: `➕ ${LIB_BY_ID[p.with].name} hinzufügen`, action: { kind: "addSupp", libId: p.with, tipId } },
+        { label: "Nein danke", action: { kind: "gotIt", tipId } },
+      ] })
+    break
   }
 
   // ── Täglicher Check-in

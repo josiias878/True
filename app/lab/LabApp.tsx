@@ -8,7 +8,7 @@ import {
   phaseWindows, phaseAt, testResult, checkinsIn, buildStack, allowedSlots, slotTime, slotFor, stackMembers, intakeOn,
   STORE_MODE, LAB_BASE, todayIso, addDays, diffDays, fmtDate, suppColor, daySum, activeDims, signal, libOf, makeSupp, defaultCheckinTime,
   nextCandidates, suppStatus, takingInfo, avgIntakeMinutes, phaseEndsAt, fmtCountdown, nowTime, closeActive, looksPrescribed,
-  startTest, startStack, startCheck, applyVerdict, resolveCheck, fromMin, timeTip,
+  startTest, startStack, startCheck, applyVerdict, resolveCheck, fromMin, timeTip, LIB_BY_ID,
   type SlotId, type LabState, type Decision, type Dim, type PhaseWindow, type MySupp, type LibSupp, type Settings, type CheckIn, type Scores, type SuppStatusKey,
 } from "@/lib/supplementLab"
 import { checkLabReminders, downloadIcs, hasNativeReminders, syncNativeReminders } from "@/lib/labReminders"
@@ -20,6 +20,7 @@ import { DeltaBars, DimLineChart, MoodCalendar, MoodCurve, ProCon } from "./char
 import { CoachBubble, HelpSheet, KolbiTip, MASCOT_NAME, Mascot } from "./mascot"
 import { InstallHint } from "./install"
 import { DailyRound, dayProgress, roundSteps, type RoundStep } from "./round"
+import { factsFor, partnerTips, recentSides, sideCauses } from "@/lib/labKnowledge"
 
 type Tab = "heute" | "reise" | "daten" | "stack"
 
@@ -255,6 +256,17 @@ export default function LabApp() {
       case "konstant": update(p => { p.supps = p.supps.map(x => x.id === a.suppId ? { ...x, mode: "konstant" } : x); return p }); break
       case "konstantAll": update(p => { p.supps = p.supps.map(x => a.suppIds.includes(x.id) ? { ...x, mode: "konstant" } : x); return p }); break
       case "reclassifyPick": setReclassifyIds(a.suppIds); break
+      case "addSupp": {
+        const lib = LIB_BY_ID[a.libId]
+        if (!lib) break
+        update(p => {
+          if (!p.supps.some(x => (x.lib ?? x.id) === a.libId)) p.supps.push(makeSupp(lib, lib.name, p.supps))
+          if (a.tipId) p.learned = [...new Set([...p.learned, a.tipId])]
+          return p
+        }, { amount: 5, label: `${lib.name} hinzugefügt` })
+        break
+      }
+      case "gotIt": update(p => { p.learned = [...new Set([...p.learned, a.tipId])]; return p }); break
       case "keepTesting": update(p => { p.supps = p.supps.map(x => a.suppIds.includes(x.id) ? { ...x, mode: "test", keepTesting: true } : x); return p }); break
       case "take": toggleTook(a.suppId); break
       case "reminders": enableReminders(true); break
@@ -367,6 +379,7 @@ export default function LabApp() {
         onTake={id => update(p => { markTaken(p, today, id); return p }, { amount: 5, label: "Eingenommen" })}
         onCheckin={saveCheckin}
         onVerdict={(id, d) => { update(p => applyVerdict(p, id, d, "In der Tagesrunde entschieden", today), { amount: 50, label: "Urteil gefällt" }); if (d === "keep") setConfetti(true) }}
+        onLearn={fid => update(p => { if (!p.learned.includes(fid)) p.learned = [...p.learned, fid]; return p })}
         onClose={() => setRound(null)} />}
 
       {/* ── Overlays ── */}
@@ -773,8 +786,17 @@ function SuppSheet({ s, id, today, onClose, update, onAction, onVerdict }: {
 }) {
   const x = s.supps.find(q => q.id === id)
   const [confirmRemove, setConfirmRemove] = useState(false)
+  // Fakten gelten beim Öffnen als entdeckt; „NEU“ markiert, was vorher noch nicht gesehen war
+  const libId = x?.lib
+  const [fresh] = useState(() => new Set(libId ? factsFor(libId).map(f => f.id).filter(f => !s.learned.includes(f)) : []))
+  useEffect(() => {
+    if (fresh.size) update(p => { p.learned = [...new Set([...p.learned, ...fresh])]; return p })
+  }, [fresh, update])
   if (!x) return null
   const lib = libOf(x)
+  const facts = lib ? factsFor(lib.id) : []
+  const partners = partnerTips(s, id)
+  const causes = sideCauses(s, id, recentSides(s, 14))
   const st = suppStatus(s, id, today)
   const info = takingInfo(s, id)
   const avg = avgIntakeMinutes(s, id)
@@ -850,6 +872,30 @@ function SuppSheet({ s, id, today, onClose, update, onAction, onVerdict }: {
             <div style={{ marginTop: 6 }}><b>Wirkt:</b> {ONSET_INFO[lib.onset].emoji} {ONSET_INFO[lib.onset].label}</div>
             {LIB_SIDES[lib.id]?.length ? <div style={{ marginTop: 6 }}><b>Mögliche Nebenwirkungen:</b> {LIB_SIDES[lib.id].map(sid => SIDE_BY_ID[sid]?.label).join(", ")}</div> : null}
             {lib.caution && <div style={{ marginTop: 6, color: "var(--warning)" }}>⚠️ {lib.caution}</div>}
+          </div>
+        </Card>
+      )}
+
+      {(facts.length > 0 || partners.length > 0 || causes.length > 0) && (
+        <Card style={{ marginBottom: 12 }}>
+          <Label style={{ marginBottom: 10 }}>💡 {MASCOT_NAME} weiß</Label>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {causes.map(c => (
+              <KolbiTip key={c.matched.join()} mood="think" title={`${c.matched.map(m => SIDE_BY_ID[m]?.label).join(", ")} – daran kann's liegen`}>{c.text}</KolbiTip>
+            ))}
+            {partners.map(p => (
+              <div key={p.with} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <KolbiTip title={p.title}>{p.text}</KolbiTip>
+                <Btn variant="soft" full onClick={() => onAction({ kind: "addSupp", libId: p.with, tipId: `partner:${lib?.id}:${p.with}` })}>➕ {LIB_BY_ID[p.with]?.name} hinzufügen</Btn>
+              </div>
+            ))}
+            {facts.map(f => (
+              <div key={f.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: "0.86rem", lineHeight: 1.5 }}>
+                <span aria-hidden>📚</span>
+                <span style={{ flex: 1 }}>{f.text}</span>
+                {fresh.has(f.id) && <span style={{ fontSize: "0.6rem", fontWeight: 900, background: "var(--accent)", color: "#fff", padding: "2px 6px", borderRadius: 6, flexShrink: 0 }}>NEU</span>}
+              </div>
+            ))}
           </div>
         </Card>
       )}

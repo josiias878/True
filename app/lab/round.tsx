@@ -8,6 +8,7 @@ import {
 } from "@/lib/supplementLab"
 import { Btn, SideChips, Stars } from "./ui"
 import { KolbiTip, Mascot } from "./mascot"
+import { FACT_COUNT, nextFact, type Fact } from "@/lib/labKnowledge"
 
 export type RoundStep =
   | { kind: "take"; id: string }
@@ -52,10 +53,12 @@ const DECISIONS: { id: Decision; emoji: string; label: string }[] = [
 ]
 const fmt = (n: number) => n.toFixed(1).replace(".", ",")
 
-export function DailyRound({ s, today, steps, onTake, onCheckin, onVerdict, onClose }: {
+export function DailyRound({ s, today, steps, onTake, onCheckin, onVerdict, onLearn, onClose }: {
   s: LabState; today: string; steps: RoundStep[]
-  onTake: (id: string) => void; onCheckin: (c: CheckIn) => void; onVerdict: (id: string, d: Decision) => void; onClose: () => void
+  onTake: (id: string) => void; onCheckin: (c: CheckIn) => void; onVerdict: (id: string, d: Decision) => void
+  onLearn: (factId: string) => void; onClose: () => void
 }) {
+  const [fact] = useState<Fact | null>(() => nextFact(s))
   const [i, setI] = useState(0)
   const [scores, setScores] = useState<Scores>({})
   const [sides, setSides] = useState<Record<string, number>>({})
@@ -71,7 +74,10 @@ export function DailyRound({ s, today, steps, onTake, onCheckin, onVerdict, onCl
   }, [])
   const closeRef = useRef(onClose)
   closeRef.current = onClose
-  useEffect(() => { if (!done) return; const t = setTimeout(() => closeRef.current(), 2600); return () => clearTimeout(t) }, [done])
+  useEffect(() => { if (!done || fact) return; const t = setTimeout(() => closeRef.current(), 2600); return () => clearTimeout(t) }, [done, fact])
+  const learnRef = useRef(onLearn)
+  learnRef.current = onLearn
+  useEffect(() => { if (done && fact) learnRef.current(fact.id) }, [done, fact])
 
   const next = () => setI(n => n + 1)
   const saveCheckin = (withSides: Record<string, number>, sc: Scores = scores) => {
@@ -96,7 +102,7 @@ export function DailyRound({ s, today, steps, onTake, onCheckin, onVerdict, onCl
         </div>
 
         <div key={done ? "done" : i} className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 18, padding: "12px 0" }}>
-          {done ? <DoneStep s={s} onClose={onClose} />
+          {done ? <DoneStep s={s} fact={fact} onClose={onClose} />
             : step.kind === "take" ? <TakeStep s={s} id={step.id} onDone={() => { onTake(step.id); setTimeout(next, 450) }} onSkip={next} />
             : step.kind === "checkin" ? <CheckinStep s={s} scores={scores} setScores={setScores} onDone={sc => {
                 if (steps[i + 1]?.kind === "sides") next(); else { saveCheckin({}, sc); next() }
@@ -275,15 +281,28 @@ function RevealStep({ s, suppId, onDecide }: { s: LabState; suppId: string; onDe
   )
 }
 
-function DoneStep({ s, onClose }: { s: LabState; onClose: () => void }) {
+function DoneStep({ s, fact, onClose }: { s: LabState; fact: Fact | null; onClose: () => void }) {
   const st = streak(s)
+  const known = new Set(s.learned.filter(x => !x.startsWith("cause:") && !x.startsWith("partner:")))
+  if (fact) known.add(fact.id)
+  const lib = fact?.libId ? s.supps.find(x => x.lib === fact.libId) : undefined
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, textAlign: "center" }}>
-      <span className="lab-pop"><Mascot mood="party" size={150} fill={1} glow /></span>
+      <span className="lab-pop"><Mascot mood="party" size={fact ? 120 : 150} fill={1} glow /></span>
       <div style={{ fontSize: "1.7rem", fontWeight: 900 }}>Alles erledigt! 🎉</div>
-      <div style={{ color: "var(--text-dim)" }}>Ich melde mich, wenn wieder etwas dran ist.</div>
       {st > 0 && <div style={{ padding: "8px 16px", borderRadius: 999, background: "rgba(235,104,52,.14)", fontWeight: 900 }}>🔥 {st} {st === 1 ? "Tag" : "Tage"} am Stück</div>}
-      <Btn variant="soft" onClick={onClose} style={{ marginTop: 6 }}>Zur Übersicht</Btn>
+      {fact ? (
+        <div className="lab-card lab-rise" style={{ padding: 16, width: "100%", textAlign: "left", animationDelay: ".25s" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+            <span style={{ fontSize: "0.7rem", fontWeight: 900, letterSpacing: ".08em", color: "var(--accent)" }}>📚 NEU ENTDECKT{lib ? ` · ${lib.emoji} ${lib.name.toUpperCase()}` : ""}</span>
+            <span style={{ fontSize: "0.7rem", fontWeight: 800, color: "var(--text-dim)", fontVariantNumeric: "tabular-nums" }}>{known.size}/{FACT_COUNT}</span>
+          </div>
+          <div style={{ fontSize: "0.95rem", lineHeight: 1.5, fontWeight: 600 }}>{fact.text}</div>
+        </div>
+      ) : (
+        <div style={{ color: "var(--text-dim)" }}>Ich melde mich, wenn wieder etwas dran ist.</div>
+      )}
+      <Btn variant={fact ? "primary" : "soft"} onClick={onClose} style={{ marginTop: 6 }}>Zur Übersicht</Btn>
     </div>
   )
 }

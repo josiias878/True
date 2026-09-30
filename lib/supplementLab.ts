@@ -140,6 +140,7 @@ export const LIB_SIDES: Record<string, string[]> = {
   ingwer: ["blaehungen"],
   astaxanthin: ["blaehungen"],
   hyaluron: ["blaehungen"],
+  kupfer: ["uebelkeit"],
 }
 
 // Alte Freitext-Tags (v1) → Nebenwirkungen
@@ -562,6 +563,11 @@ const ALL_LIBRARY: LibSupp[] = [
     caution: "Nur geprüfte Qualität kaufen (Schwermetalle).", aliases: ["shilajit", "mumijo"] },
 
   // ── Vitamine & Mineralien (erweitert) ──
+  { id: "kupfer", name: "Kupfer", emoji: "🪙", category: "Vitamine & Mineralien", onset: "langsam",
+    slots: ["mittag", "abendessen"], dose: "1–2 mg", watch: ["energie", "haut"],
+    effect: "Blutbildung, Bindegewebe, Immunsystem – der Gegenspieler von Zink.",
+    timing: "Mit Essen, zeitlich getrennt von Zink.",
+    caution: "Nur sinnvoll bei länger hoch dosiertem Zink oder nachgewiesenem Mangel – zu viel Kupfer schadet ebenfalls.", aliases: ["kupfer", "copper"] },
   { id: "multivitamin", name: "Multivitamin", emoji: "🌈", category: "Vitamine & Mineralien", onset: "langsam",
     slots: ["fruehstueck"], dose: "1 Portion", watch: ["energie", "koerper"], withFat: true,
     effect: "Deckt Lücken ab, ersetzt aber keine gezielte Versorgung bei echtem Mangel.",
@@ -770,6 +776,7 @@ export interface LabState {
   demo?: boolean
   health: Record<string, HealthDay> // Datum → Schlaf/HRV aus Apple Health / Health Connect
   healthEnabled: boolean
+  learned: string[] // entdeckte Kolbi-Fakten (IDs)
 }
 
 export const STORAGE_KEY = "true-supplement-lab-v1"
@@ -779,7 +786,7 @@ export function emptyState(): LabState {
     v: 2, startDate: null, goals: [], supps: [], phases: [], checkins: {}, verdicts: {},
     slotOverrides: {}, took: {}, tookAt: {}, settings: { ...DEFAULT_SETTINGS },
     reminders: { enabled: false, checkin: "22:00", intake: true }, xp: 0, badges: [],
-    health: {}, healthEnabled: false,
+    health: {}, healthEnabled: false, learned: [],
   }
 }
 
@@ -796,6 +803,7 @@ export function hydrate(raw: unknown): LabState {
     tookAt: p.tookAt ?? {},
     health: p.health ?? {},
     healthEnabled: p.healthEnabled ?? false,
+    learned: p.learned ?? [],
   }
   for (const c of Object.values(s.checkins)) {
     const legacy = c.tags.filter(t => LEGACY_TAG_SIDES[t])
