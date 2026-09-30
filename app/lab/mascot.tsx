@@ -142,8 +142,49 @@ const GUIDE: { q: string; a: string }[] = [
   { q: "Wo sind meine Daten?", a: "Nur auf deinem Gerät. Unter ⚙️ kannst du ein Backup erstellen und auf ein anderes Gerät übertragen." },
 ]
 
+/** Kolbis aktuelle Tipps als Liste (Kolbi-Tab & Hilfe). */
+export function TipsList({ msgs, onAction, onDone }: { msgs: CoachMsg[]; onAction: (a: CoachAction, id: string) => void; onDone?: () => void }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {msgs.map((m, k) => (
+        <div key={m.id} className="lab-rise" style={{ animationDelay: `${Math.min(k, 6) * 0.04}s`, display: "flex", gap: 10, padding: 12, borderRadius: 18, background: "var(--surface)", border: "1px solid color-mix(in srgb, var(--border) 70%, transparent)" }}>
+          <Mascot mood={m.mood} size={34} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 800, fontSize: "0.92rem" }}>{m.title}</div>
+            <div style={{ fontSize: "0.82rem", color: "var(--text-dim)", lineHeight: 1.45 }}>{m.text}</div>
+            {m.actions && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                {m.actions.map((a, i) => (
+                  <Btn key={i} variant={a.primary ? "primary" : "soft"} onClick={() => { onAction(a.action, m.id); onDone?.() }} style={{ padding: "8px 11px", fontSize: "0.8rem", borderRadius: 12 }}>{a.label}</Btn>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** „So funktioniert die App“ – aufklappbare Fragen. */
+export function Guide({ openFirst }: { openFirst?: boolean }) {
+  const [open, setOpen] = useState<number | null>(openFirst ? 0 : null)
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {GUIDE.map((g, i) => (
+        <div key={g.q} style={{ borderRadius: 14, background: "var(--surface)", border: "1px solid var(--border)", overflow: "hidden" }}>
+          <button onClick={() => setOpen(o => o === i ? null : i)} style={{
+            width: "100%", textAlign: "left", padding: "12px 14px", background: "none", border: "none", color: "var(--text)",
+            fontWeight: 800, fontSize: "0.88rem", display: "flex", justifyContent: "space-between", gap: 8, cursor: "pointer",
+          }}>{g.q}<span style={{ color: "var(--text-dim)" }}>{open === i ? "−" : "+"}</span></button>
+          {open === i && <div className="lab-fade" style={{ padding: "0 14px 12px", fontSize: "0.84rem", lineHeight: 1.5, color: "var(--text-dim)" }}>{g.a}</div>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function HelpSheet({ msgs, onAction, onClose }: { msgs: CoachMsg[]; onAction: (a: CoachAction, id: string) => void; onClose: () => void }) {
-  const [open, setOpen] = useState<number | null>(msgs.length ? null : 0)
   return (
     <Sheet open onClose={onClose}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
@@ -154,41 +195,14 @@ export function HelpSheet({ msgs, onAction, onClose }: { msgs: CoachMsg[]; onAct
         </div>
         <button onClick={onClose} className="lab-press" aria-label="Schließen" style={{ width: 34, height: 34, borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text-dim)" }}>✕</button>
       </div>
-
       {msgs.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
-          <div style={{ fontSize: "0.7rem", fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--text-dim)" }}>Meine Tipps für dich</div>
-          {msgs.map(m => (
-            <div key={m.id} style={{ display: "flex", gap: 10, padding: 12, borderRadius: 16, background: "var(--surface)", border: "1px solid var(--border)" }}>
-              <Mascot mood={m.mood} size={34} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 800, fontSize: "0.9rem" }}>{m.title}</div>
-                <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", lineHeight: 1.45 }}>{m.text}</div>
-                {m.actions && (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-                    {m.actions.map((a, i) => (
-                      <Btn key={i} variant={a.primary ? "primary" : "soft"} onClick={() => { onAction(a.action, m.id); onClose() }} style={{ padding: "8px 11px", fontSize: "0.78rem", borderRadius: 12 }}>{a.label}</Btn>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ fontSize: "0.7rem", fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--text-dim)", marginBottom: 10 }}>Meine Tipps für dich</div>
+          <TipsList msgs={msgs} onAction={onAction} onDone={onClose} />
         </div>
       )}
-
       <div style={{ fontSize: "0.7rem", fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--text-dim)", marginBottom: 8 }}>So funktioniert die App</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {GUIDE.map((g, i) => (
-          <div key={g.q} style={{ borderRadius: 14, background: "var(--surface)", border: "1px solid var(--border)", overflow: "hidden" }}>
-            <button onClick={() => setOpen(o => o === i ? null : i)} style={{
-              width: "100%", textAlign: "left", padding: "12px 14px", background: "none", border: "none", color: "var(--text)",
-              fontWeight: 800, fontSize: "0.88rem", display: "flex", justifyContent: "space-between", gap: 8, cursor: "pointer",
-            }}>{g.q}<span style={{ color: "var(--text-dim)" }}>{open === i ? "−" : "+"}</span></button>
-            {open === i && <div className="lab-fade" style={{ padding: "0 14px 12px", fontSize: "0.84rem", lineHeight: 1.5, color: "var(--text-dim)" }}>{g.a}</div>}
-          </div>
-        ))}
-      </div>
+      <Guide openFirst={!msgs.length} />
     </Sheet>
   )
 }

@@ -8,25 +8,31 @@ import {
   phaseWindows, phaseAt, testResult, checkinsIn, buildStack, allowedSlots, slotTime, slotFor, stackMembers, intakeOn,
   STORE_MODE, LAB_BASE, todayIso, addDays, diffDays, fmtDate, suppColor, daySum, activeDims, signal, libOf, makeSupp, defaultCheckinTime,
   nextCandidates, suppStatus, takingInfo, avgIntakeMinutes, phaseEndsAt, fmtCountdown, nowTime, closeActive, looksPrescribed,
-  startTest, startStack, startCheck, applyVerdict, resolveCheck, fromMin, timeTip, LIB_BY_ID,
+  startTest, startStack, startCheck, applyVerdict, resolveCheck, fromMin, timeTip, LIB_BY_ID, slotMinutes,
   type SlotId, type LabState, type Decision, type Dim, type PhaseWindow, type MySupp, type LibSupp, type Settings, type CheckIn, type Scores, type SuppStatusKey,
 } from "@/lib/supplementLab"
 import { checkLabReminders, downloadIcs, hasNativeReminders, syncNativeReminders } from "@/lib/labReminders"
 import { enablePush, pushAvailable, pushState, syncPush, type PushState } from "@/lib/labPush"
 import { fetchHealthSince, hasHealthProvider, healthCompare, mergeHealthDay, requestHealthPermission } from "@/lib/health"
 import { coach, type CoachAction, type CoachMsg } from "@/lib/labCoach"
-import { LAB_CSS, Btn, Capsule, Card, FaceRow, Icon, IconBtn, Label, Sheet, SideChips, Stars, Stepper, XpToast } from "./ui"
+import { LAB_CSS, Btn, Capsule, Card, FaceRow, Icon, IconBtn, Label, Segmented, Sheet, SideChips, Stars, Stepper, XpToast } from "./ui"
 import { CheckInSheet, Onboarding, SuppPicker } from "./flows"
 import { DeltaBars, DimLineChart, MoodCalendar, MoodCurve, ProCon } from "./charts"
 import { CoachBubble, HelpSheet, KolbiTip, MASCOT_NAME, Mascot } from "./mascot"
 import { InstallHint } from "./install"
 import { DailyRound, dayProgress, roundSteps, type RoundStep } from "./round"
 import { factsFor, partnerTips, recentSides, sideCauses } from "@/lib/labKnowledge"
-import { openShop, refillStock, shoppingList } from "@/lib/labStock"
+import { openShop, refillStock, shoppingList, stockInfo } from "@/lib/labStock"
 import { ShopButton, ShoppingCard, StockCard, StockSheet } from "./stock"
-import { KolbiSheet } from "./kolbi"
+import { KolbiPage } from "./kolbi"
 
-type Tab = "heute" | "reise" | "daten" | "stack"
+type Tab = "heute" | "meine" | "ergebnisse" | "kolbi"
+const TABS: { id: Tab; icon: string; label: string }[] = [
+  { id: "heute", icon: "home", label: "Heute" },
+  { id: "meine", icon: "pill", label: "Meine" },
+  { id: "ergebnisse", icon: "chart", label: "Ergebnisse" },
+  { id: "kolbi", icon: "flask", label: "Kolbi" },
+]
 
 const fmt = (n: number, sign = false) => `${sign && n > 0 ? "+" : ""}${n.toFixed(1).replace(".", ",")}`
 
@@ -76,7 +82,10 @@ function markTaken(p: LabState, date: string, id: string) {
 }
 
 function initialTab(): Tab {
-  try { return (localStorage.getItem("true-lab-tab") as Tab | null) ?? "heute" } catch { return "heute" }
+  try {
+    const v = localStorage.getItem("true-lab-tab")
+    return TABS.some(x => x.id === v) ? v as Tab : "heute" // alte Tabs (reise/daten/stack) → Heute
+  } catch { return "heute" }
 }
 
 /** Aktionen aus Benachrichtigungen (?rate=4, ?taken=id, ?checkin=1) direkt beim Öffnen ausführen. */
@@ -163,7 +172,18 @@ export default function LabApp() {
   const [round, setRound] = useState<RoundStep[] | null>(null)
   const [unlockedFor, setUnlockedFor] = useState<string | null>(null)
   const [stockFor, setStockFor] = useState<string | null>(null)
-  const [kolbiOpen, setKolbiOpen] = useState(false)
+  const [mineView, setMineView] = useState<"liste" | "stack">("liste")
+  const [resView, setResView] = useState<"auswertung" | "verlauf">("auswertung")
+  const [tabDir, setTabDir] = useState(1)
+  // Tab wechseln (auch alte Namen aus Unteransichten: stack → Meine/Stack, daten → Ergebnisse …)
+  const goTab = useCallback((to: string) => {
+    let next: Tab = TABS.some(x => x.id === to) ? to as Tab : "heute"
+    if (to === "stack") { next = "meine"; setMineView("stack") }
+    if (to === "daten") { next = "ergebnisse"; setResView("auswertung") }
+    if (to === "reise") { next = "ergebnisse"; setResView("verlauf") }
+    setTab(prev => { setTabDir(TABS.findIndex(x => x.id === next) >= TABS.findIndex(x => x.id === prev) ? 1 : -1); return next })
+    window.scrollTo({ top: 0 })
+  }, [])
   const now = useNow()
 
   useEffect(() => { try { localStorage.setItem("true-lab-tab", tab) } catch {} }, [tab])
@@ -337,6 +357,8 @@ export default function LabApp() {
   }, [s, today, update, toggleTook, enableReminders, dismissed])
 
   const msgs = useMemo(() => coach(s, now, dismissed), [s, now, dismissed])
+  // Einnahme & Check-in erledigt man über die Bubbles bzw. die Tagesrunde – nicht nochmal als Tipp
+  const kolbiTips = useMemo(() => msgs.filter(m => !m.id.startsWith("take-") && m.id !== "checkin"), [msgs])
 
   // Check-in erst ab der gewünschten Uhrzeit — früher nur per Long-Press entsperrbar
   const checkinLocked = useMemo(() => {
@@ -401,19 +423,24 @@ export default function LabApp() {
           }}>
             <span style={{ filter: st ? undefined : "grayscale(1)", display: "inline-block" }}>🔥</span>{st}
           </div>
-          <IconBtn label={`${MASCOT_NAME}: Profil, Tipps und Hilfe`} onClick={() => setKolbiOpen(true)}><Mascot mood={msgs[0]?.mood ?? "happy"} size={26} /></IconBtn>
           <IconBtn label="Einstellungen" onClick={() => setSettingsOpen(true)}><Icon name="settings" /></IconBtn>
         </div>
       </header>
 
       <main style={{ maxWidth: 640, margin: "0 auto", padding: "16px 16px calc(120px + env(safe-area-inset-bottom))" }}>
-        {tab === "heute" && <Dashboard s={s} wins={wins} today={today} now={now} msgs={msgs} onAction={runAction} onHelp={() => setHelpOpen(true)}
-          onCheckin={setCheckinDate} onQuick={(d, v) => saveCheckin(quickCheckin(s, d, v))} onTake={toggleTook} onSupp={setSuppSheet}
-          onPhase={setPhaseSheet} update={update} goTab={setTab}
-          pending={pending} onRound={() => setRound(pending)} checkinLocked={checkinLocked} pushOff={pushSt === "off"} onPush={turnOnPush} onKolbi={() => setKolbiOpen(true)} onUnlock={() => { setUnlockedFor(today); setRound(roundSteps(s, today, now, false)) }} />}
-        {tab === "reise" && <JourneyView s={s} wins={wins} today={today} onPhase={setPhaseSheet} goTab={setTab} />}
-        {tab === "daten" && <DataView s={s} wins={wins} onVerdict={setVerdictFor} onCheckin={setCheckinDate} />}
-        {tab === "stack" && <StackView s={s} update={update} onVerdict={setVerdictFor} onStartStack={() => runAction({ kind: "startStack" }, "stack")} />}
+        <div key={tab} className="lab-tabin" style={{ ["--dx" as string]: `${tabDir * 24}px` }}>
+          {tab === "heute" && <Dashboard s={s} wins={wins} today={today} now={now} msgs={msgs} onAction={runAction}
+            onQuick={(d, v) => saveCheckin(quickCheckin(s, d, v))} onTake={toggleTook} onCheckin={setCheckinDate}
+            onPhase={setPhaseSheet} goTab={goTab}
+            pending={pending} onRound={() => setRound(pending)} checkinLocked={checkinLocked} pushOff={pushSt === "off"} onPush={turnOnPush}
+            onUnlock={() => { setUnlockedFor(today); setRound(roundSteps(s, today, now, false)) }} />}
+          {tab === "meine" && <MineView s={s} today={today} view={mineView} setView={setMineView} update={update} onSupp={setSuppSheet}
+            onAction={runAction} onVerdict={setVerdictFor} onStartStack={() => runAction({ kind: "startStack" }, "stack")} />}
+          {tab === "ergebnisse" && <ResultsView s={s} wins={wins} today={today} view={resView} setView={setResView}
+            onVerdict={setVerdictFor} onCheckin={setCheckinDate} onPhase={setPhaseSheet} goTab={goTab} />}
+          {tab === "kolbi" && <KolbiPage s={s} mood={msgs[0]?.mood ?? "happy"} fill={dayProgress(s, today)} msgs={kolbiTips} onAction={runAction}
+            murky={(() => { const y = addDays(today, -1); return !!wins[0] && y >= wins[0].start && !s.checkins[y] && !s.checkins[today] })()} />}
+        </div>
       </main>
 
       {/* ── Tab-Leiste: schwebende Pille ── */}
@@ -426,16 +453,20 @@ export default function LabApp() {
           background: "var(--nav-bg)", backdropFilter: "blur(24px) saturate(1.4)", WebkitBackdropFilter: "blur(24px) saturate(1.4)",
           border: "1px solid color-mix(in srgb, var(--border) 70%, transparent)", boxShadow: "0 12px 36px rgba(0,0,0,.18)",
         }}>
-          {([["heute", "home", "Heute"], ["reise", "path", "Verlauf"], ["daten", "chart", "Auswertung"], ["stack", "trophy", "Stack"]] as const).map(([id, icon, l]) => {
+          {TABS.map(({ id, icon, label: l }) => {
             const on = tab === id
+            const badge = id === "kolbi" ? kolbiTips.length : id === "meine" ? shoppingList(s, today).count : 0
             return (
-              <button key={id} onClick={() => setTab(id)} className="lab-press" aria-current={on ? "page" : undefined} style={{
-                flex: on ? 1.6 : 1, height: 50, border: "none", borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+              <button key={id} onClick={() => goTab(id)} className="lab-press" aria-current={on ? "page" : undefined} aria-label={l} style={{
+                position: "relative", flex: on ? 1.6 : 1, height: 50, border: "none", borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
                 background: on ? "var(--accent)" : "transparent", color: on ? "#fff" : "var(--text-dim)",
-                fontWeight: 800, fontSize: "0.78rem", transition: "flex .3s cubic-bezier(.3,.9,.3,1), background .25s, color .25s", overflow: "hidden", whiteSpace: "nowrap",
+                fontWeight: 800, fontSize: "0.8rem", transition: "flex .3s cubic-bezier(.3,.9,.3,1), background .25s, color .25s", overflow: "hidden", whiteSpace: "nowrap",
               }}>
                 <Icon name={icon} />
                 {on && <span className="lab-fade">{l}</span>}
+                {!on && badge > 0 && (id === "kolbi"
+                  ? <span aria-hidden style={{ position: "absolute", top: 12, left: "calc(50% + 8px)", width: 9, height: 9, borderRadius: 999, background: "var(--accent)", boxShadow: "0 0 0 2px var(--nav-bg)" }} />
+                  : <span style={{ position: "absolute", top: 8, left: "calc(50% + 6px)", minWidth: 16, height: 16, padding: "0 4px", borderRadius: 999, background: "#eda100", color: "#fff", fontSize: "0.66rem", fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>{badge}</span>)}
               </button>
             )
           })}
@@ -491,9 +522,6 @@ export default function LabApp() {
           setTestSetup(null)
           update(p => { p.supps = p.supps.map(x => x.id === id ? { ...x, mode: "konstant" } : x); return p })
         }} />}
-      {kolbiOpen && <KolbiSheet s={s} mood={msgs[0]?.mood ?? "happy"} fill={dayProgress(s, today)} tips={msgs.length}
-        murky={(() => { const y = addDays(today, -1); return !!wins[0] && y >= wins[0].start && !s.checkins[y] && !s.checkins[today] })()}
-        onHelp={() => { setKolbiOpen(false); setHelpOpen(true) }} onClose={() => setKolbiOpen(false)} />}
       {helpOpen && <HelpSheet msgs={msgs} onAction={runAction} onClose={() => setHelpOpen(false)} />}
       {settingsOpen && <SettingsSheet s={s} onClose={() => setSettingsOpen(false)} update={update}
         onEnableReminders={enableReminders} pushSt={pushSt}
@@ -597,288 +625,307 @@ function LockedCheckin({ unlockAt, now, onUnlock, inline }: { unlockAt: string; 
   )
 }
 
-/** Großer Kolbi oben auf „Heute“: Füllstand = Tagesfortschritt, Tipp startet die Tagesrunde. */
-function KolbiHero({ s, today, now, pending, sleepy, lockedUntil, onRound, onKolbi, onUnlock }: {
-  s: LabState; today: string; now: Date; pending: RoundStep[]; sleepy: boolean; lockedUntil: string | null; onRound: () => void
-  onKolbi: () => void; onUnlock: () => void
+/** Kolbi oben auf „Heute“: Füllstand = Tagesfortschritt, darunter die heutigen Einnahmen als Bubbles. */
+function KolbiHero({ s, today, now, pending, sleepy, lockedUntil, notStarted, startIn, onRound, onKolbi, onUnlock, onTake, onCheckin }: {
+  s: LabState; today: string; now: Date; pending: RoundStep[]; sleepy: boolean; lockedUntil: string | null
+  notStarted: boolean; startIn: number | null
+  onRound: () => void; onKolbi: () => void; onUnlock: () => void; onTake: (id: string) => void; onCheckin: () => void
 }) {
   const [tapped, setTapped] = useState(false)
+  const [dropAt, setDropAt] = useState<string | null>(null)
   const fill = dayProgress(s, today)
   const st = streak(s)
+  const lvl = levelFor(s.xp)
   const n = pending.length
   const reveal = pending.some(p => p.kind === "reveal")
-  const mood = n ? (reveal ? "think" : sleepy ? "sleepy" : "happy") : fill >= 1 ? "party" : sleepy ? "sleepy" : "happy"
+  const intake = [...intakeOn(s, today)].sort((a, b) => slotMinutes(slotFor(a, s), s.settings) - slotMinutes(slotFor(b, s), s.settings))
+  const took = s.took[today] ?? []
+  const checked = s.checkins[today]
+  const mood = notStarted ? "happy" : n ? (reveal ? "think" : sleepy ? "sleepy" : "happy") : fill >= 1 ? "party" : sleepy ? "sleepy" : "happy"
   const go = () => {
     if (!n || tapped) return
     setTapped(true)
     setTimeout(() => { onRound(); setTapped(false) }, 380)
   }
-  const title = n
-    ? reveal && n === 1 ? "Ein Ergebnis wartet auf dich" : `${n} ${n === 1 ? "Sache" : "Dinge"} für jetzt`
+  const tick = (id: string) => {
+    const on = took.includes(id)
+    if (!on) { setDropAt(id); setTimeout(() => setDropAt(null), 700); try { navigator.vibrate?.(12) } catch {} }
+    onTake(id)
+  }
+  const title = notStarted ? "Bald geht's los"
+    : n ? (reveal && n === 1 ? "Ein Ergebnis wartet" : `${n} ${n === 1 ? "Sache" : "Dinge"} für jetzt`)
     : fill >= 1 ? "Heute alles erledigt" : "Gerade nichts zu tun"
-  const sub = n
-    ? "Tipp mich an, ich führe dich durch."
+  const sub = notStarted ? `Start in ${startIn != null ? fmtCountdown(startIn) : "Kürze"} – bis dahin alles wie gewohnt.`
+    : n ? "Ich führe dich Schritt für Schritt durch."
     : fill >= 1 ? (st > 1 ? `${st} Tage am Stück. Stark!` : "Bis morgen!")
     : lockedUntil ? "Bis zum Check-in hast du frei." : "Ich melde mich, wenn wieder etwas dran ist."
   return (
-    <div role={n ? "button" : undefined} tabIndex={n ? 0 : undefined} aria-label={n ? `Tagesrunde starten: ${title}` : undefined}
-      onClick={go} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") go() }}
-      className={`lab-rise ${n ? "lab-press" : ""}`} style={{
-        position: "relative", overflow: "hidden", borderRadius: 30, padding: "22px 20px 20px", textAlign: "center",
-        background: "radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--accent) 16%, var(--surface)) 0%, var(--surface) 70%)",
-        border: "1px solid color-mix(in srgb, var(--border) 70%, transparent)", boxShadow: "0 1px 2px rgba(0,0,0,.04), 0 12px 32px rgba(0,0,0,.07)",
-        cursor: n ? "pointer" : "default",
-      }}>
-      <div style={{ position: "relative", width: 140, height: 140, margin: "0 auto 6px" }}>
+    <div className="lab-rise" style={{
+      position: "relative", overflow: "hidden", borderRadius: 32, padding: "18px 18px 20px", textAlign: "center",
+      background: "radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--accent) 16%, var(--surface)) 0%, var(--surface) 70%)",
+      border: "1px solid color-mix(in srgb, var(--border) 70%, transparent)", boxShadow: "0 1px 2px rgba(0,0,0,.04), 0 12px 32px rgba(0,0,0,.07)",
+    }}>
+      <div style={{ position: "relative", width: 132, height: 132, margin: "0 auto 4px" }}>
         {n > 0 && <span className="lab-pulse" style={{ position: "absolute", inset: 18, borderRadius: 999 }} />}
-        <div className={tapped ? "lab-squish" : "lab-float"} style={{ position: "relative", cursor: "pointer" }}
-          onClick={e => { e.stopPropagation(); onKolbi() }} role="button" aria-label={`${MASCOT_NAME}s Profil öffnen`}>
-          <Mascot mood={mood} size={140} fill={0.12 + fill * 0.88} glow={st >= 3} murky={sleepy} />
-          <span style={{ position: "absolute", right: 0, bottom: 6, fontSize: "0.66rem", fontWeight: 900, padding: "3px 8px", borderRadius: 999, background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 2px 8px rgba(0,0,0,.1)" }}>
-            {levelFor(s.xp).emoji} Lv {levelFor(s.xp).index + 1}
+        <div className={tapped || dropAt ? "lab-squish" : "lab-float"} key={dropAt ?? "k"} role="button" tabIndex={0} aria-label={`${MASCOT_NAME}: Tipps, Profil und Hilfe`}
+          onClick={onKolbi} onKeyDown={e => { if (e.key === "Enter") onKolbi() }} style={{ position: "relative", cursor: "pointer" }}>
+          <Mascot mood={mood} size={132} fill={0.12 + fill * 0.88} glow={st >= 3} murky={sleepy} />
+          <span style={{ position: "absolute", right: -4, bottom: 6, fontSize: "0.7rem", fontWeight: 900, padding: "3px 8px", borderRadius: 999, background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 2px 8px rgba(0,0,0,.1)" }}>
+            {lvl.emoji} Lv {lvl.index + 1}
           </span>
         </div>
-        {tapped && [42, 50, 58].map((l, k) => <span key={l} className="lab-drip" style={{ left: `${l}%`, top: "86%", animationDelay: `${k * 0.07}s` }} />)}
+        {(tapped || dropAt) && [42, 50, 58].map((l, k) => <span key={l} className="lab-drip" style={{ left: `${l}%`, top: dropAt ? "-8%" : "86%", animationDelay: `${k * 0.07}s`, ...(dropAt ? { animationName: "labDropIn" } : {}) }} />)}
       </div>
       <div style={{ fontSize: "1.3rem", fontWeight: 900, letterSpacing: "-.01em" }}>{title}</div>
-      <div style={{ fontSize: "0.86rem", color: "var(--text-dim)", marginTop: 4 }}>{sub}</div>
-      {!n && lockedUntil && <div style={{ marginTop: 14 }}><LockedCheckin inline unlockAt={lockedUntil} now={now} onUnlock={onUnlock} /></div>}
-      {n > 0 && (
-        <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
-          {pending.map((p, k) => {
-            const x = p.kind === "take" ? s.supps.find(q => q.id === p.id) : p.kind === "reveal" ? s.supps.find(q => q.id === p.suppId) : null
-            const e = p.kind === "take" ? x?.emoji : p.kind === "checkin" ? "⭐" : p.kind === "sides" ? "🩺" : "🎁"
-            return <span key={k} className="lab-pop" style={{ animationDelay: `${0.15 + k * 0.06}s`, width: 32, height: 32, borderRadius: 11, background: "var(--surface-2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem" }}>{e}</span>
+      <div style={{ fontSize: "0.86rem", color: "var(--text-dim)", marginTop: 3 }}>{sub}</div>
+
+      {/* Heutige Einnahmen: antippen = abhaken */}
+      {!notStarted && intake.length > 0 && (
+        <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
+          {intake.map((id, k) => {
+            const x = s.supps.find(q => q.id === id)
+            if (!x) return null
+            const done = took.includes(id)
+            const slot = slotFor(id, s)
+            return (
+              <button key={id} className="lab-press lab-pop" onClick={() => tick(id)} aria-pressed={done}
+                aria-label={`${x.name} ${done ? "genommen – rückgängig" : "abhaken"}`} style={{
+                  animationDelay: `${0.1 + k * 0.05}s`, background: "none", border: "none", padding: 0, width: 58, color: "var(--text)",
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                }}>
+                <span style={{
+                  position: "relative", width: 52, height: 52, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.45rem",
+                  background: done ? suppColor(x) : "transparent", border: done ? "none" : `2.5px dashed color-mix(in srgb, ${suppColor(x)} 70%, var(--border))`,
+                  opacity: done ? 1 : 0.9, transition: "background .3s",
+                }}>
+                  {x.emoji}
+                  {done && <span style={{ position: "absolute", right: -3, bottom: -3, width: 22, height: 22, borderRadius: 999, background: "var(--accent)", color: "#fff", fontSize: "0.75rem", fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid var(--surface)", animation: "labCheck .35s ease" }}>✓</span>}
+                </span>
+                <span style={{ fontSize: "0.7rem", fontWeight: 700, color: done ? "var(--text-dim)" : "var(--text)", maxWidth: 58, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {done ? (s.tookAt[today]?.[id] ?? "✓") : slotTime(slot, s.settings)}
+                </span>
+              </button>
+            )
           })}
         </div>
       )}
+
       {n > 0 && (
-        <div style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 22px", borderRadius: 999, background: "var(--lab-grad)", color: "#fff", fontWeight: 900, boxShadow: "0 8px 24px rgba(46,204,138,.35)" }}>
-          ▶ Los geht's
-        </div>
+        <button onClick={go} className="lab-press" style={{ marginTop: 16, display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 26px", borderRadius: 999, border: "none", background: "var(--lab-grad)", color: "#fff", fontWeight: 900, fontSize: "1rem", boxShadow: "0 8px 24px rgba(46,204,138,.35)" }}>
+          ▶ {reveal && n === 1 ? "Ergebnis aufdecken" : "Los geht's"}
+        </button>
+      )}
+      {!n && !checked && lockedUntil && <div style={{ marginTop: 16 }}><LockedCheckin inline unlockAt={lockedUntil} now={now} onUnlock={onUnlock} /></div>}
+      {!n && checked && (
+        <button onClick={onCheckin} className="lab-press" style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text)", fontWeight: 800, fontSize: "0.82rem" }}>
+          {FACES[Math.round(daySum(checked)) - 1]} Heute {fmt(daySum(checked))}★ · <span style={{ color: "var(--accent)" }}>{checked.quick ? "genauer" : "ändern"}</span>
+        </button>
       )}
     </div>
   )
 }
 
-function Dashboard({ s, wins, today, now, msgs, onAction, onHelp, onCheckin, onQuick, onTake, onSupp, onPhase, update, goTab, pending, onRound, checkinLocked, onUnlock, pushOff, onPush, onKolbi }: {
+/** Kolbis Sprechblase unter ihm: ein Satz, ein Knopf – der Rest im Kolbi-Tab. */
+function KolbiSays({ msg, more, onAction, onMore }: { msg: CoachMsg; more: number; onAction: (a: CoachAction, id: string) => void; onMore: () => void }) {
+  const [open, setOpen] = useState(false)
+  const main = msg.actions?.find(a => a.primary) ?? msg.actions?.[0]
+  const second = msg.actions?.find(a => a !== main)
+  return (
+    <div className="lab-rise" style={{ position: "relative", marginTop: -2 }}>
+      <span aria-hidden style={{ position: "absolute", left: "50%", top: -7, width: 14, height: 14, marginLeft: -7, background: "var(--surface)", borderLeft: "1px solid var(--border)", borderTop: "1px solid var(--border)", transform: "rotate(45deg)" }} />
+      <div className="lab-card" style={{ padding: "14px 16px" }}>
+        <div style={{ fontWeight: 900, fontSize: "0.98rem" }}>{msg.title}</div>
+        <div onClick={() => setOpen(o => !o)} style={{
+          fontSize: "0.86rem", lineHeight: 1.45, color: "var(--text-dim)", marginTop: 3, cursor: "pointer",
+          ...(open ? {} : { display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }),
+        }}>{msg.text}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+          {main && <Btn onClick={() => onAction(main.action, msg.id)} style={{ padding: "9px 14px", fontSize: "0.84rem", borderRadius: 12 }}>{main.label}</Btn>}
+          {open && second && <Btn variant="soft" onClick={() => onAction(second.action, msg.id)} style={{ padding: "9px 12px", fontSize: "0.82rem", borderRadius: 12 }}>{second.label}</Btn>}
+          <span style={{ flex: 1 }} />
+          {!open && (msg.actions?.length ?? 0) > 1 && <button onClick={() => setOpen(true)} style={{ background: "none", border: "none", color: "var(--text-dim)", fontWeight: 800, fontSize: "0.8rem", cursor: "pointer" }}>Mehr</button>}
+          {more > 0 && <button onClick={onMore} style={{ background: "none", border: "none", color: "var(--accent)", fontWeight: 800, fontSize: "0.8rem", cursor: "pointer" }}>+{more} ›</button>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Kleine Überblicks-Zeile (Test, Einkaufsliste …). */
+function Row({ emoji, title, sub, right, progress, color, onClick }: {
+  emoji: React.ReactNode; title: React.ReactNode; sub?: React.ReactNode; right?: React.ReactNode; progress?: number | null; color?: string; onClick?: () => void
+}) {
+  return (
+    <button onClick={onClick} className="lab-press" style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "12px 14px", background: "none", border: "none", color: "var(--text)", textAlign: "left" }}>
+      <span style={{ width: 40, height: 40, borderRadius: 13, background: color ?? "var(--surface-2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", flexShrink: 0 }}>{emoji}</span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: "block", fontWeight: 800, fontSize: "0.92rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</span>
+        {sub && <span style={{ display: "block", fontSize: "0.76rem", color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</span>}
+        {progress != null && (
+          <span style={{ display: "block", height: 5, borderRadius: 3, background: "var(--surface-2)", marginTop: 6, overflow: "hidden" }}>
+            <span style={{ display: "block", width: `${Math.max(4, progress * 100)}%`, height: "100%", borderRadius: 3, background: color ?? "var(--accent)", transition: "width 1s" }} />
+          </span>
+        )}
+      </span>
+      {right}
+      <span style={{ color: "var(--text-dim)" }}>›</span>
+    </button>
+  )
+}
+
+function Dashboard({ s, wins, today, now, msgs, onAction, onQuick, onTake, onPhase, goTab, pending, onRound, checkinLocked, onUnlock, pushOff, onPush, onCheckin }: {
   s: LabState; wins: PhaseWindow[]; today: string; now: Date; msgs: CoachMsg[]
-  onAction: (a: CoachAction, id: string) => void; onHelp: () => void
-  onCheckin: (d: string) => void; onQuick: (d: string, v: number) => void; onTake: (id: string) => void; onSupp: (id: string) => void
-  onPhase: (w: PhaseWindow) => void; update: Update; goTab: (t: Tab) => void
+  onAction: (a: CoachAction, id: string) => void
+  onQuick: (d: string, v: number) => void; onTake: (id: string) => void
+  onPhase: (w: PhaseWindow) => void; goTab: (t: string) => void
   pending: RoundStep[]; onRound: () => void; checkinLocked: boolean; onUnlock: () => void
-  pushOff: boolean; onPush: () => void; onKolbi: () => void
+  pushOff: boolean; onPush: () => void; onCheckin: (d: string) => void
 }) {
   const w = wins.find(x => today >= x.start && today <= x.end) ?? null
   const first = wins[0]
-  const notStarted = first && today < first.start
+  const notStarted = !!first && today < first.start
   const checked = s.checkins[today]
   const yesterday = addDays(today, -1)
-  const missedYesterday = first && yesterday >= first.start && !s.checkins[yesterday]
-  const intake = intakeOn(s, today)
-  const took = s.took[today] ?? []
-  const tookAt = s.tookAt[today] ?? {}
+  const missedYesterday = !!first && yesterday >= first.start && !s.checkins[yesterday]
   const color = w?.kind === "test" || w?.kind === "check" ? suppColor(s.supps.find(x => x.id === w.suppId)) : w?.kind === "stack" ? "#eda100" : w?.kind === "washout" ? "#3987e5" : "#2ECC8A"
-  // Was die Tagesrunde abdeckt, muss Kolbi nicht zusätzlich als Tipp anzeigen
-  const inRound = (id: string) => id === "checkin" || id.startsWith("take-") || id.startsWith("verdict-") || id.startsWith("low-") || (pushOff && id === "reminders")
-  const shop = shoppingList(s, today)
+  // Was die Tagesrunde bzw. die Bubbles abdecken, muss Kolbi nicht zusätzlich sagen
+  // Phasen-Info steht schon in der Überblicks-Zeile darunter
+  const inRound = (id: string) => id === "checkin" || id.startsWith("take-") || id.startsWith("verdict-") || id.startsWith("low-") || id.startsWith("phase-") || (pushOff && id === "reminders")
   const tips = msgs.filter(m => !inRound(m.id))
   const top = tips[0]
+  const shop = shoppingList(s, today)
 
-  // Countdown bis zum Ende der aktuellen Phase bzw. bis zum Start
   const target = notStarted ? new Date(first.start + "T00:00:00").getTime() : w && !w.open ? phaseEndsAt(w) : null
   const remaining = target ? target - now.getTime() : null
-  const totalMs = w && !w.open ? w.days * 86400000 : null
-  const progress = remaining != null && totalMs ? Math.min(1, Math.max(0, 1 - remaining / totalMs)) : null
-
-  // Supplements sortiert: im Test / aktiv zuerst
-  const order: SuppStatusKey[] = ["testing", "observing", "verdict", "kept", "constant", "waiting", "maybe", "away", "paused", "dropped"]
-  const supps = [...s.supps].sort((a, b) => order.indexOf(suppStatus(s, a.id, today).key) - order.indexOf(suppStatus(s, b.id, today).key))
-  const nextId = nextCandidates(s)[0]?.id
+  const progress = w && !w.open ? Math.min(1, Math.max(0, (diffDays(w.start, today) + 1) / w.days)) : null
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {!notStarted && <KolbiHero s={s} today={today} now={now} pending={pending} sleepy={!!missedYesterday && !checked}
-        lockedUntil={!checked && checkinLocked ? s.reminders.checkin : null} onRound={onRound} onKolbi={onKolbi} onUnlock={onUnlock} />}
-      {pushOff && (
-        <div className="lab-card lab-rise" style={{ padding: 16, display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontSize: "1.8rem" }}>🔔</span>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: "block", fontWeight: 900 }}>Erinnerungen, auch wenn die App zu ist</span>
-            <span style={{ display: "block", fontSize: "0.8rem", color: "var(--text-dim)", lineHeight: 1.4 }}>Einnahme, abends die Runde, fertige Ergebnisse – höchstens 3–4× am Tag.</span>
-          </span>
-          <Btn onClick={onPush} style={{ padding: "10px 14px", fontSize: "0.85rem" }}>An</Btn>
-        </div>
-      )}
-      {/* Kolbi sagt, was sonst noch ansteht */}
-      {top && <CoachBubble msg={top} onAction={onAction} more={tips.length - 1} onMore={onHelp} compact={!notStarted} />}
-      <ShoppingCard s={s} away={shop.away} low={shop.low} onOpen={onSupp} onArrived={id => onAction({ kind: "arrived", suppId: id }, "shop")} />
-      {STORE_MODE && !hasNativeReminders() && <InstallHint compact />}
+      <KolbiHero s={s} today={today} now={now} pending={pending} sleepy={missedYesterday && !checked}
+        lockedUntil={!checked && checkinLocked ? s.reminders.checkin : null} notStarted={notStarted} startIn={notStarted ? remaining : null}
+        onRound={onRound} onKolbi={() => goTab("kolbi")} onUnlock={onUnlock} onTake={onTake} onCheckin={() => onCheckin(today)} />
 
-      {/* Status + Countdown (ohne laufende Phase sagt Kolbi oben, was als Nächstes kommt) */}
-      {(notStarted || w) && <div className="lab-rise lab-press" onClick={() => w && onPhase(w)} style={{
-        borderRadius: 24, padding: 18, color: "#fff", position: "relative", overflow: "hidden",
-        background: `linear-gradient(135deg, ${color} 0%, color-mix(in srgb, ${color} 55%, #0b0b1a) 100%)`,
-        boxShadow: `0 14px 36px color-mix(in srgb, ${color} 35%, transparent)`,
-      }}>
-        <div style={{ position: "absolute", right: -30, top: -30, width: 150, height: 150, borderRadius: 999, background: "rgba(255,255,255,.1)" }} />
-        <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ fontSize: "2.6rem", lineHeight: 1 }}>{notStarted ? "⏳" : w ? phaseEmoji(s, w) : "🧭"}</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: "0.7rem", fontWeight: 900, letterSpacing: ".1em", opacity: 0.85 }}>
-              {notStarted ? "STARTET BALD" : w ? (w.open ? `SEIT ${diffDays(w.start, today) + 1} TAGEN` : `TAG ${diffDays(w.start, today) + 1} VON ${w.days}`) : "NÄCHSTER SCHRITT"}
-            </div>
-            <div style={{ fontSize: "1.3rem", fontWeight: 900, lineHeight: 1.15 }}>{notStarted ? "Reset-Phase" : w ? phaseTitle(s, w) : "Wartet auf dich"}</div>
-          </div>
-          {remaining != null && (
-            <div style={{ textAlign: "right", flexShrink: 0 }}>
-              <div style={{ fontSize: "0.65rem", fontWeight: 800, opacity: 0.85 }}>{notStarted ? "START IN" : "NOCH"}</div>
-              <div style={{ fontSize: "1.15rem", fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>{fmtCountdown(remaining)}</div>
-            </div>
-          )}
-        </div>
-        {progress != null && (
-          <div style={{ position: "relative", height: 8, borderRadius: 4, background: "rgba(255,255,255,.25)", marginTop: 14, overflow: "hidden" }}>
-            <div style={{ width: `${progress * 100}%`, height: "100%", background: "#fff", borderRadius: 4, transition: "width 1s" }} />
-          </div>
-        )}
-      </div>}
+      {top && <KolbiSays msg={top} more={tips.length - 1} onAction={onAction} onMore={() => goTab("kolbi")} />}
 
-      {/* 1-Tipp-Check-in */}
-      {!notStarted && (checked ? (
-        <Card className="lab-rise">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ fontSize: "2.2rem" }}>{FACES[Math.round(daySum(checked)) - 1]}</div>
-              <div>
-                <Label>Heute eingecheckt{checked.at ? ` · ${checked.at} Uhr` : ""}</Label>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
-                  <Stars value={Math.round(daySum(checked))} size={17} />
-                  <span style={{ fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>{fmt(daySum(checked))}</span>
-                </div>
-              </div>
-            </div>
-            <Btn variant="soft" onClick={() => onCheckin(today)} style={{ padding: "8px 12px", fontSize: "0.78rem" }}>{checked.quick ? "Genauer ★" : "Ändern"}</Btn>
-          </div>
-          {intake.length > 0 && (
-            <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
-              <div style={{ fontSize: "0.8rem", fontWeight: 800, marginBottom: 8 }}>Nebenwirkungen heute? <span style={{ color: "var(--text-dim)", fontWeight: 600 }}>1× leicht · 2× stark</span></div>
-              <SideChips compact value={checked.sides ?? {}} onChange={v => update(p => { p.checkins[today] = { ...p.checkins[today], sides: v }; return p })}
-                suggested={(knownSides(s, intake).length ? knownSides(s, intake) : SIDE_EFFECTS.slice(0, 5).map(x => x.id)).map(id => SIDE_BY_ID[id])} all={SIDE_EFFECTS} />
-            </div>
-          )}
-        </Card>
-      ) : null)}
-      {missedYesterday && (
-        <div className="lab-card" style={{ padding: 14 }}>
+      {missedYesterday && !notStarted && (
+        <div className="lab-card lab-rise" style={{ padding: 14 }}>
           <div style={{ fontSize: "0.85rem", fontWeight: 800, marginBottom: 8 }}>🕐 Gestern vergessen? 1 Tipp zum Nachtragen</div>
           <FaceRow onPick={v => onQuick(yesterday, v)} faces={FACES} size={44} />
         </div>
       )}
 
-      {/* Heute einnehmen */}
-      {!notStarted && (
-        <Card className="lab-rise">
-          <Label style={{ marginBottom: 10 }}>Heute einnehmen</Label>
-          {intake.length === 0 ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ fontSize: "2rem" }}>🙅</div>
-              <div style={{ fontSize: "0.88rem", lineHeight: 1.45 }}><b>Heute nichts.</b> <span style={{ color: "var(--text-dim)" }}>{w?.kind === "baseline" ? "Reset-Phase: So lerne ich dein Normal kennen." : "Zwischen zwei Tests: kurz durchatmen."}</span></div>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {intake.map(id => {
-                const x = s.supps.find(q => q.id === id)
-                if (!x) return null
-                const done = took.includes(id)
-                const slot = slotFor(id, s)
-                const info = takingInfo(s, id)
-                return (
-                  <div key={id} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <button onClick={() => onSupp(id)} className="lab-press" style={{ width: 46, height: 46, borderRadius: 15, border: "none", background: suppColor(x), fontSize: "1.4rem", flexShrink: 0 }}>{x.emoji}</button>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{x.name}</div>
-                      <div style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>
-                        {done ? `✓ genommen um ${tookAt[id] ?? "—"}` : `${SLOTS.find(q => q.id === slot)?.emoji} geplant ${slotTime(slot, s.settings)} Uhr`}{x.dose ? ` · ${x.dose}` : ""}{info.days ? ` · ${info.days}. Tag` : ""}
-                      </div>
-                    </div>
-                    <button className="lab-press" onClick={() => onTake(id)} aria-label={`${x.name} abhaken`} style={{
-                      width: 46, height: 46, borderRadius: 15, border: done ? "none" : "2px dashed var(--border)", flexShrink: 0,
-                      background: done ? "var(--accent)" : "transparent", color: done ? "#fff" : "var(--text-dim)", fontSize: "1.3rem", fontWeight: 900,
-                    }}>{done ? "✓" : "○"}</button>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </Card>
-      )}
-
-      {/* Wohlfühl-Kurve */}
-      {Object.keys(s.checkins).length > 0 && (
-        <Card className="lab-rise" style={{ padding: "16px 14px 10px" }} onClick={() => goTab("daten")}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-            <Label>Wie du dich fühlst · 14 Tage</Label>
-            <span style={{ fontSize: "0.75rem", color: "var(--accent)", fontWeight: 800 }}>Auswertung →</span>
-          </div>
-          <MoodCurve s={s} />
-        </Card>
-      )}
-
-      {/* Deine Supplements */}
-      <Card className="lab-rise">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
-          <Label>Deine Supplements · {s.supps.length}</Label>
-          <button onClick={() => onAction({ kind: "pickNext" }, "list")} style={{ background: "none", border: "none", color: "var(--accent)", fontWeight: 800, fontSize: "0.78rem", cursor: "pointer" }}>+ Hinzufügen</button>
+      {pushOff && (
+        <div className="lab-card lab-rise" style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: "1.5rem" }}>🔔</span>
+          <span style={{ flex: 1, minWidth: 0, fontSize: "0.84rem", lineHeight: 1.4 }}><b>Erinnerungen, auch wenn die App zu ist</b> <span style={{ color: "var(--text-dim)" }}>· max. 3–4 am Tag</span></span>
+          <Btn onClick={onPush} style={{ padding: "9px 14px", fontSize: "0.84rem" }}>An</Btn>
         </div>
-        {(() => {
-          const groups: { label: string; keys: SuppStatusKey[] }[] = [
-            { label: "Fest im Stack", keys: ["constant"] },
-            { label: "Im Test", keys: ["testing", "waiting", "observing", "verdict", "kept", "maybe"] },
-            { label: "Noch nicht da", keys: ["away"] },
-            { label: "Pausiert", keys: ["paused", "dropped"] },
-          ]
-          const row = (x: MySupp) => {
-            const st = suppStatus(s, x.id, today)
-            const info = takingInfo(s, x.id)
-            const style = STATUS_STYLE[st.key]
-            return (
-              <button key={x.id} onClick={() => onSupp(x.id)} className="lab-press" style={{
-                display: "flex", alignItems: "center", gap: 10, padding: "8px 4px", background: "none", border: "none", color: "var(--text)", textAlign: "left", width: "100%",
-              }}>
-                <span style={{ width: 36, height: 36, borderRadius: 12, background: suppColor(x), display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", flexShrink: 0 }}>{x.emoji}</span>
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontWeight: 800, fontSize: "0.92rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{x.name}</span>
-                  <span style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, marginTop: 3 }}>
-                    <span style={{ fontSize: "0.68rem", fontWeight: 800, padding: "2px 8px", borderRadius: 999, background: style.bg, color: style.fg, whiteSpace: "nowrap" }}>{st.emoji} {st.label}</span>
-                    <span style={{ fontSize: "0.7rem", color: "var(--text-dim)", whiteSpace: "nowrap" }}>
-                      {info.days ? `${info.days} ${info.days === 1 ? "Tag" : "Tage"} genommen` : x.id === nextId && st.key === "waiting" ? "als Nächstes dran" : ""}
-                    </span>
-                  </span>
-                </span>
-                <span style={{ color: "var(--text-dim)", fontSize: "1rem" }}>›</span>
-              </button>
-            )
-          }
-          return (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {groups.map(g => {
-                const items = supps.filter(x => g.keys.includes(suppStatus(s, x.id, today).key))
-                if (!items.length) return null
-                return (
-                  <div key={g.label}>
-                    <div style={{ fontSize: "0.7rem", fontWeight: 900, letterSpacing: ".04em", color: "var(--text-dim)", marginBottom: 4 }}>
-                      {g.label.toUpperCase()} · {items.length}
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>{items.map(row)}</div>
-                  </div>
-                )
-              })}
-            </div>
-          )
-        })()}
-      </Card>
+      )}
 
+      {(notStarted || w || shop.count > 0) && (
+        <div className="lab-card lab-rise" style={{ padding: 4 }}>
+          {(notStarted || w) && (
+            <Row emoji={notStarted ? "⏳" : phaseEmoji(s, w!)} color={`color-mix(in srgb, ${color} 22%, var(--surface))`}
+              title={notStarted ? "Reset-Phase" : phaseTitle(s, w!)}
+              sub={notStarted ? `startet ${fmtDate(first.start)}` : w!.open ? `seit ${diffDays(w!.start, today) + 1} Tagen` : `Tag ${diffDays(w!.start, today) + 1} von ${w!.days}${remaining != null ? ` · noch ${fmtCountdown(remaining)}` : ""}`}
+              progress={notStarted ? null : progress} onClick={() => w && onPhase(w)} />
+          )}
+          {(notStarted || w) && shop.count > 0 && <div style={{ height: 1, background: "var(--border)", margin: "0 14px", opacity: 0.6 }} />}
+          {shop.count > 0 && (
+            <Row emoji="🛒" title={`Einkaufsliste · ${shop.count}`}
+              sub={[...shop.away.map(x => x.name), ...shop.low.map(x => `${x.name} (bald leer)`)].join(", ")}
+              onClick={() => goTab("meine")} />
+          )}
+        </div>
+      )}
+      {STORE_MODE && !hasNativeReminders() && <InstallHint compact />}
+    </div>
+  )
+}
+
+// ── Meine: Supplements, Einkaufsliste, Stack ───────────────────────────────────
+
+function MineView({ s, today, view, setView, update, onSupp, onAction, onVerdict, onStartStack }: {
+  s: LabState; today: string; view: "liste" | "stack"; setView: (v: "liste" | "stack") => void; update: Update
+  onSupp: (id: string) => void; onAction: (a: CoachAction, id: string) => void; onVerdict: (id: string) => void; onStartStack: () => void
+}) {
+  const shop = shoppingList(s, today)
+  const order: SuppStatusKey[] = ["testing", "observing", "verdict", "kept", "constant", "waiting", "maybe", "away", "paused", "dropped"]
+  const supps = [...s.supps].sort((a, b) => order.indexOf(suppStatus(s, a.id, today).key) - order.indexOf(suppStatus(s, b.id, today).key))
+  const nextId = nextCandidates(s)[0]?.id
+  const groups: { label: string; keys: SuppStatusKey[] }[] = [
+    { label: "Fest im Stack", keys: ["constant"] },
+    { label: "Im Test", keys: ["testing", "waiting", "observing", "verdict", "kept", "maybe"] },
+    { label: "Noch nicht da", keys: ["away"] },
+    { label: "Pausiert", keys: ["paused", "dropped"] },
+  ]
+  const row = (x: MySupp) => {
+    const st = suppStatus(s, x.id, today)
+    const info = takingInfo(s, x.id)
+    const stock = stockInfo(s, x)
+    const style = STATUS_STYLE[st.key]
+    return (
+      <button key={x.id} onClick={() => onSupp(x.id)} className="lab-press" style={{
+        display: "flex", alignItems: "center", gap: 12, padding: "10px 4px", background: "none", border: "none", color: "var(--text)", textAlign: "left", width: "100%",
+      }}>
+        <span style={{ width: 42, height: 42, borderRadius: 14, background: suppColor(x), display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.25rem", flexShrink: 0, opacity: x.away ? 0.55 : 1 }}>{x.emoji}</span>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: "block", fontWeight: 800, fontSize: "0.95rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{x.name}</span>
+          <span style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, marginTop: 3 }}>
+            <span style={{ fontSize: "0.72rem", fontWeight: 800, padding: "2px 8px", borderRadius: 999, background: style.bg, color: style.fg, whiteSpace: "nowrap" }}>{st.emoji} {st.label}</span>
+            <span style={{ fontSize: "0.74rem", color: stock?.low ? "var(--warning)" : "var(--text-dim)", whiteSpace: "nowrap" }}>
+              {stock && !x.away ? `📦 ${stock.empty ? "leer" : `${stock.days} Tage`}` : info.days ? `${info.days} ${info.days === 1 ? "Tag" : "Tage"} genommen` : x.id === nextId && st.key === "waiting" ? "als Nächstes dran" : ""}
+            </span>
+          </span>
+        </span>
+        <span style={{ color: "var(--text-dim)", fontSize: "1rem" }}>›</span>
+      </button>
+    )
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <Segmented value={view} onChange={setView} options={[{ id: "liste", label: "💊 Supplements" }, { id: "stack", label: "🏆 Stack & Tagesplan" }]} />
+      {view === "stack" ? <StackView s={s} update={update} onVerdict={onVerdict} onStartStack={onStartStack} /> : <>
+        <ShoppingCard s={s} away={shop.away} low={shop.low} onOpen={onSupp} onArrived={id => onAction({ kind: "arrived", suppId: id }, "shop")} />
+        <Card className="lab-rise" style={{ padding: "14px 14px 8px" }}>
+          {s.supps.length === 0 && <div style={{ color: "var(--text-dim)", fontSize: "0.9rem", padding: 8 }}>Noch keine Supplements.</div>}
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {groups.map(g => {
+              const items = supps.filter(x => g.keys.includes(suppStatus(s, x.id, today).key))
+              if (!items.length) return null
+              return (
+                <div key={g.label}>
+                  <Label style={{ marginBottom: 2 }}>{g.label} · {items.length}</Label>
+                  <div style={{ display: "flex", flexDirection: "column" }}>{items.map(row)}</div>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+        <Btn variant="soft" full onClick={() => onAction({ kind: "pickNext" }, "list")}>+ Supplement hinzufügen</Btn>
+      </>}
+    </div>
+  )
+}
+
+// ── Ergebnisse: Auswertung & Verlauf ───────────────────────────────────────────
+
+function ResultsView({ s, wins, today, view, setView, onVerdict, onCheckin, onPhase, goTab }: {
+  s: LabState; wins: PhaseWindow[]; today: string; view: "auswertung" | "verlauf"; setView: (v: "auswertung" | "verlauf") => void
+  onVerdict: (id: string) => void; onCheckin: (d: string) => void; onPhase: (w: PhaseWindow) => void; goTab: (t: string) => void
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <Segmented value={view} onChange={setView} options={[{ id: "auswertung", label: "📊 Auswertung" }, { id: "verlauf", label: "🧭 Verlauf" }]} />
+      {view === "verlauf" ? <JourneyView s={s} wins={wins} today={today} onPhase={onPhase} goTab={goTab} /> : <>
+        {Object.keys(s.checkins).length > 0 && (
+          <Card className="lab-rise" style={{ padding: "16px 14px 10px" }}>
+            <Label style={{ marginBottom: 6 }}>Wie du dich fühlst · 14 Tage</Label>
+            <MoodCurve s={s} />
+          </Card>
+        )}
+        <DataView s={s} wins={wins} onVerdict={onVerdict} onCheckin={onCheckin} />
+      </>}
     </div>
   )
 }
@@ -1180,7 +1227,7 @@ function TestSetupSheet({ s, suppId, onClose, onConfirm, onKonstant }: {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function JourneyView({ s, wins, today, onPhase, goTab }: {
-  s: LabState; wins: PhaseWindow[]; today: string; onPhase: (w: PhaseWindow) => void; goTab: (t: Tab) => void
+  s: LabState; wins: PhaseWindow[]; today: string; onPhase: (w: PhaseWindow) => void; goTab: (t: string) => void
 }) {
   const offsets = [0, 1, 1.4, 1, 0, -1, -1.4, -1]
   const kept = stackMembers(s, false).length

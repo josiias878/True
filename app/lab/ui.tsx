@@ -43,9 +43,12 @@ export const LAB_CSS = `
 .lab-flip-inner.on { transform: rotateY(180deg); }
 .lab-flip-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
 .lab-flip-back { position: absolute; inset: 0; transform: rotateY(180deg); }
+.lab-tabin { animation: labTabIn .32s cubic-bezier(.2,.9,.3,1) both; }
+@keyframes labTabIn { from { opacity: 0; transform: translateX(var(--dx, 24px)) } to { opacity: 1; transform: none } }
+@keyframes labDropIn { 0% { opacity: 0; transform: translateY(-30px) scale(.6) } 30% { opacity: 1 } 100% { opacity: 0; transform: translateY(70px) scale(.9) } }
 @keyframes labCheck { 0% { transform: scale(.6) } 60% { transform: scale(1.15) } 100% { transform: scale(1) } }
 @media (prefers-reduced-motion: reduce) {
-  .lab-pop, .lab-rise, .lab-fade, .lab-float, .lab-pulse, .lab-wiggle, .lab-shine, .lab-wave, .lab-squish, .lab-late { animation: none !important; }
+  .lab-tabin, .lab-pop, .lab-rise, .lab-fade, .lab-float, .lab-pulse, .lab-wiggle, .lab-shine, .lab-wave, .lab-squish, .lab-late { animation: none !important; }
   .lab-flood { animation-duration: .01s !important; }
 }
 `
@@ -57,6 +60,8 @@ const ICONS: Record<string, React.ReactNode> = {
   path: <><circle cx="6" cy="19" r="2" /><circle cx="18" cy="5" r="2" /><path d="M6 17v-4a3 3 0 0 1 3-3h6a3 3 0 0 0 3-3" /></>,
   chart: <><path d="M4 19h16" /><path d="M6 15l4-5 3 3 5-7" /></>,
   trophy: <><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" /><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4" /><path d="M12 13v4M9 20h6" /></>,
+  pill: <><rect x="2.5" y="8" width="19" height="8" rx="4" transform="rotate(-45 12 12)" /><path d="M9.2 9.2 14.8 14.8" /></>,
+  flask: <><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3" /><path d="M7.5 15h9" /></>,
   settings: <><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></>,
 }
 
@@ -264,7 +269,7 @@ export function Segmented<T extends string>({ value, options, onChange }: { valu
     <div style={{ display: "flex", background: "var(--surface-2)", borderRadius: 12, padding: 3, gap: 2 }}>
       {options.map(o => (
         <button key={o.id} className="lab-press" onClick={() => onChange(o.id)} style={{
-          flex: 1, border: "none", borderRadius: 10, padding: "7px 4px", fontSize: "0.72rem", fontWeight: 800, whiteSpace: "nowrap",
+          flex: 1, border: "none", borderRadius: 10, padding: "9px 6px", fontSize: "0.82rem", fontWeight: 800, whiteSpace: "nowrap",
           background: value === o.id ? "var(--surface)" : "transparent", color: value === o.id ? "var(--text)" : "var(--text-dim)",
           boxShadow: value === o.id ? "0 1px 4px rgba(0,0,0,.12)" : "none",
         }}>{o.label}</button>

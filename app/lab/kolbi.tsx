@@ -2,9 +2,9 @@
 import React, { useState } from "react"
 import { BADGES, LIB_BY_ID, levelFor, streak, type LabState } from "@/lib/supplementLab"
 import { FACT_COUNT, learnedFacts } from "@/lib/labKnowledge"
-import type { Mood } from "@/lib/labCoach"
-import { Btn, Label, Sheet } from "./ui"
-import { MASCOT_NAME, Mascot } from "./mascot"
+import type { CoachAction, CoachMsg, Mood } from "@/lib/labCoach"
+import { Label } from "./ui"
+import { Guide, MASCOT_NAME, Mascot, TipsList } from "./mascot"
 
 const JOBS = [
   { emoji: "⏰", title: "Erinnern", text: "Zur richtigen Zeit – gebündelt, nicht nervig." },
@@ -15,9 +15,9 @@ const JOBS = [
   { emoji: "📚", title: "Lernen", text: "Jeden Tag ein kleiner Fakt." },
 ]
 
-/** Kolbis Profil: warum er so aussieht, was er macht, dein Wissens-Album und Abzeichen. */
-export function KolbiSheet({ s, mood, fill, murky, tips, onHelp, onClose }: {
-  s: LabState; mood: Mood; fill: number; murky: boolean; tips: number; onHelp: () => void; onClose: () => void
+/** Kolbi-Tab: seine Tipps, warum er so aussieht, was er macht, Wissens-Album, Abzeichen, Hilfe. */
+export function KolbiPage({ s, mood, fill, murky, msgs, onAction }: {
+  s: LabState; mood: Mood; fill: number; murky: boolean; msgs: CoachMsg[]; onAction: (a: CoachAction, id: string) => void
 }) {
   const [poke, setPoke] = useState(0)
   const lvl = levelFor(s.xp)
@@ -30,8 +30,8 @@ export function KolbiSheet({ s, mood, fill, murky, tips, onHelp, onClose }: {
     { on: murky, emoji: murky ? "🌫️" : "🫧", title: murky ? "Ich bin etwas trüb" : "Klar und frisch", text: murky ? "Gestern fehlte der Check-in. Ein Check-in heute und ich bin wieder klar." : "Du checkst regelmäßig ein – so mag ich das." },
   ]
   return (
-    <Sheet open onClose={onClose}>
-      <div style={{ textAlign: "center", marginTop: -4 }}>
+    <div>
+      <div style={{ textAlign: "center" }}>
         <button onClick={() => setPoke(p => p + 1)} aria-label={`${MASCOT_NAME} anstupsen`} style={{ border: "none", background: "none", padding: 0, cursor: "pointer" }}>
           <div key={poke} className={poke ? "lab-squish" : "lab-float"} style={{ display: "inline-block" }}>
             <Mascot mood={poke % 3 === 2 ? "party" : mood} size={150} fill={0.12 + fill * 0.88} glow={glow} murky={murky} />
@@ -40,6 +40,11 @@ export function KolbiSheet({ s, mood, fill, murky, tips, onHelp, onClose }: {
         <div style={{ fontSize: "1.5rem", fontWeight: 900, marginTop: 4 }}>{MASCOT_NAME}</div>
         <div style={{ fontSize: "0.85rem", color: "var(--text-dim)" }}>{poke ? ["Hihi, das kitzelt!", "Hey! 😄", "Ich bin voll dabei!"][poke % 3] : "dein Lab-Coach"}</div>
       </div>
+
+      {/* Tipps */}
+      <Label style={{ margin: "20px 0 10px" }}>💬 Meine Tipps für dich{msgs.length ? ` · ${msgs.length}` : ""}</Label>
+      {msgs.length ? <TipsList msgs={msgs} onAction={onAction} />
+        : <div className="lab-card" style={{ padding: 14, fontSize: "0.86rem", color: "var(--text-dim)" }}>Gerade alles im grünen Bereich. Ich melde mich, wenn es etwas Neues gibt. 👍</div>}
 
       {/* Level */}
       <div className="lab-card lab-rise" style={{ padding: 16, marginTop: 16 }}>
@@ -127,7 +132,8 @@ export function KolbiSheet({ s, mood, fill, murky, tips, onHelp, onClose }: {
         })}
       </div>
 
-      {tips > 0 && <div style={{ marginTop: 20 }}><Btn full onClick={onHelp}>💬 Meine Tipps für dich ({tips})</Btn></div>}
-    </Sheet>
+      <Label style={{ margin: "24px 0 10px" }}>❓ So funktioniert die App</Label>
+      <Guide />
+    </div>
   )
 }
