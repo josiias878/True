@@ -7,7 +7,7 @@ hier aber als eigene App im **Store-Modus** gebaut:
   ohne Beschreibung, Dosierung oder Injektionshinweise), GLP-1 als „Verschriebene Medikamente“
 - kein Link zurück zu TRUE
 - echte Push-Erinnerungen über `@capacitor/local-notifications` (auch bei geschlossener App,
-  mit 1-Tipp-Bewertung direkt aus der Benachrichtigung)
+  mit „✓ Genommen“ direkt aus der Benachrichtigung); als Home-Bildschirm-App per Web-Push (siehe unten)
 - optionale Anbindung an Apple Health / Google Health Connect (nur Schlaf + HRV, siehe unten)
 - alle Daten bleiben lokal auf dem Gerät
 - anonyme Öffnungs-Zählung über Vercel Web Analytics (nur „wie oft geöffnet“, keine Namen,
