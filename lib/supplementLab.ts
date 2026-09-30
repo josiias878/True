@@ -755,6 +755,7 @@ export interface Stock {
   active?: number   // Wirkstoff pro Stück/Tropfen/ml bzw. pro g (in activeUnit), optional
   activeUnit?: "mg" | "µg" | "IE"
   ordered?: string  // Nachbestellt am …
+  price?: number    // € pro Packung (optional) → Kosten pro Monat
 }
 
 /** Ist das Supplement gerade im Haus? (Einkaufsliste = nicht da) */
@@ -806,6 +807,7 @@ export interface LabState {
   health: Record<string, HealthDay> // Datum → Schlaf/HRV aus Apple Health / Health Connect
   healthEnabled: boolean
   learned: string[] // entdeckte Kolbi-Fakten (IDs)
+  recapSeen?: string // Sonntag der zuletzt angesehenen Wochen-Story
 }
 
 export const STORAGE_KEY = "true-supplement-lab-v1"

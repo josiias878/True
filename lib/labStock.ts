@@ -216,3 +216,45 @@ export function shoppingList(s: LabState, today = todayIso()) {
   const low = s.supps.filter(x => !x.away && inUse(s, x, today) && stockInfo(s, x)?.low)
   return { away, low, count: away.length + low.length }
 }
+
+// ── Kosten & Sparen ────────────────────────────────────────────────────────────
+
+const DAYS_PER_MONTH = 30.44
+
+/** € pro Monat bei deiner Tagesmenge (null, wenn kein Preis eingetragen ist). */
+export function monthlyCost(x: MySupp): number | null {
+  const st = x.stock
+  if (!st?.price || st.price <= 0) return null
+  const per = perUse(st)
+  if (per <= 0 || st.pack <= 0) return null
+  const days = (st.pack / per) * (libOf(x)?.weekly ? 7 : 1)
+  return days > 0 ? (st.price / days) * DAYS_PER_MONTH : null
+}
+
+export const fmtEuro = (v: number) => `${v < 10 ? v.toFixed(2).replace(".", ",") : Math.round(v).toLocaleString("de-DE")} €`
+
+export interface CostSummary {
+  total: number
+  items: { x: MySupp; cost: number }[]
+  missing: MySupp[]
+  saved: { x: MySupp; cost: number; since: string }[]
+  savedMonthly: number
+  savedSoFar: number
+}
+
+/** Was dein aktiver Stack kostet – und was rausgeflogene Supplements dir sparen. */
+export function costSummary(s: LabState, today = todayIso()): CostSummary {
+  const active = s.supps.filter(x => s.verdicts[x.id]?.decision !== "drop" && x.mode !== "pause" && (inUse(s, x, today) || x.mode === "test"))
+  const items = active.map(x => ({ x, cost: monthlyCost(x) })).filter((i): i is { x: MySupp; cost: number } => i.cost != null).sort((a, b) => b.cost - a.cost)
+  const missing = active.filter(x => monthlyCost(x) == null && !libOf(x)?.rx && libOf(x)?.category !== "Peptide")
+  const saved = s.supps.filter(x => s.verdicts[x.id]?.decision === "drop").map(x => ({ x, cost: monthlyCost(x), since: s.verdicts[x.id].date }))
+    .filter((i): i is { x: MySupp; cost: number; since: string } => i.cost != null)
+  const savedMonthly = saved.reduce((a, b) => a + b.cost, 0)
+  const savedSoFar = saved.reduce((a, b) => a + b.cost * Math.max(0, diffDaysSafe(b.since, today)) / DAYS_PER_MONTH, 0)
+  return { total: items.reduce((a, b) => a + b.cost, 0), items, missing, saved, savedMonthly, savedSoFar }
+}
+
+function diffDaysSafe(a: string, b: string) {
+  const [y1, m1, d1] = a.split("-").map(Number), [y2, m2, d2] = b.split("-").map(Number)
+  return Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86400000)
+}

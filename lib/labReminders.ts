@@ -235,6 +235,15 @@ export function notificationPlan(s: LabState, days = 7, now = new Date()): Plann
       })
     }
 
+    // Sonntagabend: Wochenrückblick als Story
+    if (new Date(`${date}T12:00:00`).getDay() === 0 && diffDays(s.startDate, date) >= 3) {
+      out.push({
+        key: `recap-${date}`, kind: "tip", url: `${LAB_BASE}?recap=1`, at: atDate(date, 18 * 60 + 30),
+        title: "📊 Dein Wochenrückblick ist da", body: "Wie war deine Woche? Kolbi hat alles zusammengestellt – 30 Sekunden zum Durchwischen.",
+        generic: { title: "📊 Dein Wochenrückblick ist da", body: "30 Sekunden zum Durchwischen." },
+      })
+    }
+
     // Sonntag: ein Praxis-Tipp zu etwas, das du nimmst
     if (new Date(`${date}T12:00:00`).getDay() === 0) {
       const mine = intakeOn(s, date).map(id => s.supps.find(x => x.id === id)).filter(x => libOf(x))

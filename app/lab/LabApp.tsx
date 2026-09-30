@@ -26,6 +26,7 @@ import { openShop, refillStock, shoppingList, stockInfo } from "@/lib/labStock"
 import { ShopButton, ShoppingCard, StockCard, StockSheet } from "./stock"
 import { KolbiPage } from "./kolbi"
 import { RoadPath } from "./path"
+import { CostCard, InteractionCard, PatternStrip, RecapTeaser, WeekRecap, recapAvailable, recapWeekEnd } from "./insights"
 import { pathStops, type Stop } from "@/lib/labPath"
 
 type Tab = "heute" | "meine" | "ergebnisse" | "kolbi"
@@ -91,10 +92,11 @@ function initialTab(): Tab {
 }
 
 /** Aktionen aus Benachrichtigungen (?rate=4, ?taken=id, ?checkin=1) direkt beim Öffnen ausführen. */
-function initialLoad(): { s: LabState; openCheckin: boolean; openRound: boolean; flash: string | null } {
+function initialLoad(): { s: LabState; openCheckin: boolean; openRound: boolean; openRecap: boolean; flash: string | null } {
   const s = loadState()
   let openCheckin = false
   let openRound = false
+  let openRecap = false
   let flash: string | null = null
   try {
     const q = new URLSearchParams(window.location.search)
@@ -114,12 +116,13 @@ function initialLoad(): { s: LabState; openCheckin: boolean; openRound: boolean;
     }
     if (q.get("checkin") === "1" && !s.checkins[today] && s.startDate) openRound = true
     if (q.get("round") === "1" && s.startDate) openRound = true
-    if (rate || taken || q.get("checkin") || q.get("round")) {
+    if (q.get("recap") === "1" && s.startDate) openRecap = true
+    if (rate || taken || q.get("checkin") || q.get("round") || q.get("recap")) {
       saveState(s)
       window.history.replaceState(null, "", window.location.pathname)
     }
   } catch {}
-  return { s, openCheckin, openRound, flash }
+  return { s, openCheckin, openRound, openRecap, flash }
 }
 
 // Echte Daten sichern, wenn man zwischendurch die Demo anschaut
@@ -177,6 +180,7 @@ export default function LabApp() {
   const [mineView, setMineView] = useState<"liste" | "stack">("liste")
   const [resView, setResView] = useState<"auswertung" | "verlauf">("auswertung")
   const [tabDir, setTabDir] = useState(1)
+  const [recapEnd, setRecapEnd] = useState<string | null>(() => init.openRecap ? recapWeekEnd(new Date(), todayIso()) : null)
   // Tab wechseln (auch alte Namen aus Unteransichten: stack → Meine/Stack, daten → Ergebnisse …)
   const goTab = useCallback((to: string) => {
     let next: Tab = TABS.some(x => x.id === to) ? to as Tab : "heute"
@@ -345,6 +349,8 @@ export default function LabApp() {
       }
       case "refill": update(p => { p.supps = p.supps.map(q => q.id === a.suppId ? { ...q, stock: refillStock(p, q, today) } : q); return p }, { amount: 5, label: "Vorrat aufgefüllt" }); break
       case "stock": setStockFor(a.suppId); break
+      case "seePattern": update(p => { p.learned = [...new Set([...p.learned, a.tipId])]; return p }); goTab("daten"); break
+      case "recap": setRecapEnd(recapWeekEnd(now, today)); break
       case "setTime": {
         update(p => {
           p.supps = p.supps.map(x => x.id === a.suppId ? { ...x, time: a.time } : x)
@@ -448,7 +454,7 @@ export default function LabApp() {
           {tab === "meine" && <MineView s={s} today={today} view={mineView} setView={setMineView} update={update} onSupp={setSuppSheet}
             onAction={runAction} onVerdict={setVerdictFor} onStartStack={() => runAction({ kind: "startStack" }, "stack")} />}
           {tab === "ergebnisse" && <ResultsView s={s} wins={wins} today={today} view={resView} setView={setResView}
-            onVerdict={setVerdictFor} onCheckin={setCheckinDate} onPhase={setPhaseSheet} goTab={goTab} />}
+            onVerdict={setVerdictFor} onCheckin={setCheckinDate} onPhase={setPhaseSheet} goTab={goTab} onRecap={() => setRecapEnd(recapWeekEnd(now, today))} />}
           {tab === "kolbi" && <KolbiPage s={s} mood={msgs[0]?.mood ?? "happy"} fill={dayProgress(s, today)} msgs={kolbiTips} onAction={runAction}
             murky={(() => { const y = addDays(today, -1); return !!wins[0] && y >= wins[0].start && !s.checkins[y] && !s.checkins[today] })()} />}
         </div>
@@ -484,6 +490,7 @@ export default function LabApp() {
         </div>
       </nav>
 
+      {recapEnd && <WeekRecap s={s} end={recapEnd} today={today} onClose={() => { const e = recapEnd; setRecapEnd(null); update(p => { p.recapSeen = e; return p }, s.recapSeen === e ? undefined : { amount: 10, label: "Woche angeschaut" }) }} />}
       {round && <DailyRound s={s} today={today} steps={round}
         onTake={id => update(p => { markTaken(p, today, id); return p }, { amount: 5, label: "Eingenommen" })}
         onCheckin={saveCheckin}
@@ -541,7 +548,7 @@ export default function LabApp() {
         onReset={() => { const e = s.demo ? restoreBackup() : emptyState(); saveState(e); setS(e); setSettingsOpen(false) }}
         onDemo={() => { backup(s); const d = demoState(); saveState(d); setS(d); setSettingsOpen(false) }} />}
 
-      {newBadge && !round && (() => {
+      {newBadge && !round && !recapEnd && (() => {
         const b = BADGES.find(x => x.id === newBadge)!
         return (
           <div className="lab-fade" onClick={() => setNewBadge(null)} style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(5,5,12,.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
@@ -768,6 +775,7 @@ function Dashboard({ s, wins, today, now, msgs, onAction, onQuick, onTake, onPha
   const top = tips[0]
   const shop = shoppingList(s, today)
   const road = pathStops(s, today, now, checkinLocked)
+  const recap = recapAvailable(s, now, today)
   const [dropKey, setDropKey] = useState<string | null>(null)
   const onStop = (st: Stop) => {
     switch (st.kind) {
@@ -797,6 +805,7 @@ function Dashboard({ s, wins, today, now, msgs, onAction, onQuick, onTake, onPha
         lockedUntil={!checked && checkinLocked ? s.reminders.checkin : null} notStarted={notStarted} startIn={notStarted ? remaining : null}
         dropKey={dropKey} onRound={onRound} onKolbi={() => goTab("kolbi")} onUnlock={onUnlock} onCheckin={() => onCheckin(today)} />
 
+      {recap.ready && <RecapTeaser end={recap.end} onOpen={() => onAction({ kind: "recap" }, "recap")} />}
       {top && <KolbiSays msg={top} more={tips.length - 1} onAction={onAction} onMore={() => goTab("kolbi")} />}
 
       {road.stops.length > 0 && (
@@ -842,6 +851,7 @@ function MineView({ s, today, view, setView, update, onSupp, onAction, onVerdict
   s: LabState; today: string; view: "liste" | "stack"; setView: (v: "liste" | "stack") => void; update: Update
   onSupp: (id: string) => void; onAction: (a: CoachAction, id: string) => void; onVerdict: (id: string) => void; onStartStack: () => void
 }) {
+  const fix = (suppId: string, time: string) => onAction({ kind: "setTime", suppId, time, tipId: `fix:${suppId}:${time}` }, "inter")
   const shop = shoppingList(s, today)
   const order: SuppStatusKey[] = ["testing", "observing", "verdict", "kept", "constant", "waiting", "maybe", "away", "paused", "dropped"]
   const supps = [...s.supps].sort((a, b) => order.indexOf(suppStatus(s, a.id, today).key) - order.indexOf(suppStatus(s, b.id, today).key))
@@ -880,6 +890,7 @@ function MineView({ s, today, view, setView, update, onSupp, onAction, onVerdict
       <Segmented value={view} onChange={setView} options={[{ id: "liste", label: "💊 Supplements" }, { id: "stack", label: "🏆 Stack & Tagesplan" }]} />
       {view === "stack" ? <StackView s={s} update={update} onVerdict={onVerdict} onStartStack={onStartStack} /> : <>
         <ShoppingCard s={s} away={shop.away} low={shop.low} onOpen={onSupp} onArrived={id => onAction({ kind: "arrived", suppId: id }, "shop")} />
+        <CostCard s={s} today={today} onStock={id => onAction({ kind: "stock", suppId: id }, "cost")} />
         <Card className="lab-rise" style={{ padding: "14px 14px 8px" }}>
           {s.supps.length === 0 && <div style={{ color: "var(--text-dim)", fontSize: "0.9rem", padding: 8 }}>Noch keine Supplements.</div>}
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -896,6 +907,7 @@ function MineView({ s, today, view, setView, update, onSupp, onAction, onVerdict
           </div>
         </Card>
         <Btn variant="soft" full onClick={() => onAction({ kind: "pickNext" }, "list")}>+ Supplement hinzufügen</Btn>
+        <InteractionCard s={s} today={today} onFix={fix} />
       </>}
     </div>
   )
@@ -903,14 +915,23 @@ function MineView({ s, today, view, setView, update, onSupp, onAction, onVerdict
 
 // ── Ergebnisse: Auswertung & Verlauf ───────────────────────────────────────────
 
-function ResultsView({ s, wins, today, view, setView, onVerdict, onCheckin, onPhase, goTab }: {
+function ResultsView({ s, wins, today, view, setView, onVerdict, onCheckin, onPhase, goTab, onRecap }: {
   s: LabState; wins: PhaseWindow[]; today: string; view: "auswertung" | "verlauf"; setView: (v: "auswertung" | "verlauf") => void
-  onVerdict: (id: string) => void; onCheckin: (d: string) => void; onPhase: (w: PhaseWindow) => void; goTab: (t: string) => void
+  onVerdict: (id: string) => void; onCheckin: (d: string) => void; onPhase: (w: PhaseWindow) => void; goTab: (t: string) => void; onRecap: () => void
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <Segmented value={view} onChange={setView} options={[{ id: "auswertung", label: "📊 Auswertung" }, { id: "verlauf", label: "🧭 Verlauf" }]} />
       {view === "verlauf" ? <JourneyView s={s} wins={wins} today={today} onPhase={onPhase} goTab={goTab} /> : <>
+        <PatternStrip s={s} />
+        {Object.keys(s.checkins).length >= 3 && (
+          <button onClick={onRecap} className="lab-press" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 20, border: "none", color: "#fff", textAlign: "left",
+            background: "linear-gradient(135deg, #9085e9 0%, #3987e5 60%, #2ECC8A 100%)" }}>
+            <span style={{ fontSize: "1.5rem" }}>📊</span>
+            <span style={{ flex: 1, fontWeight: 900 }}>Wochenrückblick ansehen</span>
+            <span>▶</span>
+          </button>
+        )}
         {Object.keys(s.checkins).length > 0 && (
           <Card className="lab-rise" style={{ padding: "16px 14px 10px" }}>
             <Label style={{ marginBottom: 6 }}>Wie du dich fühlst · 14 Tage</Label>

@@ -11,6 +11,8 @@ import {
 } from "./supplementLab"
 import { partnerTips, recentSides, sideCauses } from "./labKnowledge"
 import { buyInfo, inUse, shopUrl, stockInfo } from "./labStock"
+import { fmtGap, interactionChecks } from "./labInteractions"
+import { dimLabel, findPatterns } from "./labPatterns"
 
 export type Mood = "happy" | "think" | "alert" | "party" | "sleepy"
 
@@ -39,6 +41,8 @@ export type CoachAction =
   | { kind: "refill"; suppId: string }
   | { kind: "stock"; suppId: string }
   | { kind: "setTime"; suppId: string; time: string; tipId: string }
+  | { kind: "seePattern"; tipId: string }
+  | { kind: "recap" }
   | { kind: "reminders" }
   | { kind: "dismiss" }
 
@@ -233,6 +237,31 @@ export function coach(s: LabState, now = new Date(), dismissed: string[] = []): 
   // ── Phasen-spezifisch
   if (w) phaseAdvice(s, w, today, baseMean, push)
   else idleAdvice(s, today, wins, push)
+
+  // ── Wechselwirkung: zwei Supplements, die man trennen sollte, liegen zu nah beieinander
+  for (const p of interactionChecks(s, today)) {
+    if (p.ok || p.rule.kind !== "trennen" || !p.fix) continue
+    const tipId = `inter:${p.a.id}:${p.b.id}:${p.fix.time}`
+    if (seen.has(tipId)) continue
+    const moved = s.supps.find(x => x.id === p.fix!.suppId)!
+    push({ id: tipId, mood: "alert", prio: 3, title: `⚠️ ${p.a.name} & ${p.b.name} zu nah beieinander`,
+      text: `Nur ${fmtGap(p.gap)} Abstand. ${p.rule.text} Mein Vorschlag: ${moved.name} um ${p.fix.time} Uhr.`,
+      actions: [
+        { label: `⏰ ${moved.name} → ${p.fix.time}`, action: { kind: "setTime", suppId: moved.id, time: p.fix.time, tipId }, primary: true },
+        { label: "Passt so", action: { kind: "gotIt", tipId } },
+      ] })
+    break
+  }
+
+  // ── Muster-Detektor: etwas Neues entdeckt?
+  const fresh = findPatterns(s).find(p => !seen.has(`pattern:${p.id}`))
+  if (fresh) {
+    const tipId = `pattern:${fresh.id}`
+    const d = fresh.delta
+    push({ id: tipId, mood: d > 0 ? "party" : "think", prio: 6, title: `🔎 Ich hab was entdeckt`,
+      text: `${fresh.emoji} ${fresh.title}: ${dimLabel(fresh.dim)} ${d > 0 ? "+" : "−"}${Math.abs(d).toFixed(1).replace(".", ",")}★ im Schnitt.`,
+      actions: [{ label: "👀 Ansehen", action: { kind: "seePattern", tipId }, primary: true }] })
+  }
 
   // ── Kolbi lernt deine Uhrzeit: nimmst du etwas regelmäßig woanders als geplant, schlägt er deine Zeit vor
   for (const x of s.supps) {

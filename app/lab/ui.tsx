@@ -46,6 +46,8 @@ export const LAB_CSS = `
 .lab-tabin { animation: labTabIn .32s cubic-bezier(.2,.9,.3,1) both; }
 @keyframes labTabIn { from { opacity: 0; transform: translateX(var(--dx, 24px)) } to { opacity: 1; transform: none } }
 @keyframes labDropIn { 0% { opacity: 0; transform: translateY(-30px) scale(.6) } 30% { opacity: 1 } 100% { opacity: 0; transform: translateY(70px) scale(.9) } }
+@keyframes labGrow { from { transform: scaleY(0) } to { transform: scaleY(1) } }
+@keyframes labFill { from { width: 0 } to { width: 100% } }
 @keyframes labCheck { 0% { transform: scale(.6) } 60% { transform: scale(1.15) } 100% { transform: scale(1) } }
 @media (prefers-reduced-motion: reduce) {
   .lab-tabin, .lab-pop, .lab-rise, .lab-fade, .lab-float, .lab-pulse, .lab-wiggle, .lab-shine, .lab-wave, .lab-squish, .lab-late { animation: none !important; }

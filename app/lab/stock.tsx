@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react"
 import { addDays, fmtDate, libOf, suppColor, todayIso, type LabState, type MySupp, type Stock, type StockForm } from "@/lib/supplementLab"
 import {
   FORMS, doseCheck, doseLabel, doseRange, fmtNum, gramDosed, guessForm, guessPerDay, openShop, perUse, shopIsAd, shopUrl,
-  stockInfo, buyInfo, LOW_DAYS, type StockInfo,
+  stockInfo, buyInfo, LOW_DAYS, monthlyCost, fmtEuro, type StockInfo,
 } from "@/lib/labStock"
 import { Btn, Sheet } from "./ui"
 import { KolbiTip, Mascot } from "./mascot"
@@ -114,6 +114,7 @@ export function StockSheet({ s, suppId, onClose, onSave }: {
   const [left, setLeft] = useState(prev ? Math.round((stockInfo(s, x)?.left ?? prev.pack) * 10) / 10 : 0)
   const [perDay, setPerDay] = useState(prev?.perDay ?? guessPerDay(x, prev?.form ?? guessForm(x)))
   const [active, setActive] = useState(prev?.active ?? 0)
+  const [price, setPrice] = useState(prev?.price ?? 0)
   const range = doseRange(libOf(x))
   const unit = range?.unit === "IE" ? "IE" : range && range.max < 1 ? "µg" : "mg"
   const [activeUnit, setActiveUnit] = useState<"mg" | "µg" | "IE">(prev?.activeUnit ?? unit)
@@ -128,7 +129,9 @@ export function StockSheet({ s, suppId, onClose, onSave }: {
   const stock: Stock = {
     form, pack, perDay, left: opened ? Math.min(left, pack) : pack, at: todayIso(),
     ...(askActive && active > 0 ? { active, activeUnit } : {}),
+    ...(price > 0 ? { price } : {}),
   }
+  const perMonth = monthlyCost({ ...x, stock })
   const uses = perUse(stock) > 0 ? Math.floor(stock.left / perUse(stock) + 1e-9) : 0
   const days = libOf(x)?.weekly ? uses * 7 : uses
   const check = doseCheck(x, stock)
@@ -220,6 +223,28 @@ export function StockSheet({ s, suppId, onClose, onSave }: {
               </KolbiTip>
             </div>
           )}
+          <div className="lab-late" style={{ width: "100%", padding: 14, borderRadius: 20, background: "var(--surface-2)", textAlign: "left" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: "1.4rem" }}>💶</span>
+              <span style={{ flex: 1, fontWeight: 900, fontSize: "0.9rem" }}>Preis pro Packung <span style={{ fontWeight: 600, color: "var(--text-dim)" }}>(optional)</span></span>
+              <label style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 10px", borderRadius: 12, background: "var(--surface)", border: "1px solid var(--border)" }}>
+                <input type="number" inputMode="decimal" value={price || ""} placeholder="0" onChange={e => setPrice(Math.max(0, Number(e.target.value.replace(",", "."))))}
+                  style={{ width: 64, border: "none", background: "transparent", color: "var(--text)", fontSize: "1.05rem", fontWeight: 900, textAlign: "right", outline: "none" }} />
+                <span style={{ fontWeight: 900 }}>€</span>
+              </label>
+            </div>
+            <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+              {[10, 15, 20, 25, 35].map(v => (
+                <button key={v} className="lab-press" onClick={() => setPrice(v)} style={{ padding: "6px 11px", borderRadius: 999, border: "none", fontWeight: 800, fontSize: "0.8rem",
+                  background: price === v ? "var(--accent)" : "var(--surface)", color: price === v ? "#fff" : "var(--text)" }}>{v} €</button>
+              ))}
+            </div>
+            {perMonth != null && (
+              <div key={Math.round(perMonth * 100)} className="lab-pop" style={{ marginTop: 10, display: "inline-flex", alignItems: "baseline", gap: 6, padding: "8px 14px", borderRadius: 999, background: "linear-gradient(135deg, #1baf7a, #2ECC8A)", color: "#fff" }}>
+                <span style={{ fontSize: "1.2rem", fontWeight: 900 }}>{fmtEuro(perMonth)}</span><span style={{ fontSize: "0.78rem", fontWeight: 800 }}>pro Monat</span>
+              </div>
+            )}
+          </div>
           <div className="lab-late" style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>🛒 Ich sag dir {LOW_DAYS} Tage vorher Bescheid.</div>
           <div style={{ display: "flex", gap: 8, width: "100%", marginTop: 6 }}>
             <Btn variant="soft" onClick={() => setStep(2)} style={{ flex: 1 }}>Ändern</Btn>
@@ -273,7 +298,7 @@ export function StockCard({ s, x, onEdit, onRefill, onOrdered }: {
           <div style={{ fontSize: "0.68rem", fontWeight: 900, letterSpacing: ".08em", color: info.low ? "var(--warning)" : "var(--text-dim)" }}>VORRAT</div>
           <div style={{ fontWeight: 900, fontSize: "1.05rem" }}>{info.empty ? "Leer" : `Reicht noch ${info.days} ${info.days === 1 ? "Tag" : "Tage"}`}</div>
           <div style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>
-            {fmtNum(info.left)} {FORMS[x.stock.form].packUnit} übrig · {doseLabel(x.stock)}{info.until ? ` · bis ${fmtDate(info.until)}` : ""}
+            {fmtNum(info.left)} {FORMS[x.stock.form].packUnit} übrig · {doseLabel(x.stock)}{info.until ? ` · bis ${fmtDate(info.until)}` : ""}{monthlyCost(x) != null ? ` · 💶 ${fmtEuro(monthlyCost(x)!)}/Monat` : ""}
           </div>
         </div>
         <button className="lab-press" onClick={onEdit} aria-label="Vorrat ändern" style={{ border: "none", background: "var(--surface-2)", borderRadius: 12, padding: "8px 10px", color: "var(--text-dim)", fontWeight: 800 }}>✎</button>

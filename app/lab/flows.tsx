@@ -8,6 +8,7 @@ import {
   type CheckIn, type Dim, type LabState, type MySupp, type Settings, type LibSupp, type GoalId, type Scores,
 } from "@/lib/supplementLab"
 import { hasNativeReminders } from "@/lib/labReminders"
+import { pairsWith } from "@/lib/labInteractions"
 import { Btn, Capsule, Card, FaceRow, Label, Segmented, SideChips, Stars } from "./ui"
 import { KolbiTip, MASCOT_NAME, Mascot } from "./mascot"
 import { InstallHint } from "./install"
@@ -86,6 +87,24 @@ export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd,
             return (
               <div key={lastAdded.id} className="lab-rise" style={{ position: "sticky", top: 8, zIndex: 2, marginBottom: 14 }}>
                 <KolbiTip title={`${lastAdded.emoji} ${lastAdded.name}: am besten ${tip.emoji} ${tip.label.charAt(0).toLowerCase()}${tip.label.slice(1)}`}>{tip.why}</KolbiTip>
+                {(() => {
+                  const pairs = pairsWith({ supps: selected }, lastAdded.id)
+                  if (!pairs.length) return null
+                  return (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+                      {pairs.slice(0, 3).map(p => {
+                        const bad = p.rule.kind === "trennen"
+                        return (
+                          <div key={p.other.id} className="lab-pop" style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 14,
+                            background: bad ? "var(--warning-dim)" : "var(--accent-dim)", fontSize: "0.78rem", lineHeight: 1.35 }}>
+                            <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0, fontSize: "1rem" }}>{lastAdded.emoji}<span style={{ fontSize: "0.8rem" }}>{bad ? "⚡" : "✨"}</span>{p.other.emoji}</span>
+                            <span><b>{bad ? `Mit ${p.other.name} trennen` : `Passt zu ${p.other.name}`}</b> · {bad ? "ich achte auf 2 h Abstand" : p.rule.text}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                })()}
                 {onAway && (() => {
                   const away = !!selected.find(s => s.lib === lastAdded.id)?.away
                   const opt = (v: boolean, l: string) => (
