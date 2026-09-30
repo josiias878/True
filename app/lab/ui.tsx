@@ -7,9 +7,25 @@ import { suppColor } from "@/lib/supplementLab"
 
 export const LAB_CSS = `
 .lab { --lab-grad: linear-gradient(135deg, #2ECC8A 0%, #1baf9a 45%, #3987e5 100%); --lab-radius: 24px; }
-.lab-card { background: var(--surface); border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); border-radius: var(--lab-radius); box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.06); }
-.lab-press { transition: transform .15s ease, box-shadow .15s ease, background-color .2s, border-color .2s; -webkit-tap-highlight-color: transparent; cursor: pointer; }
-.lab-press:active { transform: scale(.96); }
+.lab-card { background: var(--surface); border: 1px solid var(--glass-line, color-mix(in srgb, var(--border) 70%, transparent)); border-radius: var(--lab-radius); box-shadow: inset 0 1px 0 var(--glass-edge, transparent), 0 1px 2px rgba(0,0,0,.04), 0 10px 30px rgba(20,30,60,.07); }
+.lab { --glass: rgba(255,255,255,.58); --glass-strong: rgba(255,255,255,.78); --glass-edge: rgba(255,255,255,.95); --glass-line: rgba(20,24,40,.08); --glass-shadow: 0 10px 40px rgba(20,30,60,.14), 0 2px 6px rgba(20,30,60,.05); }
+html.dark .lab { --glass: rgba(24,24,44,.5); --glass-strong: rgba(28,28,50,.72); --glass-edge: rgba(255,255,255,.14); --glass-line: rgba(255,255,255,.07); --glass-shadow: 0 14px 44px rgba(0,0,0,.55); }
+.lab-glass { background: var(--glass); backdrop-filter: blur(22px) saturate(1.8); -webkit-backdrop-filter: blur(22px) saturate(1.8); border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 var(--glass-edge), var(--glass-shadow); }
+.lab-press { transition: transform .5s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease, background-color .25s, border-color .25s, color .25s; -webkit-tap-highlight-color: transparent; cursor: pointer; }
+.lab-press:active { transform: scale(.93); transition-duration: .1s, .2s, .25s, .25s, .25s; transition-timing-function: ease-out; }
+.lab-drop { position: relative; overflow: hidden; isolation: isolate; }
+.lab-drop::before { content: ""; position: absolute; left: 8%; right: 8%; top: 2px; height: 42%; border-radius: 999px; background: linear-gradient(180deg, rgba(255,255,255,.26), rgba(255,255,255,0)); pointer-events: none; z-index: -1; }
+.lab-drop::after { content: ""; position: absolute; top: -20%; bottom: -20%; width: 35%; left: -60%; background: linear-gradient(100deg, transparent, rgba(255,255,255,.5), transparent); transform: skewX(-18deg); animation: labSweep 5s ease-in-out infinite; pointer-events: none; }
+@keyframes labSweep { 0%, 72% { left: -60% } 100% { left: 140% } }
+.lab-island { animation: labIsland .55s cubic-bezier(.34,1.56,.64,1) both; transform-origin: top center; }
+@keyframes labIsland { 0% { transform: scale(.35, .6); opacity: 0; border-radius: 999px } 55% { opacity: 1 } 100% { transform: scale(1); opacity: 1 } }
+.lab-island > * { animation: labFade .3s ease .18s both; }
+.lab-blob { position: absolute; border-radius: 999px; filter: blur(38px); pointer-events: none; animation: labBlob 14s ease-in-out infinite alternate; transition: background 1.2s ease; }
+@keyframes labBlob { 0% { transform: translate(0, 0) scale(1) } 50% { transform: translate(18%, 12%) scale(1.15) } 100% { transform: translate(-14%, -8%) scale(.95) } }
+.lab-hop { animation: labHop .7s cubic-bezier(.34,1.56,.64,1); }
+@keyframes labHop { 0% { transform: translateY(0) } 30% { transform: translateY(-16px) scale(1.04, .96) } 60% { transform: translateY(0) scale(1.06, .92) } 100% { transform: translateY(0) scale(1) } }
+.lab-blink { transform-box: fill-box; transform-origin: center; animation: labBlink 5.2s infinite; }
+@keyframes labBlink { 0%, 93%, 100% { transform: scaleY(1) } 95% { transform: scaleY(.08) } 97% { transform: scaleY(1) } }
 .lab-pop { animation: labPop .45s cubic-bezier(.2,1.4,.4,1) both; }
 .lab-rise { animation: labRise .45s cubic-bezier(.2,.9,.3,1) both; }
 .lab-fade { animation: labFade .3s ease both; }
@@ -50,7 +66,7 @@ export const LAB_CSS = `
 @keyframes labFill { from { width: 0 } to { width: 100% } }
 @keyframes labCheck { 0% { transform: scale(.6) } 60% { transform: scale(1.15) } 100% { transform: scale(1) } }
 @media (prefers-reduced-motion: reduce) {
-  .lab-tabin, .lab-pop, .lab-rise, .lab-fade, .lab-float, .lab-pulse, .lab-wiggle, .lab-shine, .lab-wave, .lab-squish, .lab-late { animation: none !important; }
+  .lab-blob, .lab-blink, .lab-hop, .lab-island, .lab-drop::after, .lab-tabin, .lab-pop, .lab-rise, .lab-fade, .lab-float, .lab-pulse, .lab-wiggle, .lab-shine, .lab-wave, .lab-squish, .lab-late { animation: none !important; }
   .lab-flood { animation-duration: .01s !important; }
 }
 `
@@ -92,6 +108,9 @@ export function Card({ children, style, className = "", onClick }: { children: R
   )
 }
 
+/** Kurzes haptisches Feedback (Android/Web; iPhone erst in der Store-App). */
+export function haptic(ms = 8) { try { navigator.vibrate?.(ms) } catch {} }
+
 export function Btn({ children, onClick, variant = "primary", style, disabled, full }: {
   children: React.ReactNode; onClick?: () => void; variant?: "primary" | "ghost" | "soft" | "danger"; style?: React.CSSProperties; disabled?: boolean; full?: boolean
 }) {
@@ -101,13 +120,13 @@ export function Btn({ children, onClick, variant = "primary", style, disabled, f
     width: full ? "100%" : undefined, opacity: disabled ? 0.45 : 1, pointerEvents: disabled ? "none" : undefined,
   }
   const variants: Record<string, React.CSSProperties> = {
-    primary: { background: "var(--lab-grad)", color: "#fff", boxShadow: "0 8px 24px rgba(46,204,138,.35)" },
+    primary: { background: "var(--lab-grad)", color: "#fff", boxShadow: "inset 0 1px 0 rgba(255,255,255,.45), inset 0 -2px 0 rgba(0,0,0,.12), 0 10px 26px rgba(46,204,138,.38)" },
     ghost:   { background: "transparent", color: "var(--text-dim)", border: "1px solid var(--border)" },
-    soft:    { background: "var(--surface-2)", color: "var(--text)" },
+    soft:    { background: "color-mix(in srgb, var(--surface-2) 85%, transparent)", color: "var(--text)", boxShadow: "inset 0 1px 0 var(--glass-edge)" },
     danger:  { background: "var(--danger-dim)", color: "var(--danger)" },
   }
   return (
-    <button className="lab-press" onClick={onClick} disabled={disabled} style={{ ...base, ...variants[variant], ...style }}>
+    <button className={`lab-press ${variant === "primary" ? "lab-drop" : ""}`} onClick={() => { if (variant === "primary") haptic(); onClick?.() }} disabled={disabled} style={{ ...base, ...variants[variant], ...style }}>
       {children}
     </button>
   )
@@ -209,12 +228,13 @@ export function Ring({ size = 64, stroke = 7, progress, color = "var(--accent)",
 /** Kurzer XP-Toast, der nach oben schwebt. */
 export function XpToast({ amount, label }: { amount: number; label: string }) {
   return (
-    <div style={{ position: "fixed", top: 18, left: 0, right: 0, zIndex: 600, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
-      <div className="lab-pop" style={{
-        background: "var(--lab-grad)", color: "#fff", borderRadius: 999, padding: "10px 18px",
-        fontWeight: 900, boxShadow: "0 10px 30px rgba(46,204,138,.45)", display: "flex", gap: 8, alignItems: "center",
+    <div style={{ position: "fixed", top: "calc(10px + env(safe-area-inset-top))", left: 0, right: 0, zIndex: 600, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+      <div className="lab-island" style={{
+        background: "#000", color: "#fff", borderRadius: 999, padding: "10px 18px 10px 10px", minHeight: 44,
+        fontWeight: 800, boxShadow: "0 12px 34px rgba(0,0,0,.35)", display: "flex", gap: 10, alignItems: "center",
       }}>
-        <span>+{amount} XP</span><span style={{ opacity: 0.85, fontWeight: 700 }}>{label}</span>
+        <span style={{ padding: "4px 10px", borderRadius: 999, background: "linear-gradient(135deg, #2ECC8A, #3987e5)", fontWeight: 900, fontSize: "0.85rem" }}>+{amount} XP</span>
+        <span style={{ fontSize: "0.9rem" }}>{label}</span>
       </div>
     </div>
   )

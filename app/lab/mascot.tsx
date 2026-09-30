@@ -1,5 +1,5 @@
 "use client"
-import React, { useId, useState } from "react"
+import React, { useEffect, useId, useRef, useState } from "react"
 import type { CoachAction, CoachMsg, Mood } from "@/lib/labCoach"
 import { Btn, Sheet } from "./ui"
 
@@ -10,7 +10,46 @@ export const MASCOT_NAME = "Kolbi"
 /**
  * fill: Füllstand 0–1 (Tamagotchi: wie viel heute erledigt ist) · glow: Serie läuft · murky: vernachlässigt
  */
-export function Mascot({ mood = "happy", size = 56, fill, glow, murky }: { mood?: Mood; size?: number; fill?: number; glow?: boolean; murky?: boolean }) {
+/** Kolbis Augen folgen dem Finger/Mauszeiger – und schauen zwischendurch selbst mal herum. */
+function useLook(ref: React.RefObject<SVGSVGElement | null>, on: boolean) {
+  const [look, setLook] = useState({ x: 0, y: 0 })
+  useEffect(() => {
+    if (!on) return
+    let raf = 0, last = 0
+    const move = (e: PointerEvent) => {
+      last = Date.now()
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => {
+        const r = ref.current?.getBoundingClientRect()
+        if (!r) return
+        const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height * 0.6)
+        const d = Math.hypot(dx, dy) || 1
+        const k = Math.min(1, d / 160)
+        setLook({ x: (dx / d) * 2.6 * k, y: (dy / d) * 2 * k })
+      })
+    }
+    const idle = setInterval(() => {
+      if (Date.now() - last < 3000) return
+      const r = Math.random()
+      setLook(r < 0.4 ? { x: 0, y: 0 } : { x: (Math.random() - 0.5) * 5, y: (Math.random() - 0.5) * 3 })
+    }, 2600)
+    window.addEventListener("pointermove", move, { passive: true })
+    window.addEventListener("pointerdown", move, { passive: true })
+    return () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerdown", move); clearInterval(idle); cancelAnimationFrame(raf) }
+  }, [on, ref])
+  return look
+}
+
+export type Accessory = "shades" | "nightcap" | null
+
+export function Mascot({ mood = "happy", size = 56, fill, glow, murky, alive, accessory }: {
+  mood?: Mood; size?: number; fill?: number; glow?: boolean; murky?: boolean
+  /** blinzeln + Blick folgt dem Finger */
+  alive?: boolean
+  accessory?: Accessory
+}) {
+  const svgRef = useRef<SVGSVGElement>(null)
+  const look = useLook(svgRef, !!alive)
   const level = fill == null ? 0 : -8 + (1 - Math.max(0, Math.min(1, fill))) * 52
   const uid = useId().replace(/:/g, "")
   const eyes = {
@@ -28,7 +67,7 @@ export function Mascot({ mood = "happy", size = 56, fill, glow, murky }: { mood?
     sleepy: <path d="M46 71 q4 3 8 0" stroke="#1a1c20" strokeWidth="2.4" fill="none" strokeLinecap="round" />,
   }[mood]
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" role="img" aria-label={`${MASCOT_NAME}, dein Lab-Coach`} style={{
+    <svg ref={svgRef} width={size} height={size} viewBox="0 0 100 100" role="img" aria-label={`${MASCOT_NAME}, dein Lab-Coach`} style={{
       display: "block", overflow: "visible",
       filter: glow ? "drop-shadow(0 0 10px rgba(46,204,138,.75))" : undefined, transition: "filter .6s",
     }}>
@@ -55,8 +94,26 @@ export function Mascot({ mood = "happy", size = 56, fill, glow, murky }: { mood?
       {/* Gesicht */}
       <circle cx="34" cy="68" r="4" fill="#ff8fa3" opacity=".7" />
       <circle cx="66" cy="68" r="4" fill="#ff8fa3" opacity=".7" />
-      {eyes}
+      <g style={{ transform: `translate(${look.x}px, ${look.y}px)`, transition: "transform .35s cubic-bezier(.3,.9,.3,1)" }}>
+        <g className={alive && accessory !== "shades" && mood !== "sleepy" && mood !== "party" ? "lab-blink" : undefined}>{eyes}</g>
+      </g>
       {mouth}
+      {accessory === "shades" && (
+        <g className="lab-pop">
+          <path d="M31 55 h16 a2 2 0 0 1 2 2 v3 a6 6 0 0 1 -6 6 h-5 a7 7 0 0 1 -7 -7 v-2 a2 2 0 0 1 2 -2 z" fill="#111" />
+          <path d="M53 55 h16 a2 2 0 0 1 2 2 v2 a7 7 0 0 1 -7 7 h-5 a6 6 0 0 1 -6 -6 v-3 a2 2 0 0 1 2 -2 z" fill="#111" />
+          <path d="M49 58 h4" stroke="#111" strokeWidth="2.4" />
+          <path d="M34 58 l5 -2" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" opacity=".6" />
+          <path d="M56 58 l5 -2" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" opacity=".6" />
+        </g>
+      )}
+      {accessory === "nightcap" && (
+        <g className="lab-pop">
+          <path d="M34 12 C 40 -4, 66 -8, 80 6 C 72 4, 70 8, 66 12 Z" fill="#5b6ee1" stroke="#1a1c20" strokeWidth="2.4" strokeLinejoin="round" />
+          <path d="M34 12 h32" stroke="#fff" strokeWidth="4" strokeLinecap="round" />
+          <circle cx="82" cy="8" r="5" fill="#fff" stroke="#1a1c20" strokeWidth="2" />
+        </g>
+      )}
       {mood === "party" && <>
         <path d="M14 20 l3 6 l6 1 l-5 4 l1 6 l-5 -3 l-5 3 l1 -6 l-5 -4 l6 -1 z" fill="#f5b400" />
         <circle cx="86" cy="24" r="3" fill="#e87ba4" /><circle cx="82" cy="12" r="2" fill="#2ECC8A" />

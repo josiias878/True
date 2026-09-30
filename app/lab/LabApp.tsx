@@ -15,7 +15,7 @@ import { checkLabReminders, downloadIcs, hasNativeReminders, syncNativeReminders
 import { enablePush, pushAvailable, pushState, syncPush, type PushState } from "@/lib/labPush"
 import { fetchHealthSince, hasHealthProvider, healthCompare, mergeHealthDay, requestHealthPermission } from "@/lib/health"
 import { coach, type CoachAction, type CoachMsg } from "@/lib/labCoach"
-import { LAB_CSS, Btn, Capsule, Card, FaceRow, Icon, IconBtn, Label, Segmented, Sheet, SideChips, Stars, Stepper, XpToast } from "./ui"
+import { LAB_CSS, Btn, Capsule, Card, FaceRow, Icon, IconBtn, Label, Segmented, Sheet, SideChips, Stars, Stepper, XpToast, haptic } from "./ui"
 import { CheckInSheet, Onboarding, SuppPicker } from "./flows"
 import { DeltaBars, DimLineChart, MoodCalendar, MoodCurve, ProCon } from "./charts"
 import { CoachBubble, HelpSheet, KolbiTip, MASCOT_NAME, Mascot } from "./mascot"
@@ -180,6 +180,20 @@ export default function LabApp() {
   const [mineView, setMineView] = useState<"liste" | "stack">("liste")
   const [resView, setResView] = useState<"auswertung" | "verlauf">("auswertung")
   const [tabDir, setTabDir] = useState(1)
+  const [navMini, setNavMini] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    let lastY = window.scrollY
+    const on = () => {
+      const y = window.scrollY
+      setScrolled(y > 8)
+      if (Math.abs(y - lastY) < 12) return
+      setNavMini(y > lastY && y > 120)
+      lastY = y
+    }
+    window.addEventListener("scroll", on, { passive: true })
+    return () => window.removeEventListener("scroll", on)
+  }, [])
   const [recapEnd, setRecapEnd] = useState<string | null>(() => init.openRecap ? recapWeekEnd(new Date(), todayIso()) : null)
   // Tab wechseln (auch alte Namen aus Unteransichten: stack → Meine/Stack, daten → Ergebnisse …)
   const goTab = useCallback((to: string) => {
@@ -425,8 +439,8 @@ export default function LabApp() {
 
       {/* ── Header ── */}
       <header style={{
-        position: "sticky", top: 0, zIndex: 100, background: "var(--nav-bg)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-        borderBottom: "1px solid var(--border)",
+        position: "sticky", top: 0, zIndex: 100, background: "var(--glass)", backdropFilter: "blur(22px) saturate(1.8)", WebkitBackdropFilter: "blur(22px) saturate(1.8)",
+        borderBottom: "1px solid var(--glass-line)", boxShadow: scrolled ? "0 6px 24px rgba(0,0,0,.08)" : "none", transition: "box-shadow .3s",
       }}>
         <div style={{ maxWidth: 640, margin: "0 auto", padding: "10px 16px", display: "flex", alignItems: "center", gap: 8 }}>
           {!STORE_MODE && <Link href="/home" aria-label="Zurück zu TRUE" style={{ color: "var(--text-dim)", textDecoration: "none", fontSize: "1.1rem", padding: "4px 6px 4px 0" }}>←</Link>}
@@ -434,9 +448,9 @@ export default function LabApp() {
             <div style={{ fontWeight: 900, fontSize: "1.1rem", letterSpacing: "-.01em", lineHeight: 1.1 }}>Supplement Lab {s.demo && <span style={{ fontSize: "0.62rem", background: "var(--warning-dim)", color: "var(--warning)", padding: "2px 6px", borderRadius: 6, verticalAlign: "middle" }}>BEISPIEL</span>}</div>
             <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-dim)", marginTop: 2 }}>{lvl.emoji} {lvl.name}</div>
           </div>
-          <div title={`${st} Tage am Stück eingecheckt`} style={{
+          <div title={`${st} Tage am Stück eingecheckt`} className="lab-glass" style={{
             display: "flex", alignItems: "center", gap: 4, height: 36, padding: "0 12px", borderRadius: 999,
-            background: st ? "rgba(235,104,52,.14)" : "var(--surface-2)", fontWeight: 900, fontSize: "0.85rem",
+            background: st ? "color-mix(in srgb, #eb6834 16%, var(--glass))" : undefined, fontWeight: 900, fontSize: "0.85rem",
           }}>
             <span style={{ filter: st ? undefined : "grayscale(1)", display: "inline-block" }}>🔥</span>{st}
           </div>
@@ -460,30 +474,36 @@ export default function LabApp() {
         </div>
       </main>
 
-      {/* ── Tab-Leiste: schwebende Pille ── */}
+      {/* ── Tab-Leiste: Liquid Glass mit gleitender Pille, wird beim Runterscrollen kompakt ── */}
       <nav aria-label="Bereiche" style={{
         position: "fixed", left: 0, right: 0, bottom: "calc(12px + env(safe-area-inset-bottom))", zIndex: 200,
         display: "flex", justifyContent: "center", padding: "0 16px", pointerEvents: "none",
       }}>
-        <div style={{
-          pointerEvents: "auto", display: "flex", gap: 4, padding: 6, borderRadius: 26, width: "100%", maxWidth: 420,
-          background: "var(--nav-bg)", backdropFilter: "blur(24px) saturate(1.4)", WebkitBackdropFilter: "blur(24px) saturate(1.4)",
-          border: "1px solid color-mix(in srgb, var(--border) 70%, transparent)", boxShadow: "0 12px 36px rgba(0,0,0,.18)",
+        <div className="lab-glass" style={{
+          pointerEvents: "auto", position: "relative", display: "flex", padding: 5, borderRadius: 30, width: "100%", maxWidth: navMini ? 300 : 420,
+          transition: "max-width .45s cubic-bezier(.34,1.56,.64,1)",
         }}>
+          {/* gleitende Glas-Pille hinter dem aktiven Tab */}
+          <span aria-hidden style={{
+            position: "absolute", top: 5, bottom: 5, left: 5, width: "calc((100% - 10px) / 4)", borderRadius: 24,
+            transform: `translateX(${TABS.findIndex(x => x.id === tab) * 100}%)`, transition: "transform .55s cubic-bezier(.34,1.45,.64,1)",
+            background: "linear-gradient(160deg, color-mix(in srgb, var(--accent) 92%, #fff), var(--accent))",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,.5), inset 0 -2px 0 rgba(0,0,0,.1), 0 6px 18px color-mix(in srgb, var(--accent) 45%, transparent)",
+          }} />
           {TABS.map(({ id, icon, label: l }) => {
             const on = tab === id
             const badge = id === "kolbi" ? kolbiTips.length : id === "meine" ? shoppingList(s, today).count : 0
             return (
-              <button key={id} onClick={() => goTab(id)} className="lab-press" aria-current={on ? "page" : undefined} aria-label={l} style={{
-                position: "relative", flex: on ? 1.6 : 1, height: 50, border: "none", borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
-                background: on ? "var(--accent)" : "transparent", color: on ? "#fff" : "var(--text-dim)",
-                fontWeight: 800, fontSize: "0.8rem", transition: "flex .3s cubic-bezier(.3,.9,.3,1), background .25s, color .25s", overflow: "hidden", whiteSpace: "nowrap",
+              <button key={id} onClick={() => { if (!on) haptic(6); goTab(id) }} className="lab-press" aria-current={on ? "page" : undefined} aria-label={l} style={{
+                position: "relative", zIndex: 1, flex: 1, height: navMini ? 44 : 56, border: "none", borderRadius: 24, background: "transparent",
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
+                color: on ? "#fff" : "var(--text-dim)", fontWeight: 800, fontSize: "0.66rem", transition: "height .4s cubic-bezier(.34,1.56,.64,1), color .3s",
               }}>
-                <Icon name={icon} />
-                {on && <span className="lab-fade">{l}</span>}
+                <span style={{ display: "flex", transform: on ? "scale(1.08)" : "scale(1)", transition: "transform .4s cubic-bezier(.34,1.56,.64,1)" }}><Icon name={icon} size={navMini ? 20 : 22} /></span>
+                {!navMini && <span>{l}</span>}
                 {!on && badge > 0 && (id === "kolbi"
-                  ? <span aria-hidden style={{ position: "absolute", top: 12, left: "calc(50% + 8px)", width: 9, height: 9, borderRadius: 999, background: "var(--accent)", boxShadow: "0 0 0 2px var(--nav-bg)" }} />
-                  : <span style={{ position: "absolute", top: 8, left: "calc(50% + 6px)", minWidth: 16, height: 16, padding: "0 4px", borderRadius: 999, background: "#eda100", color: "#fff", fontSize: "0.66rem", fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>{badge}</span>)}
+                  ? <span aria-hidden style={{ position: "absolute", top: navMini ? 8 : 9, left: "calc(50% + 7px)", width: 9, height: 9, borderRadius: 999, background: "var(--accent)", boxShadow: "0 0 0 2px var(--surface)" }} />
+                  : <span style={{ position: "absolute", top: navMini ? 4 : 5, left: "calc(50% + 5px)", minWidth: 16, height: 16, padding: "0 4px", borderRadius: 999, background: "#eda100", color: "#fff", fontSize: "0.64rem", fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>{badge}</span>)}
               </button>
             )
           })}
@@ -564,8 +584,8 @@ export default function LabApp() {
       })()}
       {toast && <XpToast key={toast.k} amount={toast.amount} label={toast.label} />}
       {flash && !toast && (
-        <div style={{ position: "fixed", top: 18, left: 0, right: 0, zIndex: 600, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
-          <div className="lab-pop" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 18px", fontWeight: 800, boxShadow: "var(--shadow)" }}>{flash}</div>
+        <div style={{ position: "fixed", top: "calc(10px + env(safe-area-inset-top))", left: 0, right: 0, zIndex: 600, display: "flex", justifyContent: "center", pointerEvents: "none", padding: "0 16px" }}>
+          <div className="lab-island" style={{ background: "#000", color: "#fff", borderRadius: 999, padding: "11px 20px", minHeight: 44, display: "flex", alignItems: "center", fontWeight: 800, fontSize: "0.9rem", boxShadow: "0 12px 34px rgba(0,0,0,.35)", maxWidth: "calc(100vw - 32px)" }}><span>{flash}</span></div>
         </div>
       )}
       {confetti && <Confetti onDone={() => setConfetti(false)} />}
@@ -651,6 +671,9 @@ function KolbiHero({ s, today, now, pending, sleepy, lockedUntil, notStarted, st
 }) {
   const [tapped, setTapped] = useState(false)
   const dropAt = dropKey
+  // Hüpfer, wenn sich Kolbi füllt (Einnahme abgehakt, Check-in …)
+  const prevFill = useRef<number | null>(null)
+  const [hop, setHop] = useState(0)
   const fill = dayProgress(s, today)
   const st = streak(s)
   const lvl = levelFor(s.xp)
@@ -658,6 +681,17 @@ function KolbiHero({ s, today, now, pending, sleepy, lockedUntil, notStarted, st
   const reveal = pending.some(p => p.kind === "reveal")
   const checked = s.checkins[today]
   const mood = notStarted ? "happy" : n ? (reveal ? "think" : sleepy ? "sleepy" : "happy") : fill >= 1 ? "party" : sleepy ? "sleepy" : "happy"
+  useEffect(() => {
+    if (prevFill.current != null && fill > prevFill.current + 0.001) setHop(h => h + 1)
+    prevFill.current = fill
+  }, [fill])
+  const hour = now.getHours()
+  const evening = hour >= 20 || hour < 5
+  const accessory = evening && fill >= 1 ? "nightcap" as const : st >= 7 ? "shades" as const : null
+  const blobs = sleepy ? ["#8f9a7a", "#6b7280", "#94a3b8"]
+    : evening ? ["#6c5ce7", "#3987e5", st >= 3 ? "#ff9f43" : "#e87ba4"]
+    : fill >= 1 ? ["#2ECC8A", "#1baf7a", "#f5d76e"]
+    : ["#2ECC8A", "#3987e5", st >= 3 ? "#ff9f43" : "#9ee6c5"]
   const go = () => {
     if (!n || tapped) return
     setTapped(true)
@@ -672,16 +706,22 @@ function KolbiHero({ s, today, now, pending, sleepy, lockedUntil, notStarted, st
     : lockedUntil ? "Bis zum Check-in hast du frei." : "Ich melde mich, wenn wieder etwas dran ist."
   return (
     <div className="lab-rise" style={{
-      position: "relative", overflow: "hidden", borderRadius: 32, padding: "18px 18px 20px", textAlign: "center",
-      background: "radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--accent) 16%, var(--surface)) 0%, var(--surface) 70%)",
-      border: "1px solid color-mix(in srgb, var(--border) 70%, transparent)", boxShadow: "0 1px 2px rgba(0,0,0,.04), 0 12px 32px rgba(0,0,0,.07)",
+      position: "relative", overflow: "hidden", borderRadius: 34, padding: "18px 18px 20px", textAlign: "center", isolation: "isolate",
+      background: "var(--surface)", border: "1px solid var(--glass-line)", boxShadow: "inset 0 1px 0 var(--glass-edge), var(--glass-shadow)",
     }}>
+      {/* lebendiger Farbhintergrund (Mesh) – Farbe passt zu deinem Tag */}
+      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, opacity: 0.42 }}>
+        <span className="lab-blob" style={{ width: "70%", height: "75%", left: "-15%", top: "-20%", background: blobs[0] }} />
+        <span className="lab-blob" style={{ width: "65%", height: "70%", right: "-18%", top: "5%", background: blobs[1], animationDelay: "-5s", animationDuration: "17s" }} />
+        <span className="lab-blob" style={{ width: "55%", height: "55%", left: "20%", bottom: "-25%", background: blobs[2], animationDelay: "-9s", animationDuration: "12s" }} />
+      </div>
+      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, transparent 35%, color-mix(in srgb, var(--surface) 70%, transparent) 100%)" }} />
       <div style={{ position: "relative", width: 132, height: 132, margin: "0 auto 4px" }}>
         {n > 0 && <span className="lab-pulse" style={{ position: "absolute", inset: 18, borderRadius: 999 }} />}
-        <div className={tapped || dropAt ? "lab-squish" : "lab-float"} key={dropAt ?? "k"} role="button" tabIndex={0} aria-label={`${MASCOT_NAME}: Tipps, Profil und Hilfe`}
-          onClick={onKolbi} onKeyDown={e => { if (e.key === "Enter") onKolbi() }} style={{ position: "relative", cursor: "pointer" }}>
-          <Mascot mood={mood} size={132} fill={0.12 + fill * 0.88} glow={st >= 3} murky={sleepy} />
-          <span style={{ position: "absolute", right: -4, bottom: 6, fontSize: "0.7rem", fontWeight: 900, padding: "3px 8px", borderRadius: 999, background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 2px 8px rgba(0,0,0,.1)" }}>
+        <div className={tapped || dropAt ? "lab-squish" : hop ? "lab-hop" : "lab-float"} key={dropAt ?? `k${hop}`} role="button" tabIndex={0} aria-label={`${MASCOT_NAME}: Tipps, Profil und Hilfe`}
+          onClick={onKolbi} onKeyDown={e => { if (e.key === "Enter") onKolbi() }} onAnimationEnd={e => { if (e.animationName === "labHop") setHop(0) }} style={{ position: "relative", cursor: "pointer" }}>
+          <Mascot mood={mood} size={132} fill={0.12 + fill * 0.88} glow={st >= 3} murky={sleepy} alive accessory={accessory} />
+          <span className="lab-glass" style={{ position: "absolute", right: -4, bottom: 6, fontSize: "0.7rem", fontWeight: 900, padding: "3px 9px", borderRadius: 999 }}>
             {lvl.emoji} Lv {lvl.index + 1}
           </span>
         </div>
@@ -691,7 +731,7 @@ function KolbiHero({ s, today, now, pending, sleepy, lockedUntil, notStarted, st
       <div style={{ fontSize: "0.86rem", color: "var(--text-dim)", marginTop: 3 }}>{sub}</div>
 
       {n > 0 && (
-        <button onClick={go} className="lab-press" style={{ marginTop: 16, display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 26px", borderRadius: 999, border: "none", background: "var(--lab-grad)", color: "#fff", fontWeight: 900, fontSize: "1rem", boxShadow: "0 8px 24px rgba(46,204,138,.35)" }}>
+        <button onClick={() => { haptic(); go() }} className="lab-press lab-drop" style={{ marginTop: 16, display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 28px", borderRadius: 999, border: "none", background: "var(--lab-grad)", color: "#fff", fontWeight: 900, fontSize: "1.02rem", boxShadow: "inset 0 1px 0 rgba(255,255,255,.45), inset 0 -2px 0 rgba(0,0,0,.12), 0 12px 28px rgba(46,204,138,.4)" }}>
           ▶ {reveal && n === 1 ? "Ergebnis aufdecken" : "Los geht's"}
         </button>
       )}
