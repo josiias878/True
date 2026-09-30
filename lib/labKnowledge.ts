@@ -170,3 +170,9 @@ export function sideCauses(s: LabState, suppId: string, sides = recentSides(s)) 
   return SIDE_CAUSES.filter(c => c.lib === lib.id && c.sides.some(x => sides.has(x)))
     .map(c => ({ ...c, matched: c.sides.filter(x => sides.has(x)) }))
 }
+
+/** Entdeckte Fakten (neueste zuerst) — fürs Wissens-Album. */
+export function learnedFacts(s: LabState): Fact[] {
+  const byId = new Map(ALL_FACTS.map(f => [f.id, f]))
+  return [...s.learned].reverse().map(id => byId.get(id)).filter((f): f is Fact => !!f)
+}

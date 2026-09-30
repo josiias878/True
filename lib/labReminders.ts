@@ -4,9 +4,10 @@
 
 import {
   LIB_BY_ID, SLOTS, phaseWindows, intakeOn, slotFor, slotMinutes, fromMin, toMin, todayIso, addDays, diffDays, libOf, streak,
-  STORAGE_KEY, hydrate, STORE_MODE, LAB_BASE, type LabState, type SlotId,
+  STORAGE_KEY, hydrate, STORE_MODE, LAB_BASE, isHere, type LabState, type SlotId,
 } from "./supplementLab"
 import { partnerTips } from "./labKnowledge"
+import { LOW_DAYS, buyInfo, inUse, stockInfo } from "./labStock"
 
 const APP_URL = STORE_MODE ? "" : "https://get-true.de/lab"
 
@@ -80,13 +81,13 @@ export function buildIcs(s: LabState): string {
     // Stack-Phase: alle behaltenen täglich
     const stack = wins.find(w => w.kind === "stack" && w.end >= from)
     if (stack) {
-      for (const supp of s.supps.filter(x => s.verdicts[x.id]?.decision === "keep" && x.mode !== "konstant")) {
+      for (const supp of s.supps.filter(x => s.verdicts[x.id]?.decision === "keep" && x.mode !== "konstant" && isHere(x))) {
         const time = fromMin(slotMinutes(slotFor(supp.id, s), s.settings))
         ev.push(event(`stack-${supp.id}`, icsDate(stack.start > from ? stack.start : from, time), `${supp.emoji} ${supp.name} nehmen`, supp.dose || "", icsDate(last.end, "23:59")))
       }
     }
     // Durchgehende Supplements
-    for (const supp of s.supps.filter(x => x.mode === "konstant")) {
+    for (const supp of s.supps.filter(x => x.mode === "konstant" && isHere(x))) {
       const lib = supp.lib ? LIB_BY_ID[supp.lib] : undefined
       const time = fromMin(slotMinutes(slotFor(supp.id, s), s.settings))
       // wöchentliche am Wochentag des Experiment-Starts
@@ -123,7 +124,7 @@ export function downloadIcs(s: LabState) {
 // Max. ~3–4 am Tag: pro Tageszeit gebündelt, abends die Tagesrunde, Serien-Retter,
 // „Ergebnis ist da“ und sonntags ein Praxis-Tipp. Jede Nachricht führt direkt in die App.
 
-export type NotifKind = "take" | "checkin" | "streak" | "result" | "tip"
+export type NotifKind = "take" | "checkin" | "streak" | "result" | "tip" | "stock"
 
 export interface PlannedNotification {
   id: number
@@ -246,6 +247,21 @@ export function notificationPlan(s: LabState, days = 7, now = new Date()): Plann
         })
       }
     }
+  }
+  // Vorrat geht aus: einmal pro Packung, vormittags an dem Tag, an dem es knapp wird
+  for (const x of s.supps) {
+    const info = stockInfo(s, x)
+    if (!info || !x.stock || x.stock.ordered || info.empty || !inUse(s, x, today)) continue
+    const date = addDays(today, Math.max(0, info.days - LOW_DAYS))
+    if (date > addDays(today, days - 1)) continue
+    const left = Math.min(info.days, LOW_DAYS)
+    const alt = buyInfo(x).alt
+    out.push({
+      key: `stock-${x.id}-${x.stock.at}`, kind: "stock", url: LAB_BASE, at: atDate(date, wake + 150),
+      title: `🛒 ${x.name} reicht noch ${left} ${left === 1 ? "Tag" : "Tage"}`,
+      body: shorten(alt ? `Zeit nachzubestellen. 💡 ${alt}` : "Zeit nachzubestellen, damit keine Lücke entsteht.", 170),
+      generic: { title: "🛒 Dein Vorrat geht bald aus", body: "Zeit nachzubestellen, damit keine Lücke entsteht." },
+    })
   }
   return out.filter(n => n.at > now).sort((a, b) => +a.at - +b.at).slice(0, 60).map(n => ({ ...n, id: hashId(n.key) }))
 }

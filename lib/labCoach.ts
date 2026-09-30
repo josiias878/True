@@ -9,6 +9,7 @@ import {
   type LabState, type Decision, type PhaseWindow,
 } from "./supplementLab"
 import { partnerTips, recentSides, sideCauses } from "./labKnowledge"
+import { buyInfo, inUse, shopUrl, stockInfo } from "./labStock"
 
 export type Mood = "happy" | "think" | "alert" | "party" | "sleepy"
 
@@ -29,6 +30,13 @@ export type CoachAction =
   | { kind: "addSupp"; libId: string; tipId?: string }
   | { kind: "gotIt"; tipId: string }
   | { kind: "take"; suppId: string }
+  | { kind: "arrived"; suppId: string }
+  | { kind: "stillAway"; suppId: string }
+  | { kind: "setAway"; suppId: string }
+  | { kind: "shop"; suppId: string }
+  | { kind: "ordered"; suppId: string }
+  | { kind: "refill"; suppId: string }
+  | { kind: "stock"; suppId: string }
   | { kind: "reminders" }
   | { kind: "dismiss" }
 
@@ -125,6 +133,46 @@ export function coach(s: LabState, now = new Date(), dismissed: string[] = []): 
       ] })
   }
 
+  // ── Einkaufsliste & Vorrat
+  for (const x of s.supps) {
+    const shop = shopUrl(x)
+    if (x.away) {
+      const since = diffDays(x.away, today)
+      if (since < 3) continue
+      push({ id: `away-${x.id}-${x.away}`, mood: "think", prio: 4, title: `📦 Ist ${x.name} schon da?`,
+        text: `Steht seit ${since} Tagen auf deiner Einkaufsliste. Sobald es da ist, plane ich es ein – vorher zählt es nirgends mit.`,
+        actions: [
+          { label: "✓ Ja, ist da", action: { kind: "arrived", suppId: x.id }, primary: true },
+          ...(shop ? [{ label: "🛒 Bestellen", action: { kind: "shop" as const, suppId: x.id } }] : []),
+          { label: "Noch nicht", action: { kind: "stillAway", suppId: x.id } },
+        ] })
+      continue
+    }
+    const info = stockInfo(s, x)
+    if (!info || !x.stock || !inUse(s, x, today)) continue
+    if (x.stock.ordered) {
+      if (diffDays(x.stock.ordered, today) < 2) continue
+      push({ id: `restock-${x.id}-${x.stock.ordered}`, mood: "happy", prio: 4, title: `📦 Neue Packung ${x.name} da?`,
+        text: "Dann tippe kurz – ich fülle den Vorrat auf und rechne neu.",
+        actions: [{ label: "✓ Ja, aufgefüllt", action: { kind: "refill", suppId: x.id }, primary: true }, { label: "Noch nicht", action: { kind: "dismiss" } }] })
+    } else if (info.empty) {
+      push({ id: `empty-${x.id}-${x.stock.at}`, mood: "alert", prio: 4, title: `${x.name} müsste leer sein`,
+        text: "Laut meiner Rechnung ist die Packung aufgebraucht. Stimmt das?",
+        actions: [
+          { label: "🛒 Ja, leer", action: { kind: "setAway", suppId: x.id }, primary: true },
+          { label: "Noch was da", action: { kind: "stock", suppId: x.id } },
+        ] })
+    } else if (info.low) {
+      const alt = buyInfo(x).alt
+      push({ id: `low-${x.id}-${x.stock.at}`, mood: "think", prio: 5, title: `🛒 ${x.name} reicht noch ${info.days} ${info.days === 1 ? "Tag" : "Tage"}`,
+        text: `Zeit nachzubestellen, damit keine Lücke entsteht.${alt ? ` 💡 ${alt}` : ""}`,
+        actions: [
+          { label: "📦 Hab bestellt", action: { kind: "ordered", suppId: x.id }, primary: true },
+          ...(shop ? [{ label: "🛒 Nachkaufen", action: { kind: "shop" as const, suppId: x.id } }] : []),
+        ] })
+    }
+  }
+
   // ── Kolbi erklärt: Nebenwirkung → mögliche Ursache, und passende Partner
   const seen = new Set(s.learned)
   const taking = [...new Set([...intakeOn(s, today), ...(w?.kind === "test" && w.suppId ? [w.suppId] : [])])]
@@ -140,7 +188,7 @@ export function coach(s: LabState, now = new Date(), dismissed: string[] = []): 
       const has = c.add ? s.supps.some(x => (x.lib ?? x.id) === c.add) : true
       push({ id: tipId, mood: "think", prio: 3, title: `${label} – liegt's an ${name(s, id)}?`, text: c.text,
         actions: [
-          ...(c.add && addName && !has ? [{ label: `➕ ${addName} hinzufügen`, action: { kind: "addSupp" as const, libId: c.add, tipId } }] : []),
+          ...(c.add && addName && !has ? [{ label: `🛒 ${addName} vormerken`, action: { kind: "addSupp" as const, libId: c.add, tipId } }] : []),
           { label: "👍 Gut zu wissen", action: { kind: "gotIt", tipId }, primary: !c.add || has },
         ] })
       causeShown = true
@@ -154,7 +202,7 @@ export function coach(s: LabState, now = new Date(), dismissed: string[] = []): 
     if (seen.has(tipId)) continue
     push({ id: tipId, mood: "happy", prio: 8, title: `💡 ${p.title}`, text: p.text,
       actions: [
-        { label: `➕ ${LIB_BY_ID[p.with].name} hinzufügen`, action: { kind: "addSupp", libId: p.with, tipId } },
+        { label: `🛒 ${LIB_BY_ID[p.with].name} vormerken`, action: { kind: "addSupp", libId: p.with, tipId } },
         { label: "Nein danke", action: { kind: "gotIt", tipId } },
       ] })
     break

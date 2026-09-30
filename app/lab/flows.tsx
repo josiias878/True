@@ -15,10 +15,12 @@ import type { Mood } from "@/lib/labCoach"
 
 // ── Supplement-Auswahl: antippen oder Liste einfügen ───────────────────────────
 
-export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd }: {
+export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd, onAway }: {
   selected: MySupp[]; goals: GoalId[]
   onToggle: (lib: LibSupp) => void; onAddCustom: (name: string) => void
   onPasteAdd: (items: { lib: LibSupp | null; name: string; dose: string }[]) => void
+  /** „Schon zu Hause?“ – nicht da = Einkaufsliste, zählt noch nicht mit */
+  onAway?: (libId: string, away: boolean) => void
 }) {
   const [mode, setMode] = useState<"tap" | "paste">("tap")
   const [q, setQ] = useState("")
@@ -84,6 +86,21 @@ export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd 
             return (
               <div key={lastAdded.id} className="lab-rise" style={{ position: "sticky", top: 8, zIndex: 2, marginBottom: 14 }}>
                 <KolbiTip title={`${lastAdded.emoji} ${lastAdded.name}: am besten ${tip.emoji} ${tip.label.charAt(0).toLowerCase()}${tip.label.slice(1)}`}>{tip.why}</KolbiTip>
+                {onAway && (() => {
+                  const away = !!selected.find(s => s.lib === lastAdded.id)?.away
+                  const opt = (v: boolean, l: string) => (
+                    <button className="lab-press" onClick={() => onAway(lastAdded.id, v)} aria-pressed={away === v} style={{
+                      flex: 1, padding: "9px 10px", borderRadius: 14, fontWeight: 800, fontSize: "0.8rem", color: "var(--text)",
+                      border: away === v ? "2px solid var(--accent)" : "1px solid var(--border)", background: away === v ? "var(--accent-dim)" : "var(--surface)",
+                    }}>{l}</button>
+                  )
+                  return (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+                      <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "var(--text-dim)", flexShrink: 0 }}>Schon zu Hause?</span>
+                      {opt(false, "✓ Ja")}{opt(true, "🛒 Noch nicht")}
+                    </div>
+                  )
+                })()}
               </div>
             )
           })()}
@@ -258,7 +275,8 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
               {supps.map(s => <Capsule key={s.id} supp={s} size="sm" onClick={() => setSupps(p => p.filter(x => x.id !== s.id))} right={<span style={{ color: "var(--text-dim)" }}>✕</span>} />)}
             </div>
           )}
-          <SuppPicker selected={supps} goals={goals} onToggle={toggleSupp} onAddCustom={addCustom} onPasteAdd={pasteAdd} />
+          <SuppPicker selected={supps} goals={goals} onToggle={toggleSupp} onAddCustom={addCustom} onPasteAdd={pasteAdd}
+            onAway={(libId, v) => setSupps(prev => prev.map(x => x.lib === libId ? { ...x, away: v ? todayIso() : undefined } : x))} />
           {footer(<Btn full disabled={!supps.length} onClick={next}>{supps.length ? `Weiter mit ${supps.length}` : "Wähle mindestens eins"}</Btn>)}
         </div>
       )}

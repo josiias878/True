@@ -729,7 +729,28 @@ export interface MySupp {
   mode: SuppMode
   /** Bewusst zum Testen behalten — Kolbi schlägt „durchgehend nehmen“ dafür nicht mehr vor. */
   keepTesting?: boolean
+  /** 🛒 Noch nicht da (bestellt/auf der Einkaufsliste) seit diesem Datum — zählt dann nirgends mit. */
+  away?: string
+  /** Vorrat: Packung, Tagesmenge, Reichweite (optional). */
+  stock?: Stock
 }
+
+/** Form der Packung: Kapseln/Tabletten (Stück), Pulver (g), Tropfen (Flasche in ml, Tagesmenge in Tropfen), Flüssig (ml). */
+export type StockForm = "kapseln" | "pulver" | "tropfen" | "fluessig"
+
+export interface Stock {
+  form: StockForm
+  pack: number      // Inhalt einer Packung (Stück · g · ml)
+  perDay: number    // pro Einnahme (Stück · g · Tropfen · ml)
+  left: number      // Rest beim Eintragen (gleiche Einheit wie pack)
+  at: string        // Datum des Eintragens — Verbrauch zählt ab dem Folgetag
+  active?: number   // Wirkstoff pro Stück/Tropfen/ml bzw. pro g (in activeUnit), optional
+  activeUnit?: "mg" | "µg" | "IE"
+  ordered?: string  // Nachbestellt am …
+}
+
+/** Ist das Supplement gerade im Haus? (Einkaufsliste = nicht da) */
+export function isHere(x: MySupp | undefined) { return !!x && !x.away }
 
 /**
  * baseline = nichts nehmen · test = ein Supplement allein · washout = Pause nach einem Test
@@ -934,11 +955,11 @@ export function intakeOn(s: LabState, date: string): string[] {
   if (!first || date < first.start) return []
   // Wöchentliche (z. B. GLP-1) nur am Wochentag des Experiment-Starts
   const sameWeekday = diffDays(first.start, date) % 7 === 0
-  const ids = s.supps.filter(x => x.mode === "konstant" && (!libOf(x)?.weekly || sameWeekday)).map(x => x.id)
+  const ids = s.supps.filter(x => x.mode === "konstant" && isHere(x) && (!libOf(x)?.weekly || sameWeekday)).map(x => x.id)
   const w = phaseAt(s, date)
   if (w?.kind === "test" && w.suppId && !ids.includes(w.suppId)) ids.unshift(w.suppId)
   if (w?.kind === "stack" || w?.kind === "check") {
-    const kept = s.supps.filter(x => s.verdicts[x.id]?.decision === "keep" && !ids.includes(x.id) && !(w.kind === "check" && x.id === w.suppId))
+    const kept = s.supps.filter(x => s.verdicts[x.id]?.decision === "keep" && isHere(x) && !ids.includes(x.id) && !(w.kind === "check" && x.id === w.suppId))
       .filter(x => !libOf(x)?.weekly || sameWeekday)
     ids.unshift(...kept.map(x => x.id))
   }
@@ -1248,7 +1269,7 @@ export function lastPhase(s: LabState): PhaseWindow | null {
 /** Welche Supplements warten noch auf ihren Test? (automatisch sortiert) */
 export function nextCandidates(s: LabState): MySupp[] {
   const tested = new Set(phaseWindows(s).filter(w => w.kind === "test").map(w => w.suppId))
-  return autoOrder(s.supps.filter(x => x.mode === "test" && !s.verdicts[x.id] && !tested.has(x.id)), s.goals)
+  return autoOrder(s.supps.filter(x => x.mode === "test" && isHere(x) && !s.verdicts[x.id] && !tested.has(x.id)), s.goals)
 }
 
 /**
@@ -1260,12 +1281,13 @@ export function nextCandidates(s: LabState): MySupp[] {
 const PRESCRIPTION_HINTS = /testosteron|trt\b|hormonersatz|\bhrt\b|\bivf\b|insulin|levothyroxin|l-thyroxin|euthyrox|schilddrüsenhormon|kortison|cortison|prednisolon|ssri|antidepress|citalopram|sertralin|fluoxetin|escitalopram|\bpille\b|verhütung|marcumar|warfarin|blutverdünner|blutdruck|ramipril|metformin|opioid|methadon|\bbenzo\b|xanax|tavor|schilddrüse|antibabypille/i
 export function looksPrescribed(name: string) { return PRESCRIPTION_HINTS.test(name) }
 
-export type SuppStatusKey = "waiting" | "testing" | "kept" | "maybe" | "dropped" | "constant" | "paused" | "observing" | "verdict"
+export type SuppStatusKey = "waiting" | "testing" | "kept" | "maybe" | "dropped" | "constant" | "paused" | "observing" | "verdict" | "away"
 
 export function suppStatus(s: LabState, id: string, today = todayIso()): { key: SuppStatusKey; label: string; emoji: string } {
   const w = phaseAt(s, today)
   const x = s.supps.find(q => q.id === id)
   const v = s.verdicts[id]?.decision
+  if (x?.away) return { key: "away", label: "Noch nicht da", emoji: "🛒" }
   if (w?.kind === "test" && w.suppId === id) return { key: "testing", label: `Im Test · Tag ${diffDays(w.start, today) + 1}/${w.days}`, emoji: "🔬" }
   if (w?.kind === "check" && w.suppId === id) return { key: "observing", label: "Pausiert zum Beobachten", emoji: "👀" }
   if (v === "keep") return { key: "kept", label: "Behalten", emoji: "💚" }
