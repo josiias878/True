@@ -246,6 +246,12 @@ export function slotMinutes(slot: SlotId, s: Settings): number {
 }
 export function slotTime(slot: SlotId, s: Settings) { return fromMin(slotMinutes(slot, s)) }
 
+/**
+ * Uhrzeit (Minuten seit Mitternacht) auf den „Aufsteh-Tag“ beziehen: Der Tag beginnt 3 h vor
+ * der Aufstehzeit – alles davor (z. B. 00:30) zählt noch zum Vorabend (→ +1440).
+ */
+export function relMin(m: number, s: Settings) { return m < toMin(s.wake) - 180 ? m + 1440 : m }
+
 /** Standard-Zeit für den abendlichen Check-in: 1 h vor dem Schlafen. */
 export function defaultCheckinTime(s: Settings) {
   let bed = toMin(s.bed)
@@ -729,6 +735,8 @@ export interface MySupp {
   mode: SuppMode
   /** Bewusst zum Testen behalten — Kolbi schlägt „durchgehend nehmen“ dafür nicht mehr vor. */
   keepTesting?: boolean
+  /** Persönliche Einnahme-Uhrzeit (HH:MM), von dir bestätigt – gewinnt vor Kolbis Tageszeit. */
+  time?: string
   /** 🛒 Noch nicht da (bestellt/auf der Einkaufsliste) seit diesem Datum — zählt dann nirgends mit. */
   away?: string
   /** Vorrat: Packung, Tagesmenge, Reichweite (optional). */
@@ -1180,6 +1188,21 @@ export function slotFor(suppId: string, s: LabState): SlotId {
   return s.slotOverrides[suppId] ?? slotOf(suppId, s)[0]
 }
 
+/** Geplante Einnahme in Minuten (Aufsteh-Tag): deine bestätigte Uhrzeit, sonst Kolbis Tageszeit. */
+export function suppMinutes(suppId: string, s: LabState): number {
+  const t = s.supps.find(x => x.id === suppId)?.time
+  return t ? relMin(toMin(t), s.settings) : slotMinutes(slotFor(suppId, s), s.settings)
+}
+export function suppTime(suppId: string, s: LabState) { return fromMin(suppMinutes(suppId, s)) }
+
+/** Ø der letzten n tatsächlichen Einnahme-Zeiten (Aufsteh-Tag-Minuten). */
+export function recentIntake(s: LabState, id: string, n = 3): { avg: number; count: number } | null {
+  const times = Object.keys(s.tookAt).sort().reverse().map(d => s.tookAt[d]?.[id]).filter(Boolean).slice(0, n)
+    .map(t => relMin(toMin(t as string), s.settings))
+  if (!times.length) return null
+  return { avg: Math.round(times.reduce((a, b) => a + b, 0) / times.length), count: times.length }
+}
+
 const UNKNOWN_TIMING = "Kenne ich nicht genau. Tipp: jeden Tag zur gleichen Zeit, am besten zu einer Mahlzeit – so vergisst du es nicht und verträgst es meist besser."
 
 /** Kolbis Zeit-Empfehlung (nur ein Tipp; eigene Wahl steht in slotOverrides). */
@@ -1191,7 +1214,7 @@ export function timeTip(s: LabState, suppId: string) {
   const rec = SLOTS.find(q => q.id === recommended)!
   return {
     slot, recommended, own: slot !== recommended, known: !!lib,
-    time: slotTime(slot, s.settings), label: info.label, emoji: info.emoji,
+    time: suppTime(suppId, s), personal: s.supps.find(q => q.id === suppId)?.time ?? null, label: info.label, emoji: info.emoji,
     recTime: slotTime(recommended, s.settings), recLabel: rec.label, recEmoji: rec.emoji,
     why: lib?.timing ?? UNKNOWN_TIMING,
   }

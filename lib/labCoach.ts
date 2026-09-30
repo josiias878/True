@@ -6,6 +6,7 @@ import {
   DIMS, LIB_BY_ID, ONSET_INFO, SLOTS, SIDE_BY_ID,
   phaseWindows, phaseAt, checkinsIn, nextCandidates, signal, testResult, intakeOn, slotFor, slotMinutes, slotTime,
   avgIntakeMinutes, meanScore, libOf, defaultMode, todayIso, addDays, diffDays, fmtDate, fromMin, toMin, daySum,
+  suppMinutes, suppTime, recentIntake, relMin, isHere,
   type LabState, type Decision, type PhaseWindow,
 } from "./supplementLab"
 import { partnerTips, recentSides, sideCauses } from "./labKnowledge"
@@ -37,6 +38,7 @@ export type CoachAction =
   | { kind: "ordered"; suppId: string }
   | { kind: "refill"; suppId: string }
   | { kind: "stock"; suppId: string }
+  | { kind: "setTime"; suppId: string; time: string; tipId: string }
   | { kind: "reminders" }
   | { kind: "dismiss" }
 
@@ -219,11 +221,11 @@ export function coach(s: LabState, now = new Date(), dismissed: string[] = []): 
   const took = s.took[today] ?? []
   for (const id of intakeOn(s, today)) {
     if (took.includes(id)) continue
-    const at = slotMinutes(slotFor(id, s), s.settings)
-    const nowRel = minutesNow < toMin(s.settings.wake) ? minutesNow + 1440 : minutesNow
+    const at = suppMinutes(id, s)
+    const nowRel = relMin(minutesNow, s.settings)
     if (nowRel >= at - 15) {
       push({ id: `take-${id}`, mood: "happy", prio: 4, title: `Zeit für ${name(s, id)}`,
-        text: `Geplant um ${fromMin(at)} Uhr (${SLOTS.find(x => x.id === slotFor(id, s))?.label.toLowerCase()}). Tipp zum Abhaken, die Uhrzeit speichere ich automatisch.`,
+        text: `Geplant um ${fromMin(at)} Uhr. Tipp zum Abhaken, die Uhrzeit speichere ich automatisch.`,
         actions: [{ label: "✓ Genommen", action: { kind: "take", suppId: id }, primary: true }] })
     }
   }
@@ -232,17 +234,27 @@ export function coach(s: LabState, now = new Date(), dismissed: string[] = []): 
   if (w) phaseAdvice(s, w, today, baseMean, push)
   else idleAdvice(s, today, wins, push)
 
-  // ── Einnahme-Uhrzeit (aus automatisch gespeicherten Zeiten)
+  // ── Kolbi lernt deine Uhrzeit: nimmst du etwas regelmäßig woanders als geplant, schlägt er deine Zeit vor
   for (const x of s.supps) {
-    const avg = avgIntakeMinutes(s, x.id)
-    if (avg == null || !x.lib) continue
-    const ideal = slotMinutes(slotFor(x.id, s), s.settings)
-    const avgRel = avg < toMin(s.settings.wake) ? avg + 1440 : avg
-    if (Math.abs(avgRel - ideal) >= 90) {
-      push({ id: `time-${x.id}`, mood: "think", prio: 8, title: `Timing-Tipp: ${x.name}`,
-        text: `Du nimmst es im Schnitt um ${fromMin(avg)} Uhr, ideal wäre ${fromMin(ideal)} Uhr. ${LIB_BY_ID[x.lib]?.timing ?? ""}` })
-      break
-    }
+    if (!isHere(x)) continue
+    const r = recentIntake(s, x.id, 3)
+    if (!r) continue
+    const planned = suppMinutes(x.id, s)
+    const diff = Math.abs(r.avg - planned)
+    if (!((r.count >= 1 && diff >= 90) || (r.count >= 2 && diff >= 45))) continue
+    const rounded = Math.round(r.avg / 15) * 15
+    const tipId = `time:${x.id}:${rounded}`
+    if (seen.has(tipId)) continue
+    const lib = libOf(x)
+    const ideal = lib ? slotMinutes(slotFor(x.id, s), s.settings) : null
+    const farFromIdeal = ideal != null && Math.abs(rounded - ideal) >= 180
+    push({ id: tipId, mood: "think", prio: 4, title: `⏰ ${x.name} lieber um ${fromMin(rounded)} Uhr?`,
+      text: `${r.count > 1 ? `Du nimmst es meist um ${fromMin(r.avg)} Uhr` : `Du hast es um ${fromMin(r.avg)} Uhr genommen`}, geplant war ${fromMin(planned)} Uhr. Soll ich dich ab jetzt um ${fromMin(rounded)} Uhr erinnern?${farFromIdeal ? ` 💡 Kleiner Hinweis: ${lib!.timing}` : ""}`,
+      actions: [
+        { label: `✓ Ja, ${fromMin(rounded)} Uhr`, action: { kind: "setTime", suppId: x.id, time: fromMin(rounded), tipId }, primary: true },
+        { label: `Nein, ${suppTime(x.id, s)} passt`, action: { kind: "gotIt", tipId } },
+      ] })
+    break
   }
 
   // ── Erinnerungen
@@ -297,7 +309,7 @@ function phaseAdvice(s: LabState, w: PhaseWindow, today: string, baseMean: numbe
     const watch = lib?.watch.map(d => DIMS.find(x => x.id === d)?.label).filter(Boolean).join(", ")
     push({ id: `phase-${w.id}-${day}`, mood: "happy", prio: 5,
       title: left === 0 ? `Letzter Testtag: ${name(s, w.suppId)}` : `Test ${name(s, w.suppId)} · Tag ${day} von ${w.days}`,
-      text: `${left === 0 ? "Morgen bekommst du dein Ergebnis. " : ""}Nur ${name(s, w.suppId)}, um ${slotTime(slotFor(w.suppId, s), s.settings)} Uhr.${watch ? ` Achte besonders auf: ${watch}.` : ""}${lib && lib.onset !== "schnell" ? ` ${ONSET_INFO[lib.onset].emoji} ${ONSET_INFO[lib.onset].label}.` : ""}` })
+      text: `${left === 0 ? "Morgen bekommst du dein Ergebnis. " : ""}Nur ${name(s, w.suppId)}, um ${suppTime(w.suppId, s)} Uhr.${watch ? ` Achte besonders auf: ${watch}.` : ""}${lib && lib.onset !== "schnell" ? ` ${ONSET_INFO[lib.onset].emoji} ${ONSET_INFO[lib.onset].label}.` : ""}` })
     return
   }
 

@@ -3,7 +3,7 @@
 // 2) App-Benachrichtigungen: wenn TRUE geöffnet/als PWA aktiv ist, inkl. 1-Klick-Bewertung.
 
 import {
-  LIB_BY_ID, SLOTS, phaseWindows, intakeOn, slotFor, slotMinutes, fromMin, toMin, todayIso, addDays, diffDays, libOf, streak,
+  LIB_BY_ID, SLOTS, phaseWindows, intakeOn, slotFor, slotMinutes, suppMinutes, fromMin, toMin, todayIso, addDays, diffDays, libOf, streak,
   STORAGE_KEY, hydrate, STORE_MODE, LAB_BASE, isHere, type LabState, type SlotId,
 } from "./supplementLab"
 import { partnerTips } from "./labKnowledge"
@@ -62,7 +62,7 @@ export function buildIcs(s: LabState): string {
         if (!supp) continue
         const start = w.start > from ? w.start : from
         if (start > horizon) continue
-        const time = fromMin(slotMinutes(slotFor(supp.id, s), s.settings))
+        const time = fromMin(suppMinutes(supp.id, s))
         const lib = supp.lib ? LIB_BY_ID[supp.lib] : undefined
         ev.push(event(`take-${w.id}`, icsDate(start, time), `${supp.emoji} ${supp.name} nehmen`,
           `${supp.dose ? supp.dose + " · " : ""}${lib?.timing ?? ""}`, icsDate(w.end, "23:59")))
@@ -82,14 +82,14 @@ export function buildIcs(s: LabState): string {
     const stack = wins.find(w => w.kind === "stack" && w.end >= from)
     if (stack) {
       for (const supp of s.supps.filter(x => s.verdicts[x.id]?.decision === "keep" && x.mode !== "konstant" && isHere(x))) {
-        const time = fromMin(slotMinutes(slotFor(supp.id, s), s.settings))
+        const time = fromMin(suppMinutes(supp.id, s))
         ev.push(event(`stack-${supp.id}`, icsDate(stack.start > from ? stack.start : from, time), `${supp.emoji} ${supp.name} nehmen`, supp.dose || "", icsDate(last.end, "23:59")))
       }
     }
     // Durchgehende Supplements
     for (const supp of s.supps.filter(x => x.mode === "konstant" && isHere(x))) {
       const lib = supp.lib ? LIB_BY_ID[supp.lib] : undefined
-      const time = fromMin(slotMinutes(slotFor(supp.id, s), s.settings))
+      const time = fromMin(suppMinutes(supp.id, s))
       // wöchentliche am Wochentag des Experiment-Starts
       const first = lib?.weekly ? addDays(wins[0].start, Math.ceil(Math.max(0, diffDays(wins[0].start, from)) / 7) * 7) : from
       ev.push(event(`const-${supp.id}`, icsDate(first, time), `${supp.emoji} ${supp.name}${lib?.weekly ? " (wöchentlich)" : ""} nehmen`,
@@ -174,20 +174,23 @@ export function notificationPlan(s: LabState, days = 7, now = new Date()): Plann
     // Einnahmen, gebündelt pro Tageszeit
     if (s.reminders.intake) {
       const took = date === today ? (s.took[date] ?? []) : []
-      const groups = new Map<SlotId, string[]>()
+      // gebündelt nach Uhrzeit (persönliche Zeit oder Kolbis Tageszeit)
+      const groups = new Map<number, string[]>()
       for (const id of intakeOn(s, date)) {
         if (took.includes(id)) continue
-        const slot = slotFor(id, s)
-        groups.set(slot, [...(groups.get(slot) ?? []), id])
+        const m = suppMinutes(id, s)
+        groups.set(m, [...(groups.get(m) ?? []), id])
       }
-      for (const [slot, ids] of groups) {
+      for (const [m, ids] of groups) {
         const supps = ids.map(id => s.supps.find(x => x.id === id)).filter((x): x is NonNullable<typeof x> => !!x)
         if (!supps.length) continue
-        const info = SLOTS.find(x => x.id === slot)!
+        const slot: SlotId = slotFor(supps[0].id, s)
+        const custom = supps.some(x => x.time)
+        const info = custom ? { emoji: "⏰", label: `${fromMin(m)} Uhr` } : SLOTS.find(x => x.id === slot)!
         const lib = libOf(supps[0])
         out.push({
-          key: `take-${date}-${slot}`, kind: "take", suppIds: supps.map(x => x.id), url: round,
-          at: atDate(date, slotMinutes(slot, s.settings)),
+          key: `take-${date}-${m}`, kind: "take", suppIds: supps.map(x => x.id), url: round,
+          at: atDate(date, m),
           title: `${info.emoji} ${info.label}: ${joinNames(supps.map(x => x.name))}`,
           body: supps.length === 1 && lib ? shorten(`💡 ${lib.timing}`, 150) : `${supps.map(x => x.emoji).join(" ")} Tippe „Genommen“ oder öffne deine Runde.`,
           generic: { title: `${info.emoji} ${info.label}: Zeit für deine Supplements`, body: "Tippe, um abzuhaken." },

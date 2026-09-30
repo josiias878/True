@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react"
 import {
   FACES, SIDE_BY_ID, SIDE_EFFECTS, DIM_BY_ID,
-  activeDims, intakeOn, knownSides, phaseWindows, signal, testResult, slotFor, slotMinutes, toMin, suppColor, streak, timeTip,
+  activeDims, intakeOn, knownSides, phaseWindows, signal, testResult, slotFor, slotMinutes, toMin, suppColor, streak, timeTip, relMin, suppMinutes,
   type LabState, type CheckIn, type Scores, type Decision, type Dim,
 } from "@/lib/supplementLab"
 import { Btn, SideChips, Stars } from "./ui"
@@ -19,10 +19,8 @@ export type RoundStep =
 /** Einnahmen, die bis ca. 90 Min. von jetzt fällig sind (Tagesrhythmus ab Aufstehzeit). */
 function dueIntakes(s: LabState, today: string, now: Date) {
   const took = s.took[today] ?? []
-  const wake = toMin(s.settings.wake)
-  const rel = (m: number) => (m < wake ? m + 1440 : m)
-  const nowRel = rel(now.getHours() * 60 + now.getMinutes())
-  return intakeOn(s, today).filter(id => !took.includes(id) && rel(slotMinutes(slotFor(id, s), s.settings)) <= nowRel + 90)
+  const nowRel = relMin(now.getHours() * 60 + now.getMinutes(), s.settings)
+  return intakeOn(s, today).filter(id => !took.includes(id) && suppMinutes(id, s) <= nowRel + 90)
 }
 
 export function roundSteps(s: LabState, today: string, now: Date, checkinLocked: boolean): RoundStep[] {
