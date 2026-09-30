@@ -12,6 +12,7 @@ import {
   type SlotId, type LabState, type Decision, type Dim, type PhaseWindow, type MySupp, type LibSupp, type Settings, type CheckIn, type Scores, type SuppStatusKey,
 } from "@/lib/supplementLab"
 import { checkLabReminders, downloadIcs, hasNativeReminders, syncNativeReminders } from "@/lib/labReminders"
+import { enablePush, pushAvailable, pushState, syncPush, type PushState } from "@/lib/labPush"
 import { fetchHealthSince, hasHealthProvider, healthCompare, mergeHealthDay, requestHealthPermission } from "@/lib/health"
 import { coach, type CoachAction, type CoachMsg } from "@/lib/labCoach"
 import { LAB_CSS, Btn, Capsule, Card, FaceRow, Icon, IconBtn, Label, Sheet, SideChips, Stars, Stepper, XpToast } from "./ui"
@@ -75,9 +76,10 @@ function initialTab(): Tab {
 }
 
 /** Aktionen aus Benachrichtigungen (?rate=4, ?taken=id, ?checkin=1) direkt beim Öffnen ausführen. */
-function initialLoad(): { s: LabState; openCheckin: boolean; flash: string | null } {
+function initialLoad(): { s: LabState; openCheckin: boolean; openRound: boolean; flash: string | null } {
   const s = loadState()
   let openCheckin = false
+  let openRound = false
   let flash: string | null = null
   try {
     const q = new URLSearchParams(window.location.search)
@@ -90,16 +92,19 @@ function initialLoad(): { s: LabState; openCheckin: boolean; flash: string | nul
       flash = `${FACES[rate - 1]} Check-in gespeichert (+20 XP)`
     }
     if (taken && s.startDate) {
-      markTaken(s, today, taken)
-      flash = `✓ ${s.supps.find(x => x.id === taken)?.name ?? "Einnahme"} abgehakt`
+      const ids = taken.split(",").filter(id => s.supps.some(x => x.id === id))
+      ids.forEach(id => markTaken(s, today, id))
+      const names = ids.map(id => s.supps.find(x => x.id === id)!.name)
+      flash = `✓ ${names.length ? names.join(" & ") : "Einnahme"} abgehakt`
     }
-    if (q.get("checkin") === "1" && !s.checkins[today] && s.startDate) openCheckin = true
-    if (rate || taken || q.get("checkin")) {
+    if (q.get("checkin") === "1" && !s.checkins[today] && s.startDate) openRound = true
+    if (q.get("round") === "1" && s.startDate) openRound = true
+    if (rate || taken || q.get("checkin") || q.get("round")) {
       saveState(s)
       window.history.replaceState(null, "", window.location.pathname)
     }
   } catch {}
-  return { s, openCheckin, flash }
+  return { s, openCheckin, openRound, flash }
 }
 
 // Echte Daten sichern, wenn man zwischendurch die Demo anschaut
@@ -168,6 +173,15 @@ export default function LabApp() {
   // Store-App: native Erinnerungen bei jeder Änderung neu planen (im Web ein No-op)
   useEffect(() => { syncNativeReminders(s) }, [s])
 
+  // Web/PWA: echte Push-Nachrichten — Plan nach jeder Änderung (kurz verzögert) an den Server
+  const [pushSt, setPushSt] = useState<PushState>("unsupported")
+  useEffect(() => { pushState().then(setPushSt).catch(() => {}) }, [])
+  useEffect(() => {
+    if (pushSt !== "on") return
+    const t = setTimeout(() => { syncPush(s) }, 1500)
+    return () => clearTimeout(t)
+  }, [s, pushSt])
+
   const update: Update = useCallback((fn, xp) => {
     setS(prev => {
       let next = fn(structuredClone(prev))
@@ -198,12 +212,23 @@ export default function LabApp() {
   }, [s.checkins, update])
 
   // Kalender-Download zuerst (braucht die direkte Nutzer-Geste, v. a. auf iOS), dann Berechtigung anfragen
+  const turnOnPush = useCallback(async () => {
+    const next = { ...s, reminders: { ...s.reminders, enabled: true, checkin: s.reminders.checkin || defaultCheckinTime(s.settings) } }
+    if (!s.reminders.enabled) update(p => { p.reminders = next.reminders; return p })
+    const ok = await enablePush(next).catch(() => false)
+    const st = await pushState().catch(() => "unsupported" as PushState)
+    setPushSt(st)
+    setFlash(ok ? "🔔 Push-Erinnerungen sind an" : st === "denied" ? "⚠️ Benachrichtigungen sind blockiert (Einstellungen → Mitteilungen)" : "⚠️ Push hat nicht geklappt")
+  }, [s, update])
+
   const enableReminders = useCallback((withCalendar: boolean) => {
+    // Echte Push-Nachrichten, wo möglich — dann braucht es keinen Kalender (sonst doppelt)
+    if (pushAvailable()) { turnOnPush(); return }
     const reminders = { ...s.reminders, enabled: true, checkin: s.reminders.checkin || defaultCheckinTime(s.settings) }
     if (withCalendar) downloadIcs({ ...s, reminders })
     update(p => { p.reminders = reminders; return p })
     if ("Notification" in window && Notification.permission === "default") Notification.requestPermission().catch(() => {})
-  }, [s, update])
+  }, [s, update, turnOnPush])
 
   // Apple Health / Health Connect: bei Bedarf Berechtigung holen, dann regelmäßig synchronisieren (nur Store-App)
   const toggleHealth = useCallback(async () => {
@@ -290,6 +315,13 @@ export default function LabApp() {
   }, [s.reminders.enabled, s.reminders.checkin, unlockedFor, today, now])
   const pending = useMemo(() => roundSteps(s, today, now, checkinLocked), [s, today, now, checkinLocked])
 
+  // Aus einer Benachrichtigung geöffnet → direkt in die Tagesrunde (Sperrzeit gilt dann nicht)
+  useEffect(() => {
+    if (!init.openRound) return
+    const steps = roundSteps(init.s, todayIso(), new Date(), false)
+    if (steps.length) { setUnlockedFor(todayIso()); setRound(steps) }
+  }, [init])
+
   // ── Onboarding ──
   if (!s.startDate) {
     return (
@@ -301,7 +333,10 @@ export default function LabApp() {
             const next = hydrate({ ...emptyState(), ...state })
             next.badges = computeBadges(next)
             saveState(next); setS(next); setTab("heute"); setConfetti(true)
-            if (wantsCalendar) downloadIcs(next)
+            if (wantsCalendar) {
+              if (pushAvailable()) enablePush(next).then(() => pushState()).then(setPushSt).catch(() => {})
+              else downloadIcs(next)
+            }
           }}
         />
         {confetti && <Confetti onDone={() => setConfetti(false)} />}
@@ -343,7 +378,7 @@ export default function LabApp() {
         {tab === "heute" && <Dashboard s={s} wins={wins} today={today} now={now} msgs={msgs} onAction={runAction} onHelp={() => setHelpOpen(true)}
           onCheckin={setCheckinDate} onQuick={(d, v) => saveCheckin(quickCheckin(s, d, v))} onTake={toggleTook} onSupp={setSuppSheet}
           onPhase={setPhaseSheet} update={update} goTab={setTab}
-          pending={pending} onRound={() => setRound(pending)} checkinLocked={checkinLocked} onUnlock={() => { setUnlockedFor(today); setRound(roundSteps(s, today, now, false)) }} />}
+          pending={pending} onRound={() => setRound(pending)} checkinLocked={checkinLocked} pushOff={pushSt === "off"} onPush={turnOnPush} onUnlock={() => { setUnlockedFor(today); setRound(roundSteps(s, today, now, false)) }} />}
         {tab === "reise" && <JourneyView s={s} wins={wins} today={today} onPhase={setPhaseSheet} goTab={setTab} />}
         {tab === "daten" && <DataView s={s} wins={wins} onVerdict={setVerdictFor} onCheckin={setCheckinDate} />}
         {tab === "stack" && <StackView s={s} update={update} onVerdict={setVerdictFor} onStartStack={() => runAction({ kind: "startStack" }, "stack")} />}
@@ -421,7 +456,7 @@ export default function LabApp() {
         }} />}
       {helpOpen && <HelpSheet msgs={msgs} onAction={runAction} onClose={() => setHelpOpen(false)} />}
       {settingsOpen && <SettingsSheet s={s} onClose={() => setSettingsOpen(false)} update={update}
-        onEnableReminders={enableReminders}
+        onEnableReminders={enableReminders} pushSt={pushSt}
         onToggleHealth={toggleHealth}
         onImport={next => { saveState(next); setS(next); setSettingsOpen(false); setFlash("✓ Daten importiert") }}
         onReset={() => { const e = s.demo ? restoreBackup() : emptyState(); saveState(e); setS(e); setSettingsOpen(false) }}
@@ -551,12 +586,13 @@ function KolbiHero({ s, today, pending, sleepy, lockedUntil, onRound }: {
   )
 }
 
-function Dashboard({ s, wins, today, now, msgs, onAction, onHelp, onCheckin, onQuick, onTake, onSupp, onPhase, update, goTab, pending, onRound, checkinLocked, onUnlock }: {
+function Dashboard({ s, wins, today, now, msgs, onAction, onHelp, onCheckin, onQuick, onTake, onSupp, onPhase, update, goTab, pending, onRound, checkinLocked, onUnlock, pushOff, onPush }: {
   s: LabState; wins: PhaseWindow[]; today: string; now: Date; msgs: CoachMsg[]
   onAction: (a: CoachAction, id: string) => void; onHelp: () => void
   onCheckin: (d: string) => void; onQuick: (d: string, v: number) => void; onTake: (id: string) => void; onSupp: (id: string) => void
   onPhase: (w: PhaseWindow) => void; update: Update; goTab: (t: Tab) => void
   pending: RoundStep[]; onRound: () => void; checkinLocked: boolean; onUnlock: () => void
+  pushOff: boolean; onPush: () => void
 }) {
   const w = wins.find(x => today >= x.start && today <= x.end) ?? null
   const first = wins[0]
@@ -569,7 +605,7 @@ function Dashboard({ s, wins, today, now, msgs, onAction, onHelp, onCheckin, onQ
   const tookAt = s.tookAt[today] ?? {}
   const color = w?.kind === "test" || w?.kind === "check" ? suppColor(s.supps.find(x => x.id === w.suppId)) : w?.kind === "stack" ? "#eda100" : w?.kind === "washout" ? "#3987e5" : "#2ECC8A"
   // Was die Tagesrunde abdeckt, muss Kolbi nicht zusätzlich als Tipp anzeigen
-  const inRound = (id: string) => id === "checkin" || id.startsWith("take-") || id.startsWith("verdict-")
+  const inRound = (id: string) => id === "checkin" || id.startsWith("take-") || id.startsWith("verdict-") || (pushOff && id === "reminders")
   const tips = msgs.filter(m => !inRound(m.id))
   const top = tips[0]
 
@@ -588,6 +624,16 @@ function Dashboard({ s, wins, today, now, msgs, onAction, onHelp, onCheckin, onQ
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {!notStarted && <KolbiHero s={s} today={today} pending={pending} sleepy={!!missedYesterday && !checked}
         lockedUntil={!checked && checkinLocked ? s.reminders.checkin : null} onRound={onRound} />}
+      {pushOff && (
+        <div className="lab-card lab-rise" style={{ padding: 16, display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: "1.8rem" }}>🔔</span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: "block", fontWeight: 900 }}>Erinnerungen, auch wenn die App zu ist</span>
+            <span style={{ display: "block", fontSize: "0.8rem", color: "var(--text-dim)", lineHeight: 1.4 }}>Einnahme, abends die Runde, fertige Ergebnisse – höchstens 3–4× am Tag.</span>
+          </span>
+          <Btn onClick={onPush} style={{ padding: "10px 14px", fontSize: "0.85rem" }}>An</Btn>
+        </div>
+      )}
       {/* Kolbi sagt, was sonst noch ansteht */}
       {top && <CoachBubble msg={top} onAction={onAction} more={tips.length - 1} onMore={onHelp} compact={!notStarted} />}
       {STORE_MODE && !hasNativeReminders() && <InstallHint compact />}
@@ -1636,9 +1682,9 @@ function TimeSettings({ settings, onChange }: { settings: Settings; onChange: (s
   )
 }
 
-function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnableReminders, onToggleHealth }: {
+function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnableReminders, onToggleHealth, pushSt }: {
   s: LabState; onClose: () => void; update: Update; onReset: () => void; onDemo: () => void
-  onImport: (s: LabState) => void; onEnableReminders: (withCalendar: boolean) => void; onToggleHealth: () => void
+  onImport: (s: LabState) => void; onEnableReminders: (withCalendar: boolean) => void; onToggleHealth: () => void; pushSt: PushState
 }) {
   const [confirm, setConfirm] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
@@ -1665,7 +1711,7 @@ function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnable
   }
   const testNotif = () => {
     navigator.serviceWorker?.ready.then(reg => reg.showNotification("🧪 So sieht deine Erinnerung aus", {
-      body: "1 Tipp auf die Benachrichtigung öffnet den Check-in.", icon: "/icon-192.png", tag: "true-lab-test", data: { url: `${LAB_BASE}?checkin=1` },
+      body: "1 Tipp auf die Benachrichtigung öffnet deine Tagesrunde.", icon: "./icon-192.png", tag: "true-lab-test", data: { url: `${LAB_BASE}?round=1` },
     })).catch(() => setMsg("⚠️ Benachrichtigungen werden hier nicht unterstützt"))
   }
 
@@ -1692,12 +1738,16 @@ function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnable
               <input type="checkbox" checked={s.reminders.intake} onChange={e => { const v = e.target.checked; update(p => { p.reminders.intake = v; return p }) }} style={{ width: 20, height: 20, accentColor: "var(--accent)" }} />
             </label>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {!hasNativeReminders() && <Btn variant="soft" onClick={() => downloadIcs(s)} style={{ fontSize: "0.82rem", padding: "10px 12px" }}>📅 In Kalender eintragen</Btn>}
+              {pushSt === "off" && <Btn onClick={() => onEnableReminders(false)} style={{ fontSize: "0.82rem", padding: "10px 12px" }}>🔔 Push-Nachrichten an</Btn>}
+              {!hasNativeReminders() && pushSt !== "on" && <Btn variant="soft" onClick={() => downloadIcs(s)} style={{ fontSize: "0.82rem", padding: "10px 12px" }}>📅 In Kalender eintragen</Btn>}
               {perm === "granted" ? <Btn variant="ghost" onClick={testNotif} style={{ fontSize: "0.82rem", padding: "10px 12px" }}>Test senden</Btn>
-                : perm === "default" ? <Btn variant="ghost" onClick={() => onEnableReminders(false)} style={{ fontSize: "0.82rem", padding: "10px 12px" }}>Benachrichtigungen erlauben</Btn> : null}
+                : perm === "default" && pushSt !== "off" ? <Btn variant="ghost" onClick={() => onEnableReminders(false)} style={{ fontSize: "0.82rem", padding: "10px 12px" }}>Benachrichtigungen erlauben</Btn> : null}
             </div>
             <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 8, lineHeight: 1.45 }}>
-              {hasNativeReminders() ? "Erinnerungen kommen als Push-Nachricht — auch wenn die App geschlossen ist. Direkt aus der Nachricht bewerten oder abhaken." : <>Der Kalender erinnert dich zuverlässig, auch wenn die App zu ist. App-Benachrichtigungen kommen, sobald TRUE offen oder als App installiert ist.{perm === "denied" ? " Benachrichtigungen sind im Browser blockiert — nutze den Kalender." : ""}</>}
+              {hasNativeReminders() || pushSt === "on"
+                ? "✓ Push ist an: Erinnerungen kommen auch bei geschlossener App – pro Tageszeit gebündelt, abends deine Runde, fertige Ergebnisse. Namen deiner Supplements bleiben auf dem Handy."
+                : pushSt === "needs-install" ? "Für Push-Nachrichten auf dem iPhone: App über „Teilen → Zum Home-Bildschirm“ hinzufügen und von dort öffnen."
+                : <>Der Kalender erinnert dich zuverlässig, auch wenn die App zu ist.{perm === "denied" ? " Benachrichtigungen sind blockiert — in den Handy-Einstellungen unter Mitteilungen erlauben oder den Kalender nutzen." : ""}</>}
             </div>
           </>
         )}

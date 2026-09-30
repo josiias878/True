@@ -5,6 +5,7 @@ import "./app.css"
 import LabApp from "@/app/lab/LabApp"
 import { initNative } from "./native"
 import { initHealth } from "./health"
+import { allowPush } from "@/lib/labPush"
 
 // System-Theme live übernehmen (solange keins fest gewählt ist)
 try {
@@ -22,6 +23,8 @@ async function boot() {
   // Anonyme Öffnungs-Zählung (nur Web/PWA, kein Tracking-Profil, keine Health-Daten) —
   // sichtbar als aggregierte Zahl im Vercel-Dashboard, nicht pro Person
   if (!native) inject()
+  // Web/PWA: echte Push-Nachrichten (native App nutzt lokale Benachrichtigungen)
+  allowPush(!native)
   // Web/PWA: Service Worker für Offline & Benachrichtigungen
   if (!native && "serviceWorker" in navigator) {
     // Sobald eine neue Version die Kontrolle übernimmt, die Seite neu laden —

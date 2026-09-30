@@ -13,6 +13,25 @@ hier aber als eigene App im **Store-Modus** gebaut:
 - anonyme Öffnungs-Zählung über Vercel Web Analytics (nur „wie oft geöffnet“, keine Namen,
   keine Profile, keine Health-Daten) — siehe unten
 
+## Push-Nachrichten (Home-Bildschirm-App / Web)
+
+Echte Push-Nachrichten, auch wenn die App geschlossen ist (iPhone ab iOS 16.4, nur wenn die App
+über „Zum Home-Bildschirm“ installiert ist; Android/Desktop in jedem Browser).
+
+- **Plan:** `lib/labReminders.ts → notificationPlan()` – gemeinsam für Push und die spätere Store-App
+  (dort lokale Benachrichtigungen, `src/native.ts`). Pro Tageszeit gebündelt, abends die Tagesrunde
+  (Einnahmen ±60 Min. werden mitgenommen), Serien-Retter, „Ergebnis ist da“, sonntags ein Praxis-Tipp.
+- **Datenschutz:** Der Server bekommt nur die Push-Adresse und **neutrale** Texte
+  („Zeit für deine Supplements“). Die persönlichen Texte mit Supplement-Namen liegen im Cache des
+  Geräts; der Service Worker (`public/sw.js`) setzt sie beim Empfang ein.
+- **Server (Supabase-Projekt „Supplement Lab“, Frankfurt):**
+  - Tabellen `lab_push_subs`, `lab_push_queue`, `lab_push_config` (RLS an, nur Service-Role)
+  - Edge Functions in `supabase/functions/`: `push-register` (Gerät + Plan ersetzen),
+    `push-send` (versendet fällige Nachrichten, räumt abgelaufene Geräte auf)
+  - `pg_cron` ruft `push-send` jede Minute auf, aber nur wenn etwas fällig ist
+- **Schlüssel:** VAPID-Schlüssel und Cron-Geheimnis liegen nur in `lab_push_config` in der
+  Datenbank (nicht im Repo). Der öffentliche VAPID-Schlüssel steht in `lib/labPush.ts`.
+
 ## Wie oft wird die App geöffnet? (Vercel Web Analytics)
 
 Da es keine Accounts gibt, ist die einzige Möglichkeit zu sehen, ob die App überhaupt genutzt

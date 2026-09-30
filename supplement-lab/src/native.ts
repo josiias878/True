@@ -10,23 +10,15 @@ import type { LabState } from "@/lib/supplementLab"
 export async function initNative(): Promise<boolean> {
   if (!Capacitor.isNativePlatform()) return false
 
+  // Tipp auf die Nachricht öffnet die Tagesrunde; Einnahmen lassen sich direkt abhaken
   await LocalNotifications.registerActionTypes({
-    types: [
-      { id: "CHECKIN", actions: [
-        { id: "rate-5", title: "🤩 Top" },
-        { id: "rate-4", title: "🙂 Gut" },
-        { id: "rate-3", title: "😐 Okay" },
-        { id: "rate-2", title: "😕 Meh" },
-      ] },
-      { id: "TAKE", actions: [{ id: "taken", title: "✓ Genommen" }] },
-    ],
+    types: [{ id: "TAKE", actions: [{ id: "taken", title: "✓ Genommen" }] }],
   }).catch(() => {})
 
   LocalNotifications.addListener("localNotificationActionPerformed", ev => {
-    const extra = (ev.notification.extra ?? {}) as { url?: string; suppId?: string }
+    const extra = (ev.notification.extra ?? {}) as { url?: string; suppIds?: string }
     let url = extra.url ?? "/"
-    if (ev.actionId.startsWith("rate-")) url = `/?rate=${ev.actionId.slice(5)}`
-    if (ev.actionId === "taken" && extra.suppId) url = `/?taken=${encodeURIComponent(extra.suppId)}`
+    if (ev.actionId === "taken" && extra.suppIds) url = `/?taken=${encodeURIComponent(extra.suppIds)}`
     // Neu laden: die App wertet ?rate / ?taken / ?checkin beim Start aus
     window.location.href = url
   })
@@ -49,8 +41,8 @@ export async function initNative(): Promise<boolean> {
           notifications: list.map(n => ({
             id: n.id, title: n.title, body: n.body,
             schedule: { at: n.at, allowWhileIdle: true },
-            actionTypeId: n.kind === "checkin" ? "CHECKIN" : "TAKE",
-            extra: { url: n.url, suppId: n.suppId },
+            ...(n.kind === "take" ? { actionTypeId: "TAKE" } : {}),
+            extra: { url: n.url, suppIds: n.suppIds?.join(",") },
           })),
         })
         lastKey = key

@@ -3,9 +3,10 @@
 // 2) App-Benachrichtigungen: wenn TRUE geöffnet/als PWA aktiv ist, inkl. 1-Klick-Bewertung.
 
 import {
-  LIB_BY_ID, phaseWindows, intakeOn, slotFor, slotMinutes, fromMin, toMin, todayIso, addDays, diffDays,
-  STORAGE_KEY, hydrate, STORE_MODE, LAB_BASE, type LabState,
+  LIB_BY_ID, SLOTS, phaseWindows, intakeOn, slotFor, slotMinutes, fromMin, toMin, todayIso, addDays, diffDays, libOf, streak,
+  STORAGE_KEY, hydrate, STORE_MODE, LAB_BASE, type LabState, type SlotId,
 } from "./supplementLab"
+import { partnerTips } from "./labKnowledge"
 
 const APP_URL = STORE_MODE ? "" : "https://get-true.de/lab"
 
@@ -118,76 +119,23 @@ export function downloadIcs(s: LabState) {
   setTimeout(() => URL.revokeObjectURL(url), 5000)
 }
 
-// ── App-Benachrichtigungen ─────────────────────────────────────────────────────
+// ── Benachrichtigungs-Plan (Push, native App und App-offen-Fallback nutzen denselben) ──
+// Max. ~3–4 am Tag: pro Tageszeit gebündelt, abends die Tagesrunde, Serien-Retter,
+// „Ergebnis ist da“ und sonntags ein Praxis-Tipp. Jede Nachricht führt direkt in die App.
 
-export interface DueReminder { key: string; title: string; body: string; url: string; actions?: { action: string; title: string }[] }
-
-/** Was ist gerade fällig? (Check-in am Abend, Einnahme zur Slot-Zeit) */
-export function dueReminders(s: LabState, now = new Date()): DueReminder[] {
-  if (!s.reminders.enabled || !s.startDate) return []
-  const today = todayIso()
-  const wins = phaseWindows(s)
-  if (!wins.length || today < wins[0].start) return []
-  const minutes = now.getHours() * 60 + now.getMinutes()
-  const wakeMin = toMin(s.settings.wake)
-  const nowRel = minutes < wakeMin ? minutes + 1440 : minutes
-  const out: DueReminder[] = []
-
-  if (s.reminders.intake) {
-    const took = s.took[today] ?? []
-    for (const id of intakeOn(s, today)) {
-      const supp = s.supps.find(x => x.id === id)
-      if (!supp || took.includes(id)) continue
-      const at = slotMinutes(slotFor(id, s), s.settings)
-      if (nowRel >= at && nowRel < at + 180) {
-        out.push({ key: `take-${id}`, title: `${supp.emoji} Zeit für ${supp.name}`, body: supp.dose ? `${supp.dose} · Tippe „Genommen“ zum Abhaken.` : "Tippe „Genommen“ zum Abhaken.",
-          url: LAB_BASE, actions: [{ action: "lab-taken", title: "✓ Genommen" }] })
-      }
-    }
-  }
-
-  const checkin = toMin(s.reminders.checkin)
-  const checkinRel = checkin < wakeMin ? checkin + 1440 : checkin
-  if (!s.checkins[today] && nowRel >= checkinRel) {
-    out.push({ key: "checkin", title: "🧪 Wie war dein Tag?", body: "1 Klick reicht — deine Streak wartet 🔥",
-      url: `${LAB_BASE}?checkin=1`, actions: [{ action: "lab-rate-5", title: "🤩 Top" }, { action: "lab-rate-3", title: "😐 Okay" }] })
-  }
-  return out
-}
-
-/** Zeigt fällige Lab-Erinnerungen als System-Benachrichtigung (je 1× pro Tag). */
-export function checkLabReminders() {
-  try {
-    if (!("Notification" in window) || Notification.permission !== "granted") return
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return
-    const s = hydrate(JSON.parse(raw))
-    const today = todayIso()
-    for (const r of dueReminders(s)) {
-      const k = `true-lab-notif-${today}-${r.key}`
-      if (localStorage.getItem(k)) continue
-      localStorage.setItem(k, "1")
-      navigator.serviceWorker?.ready.then(reg => reg.showNotification(r.title, {
-        body: r.body, icon: "/icon-192.png", badge: "/icon-192.png", tag: `true-lab-${r.key}`,
-        data: { url: r.url, taken: r.key.startsWith("take-") ? r.key.slice(5) : undefined },
-        // actions werden nicht von allen Browsern unterstützt — dann öffnet ein Tipp einfach die App
-        ...(r.actions ? { actions: r.actions } : {}),
-      } as NotificationOptions))
-    }
-  } catch {}
-}
-
-// ── Native Erinnerungen (Store-App via Capacitor) ─────────────────────────────
-// Die App registriert hier einen Scheduler; im Web (TRUE) bleibt das ein No-op.
+export type NotifKind = "take" | "checkin" | "streak" | "result" | "tip"
 
 export interface PlannedNotification {
   id: number
+  key: string
+  kind: NotifKind
   title: string
   body: string
   at: Date
   url: string
-  kind: "checkin" | "take"
-  suppId?: string
+  suppIds?: string[]
+  /** Neutrale Fassung ohne Supplement-Namen/Gesundheitsdaten — nur die geht an den Push-Server. */
+  generic: { title: string; body: string }
 }
 
 function atDate(iso: string, minutes: number) {
@@ -199,36 +147,141 @@ function hashId(s: string) {
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0
   return Math.abs(h) % 2_000_000_000
 }
+function shorten(t: string, n: number) { return t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t }
+function joinNames(names: string[]) {
+  if (names.length <= 1) return names.join("")
+  if (names.length === 2) return `${names[0]} & ${names[1]}`
+  return `${names.slice(0, 2).join(", ")} +${names.length - 2}`
+}
 
-/** Alle Erinnerungen der nächsten Tage (iOS erlaubt max. 64 geplante — daher begrenzt). */
-export function upcomingNotifications(s: LabState, days = 10, now = new Date()): PlannedNotification[] {
+export function notificationPlan(s: LabState, days = 7, now = new Date()): PlannedNotification[] {
   if (!s.reminders.enabled || !s.startDate) return []
   const wins = phaseWindows(s)
   if (!wins.length) return []
-  const out: PlannedNotification[] = []
+  const round = `${LAB_BASE}?round=1`
   const today = todayIso()
+  const wake = toMin(s.settings.wake)
+  let bed = toMin(s.settings.bed)
+  if (bed <= wake) bed += 1440
+  const st = streak(s)
+  const out: Omit<PlannedNotification, "id">[] = []
+
   for (let i = 0; i < days; i++) {
     const date = addDays(today, i)
     if (date < wins[0].start) continue
+
+    // Einnahmen, gebündelt pro Tageszeit
     if (s.reminders.intake) {
+      const took = date === today ? (s.took[date] ?? []) : []
+      const groups = new Map<SlotId, string[]>()
       for (const id of intakeOn(s, date)) {
-        const supp = s.supps.find(x => x.id === id)
-        if (!supp || (date === today && (s.took[date] ?? []).includes(id))) continue
-        out.push({ id: hashId(`take-${date}-${id}`), kind: "take", suppId: id, url: LAB_BASE,
-          title: `${supp.emoji} Zeit für ${supp.name}`, body: supp.dose || "Einmal tippen zum Abhaken.",
-          at: atDate(date, slotMinutes(slotFor(id, s), s.settings)) })
+        if (took.includes(id)) continue
+        const slot = slotFor(id, s)
+        groups.set(slot, [...(groups.get(slot) ?? []), id])
+      }
+      for (const [slot, ids] of groups) {
+        const supps = ids.map(id => s.supps.find(x => x.id === id)).filter((x): x is NonNullable<typeof x> => !!x)
+        if (!supps.length) continue
+        const info = SLOTS.find(x => x.id === slot)!
+        const lib = libOf(supps[0])
+        out.push({
+          key: `take-${date}-${slot}`, kind: "take", suppIds: supps.map(x => x.id), url: round,
+          at: atDate(date, slotMinutes(slot, s.settings)),
+          title: `${info.emoji} ${info.label}: ${joinNames(supps.map(x => x.name))}`,
+          body: supps.length === 1 && lib ? shorten(`💡 ${lib.timing}`, 150) : `${supps.map(x => x.emoji).join(" ")} Tippe „Genommen“ oder öffne deine Runde.`,
+          generic: { title: `${info.emoji} ${info.label}: Zeit für deine Supplements`, body: "Tippe, um abzuhaken." },
+        })
       }
     }
+
+    // Abends: Tagesrunde (+ Serien-Retter heute). Einnahmen ±60 Min. davon werden mitgenommen → weniger Pings.
     if (!(date === today && s.checkins[date])) {
-      const wake = toMin(s.settings.wake)
       let m = toMin(s.reminders.checkin)
       if (m < wake) m += 1440
-      out.push({ id: hashId(`checkin-${date}`), kind: "checkin", url: `${LAB_BASE}?checkin=1`,
-        title: "🧪 Wie war dein Tag?", body: "1 Tipp reicht — deine Streak wartet 🔥", at: atDate(date, m) })
+      const at = atDate(date, m)
+      const near = out.filter(n => n.kind === "take" && n.key.startsWith(`take-${date}-`) && Math.abs(+n.at - +at) <= 60 * 60_000)
+      const ids = near.flatMap(n => n.suppIds ?? [])
+      for (const n of near) out.splice(out.indexOf(n), 1)
+      const names = ids.map(id => s.supps.find(x => x.id === id)?.name).filter(Boolean) as string[]
+      const text = names.length
+        ? { title: "🧪 Deine Abendrunde", body: `${joinNames(names)} nehmen + 1 Minute Check-in. So sehe ich, was bei dir wirklich wirkt.` }
+        : { title: "🧪 Kolbi wartet auf dich", body: "1 Minute: Wie war dein Tag? So sehe ich, was bei dir wirklich wirkt." }
+      out.push({
+        key: `checkin-${date}`, kind: "checkin", url: round, at, ...text, ...(ids.length ? { suppIds: ids } : {}),
+        generic: names.length ? { title: "🧪 Deine Abendrunde wartet", body: "Einnahme + 1 Minute Check-in." } : text,
+      })
+      if (i === 0 && st >= 3) {
+        const sm = Math.min(m + 90, bed - 15)
+        if (sm > m + 20) out.push({
+          key: `streak-${date}`, kind: "streak", url: round, at: atDate(date, sm),
+          title: `🔥 Deine ${st}-Tage-Serie reißt heute`, body: "Noch schnell einchecken – dauert keine Minute.",
+          generic: { title: "🔥 Deine Serie wartet", body: "Noch schnell einchecken – dauert keine Minute." },
+        })
+      }
+    }
+
+    // Test fertig → Ergebnis aufdecken
+    for (const w of wins) {
+      if (w.kind !== "test" || !w.suppId || s.verdicts[w.suppId] || addDays(w.end, 1) !== date) continue
+      const supp = s.supps.find(x => x.id === w.suppId)
+      out.push({
+        key: `result-${w.id}`, kind: "result", url: round, at: atDate(date, wake + 60),
+        title: `🎁 Dein Ergebnis zu ${supp?.name ?? "deinem Test"} ist da`, body: "Tippe, um aufzudecken, ob es bei dir wirkt.",
+        generic: { title: "🎁 Ein Test-Ergebnis ist da", body: "Tippe, um aufzudecken, ob es bei dir wirkt." },
+      })
+    }
+
+    // Sonntag: ein Praxis-Tipp zu etwas, das du nimmst
+    if (new Date(`${date}T12:00:00`).getDay() === 0) {
+      const mine = intakeOn(s, date).map(id => s.supps.find(x => x.id === id)).filter(x => libOf(x))
+      if (mine.length) {
+        const week = Math.floor(Date.parse(`${date}T12:00:00`) / (7 * 86400_000))
+        const supp = mine[week % mine.length]!
+        const partner = partnerTips(s, supp.id)[0]
+        out.push({
+          key: `tip-${date}`, kind: "tip", url: LAB_BASE, at: atDate(date, 11 * 60),
+          title: `💡 ${supp.emoji} ${supp.name}: so holst du mehr raus`,
+          body: shorten(partner ? `${partner.title}. ${partner.text}` : libOf(supp)!.timing, 170),
+          generic: { title: "💡 Kolbis Praxis-Tipp der Woche", body: "Ein kurzer Tipp für deinen Alltag." },
+        })
+      }
     }
   }
-  return out.filter(n => n.at > now).sort((a, b) => +a.at - +b.at).slice(0, 60)
+  return out.filter(n => n.at > now).sort((a, b) => +a.at - +b.at).slice(0, 60).map(n => ({ ...n, id: hashId(n.key) }))
 }
+
+/** Für die native App (Store): Alias auf den gemeinsamen Plan. */
+export function upcomingNotifications(s: LabState, days = 10, now = new Date()) { return notificationPlan(s, days, now) }
+
+// ── App-offen-Fallback (nur wenn kein Push aktiv ist) ─────────────────────────
+
+export const PUSH_ON_KEY = "lab-push-on"
+
+/** Zeigt fällige Erinnerungen als System-Benachrichtigung, solange die App offen ist (je 1×). */
+export function checkLabReminders() {
+  try {
+    if (!("Notification" in window) || Notification.permission !== "granted") return
+    if (localStorage.getItem(PUSH_ON_KEY)) return // Push übernimmt das, auch bei geschlossener App
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return
+    const s = hydrate(JSON.parse(raw))
+    const now = Date.now()
+    const due = notificationPlan(s, 1, new Date(now - 3 * 3600_000)).filter(n => +n.at <= now)
+    for (const n of due) {
+      const k = `true-lab-notif-${n.key}`
+      if (localStorage.getItem(k)) continue
+      localStorage.setItem(k, "1")
+      navigator.serviceWorker?.ready.then(reg => reg.showNotification(n.title, {
+        body: n.body, icon: "./icon-192.png", badge: "./icon-192.png", tag: `true-lab-${n.kind}`,
+        data: { url: n.url, taken: n.suppIds?.join(",") },
+        ...(n.suppIds ? { actions: [{ action: "lab-taken", title: "✓ Genommen" }] } : {}),
+      } as NotificationOptions))
+    }
+  } catch {}
+}
+
+// ── Native Erinnerungen (Store-App via Capacitor) ─────────────────────────────
+// Die App registriert hier einen Scheduler; im Web (TRUE) bleibt das ein No-op.
 
 type Scheduler = (s: LabState) => void
 let nativeScheduler: Scheduler | null = null
