@@ -192,6 +192,7 @@ export default function LabApp() {
   const [unlockedFor, setUnlockedFor] = useState<string | null>(null)
   const [stockFor, setStockFor] = useState<string | null>(null)
   const [reviewOpen, setReviewOpen] = useState<false | "ask" | "feedback">(false)
+  useEffect(() => { const h = () => setReviewOpen("feedback"); window.addEventListener("lab-feedback", h); return () => window.removeEventListener("lab-feedback", h) }, [])
   const [founderHello, setFounderHello] = useState(false)
   const [paywall, setPaywall] = useState<false | { from?: ProFeature }>(() => {
     try { return new URLSearchParams(location.search).get("paywall") ? {} : false } catch { return false }

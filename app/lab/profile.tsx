@@ -1,13 +1,18 @@
 "use client"
 // ── „Dein Profil“: macht die Reset-Tage sofort wertvoll ─────────────────────────
 // Ab dem 1. Check-in eigene Werte je Bereich, ab 3 Check-ins erste Aussagen – nur aus den eigenen Daten.
-import React from "react"
+import React, { useState } from "react"
 import { activeDims, daySum, tagLabel, type LabState, type PhaseWindow } from "@/lib/supplementLab"
 import { t, dec } from "@/lib/labI18n"
 import { Mascot } from "./mascot"
+import { sendFeedback } from "@/lib/labGrow"
 
 const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / Math.max(1, xs.length)
 const sd = (xs: number[]) => { const m = avg(xs); return Math.sqrt(avg(xs.map(x => (x - m) ** 2))) }
+
+// Ein-Tipp-Puls im Aha-Moment: „Hilft dir dein Profil?“ – anonym an lab-feedback (where=profile), nur einmal
+const PULSE_KEY = "lab-pulse-profile"
+const pulseDone = () => { try { return !!localStorage.getItem(PULSE_KEY) } catch { return true } }
 
 export function profileOf(s: LabState, upTo: string) {
   const days = Object.values(s.checkins).filter(c => c.date <= upTo).sort((a, b) => a.date.localeCompare(b.date))
@@ -32,6 +37,11 @@ export function ProfileCard({ s, first, today, onCheckin }: { s: LabState; first
   const sorted = [...p.dims].sort((a, b) => b.avg - a.avg)
   const best = sorted[0], low = sorted[sorted.length - 1]
   const shaky = [...p.dims].filter(d => d.n >= 3 && d.sd >= 1).sort((a, b) => b.sd - a.sd)[0]
+  const [pulse, setPulse] = useState<"ask" | "thanks" | "done">(() => pulseDone() ? "done" : "ask")
+  const answer = (m: "love" | "ok" | "meh") => {
+    try { localStorage.setItem(PULSE_KEY, m) } catch {}
+    setPulse("thanks"); void sendFeedback(m, "", "profile")
+  }
   return (
     <div className="lab-card lab-rise" style={{ padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -79,6 +89,19 @@ export function ProfileCard({ s, first, today, onCheckin }: { s: LabState; first
             {p.tag && <Insight emoji="🔎" text={p.tag.delta < 0
               ? t("An Tagen mit „{tag}“ warst du ⌀ {v}★ schlechter drauf.", { tag: tagLabel(p.tag.tag), v: dec(Math.abs(p.tag.delta)) })
               : t("An Tagen mit „{tag}“ warst du ⌀ {v}★ besser drauf.", { tag: tagLabel(p.tag.tag), v: dec(p.tag.delta) })} />}
+            {pulse === "ask" && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 4, fontSize: "0.78rem" }}>
+                <span style={{ fontWeight: 800, color: "var(--text-dim)", marginRight: 2 }}>{t("Hilft dir dein Profil?")}</span>
+                {([["love", t("👍 Ja")], ["ok", t("🤔 Geht so")], ["meh", t("👎 Nein")]] as const).map(([m, l]) => (
+                  <button key={m} className="lab-press" onClick={() => answer(m)} style={{ border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", borderRadius: 999, padding: "5px 10px", fontWeight: 800, fontSize: "0.76rem" }}>{l}</button>
+                ))}
+              </div>
+            )}
+            {pulse === "thanks" && (
+              <button className="lab-press lab-pop" onClick={() => { setPulse("done"); window.dispatchEvent(new CustomEvent("lab-feedback")) }} style={{ border: "none", background: "none", color: "var(--accent)", fontWeight: 800, fontSize: "0.78rem", textAlign: "left", padding: "4px 2px" }}>
+                {t("Danke! 💚 Magst du mir in einem Satz sagen, was fehlt? ›")}
+              </button>
+            )}
           </div>
         )}
       </>}

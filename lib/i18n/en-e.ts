@@ -244,4 +244,9 @@ export const EN_E: Record<string, string> = {
   "An Tagen mit „{tag}“ warst du ⌀ {v}★ schlechter drauf.": "On days with “{tag}” you felt {v}★ worse on average.",
   "An Tagen mit „{tag}“ warst du ⌀ {v}★ besser drauf.": "On days with “{tag}” you felt {v}★ better on average.",
   "Und wann trainierst du meistens?": "And when do you usually train?",
+  "Hilft dir dein Profil?": "Is your profile helpful?",
+  "👍 Ja": "👍 Yes",
+  "🤔 Geht so": "🤔 Kind of",
+  "👎 Nein": "👎 No",
+  "Danke! 💚 Magst du mir in einem Satz sagen, was fehlt? ›": "Thanks! 💚 Want to tell me in one sentence what's missing? ›",
 }

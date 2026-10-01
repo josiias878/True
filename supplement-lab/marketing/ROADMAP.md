@@ -15,7 +15,8 @@ Jeder Montags-Sprint nimmt die obersten offenen Punkte der aktuellen Phase.
 - [ ] Fortgeschrittenes (Vorrat, Kalender, Timing) erst bei Bedarf einblenden
 - [x] Einheitliche Marke „Kolbi“ in der App (Kopfzeile, App-Name, Teilen-Karten)
 - [ ] Marken-Steckbrief (Ton, Werte, No-Gos)
-- [ ] Kolbi bittet nach 3 Tagen um 2-Minuten-Feedback / Gespräch (5 Interviews)
+- [x] Ein-Tipp-Puls im Aha-Moment (Profil nach 3 Abenden: „Hilft dir dein Profil?“ → optional „Was fehlt?“) → `lab_feedback` where=profile
+- [ ] 5 Gespräche mit echten Nutzern (Einladung nach 7 Check-ins)
 - [ ] 30–50 Beta-Nutzer; Kennzahlen: 2. Check-in ≥ 50 %, 7 Check-ins ≥ 25 %
 
 ## Phase 1 · Dez 2026–Feb 2027 · Verkaufen lernen
