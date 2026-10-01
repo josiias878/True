@@ -113,7 +113,7 @@ ${alt ? `<link rel="alternate" hreflang="de" href="/"><link rel="alternate" href
 ${body}
 <footer class="foot"><div class="wrap">
 <div class="foot-brand">${kolbi("sleepy-nightcap")}<span><b>Kolbi · Supplement Lab</b><br>${l.tagline}</span></div>
-<nav><a href="${l.guide.href}">${l.guide.label}</a>${l.legal.map(([, label, href]) => `<a href="/${href}">${label}</a>`).join("")}<a href="${l.other.href}">${l.other.hint}</a></nav>
+<nav><a href="${l.guide.href}">${l.guide.label}</a><a href="${l.lang === "en" ? "/en/press" : "/presse"}">${l.lang === "en" ? "Press" : "Presse"}</a>${l.legal.map(([, label, href]) => `<a href="/${href}">${label}</a>`).join("")}<a href="${l.other.href}">${l.other.hint}</a></nav>
 <p class="fine">${l.fine}</p></div></footer>
 <script>window.KOLBI_LINES=${JSON.stringify(l.lines)};${JS}</script>
 </body></html>`
@@ -204,9 +204,40 @@ for (const l of Object.values(L)) {
     <div class="card founder" style="margin-top:36px">${kolbi("party-alive")}<div><h2>${l.tagline}</h2><a class="btn" href="${APP}?lang=${l.lang}" data-cta="guide">${g.cta}</a></div></div></main>` }))
 }
 
+// ── Pressemappe ─────────────────────────────────────────────────────────────
+fs.mkdirSync(`${OUT}/press`, { recursive: true })
+for (const [src, dst] of [["brand/kolbi-happy.svg", "kolbi.svg"], ["brand/png/kolbi-happy-glow.png", "kolbi.png"], ["brand/avatar.png", "kolbi-avatar.png"], ["brand/banner.png", "kolbi-banner.png"], ["store/feature-graphic.png", "kolbi-feature-de.png"], ["launch/producthunt/thumbnail.gif", "kolbi-animated.gif"]])
+  if (fs.existsSync(src)) fs.copyFileSync(src, `${OUT}/press/${dst}`)
+const PRESS = {
+  de: { path: "/presse", title: "Pressemappe", h: "Pressemappe", lead: "Alles für Artikel, Podcasts und Posts über Kolbi – frei verwendbar für Berichte über die App.",
+    facts: [["Name", "Kolbi · Supplement Lab"], ["Was", "App für Selbstversuche mit Supplements: Baseline, eins nach dem anderen testen, Abend-Check-in, Vergleich mit dem eigenen Normal"], ["Für wen", "Menschen, die Supplements nehmen und wissen wollen, was bei ihnen einen Unterschied macht"], ["Preis", "Kern gratis · Lab Pro 2,99 €/Monat, 19,99 €/Jahr oder 39,99 € einmalig · Gründer (Start bis 30.11.2026) gratis"], ["Datenschutz", "Kein Konto, Einträge bleiben auf dem Gerät"], ["Sprachen", "Deutsch, Englisch"], ["Plattformen", "Web-App (iPhone & Android über den Browser), App Store & Google Play ab Dezember 2026"], ["Gemacht von", "Solo-Entwickler aus Deutschland, mit Maskottchen Kolbi statt Gesicht"]],
+    shortH: "Kurztext (1 Satz)", short: "Kolbi ist eine kostenlose App, mit der man Supplements eins nach dem anderen im Selbstversuch testet und mit dem eigenen Normal vergleicht – ohne Konto, die Daten bleiben auf dem Handy.",
+    longH: "Langtext", long: "Viele Menschen nehmen Supplements, wissen aber nicht, ob sie bei ihnen selbst etwas verändern. Kolbi macht daraus einen strukturierten Selbstversuch: ein paar Tage Reset, dann ein Supplement nach dem anderen, jeden Abend eine Minute Check-in zu Schlaf, Energie, Ruhe und Fokus. Am Ende vergleicht die App mit dem eigenen Normal – behalten, vielleicht oder raus. Dazu kommen ein Muster-Detektor, ein Kosten-Überblick und fertige Experimente. Kolbi gibt keine Heilversprechen und ersetzt keine ärztliche Beratung; die Ergebnisse sind die persönliche Einschätzung der Nutzer.",
+    dlH: "Downloads", contact: "Kontakt: [E-Mail-Adresse]" },
+  en: { path: "/en/press", title: "Press kit", h: "Press kit", lead: "Everything for articles, podcasts and posts about Kolbi – free to use when covering the app.",
+    facts: [["Name", "Kolbi · Supplement Lab"], ["What", "App for personal supplement experiments: baseline, one supplement at a time, evening check-in, comparison with your own normal"], ["For whom", "People who take supplements and want to know what makes a difference for them"], ["Price", "Core free · Lab Pro €2.99/month, €19.99/year or €39.99 lifetime · founders (start by Nov 30, 2026) free"], ["Privacy", "No account, entries stay on the device"], ["Languages", "English, German"], ["Platforms", "Web app (iPhone & Android via browser), App Store & Google Play from December 2026"], ["Made by", "Solo developer from Germany, with Kolbi the mascot instead of a face"]],
+    shortH: "Short description (1 sentence)", short: "Kolbi is a free app that helps you test supplements one at a time on yourself and compare them with your own normal – no account, your data stays on your phone.",
+    longH: "Long description", long: "Many people take supplements without knowing whether they change anything for them. Kolbi turns this into a structured self-experiment: a few reset days, then one supplement at a time, with a one-minute evening check-in on sleep, energy, calm and focus. At the end the app compares with your own normal – keep, maybe or drop. It also includes a pattern detector, a cost overview and ready-made experiments. Kolbi makes no health claims and does not replace medical advice; results are the users' own ratings.",
+    dlH: "Downloads", contact: "Contact: [E-Mail-Adresse]" },
+}
+for (const [lang, P] of Object.entries(PRESS)) {
+  const l = L[lang]
+  const shots = l.shots.slice(0, 4).map(([f, a]) => `<a href="/img/${l.lang}-${f}.webp" download><img src="/img/${l.lang}-${f}.webp" alt="${a}" style="width:120px;border-radius:14px"></a>`).join("")
+  const files = [["kolbi.svg", "Logo (SVG)"], ["kolbi.png", "Logo (PNG)"], ["kolbi-avatar.png", "Avatar"], ["kolbi-banner.png", "Banner"], ["kolbi-animated.gif", "Animated (GIF)"], ["kolbi-feature-de.png", "Feature graphic"]]
+  fs.mkdirSync(`${OUT}${P.path.slice(0, P.path.lastIndexOf("/")) || ""}`, { recursive: true })
+  fs.writeFileSync(`${OUT}${P.path}.html`, page(l, { title: `${P.title} – Kolbi`, desc: P.lead, path: "press", body: `<main class="wrap doc">
+<h1>${P.h}</h1><p>${P.lead}</p>
+<div class="card" style="padding:18px 20px;margin:18px 0">${P.facts.map(([k, v]) => `<p style="margin:6px 0"><b>${k}:</b> ${v}</p>`).join("")}</div>
+<h2>${P.shortH}</h2><blockquote>${P.short}</blockquote>
+<h2>${P.longH}</h2><p>${P.long}</p>
+<h2>${P.dlH}</h2><div style="display:flex;flex-wrap:wrap;gap:10px;margin:10px 0">${shots}</div>
+<ul>${files.map(([f, n]) => `<li><a href="/press/${f}" download>${n}</a></li>`).join("")}</ul>
+<p><mark>${P.contact}</mark></p></main>` }))
+}
+
 // ── Sitemap ─────────────────────────────────────────────────────────────────
 const SITE = "https://kolbi-smoky.vercel.app"
-const urls = ["/", "/en", L.de.guide.href, L.en.guide.href, "/impressum", "/datenschutz", "/nutzungsbedingungen", "/en/imprint", "/en/privacy", "/en/terms"]
+const urls = ["/", "/en", L.de.guide.href, L.en.guide.href, "/presse", "/en/press", "/impressum", "/datenschutz", "/nutzungsbedingungen", "/en/imprint", "/en/privacy", "/en/terms"]
 fs.writeFileSync(`${OUT}/sitemap.xml`, `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(u => `  <url><loc>${SITE}${u === "/" ? "" : u}</loc></url>`).join("\n")}\n</urlset>\n`)
 
 // ── Bilder: Screenshots als WebP, OG-Bild, Favicon ───────────────────────────

@@ -149,3 +149,4 @@ von dir brauche.
   Store-Checkliste rückwärts vom 1. Dez (`STORE.md`), iOS-Datenschutz-Manifest, Review-Notes, Abo-Setup.
   7 neue Videos DE/EN (06–12) + 30-Tage-Kalender DE/EN. **Fix:** Onboarding stürzte ab, wenn die Community-Statistik
   eine unerwartete Antwort lieferte.
+- 2026-10-01 · RevenueCat-Anschluss fertig (nur Schlüssel fehlen), Pressemappe /presse + /en/press.
