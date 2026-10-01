@@ -14,6 +14,14 @@
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <title>Supplement Lab</title>
     <script>
+      // Eigenständige App: Sprache nach Gerät bzw. Einstellung (lib/labI18n.ts)
+      window.__LAB_STANDALONE__ = true
+      try {
+        var l = localStorage.getItem("lab-lang") || ((navigator.languages && navigator.languages[0]) || navigator.language || "de").toLowerCase().slice(0, 2)
+        document.documentElement.lang = l === "de" ? "de" : "en"
+      } catch (e) {}
+    </script>
+    <script>
       // Theme vor dem ersten Paint setzen (System-Einstellung, sonst gespeichert)
       (function () {
         try {
