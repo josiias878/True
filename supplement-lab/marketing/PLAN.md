@@ -60,6 +60,7 @@ Feedback aus `lab_feedback` einarbeiten; Store-Build vorbereiten, sobald der App
 - [ ] Apple Developer Program (99 €/Jahr) – auf eigenen Namen
 - [ ] Google Play Console (25 $ einmalig) – optional, später
 - [ ] Marken-Recherche „Kolbi“ (DPMA/EUIPO, kostenlos)
+- [ ] Reddit-Konto anlegen + 2–4 Wochen aufwärmen (siehe `channels/PLAYBOOK.md`)
 - [ ] TikTok + Instagram Konto „@kolbi.lab“ (o. ä.) anlegen – Anleitung + fertige Posts in `content/posting-plan.md`
 - [ ] Vercel → Projekt **kolbi** → Analytics → *Enable* (zählt Besuche der Landingpage, kostenlos)
 - [ ] Rechtstexte einmal von einer Fachperson prüfen lassen (Entwürfe liegen in `marketing/legal/`)
@@ -78,3 +79,6 @@ Feedback aus `lab_feedback` einarbeiten; Store-Build vorbereiten, sobald der App
   ohne Geräte-ID, Löschung nach 12 Monaten). Fix: ✕ in der Wochen-Story war vom Inhalt verdeckt.
 - 2026-10-01 · Content-Kit: 5 Videos (`content/videos/`, 1080×1920, H.264, stumm für Trend-Sounds), Karussell,
   Posting-Plan mit Captions, Hashtags, Antwort-Vorlagen. Generatoren: `tools/videos.mjs`, `tools/carousel.mjs`
+- 2026-10-01 · Kanal-Recherche + `channels/PLAYBOOK.md`: Fahrplan DE sofort / EN nach Übersetzung, kopierfertige
+  Posts (Reddit, Product Hunt, Show HN, Verzeichnisse, LinkedIn, Podcast, t3n, Facebook), Kanal-Links `/reddit` usw.
+  Erkenntnis: Für Reddit-EN, Product Hunt und HN braucht die App eine englische Oberfläche → nächster Baustein.
