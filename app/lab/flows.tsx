@@ -1,5 +1,5 @@
 "use client"
-import React, { useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import {
   FACES, FACE_LABELS, TAGS, LIBRARY, SIDE_EFFECTS, SIDE_BY_ID, knownSides, intakeOn, ROUTE_INFO, SUPP_COLORS, CATEGORIES, GOALS, RHYTHMS, TRAININGS,
@@ -9,6 +9,7 @@ import {
 } from "@/lib/supplementLab"
 import { hasNativeReminders } from "@/lib/labReminders"
 import { pairsWith } from "@/lib/labInteractions"
+import { fetchOverview } from "@/lib/labCommunity"
 import { Btn, Capsule, Card, FaceRow, Label, Segmented, SideChips, Stars } from "./ui"
 import { KolbiTip, MASCOT_NAME, Mascot } from "./mascot"
 import { InstallHint } from "./install"
@@ -26,6 +27,9 @@ export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd,
   const [mode, setMode] = useState<"tap" | "paste">("tap")
   const [q, setQ] = useState("")
   const [lastAdded, setLastAdded] = useState<LibSupp | null>(null)
+  // Social Proof: wie viele andere haben es nach dem Test behalten? (ab genug Beiträgen)
+  const [crowd, setCrowd] = useState<Record<string, { n: number; keepPct: number | null }>>({})
+  useEffect(() => { let on = true; fetchOverview().then(v => { if (on && v) setCrowd(v.libs) }); return () => { on = false } }, [])
   const [paste, setPaste] = useState("")
   const sel = new Set(selected.map(s => s.lib ?? s.id))
   const ql = q.trim().toLowerCase()
@@ -45,6 +49,7 @@ export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd,
       }}>
         <span>{l.emoji}</span>{l.name}
         {l.route && l.route !== "oral" && <span style={{ fontSize: "0.75rem" }}>{ROUTE_INFO[l.route].emoji}</span>}
+        {crowd[l.id]?.keepPct != null && <span title={`${crowd[l.id].n} Tests in der Community`} style={{ fontSize: "0.68rem", fontWeight: 800, padding: "1px 6px", borderRadius: 999, background: "color-mix(in srgb, #1baf7a 15%, transparent)", color: "#1baf7a" }}>👥 {crowd[l.id].keepPct} %</span>}
         {on && <span>✓</span>}
       </button>
     )

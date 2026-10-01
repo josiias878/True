@@ -1,5 +1,6 @@
 "use client"
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
+import { fetchOverview } from "@/lib/labCommunity"
 import { BADGES, LIB_BY_ID, levelFor, streak, type LabState } from "@/lib/supplementLab"
 import { FACT_COUNT, learnedFacts } from "@/lib/labKnowledge"
 import type { CoachAction, CoachMsg, Mood } from "@/lib/labCoach"
@@ -60,6 +61,8 @@ export function KolbiPage({ s, mood, fill, murky, msgs, onAction }: {
           <div style={{ width: `${lvl.progress * 100}%`, height: "100%", background: "var(--lab-grad)", borderRadius: 4, transition: "width 1s" }} />
         </div>
       </div>
+
+      <CommunityStat />
 
       {/* Warum er so aussieht */}
       <Label style={{ margin: "20px 0 10px" }}>So geht's mir gerade</Label>
@@ -134,6 +137,19 @@ export function KolbiPage({ s, mood, fill, murky, msgs, onAction }: {
 
       <Label style={{ margin: "24px 0 10px" }}>❓ So funktioniert die App</Label>
       <Guide />
+    </div>
+  )
+}
+
+/** Kleiner Social-Proof-Zähler: wie viele Selbstversuche schon anonym geteilt wurden. */
+function CommunityStat() {
+  const [n, setN] = useState<number | null>(null)
+  useEffect(() => { let on = true; fetchOverview().then(v => { if (on && v) setN(v.total) }); return () => { on = false } }, [])
+  if (n == null) return null
+  return (
+    <div className="lab-rise" style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 18, background: "linear-gradient(135deg, color-mix(in srgb, #3987e5 14%, var(--surface)), color-mix(in srgb, #2ECC8A 12%, var(--surface)))", border: "1px solid var(--glass-line)" }}>
+      <span style={{ fontSize: "1.4rem" }}>🌍</span>
+      <span style={{ flex: 1, fontSize: "0.84rem", fontWeight: 800 }}>{n ? `${n} Selbstversuche in der Community` : "Die Community startet gerade – sei einer der Ersten"}</span>
     </div>
   )
 }

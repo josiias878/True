@@ -32,6 +32,17 @@ Echte Push-Nachrichten, auch wenn die App geschlossen ist (iPhone ab iOS 16.4, n
 - **Schlüssel:** VAPID-Schlüssel und Cron-Geheimnis liegen nur in `lab_push_config` in der
   Datenbank (nicht im Repo). Der öffentliche VAPID-Schlüssel steht in `lib/labPush.ts`.
 
+## Kalender-Abo & Community (gleiches Supabase-Projekt)
+
+- **Kalender-Abo** (`supabase/functions/lab-cal`): Das Gerät erzeugt ein zufälliges Token und lädt
+  bei Änderungen eine ICS-Datei mit den großen Terminen hoch (Testende, Ergebnis, nächster Test,
+  Nachkaufen, Wochenrückblick). Abonniert wird `webcal://…/lab-cal?t=<token>`. Titel standardmäßig
+  neutral; Namen nur, wenn man es in den Einstellungen einschaltet. „Abo beenden“ löscht alles.
+- **Community** (`supabase/functions/lab-community`, Tabelle `lab_community`): nur mit Zustimmung,
+  nur Bibliotheks-Supplements. Gespeichert: zufällige Geräte-ID, Supplement-ID, Testdauer, Urteil,
+  ±★ gesamt/je Bereich, Nebenwirkungs-IDs – keine Namen, Daten oder Notizen. Statistiken werden erst
+  ab 5 Beiträgen gezeigt und nur aggregiert (Quantile statt Einzelwerte). Löschen per Einstellungen.
+
 ## Wie oft wird die App geöffnet? (Vercel Web Analytics)
 
 Da es keine Accounts gibt, ist die einzige Möglichkeit zu sehen, ob die App überhaupt genutzt

@@ -26,6 +26,12 @@ import { openShop, refillStock, shoppingList, stockInfo } from "@/lib/labStock"
 import { ShopButton, ShoppingCard, StockCard, StockSheet } from "./stock"
 import { KolbiPage } from "./kolbi"
 import { RoadPath } from "./path"
+import { ShareButton, makeResultCard } from "./share"
+import { CommunityCard, CommunityConsent } from "./community"
+import { ExperimentSheet, ExperimentsView } from "./experiments"
+import { startExperiment, type Experiment } from "@/lib/labExperiments"
+import { removeMyResults, shareResult } from "@/lib/labCommunity"
+import { calendarNames, calendarOn, calendarUrls, disableCalendar, enableCalendar, setCalendarNames, syncCalendar } from "@/lib/labCalendar"
 import { CostCard, InteractionCard, PatternStrip, RecapTeaser, WeekRecap, recapAvailable, recapWeekEnd } from "./insights"
 import { pathStops, type Stop } from "@/lib/labPath"
 
@@ -177,7 +183,10 @@ export default function LabApp() {
   const [round, setRound] = useState<RoundStep[] | null>(null)
   const [unlockedFor, setUnlockedFor] = useState<string | null>(null)
   const [stockFor, setStockFor] = useState<string | null>(null)
-  const [mineView, setMineView] = useState<"liste" | "stack">("liste")
+  const [askCommunity, setAskCommunity] = useState<string | null | false>(false) // false = zu · null = allgemein · id = nach Urteil
+  const [pendingShare, setPendingShare] = useState<string | null>(null)
+  const [mineView, setMineView] = useState<"liste" | "stack" | "exp">("liste")
+  const [expOpen, setExpOpen] = useState<Experiment | null>(null)
   const [resView, setResView] = useState<"auswertung" | "verlauf">("auswertung")
   const [tabDir, setTabDir] = useState(1)
   const [navMini, setNavMini] = useState(false)
@@ -219,6 +228,12 @@ export default function LabApp() {
   // Store-App: native Erinnerungen bei jeder Änderung neu planen (im Web ein No-op)
   useEffect(() => { syncNativeReminders(s) }, [s])
 
+  // Kalender-Abo: nach Änderungen (verzögert) neu hochladen – nur wenn abonniert
+  useEffect(() => {
+    const t = setTimeout(() => { syncCalendar(s) }, 4000)
+    return () => clearTimeout(t)
+  }, [s])
+
   // Web/PWA: echte Push-Nachrichten — Plan nach jeder Änderung (kurz verzögert) an den Server
   const [pushSt, setPushSt] = useState<PushState>("unsupported")
   useEffect(() => { pushState().then(setPushSt).catch(() => {}) }, [])
@@ -247,6 +262,20 @@ export default function LabApp() {
       setTimeout(() => setToast(t => (t?.k === k ? null : t)), 1800)
     }
   }, [])
+
+  // Nach einem Urteil: anonym teilen (wenn erlaubt) bzw. einmal freundlich fragen
+  const communityRef = useRef(s.community)
+  communityRef.current = s.community
+  const afterVerdict = useCallback((id: string) => {
+    if (communityRef.current === true) setPendingShare(id)
+    else if (communityRef.current === undefined) setAskCommunity(id)
+  }, [])
+  useEffect(() => {
+    if (!pendingShare || !s.verdicts[pendingShare]) return
+    const id = pendingShare
+    setPendingShare(null)
+    shareResult(s, id).then(ok => { if (ok) setFlash("🌍 Danke! Anonym mit der Community geteilt") })
+  }, [pendingShare, s])
 
   const saveCheckin = useCallback((c: CheckIn) => {
     const isNew = !s.checkins[c.date]
@@ -315,7 +344,7 @@ export default function LabApp() {
       case "checkin": setCheckinDate(today); break
       case "startTest": setTestSetup(a.suppId); break
       case "pickNext": setPickOpen(true); break
-      case "verdict": update(p => applyVerdict(p, a.suppId, a.decision, "Vorschlag übernommen", today), { amount: 50, label: "Urteil gefällt" }); break
+      case "verdict": update(p => applyVerdict(p, a.suppId, a.decision, "Vorschlag übernommen", today), { amount: 50, label: "Urteil gefällt" }); afterVerdict(a.suppId); break
       case "openVerdict": setVerdictFor(a.suppId); break
       case "abort": {
         const w = phaseAt(s, today)
@@ -366,6 +395,7 @@ export default function LabApp() {
       case "stock": setStockFor(a.suppId); break
       case "seePattern": update(p => { p.learned = [...new Set([...p.learned, a.tipId])]; return p }); goTab("daten"); break
       case "recap": setRecapEnd(recapWeekEnd(now, today)); break
+      case "experiments": setMineView("exp"); goTab("meine"); break
       case "setTime": {
         update(p => {
           p.supps = p.supps.map(x => x.id === a.suppId ? { ...x, time: a.time } : x)
@@ -386,7 +416,7 @@ export default function LabApp() {
         break
       }
     }
-  }, [s, today, update, toggleTook, enableReminders, dismissed])
+  }, [s, today, update, toggleTook, enableReminders, dismissed, afterVerdict])
 
   const msgs = useMemo(() => coach(s, now, dismissed), [s, now, dismissed])
   // Einnahme & Check-in erledigt man über die Bubbles bzw. die Tagesrunde – nicht nochmal als Tipp
@@ -466,7 +496,7 @@ export default function LabApp() {
             pending={pending} onRound={() => setRound(pending)} checkinLocked={checkinLocked} pushOff={pushSt === "off"} onPush={turnOnPush}
             onUnlock={() => { setUnlockedFor(today); setRound(roundSteps(s, today, now, false)) }} />}
           {tab === "meine" && <MineView s={s} today={today} view={mineView} setView={setMineView} update={update} onSupp={setSuppSheet}
-            onAction={runAction} onVerdict={setVerdictFor} onStartStack={() => runAction({ kind: "startStack" }, "stack")} />}
+            onAction={runAction} onVerdict={setVerdictFor} onStartStack={() => runAction({ kind: "startStack" }, "stack")} onExperiment={setExpOpen} />}
           {tab === "ergebnisse" && <ResultsView s={s} wins={wins} today={today} view={resView} setView={setResView}
             onVerdict={setVerdictFor} onCheckin={setCheckinDate} onPhase={setPhaseSheet} goTab={goTab} onRecap={() => setRecapEnd(recapWeekEnd(now, today))} />}
           {tab === "kolbi" && <KolbiPage s={s} mood={msgs[0]?.mood ?? "happy"} fill={dayProgress(s, today)} msgs={kolbiTips} onAction={runAction}
@@ -510,11 +540,22 @@ export default function LabApp() {
         </div>
       </nav>
 
+      {askCommunity !== false && !round && !newBadge && <CommunityConsent s={s} suppId={askCommunity}
+        onYes={() => { const id = askCommunity; setAskCommunity(false); update(p => { p.community = true; return p }, { amount: 10, label: "Community" }); if (id && s.verdicts[id]) setPendingShare(id) }}
+        onNo={() => { setAskCommunity(false); update(p => { p.community = false; return p }) }} />}
+      {expOpen && <ExperimentSheet s={s} e={expOpen} onClose={() => setExpOpen(null)} onStart={away => {
+        const e = expOpen
+        setExpOpen(null)
+        update(p => startExperiment(p, e, away), { amount: 20, label: "Experiment gestartet" })
+        setConfetti(true)
+        setFlash(`${e.emoji} Experiment „${e.title}“ gestartet – Kolbi plant alles`)
+        goTab("heute")
+      }} />}
       {recapEnd && <WeekRecap s={s} end={recapEnd} today={today} onClose={() => { const e = recapEnd; setRecapEnd(null); update(p => { p.recapSeen = e; return p }, s.recapSeen === e ? undefined : { amount: 10, label: "Woche angeschaut" }) }} />}
       {round && <DailyRound s={s} today={today} steps={round}
         onTake={id => update(p => { markTaken(p, today, id); return p }, { amount: 5, label: "Eingenommen" })}
         onCheckin={saveCheckin}
-        onVerdict={(id, d) => { update(p => applyVerdict(p, id, d, "In der Tagesrunde entschieden", today), { amount: 50, label: "Urteil gefällt" }); if (d === "keep") setConfetti(true) }}
+        onVerdict={(id, d) => { update(p => applyVerdict(p, id, d, "In der Tagesrunde entschieden", today), { amount: 50, label: "Urteil gefällt" }); if (d === "keep") setConfetti(true); afterVerdict(id) }}
         onLearn={fid => update(p => { if (!p.learned.includes(fid)) p.learned = [...p.learned, fid]; return p })}
         onClose={() => setRound(null)} />}
 
@@ -530,10 +571,11 @@ export default function LabApp() {
       {verdictFor && <VerdictSheet key={verdictFor} s={s} suppId={verdictFor} onClose={() => setVerdictFor(null)} onSave={(id, decision, note) => {
         const isNew = !s.verdicts[id]
         update(p => applyVerdict(p, id, decision, note, today), isNew ? { amount: 50, label: "Urteil gefällt" } : undefined)
+        afterVerdict(id)
         setVerdictFor(null)
       }} />}
       <PhaseSheet s={s} w={phaseSheet} today={today} onClose={() => setPhaseSheet(null)} update={update} onVerdict={id => { setPhaseSheet(null); setVerdictFor(id) }} />
-      {suppSheet && <SuppSheet s={s} id={suppSheet} today={today} onClose={() => setSuppSheet(null)} update={update} onAction={a => { setSuppSheet(null); runAction(a, "supp") }} onVerdict={id => { setSuppSheet(null); setVerdictFor(id) }} onStock={id => setStockFor(id)} />}
+      {suppSheet && <SuppSheet s={s} id={suppSheet} today={today} onClose={() => setSuppSheet(null)} update={update} onAction={a => { setSuppSheet(null); runAction(a, "supp") }} onVerdict={id => { setSuppSheet(null); setVerdictFor(id) }} onStock={id => setStockFor(id)} onJoin={() => setAskCommunity(s.verdicts[suppSheet] ? suppSheet : null)} />}
       {stockFor && <StockSheet s={s} suppId={stockFor} onClose={() => setStockFor(null)} onSave={(stock, dose) => {
         const first = !s.supps.find(x => x.id === stockFor)?.stock
         update(p => { p.supps = p.supps.map(x => x.id === stockFor ? { ...x, stock, dose } : x); return p }, first ? { amount: 10, label: "Vorrat eingetragen" } : undefined)
@@ -881,9 +923,10 @@ function Dashboard({ s, wins, today, now, msgs, onAction, onQuick, onTake, onPha
 
 // ── Meine: Supplements, Einkaufsliste, Stack ───────────────────────────────────
 
-function MineView({ s, today, view, setView, update, onSupp, onAction, onVerdict, onStartStack }: {
-  s: LabState; today: string; view: "liste" | "stack"; setView: (v: "liste" | "stack") => void; update: Update
+function MineView({ s, today, view, setView, update, onSupp, onAction, onVerdict, onStartStack, onExperiment }: {
+  s: LabState; today: string; view: "liste" | "stack" | "exp"; setView: (v: "liste" | "stack" | "exp") => void; update: Update
   onSupp: (id: string) => void; onAction: (a: CoachAction, id: string) => void; onVerdict: (id: string) => void; onStartStack: () => void
+  onExperiment: (e: Experiment) => void
 }) {
   const fix = (suppId: string, time: string) => onAction({ kind: "setTime", suppId, time, tipId: `fix:${suppId}:${time}` }, "inter")
   const shop = shoppingList(s, today)
@@ -921,8 +964,9 @@ function MineView({ s, today, view, setView, update, onSupp, onAction, onVerdict
   }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <Segmented value={view} onChange={setView} options={[{ id: "liste", label: "💊 Supplements" }, { id: "stack", label: "🏆 Stack & Tagesplan" }]} />
-      {view === "stack" ? <StackView s={s} update={update} onVerdict={onVerdict} onStartStack={onStartStack} /> : <>
+      <Segmented value={view} onChange={setView} options={[{ id: "liste", label: "💊 Meine" }, { id: "exp", label: "🧪 Experimente" }, { id: "stack", label: "🏆 Stack" }]} />
+      {view === "exp" ? <ExperimentsView s={s} onPick={onExperiment} />
+      : view === "stack" ? <StackView s={s} update={update} onVerdict={onVerdict} onStartStack={onStartStack} /> : <>
         <ShoppingCard s={s} away={shop.away} low={shop.low} onOpen={onSupp} onArrived={id => onAction({ kind: "arrived", suppId: id }, "shop")} />
         <CostCard s={s} today={today} onStock={id => onAction({ kind: "stock", suppId: id }, "cost")} />
         <Card className="lab-rise" style={{ padding: "14px 14px 8px" }}>
@@ -980,9 +1024,9 @@ function ResultsView({ s, wins, today, view, setView, onVerdict, onCheckin, onPh
 
 // ── Detail-Blatt eines Supplements ─────────────────────────────────────────────
 
-function SuppSheet({ s, id, today, onClose, update, onAction, onVerdict, onStock }: {
+function SuppSheet({ s, id, today, onClose, update, onAction, onVerdict, onStock, onJoin }: {
   s: LabState; id: string; today: string; onClose: () => void; update: Update; onAction: (a: CoachAction) => void; onVerdict: (id: string) => void
-  onStock: (id: string) => void
+  onStock: (id: string) => void; onJoin: () => void
 }) {
   const x = s.supps.find(q => q.id === id)
   const [confirmRemove, setConfirmRemove] = useState(false)
@@ -1036,6 +1080,8 @@ function SuppSheet({ s, id, today, onClose, update, onAction, onVerdict, onStock
           </div>
         )}
         {(st.key === "kept" || st.key === "maybe" || st.key === "dropped" || st.key === "verdict") && <Btn variant={st.key === "verdict" ? "primary" : "soft"} full onClick={() => onVerdict(id)}>{st.key === "verdict" ? "⚖️ Ergebnis ansehen" : "Ergebnis & Urteil ändern"}</Btn>}
+        {(st.key === "kept" || st.key === "maybe" || st.key === "dropped") && testResult(s, id)?.overall.test != null && testResult(s, id)?.overall.base != null &&
+          <ShareButton make={() => makeResultCard(s, id)} name={`mein-${x.lib ?? "test"}-ergebnis.png`} text={`Mein ${x.name}-Selbstversuch 🧪`} label="📤 Ergebnis als Bild teilen" style={{ width: "100%" }} />}
         {st.key === "kept" && w?.kind === "stack" && <Btn variant="soft" full onClick={() => onAction({ kind: "check", suppId: id })}>👀 3 Tage weglassen & beobachten</Btn>}
         {(st.key === "waiting" || st.key === "paused") && !lib?.rx && <Btn variant="soft" full onClick={() => { update(p => { p.supps = p.supps.map(q => q.id === id ? { ...q, mode: "konstant" } : q); return p }); onClose() }}>📌 Nicht testen, einfach weiter nehmen</Btn>}
         {st.key === "constant" && !lib?.rx && <Btn variant="soft" full onClick={() => { update(p => { p.supps = p.supps.map(q => q.id === id ? { ...q, mode: "test", keepTesting: true } : q); return p }); onClose() }}>🔬 Doch einzeln testen</Btn>}
@@ -1097,6 +1143,8 @@ function SuppSheet({ s, id, today, onClose, update, onAction, onVerdict, onStock
           </Card>
         )
       })()}
+
+      {lib && <CommunityCard s={s} suppId={id} onJoin={onJoin} />}
 
       {lib && (
         <Card style={{ marginBottom: 12 }}>
@@ -1656,6 +1704,9 @@ function VerdictSheet({ s, suppId, onClose, onSave }: { s: LabState; suppId: str
       <textarea value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder="Warum? (optional)"
         style={{ width: "100%", padding: 12, borderRadius: 14, fontSize: "0.92rem", marginTop: 12, resize: "none" }} />
       <div style={{ marginTop: 14 }}><Btn full disabled={!decision} onClick={() => decision && onSave(suppId, decision, note.trim())}>Urteil speichern</Btn></div>
+      {r?.overall.base != null && r.overall.test != null && supp && (
+        <div style={{ marginTop: 10 }}><ShareButton make={() => makeResultCard(s, suppId)} name={`mein-${supp.lib ?? "test"}-ergebnis.png`} text={`Mein ${supp.name}-Selbstversuch 🧪`} label="📤 Ergebnis als Bild teilen" style={{ width: "100%" }} /></div>
+      )}
     </Sheet>
   )
 }
@@ -1871,6 +1922,52 @@ function TimeSettings({ settings, onChange }: { settings: Settings; onChange: (s
   )
 }
 
+/** Kalender-Abo: einmal abonnieren, aktualisiert sich selbst (nur große Termine). */
+function CalendarCard({ s }: { s: LabState }) {
+  const [on, setOn] = useState(calendarOn)
+  const [names, setNames] = useState(calendarNames)
+  const [busy, setBusy] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const urls = calendarUrls()
+  const subscribe = async () => {
+    setBusy(true)
+    const ok = await enableCalendar(s)
+    setBusy(false)
+    if (!ok) { alert("Das hat gerade nicht geklappt – bitte mit Internet nochmal versuchen."); return }
+    setOn(true)
+    window.location.href = urls.webcal
+  }
+  const copy = async () => {
+    if (!on) { const ok = await enableCalendar(s); if (ok) setOn(true) }
+    try { await navigator.clipboard.writeText(urls.https); setCopied(true); setTimeout(() => setCopied(false), 1800) } catch { prompt("Link kopieren:", urls.https) }
+  }
+  const preview = [["🏁", "Letzter Testtag"], ["🎁", "Ergebnis ist da"], ["🔬", "Nächster Test"], ["🛒", "Nachkaufen"], ["📊", "Wochenrückblick"]]
+  return (
+    <Card style={{ marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <Label>📅 Kalender-Abo</Label>
+        {on && <span style={{ fontSize: "0.7rem", fontWeight: 900, padding: "3px 9px", borderRadius: 999, background: "var(--accent-dim)", color: "var(--accent)" }}>✓ aktiv</span>}
+      </div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+        {preview.map(([e, l]) => <span key={l} style={{ fontSize: "0.74rem", fontWeight: 800, padding: "5px 9px", borderRadius: 999, background: "var(--surface-2)" }}>{e} {l}</span>)}
+      </div>
+      <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", lineHeight: 1.45, marginBottom: 12 }}>
+        Nur die großen Termine – der Alltag kommt per Push. Einmal abonnieren, danach <b>aktualisiert sich der Kalender selbst</b>, wenn du einen Test startest oder etwas änderst.
+      </div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <Btn onClick={subscribe} disabled={busy} style={{ flex: 1, padding: "11px 12px", fontSize: "0.86rem" }}>{busy ? "…" : on ? "📅 Nochmal abonnieren" : "📅 Kalender abonnieren"}</Btn>
+        <Btn variant="soft" onClick={copy} style={{ padding: "11px 12px", fontSize: "0.86rem" }}>{copied ? "✓ Kopiert" : "🔗 Link"}</Btn>
+      </div>
+      <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12, fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
+        <input type="checkbox" checked={names} onChange={e => { setNames(e.target.checked); setCalendarNames(e.target.checked); syncCalendar(s) }} style={{ width: 18, height: 18, accentColor: "var(--accent)" }} />
+        <span>Supplement-Namen im Kalender zeigen <span style={{ color: "var(--text-dim)", fontWeight: 600 }}>(sonst neutral)</span></span>
+      </label>
+      {on && <button onClick={async () => { await disableCalendar(); setOn(false) }} style={{ marginTop: 10, background: "none", border: "none", color: "var(--text-dim)", fontSize: "0.76rem", fontWeight: 700, cursor: "pointer", padding: 0 }}>Abo beenden (Link wird ungültig)</button>}
+      <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 8, lineHeight: 1.4 }}>Tipp: Hast du früher die Kalender-Datei geladen, kannst du diese alten Einträge löschen – sonst kommt manches doppelt.</div>
+    </Card>
+  )
+}
+
 function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnableReminders, onToggleHealth, pushSt }: {
   s: LabState; onClose: () => void; update: Update; onReset: () => void; onDemo: () => void
   onImport: (s: LabState) => void; onEnableReminders: (withCalendar: boolean) => void; onToggleHealth: () => void; pushSt: PushState
@@ -1940,6 +2037,19 @@ function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnable
             </div>
           </>
         )}
+      </Card>
+
+      <CalendarCard s={s} />
+
+      <Card style={{ marginBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <Label>🌍 Community</Label>
+          <button className="lab-press" aria-label="Community an/aus" onClick={() => update(p => { p.community = !p.community; return p })} style={{
+            width: 52, height: 30, borderRadius: 999, border: "none", position: "relative", background: s.community ? "var(--accent)" : "var(--surface-2)", transition: "background .25s",
+          }}><span style={{ position: "absolute", top: 3, left: s.community ? 25 : 3, width: 24, height: 24, borderRadius: 999, background: "#fff", transition: "left .3s cubic-bezier(.34,1.56,.64,1)", boxShadow: "0 1px 4px rgba(0,0,0,.25)" }} /></button>
+        </div>
+        <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", lineHeight: 1.45 }}>Testergebnisse anonym teilen (Supplement, Dauer, ±★, Urteil, Nebenwirkungen – keine Namen, kein Konto). Dafür siehst du bei jedem Supplement, was andere erlebt haben.</div>
+        <button onClick={async () => { await removeMyResults(); update(p => { p.community = false; return p }); alert("Deine geteilten Ergebnisse wurden gelöscht.") }} style={{ marginTop: 8, background: "none", border: "none", color: "var(--text-dim)", fontSize: "0.76rem", fontWeight: 700, cursor: "pointer", padding: 0 }}>Meine geteilten Ergebnisse löschen</button>
       </Card>
 
       {/* Apple Health / Health Connect — nur in der Store-App verfügbar */}

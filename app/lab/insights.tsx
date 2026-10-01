@@ -12,6 +12,7 @@ import { pathStops } from "@/lib/labPath"
 import { learnedFacts } from "@/lib/labKnowledge"
 import { Btn, Label } from "./ui"
 import { Mascot } from "./mascot"
+import { ShareButton, makeWeekCard } from "./share"
 
 const fmt1 = (n: number) => n.toFixed(1).replace(".", ",")
 
@@ -390,7 +391,10 @@ export function WeekRecap({ s, end, today, onClose }: { s: LabState; end: string
           )) : <div style={{ opacity: 0.8 }}>Weiter so – ich melde mich, wenn etwas ansteht.</div>}
         </div>
         <div className="lab-late" style={{ marginTop: 24 }}><Mascot mood="happy" size={70} /></div>
-        <button onClick={e => { e.stopPropagation(); onClose() }} className="lab-press" style={{ marginTop: 14, padding: "14px 28px", borderRadius: 999, border: "none", background: "#fff", color: "#0b0b1a", fontWeight: 900, fontSize: "1rem" }}>Auf geht's 🚀</button>
+        <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+          <ShareButton light make={() => makeWeekCard(s, end)} name={`meine-woche-${end}.png`} text="Meine Supplement-Lab-Woche 🧪" label="📤 Teilen" style={{ borderRadius: 999, padding: "14px 22px" }} />
+          <button onClick={e => { e.stopPropagation(); onClose() }} className="lab-press" style={{ padding: "14px 26px", borderRadius: 999, border: "2px solid #fff", background: "transparent", color: "#fff", fontWeight: 900, fontSize: "1rem" }}>Auf geht's 🚀</button>
+        </div>
       </>
     ) },
   ]

@@ -808,6 +808,9 @@ export interface LabState {
   healthEnabled: boolean
   learned: string[] // entdeckte Kolbi-Fakten (IDs)
   recapSeen?: string // Sonntag der zuletzt angesehenen Wochen-Story
+  community?: boolean // anonym Testergebnisse teilen? (undefined = noch nicht gefragt)
+  queue?: string[]     // Test-Reihenfolge aus einem Experiment (Supplement-IDs)
+  experiment?: string  // zuletzt gestartetes Experiment
 }
 
 export const STORAGE_KEY = "true-supplement-lab-v1"
@@ -1302,7 +1305,11 @@ export function lastPhase(s: LabState): PhaseWindow | null {
 /** Welche Supplements warten noch auf ihren Test? (automatisch sortiert) */
 export function nextCandidates(s: LabState): MySupp[] {
   const tested = new Set(phaseWindows(s).filter(w => w.kind === "test").map(w => w.suppId))
-  return autoOrder(s.supps.filter(x => x.mode === "test" && isHere(x) && !s.verdicts[x.id] && !tested.has(x.id)), s.goals)
+  const list = autoOrder(s.supps.filter(x => x.mode === "test" && isHere(x) && !s.verdicts[x.id] && !tested.has(x.id)), s.goals)
+  // Experiment-Reihenfolge hat Vorrang (stabil sortiert, Rest bleibt wie von Kolbi geordnet)
+  const q = s.queue ?? []
+  const rank = (id: string) => { const i = q.indexOf(id); return i < 0 ? q.length : i }
+  return q.length ? list.map((x, i) => ({ x, i })).sort((a, b) => rank(a.x.id) - rank(b.x.id) || a.i - b.i).map(o => o.x) : list
 }
 
 /**

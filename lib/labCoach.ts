@@ -43,6 +43,7 @@ export type CoachAction =
   | { kind: "setTime"; suppId: string; time: string; tipId: string }
   | { kind: "seePattern"; tipId: string }
   | { kind: "recap" }
+  | { kind: "experiments" }
   | { kind: "reminders" }
   | { kind: "dismiss" }
 
@@ -401,7 +402,7 @@ function idleAdvice(s: LabState, today: string, wins: PhaseWindow[], push: Push)
   } else if (!kept.length) {
     push({ id: "nothing-kept", mood: "think", prio: 3, title: "Nichts hat klar überzeugt",
       text: "Das ist auch ein Ergebnis: Du sparst Geld und Pillen. Füge neue Supplements hinzu oder teste „Vielleicht“-Kandidaten nochmal.",
-      actions: [{ label: "➕ Supplement hinzufügen", action: { kind: "pickNext" }, primary: true }] })
+      actions: [{ label: "🧪 Experiment wählen", action: { kind: "experiments" }, primary: true }, { label: "➕ Supplement hinzufügen", action: { kind: "pickNext" } }] })
   }
 }
 
