@@ -118,3 +118,4 @@ code{background:var(--card);padding:1px 6px;border-radius:6px}
 }
 @media (max-width:480px){ .features{gap:10px} .feat{padding:14px;border-radius:22px} .feat h3{font-size:1rem;line-height:1.2} .feat p{font-size:.84rem} .emo{font-size:1.5rem} .section{padding:44px 16px} .wrap{padding:0 16px} .cta-row .btn{flex:1 1 100%} .cta-row .btn.ghost{padding:12px} .lead{font-size:1.08rem} }
 @media (prefers-reduced-motion:reduce){ *,*::before{animation:none!important;transition:none!important} .reveal{opacity:1;transform:none} }
+.founder .btn{white-space:normal;text-align:center;max-width:100%}

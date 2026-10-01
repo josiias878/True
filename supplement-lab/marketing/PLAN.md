@@ -87,3 +87,5 @@ Feedback aus `lab_feedback` einarbeiten; Store-Build vorbereiten, sobald der App
   automatisch nach Gerät, umschaltbar in den Einstellungen; deutsche Version pixelgleich geprüft. Landingpage `/en`,
   englische Rechtstexte, Store-Screenshots EN neu, Videos EN (`content/videos-en/`). Prüfwerkzeuge: `tools/i18n-check.mjs`,
   `tools/i18n-ui-check.mjs`.
+- 2026-10-01 · Anonyme Funnel-Statistik je Kanal (`lab_funnel`), Ratgeber DE/EN (`/ratgeber/…`, `/en/guide/…`) +
+  Sitemap, Product-Hunt-Paket (`launch/`: animiertes Logo, Galerie, Ablauf). Fix: kein Neuladen beim ersten Besuch.

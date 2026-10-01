@@ -60,7 +60,8 @@ const L = {
   de: {
     base: "", lang: "de", ogTitle: "Kolbi – Finde raus, welche Supplements bei dir wirken",
     desc: "Teste deine Supplements eins nach dem anderen, vergleiche mit deinem Normal und spar dir, was nichts bringt. Ohne Konto, Daten bleiben auf deinem Gerät.",
-    open: "Beta öffnen", tagline: "Finde raus, was bei dir wirkt.", other: { href: "/en", label: "EN", hint: "🇬🇧 English version" },
+    open: "Beta öffnen", tagline: "Finde raus, was bei dir wirkt.",
+    guide: { href: "/ratgeber/supplements-selbst-testen", label: "Ratgeber: Supplements selbst testen", file: "content/guides/supplements-selbst-testen.md", desc: "Schritt-für-Schritt-Anleitung: So testest du Supplements im Selbstversuch – Baseline, eins nach dem anderen, Abend-Check-in, Vergleich.", cta: "Kolbi macht das automatisch – kostenlos testen" }, other: { href: "/en", label: "EN", hint: "🇬🇧 English version" },
     legal: [["impressum", "Impressum", "impressum"], ["datenschutz", "Datenschutz", "datenschutz"], ["nutzungsbedingungen", "Nutzungsbedingungen", "nutzungsbedingungen"]],
     legalTitles: { impressum: "Impressum", datenschutz: "Datenschutzerklärung", nutzungsbedingungen: "Nutzungsbedingungen" },
     fine: "Kolbi ist ein Tagebuch- und Experimentier-Werkzeug, kein Medizinprodukt. Keine Diagnose, keine Heilversprechen – die Ergebnisse sind deine persönliche Einschätzung. Bei Beschwerden, Schwangerschaft oder Medikamenten sprich vorher mit Ärztin, Arzt oder Apotheke.",
@@ -75,7 +76,8 @@ const L = {
   en: {
     base: "/en", lang: "en", ogTitle: "Kolbi – Find out which supplements actually work for you",
     desc: "Test your supplements one at a time, compare with your own normal and stop paying for what doesn't work for you. No account, your data stays on your device.",
-    open: "Open beta", tagline: "Find out what works for you.", other: { href: "/", label: "DE", hint: "🇩🇪 Deutsche Version" },
+    open: "Open beta", tagline: "Find out what works for you.",
+    guide: { href: "/en/guide/how-to-test-supplements", label: "Guide: how to test supplements", file: "content/guides/how-to-test-supplements.md", desc: "Step-by-step guide to testing supplements on yourself – baseline, one at a time, evening check-in, comparison.", cta: "Kolbi does this for you – try it free" }, other: { href: "/", label: "DE", hint: "🇩🇪 Deutsche Version" },
     legal: [["imprint", "Legal notice", "en/imprint"], ["privacy", "Privacy", "en/privacy"], ["terms", "Terms", "en/terms"]],
     legalTitles: { imprint: "Legal notice", privacy: "Privacy Policy", terms: "Terms of Use" },
     fine: "Kolbi is a journaling and self-experiment tool, not a medical device. No diagnosis, no health claims – results are your personal rating. If you have health issues, are pregnant or take medication, talk to your doctor or pharmacist first.",
@@ -111,7 +113,7 @@ ${alt ? `<link rel="alternate" hreflang="de" href="/"><link rel="alternate" href
 ${body}
 <footer class="foot"><div class="wrap">
 <div class="foot-brand">${kolbi("sleepy-nightcap")}<span><b>Kolbi · Supplement Lab</b><br>${l.tagline}</span></div>
-<nav>${l.legal.map(([, label, href]) => `<a href="/${href}">${label}</a>`).join("")}<a href="${l.other.href}">${l.other.hint}</a></nav>
+<nav><a href="${l.guide.href}">${l.guide.label}</a>${l.legal.map(([, label, href]) => `<a href="/${href}">${label}</a>`).join("")}<a href="${l.other.href}">${l.other.hint}</a></nav>
 <p class="fine">${l.fine}</p></div></footer>
 <script>window.KOLBI_LINES=${JSON.stringify(l.lines)};${JS}</script>
 </body></html>`
@@ -193,6 +195,20 @@ for (const n of ["imprint", "privacy", "terms"]) {
   fs.writeFileSync(`${OUT}/en/${n}.html`, page(L.en, { title: `${title} – Kolbi`, desc: `${title} of Kolbi · Supplement Lab`, path: n, body: `<main class="wrap doc">${md(fs.readFileSync(f, "utf8"))}</main>` }))
 }
 
+// ── Ratgeber ────────────────────────────────────────────────────────────────
+for (const l of Object.values(L)) {
+  const g = l.guide, src = fs.readFileSync(g.file, "utf8")
+  const title = src.split("\n")[0].replace(/^# /, "")
+  fs.mkdirSync(`${OUT}${g.href.slice(0, g.href.lastIndexOf("/"))}`, { recursive: true })
+  fs.writeFileSync(`${OUT}${g.href}.html`, page(l, { title: `${title} – Kolbi`, desc: g.desc, path: "guide", body: `<main class="wrap doc guide">${md(src)}
+    <div class="card founder" style="margin-top:36px">${kolbi("party-alive")}<div><h2>${l.tagline}</h2><a class="btn" href="${APP}?lang=${l.lang}" data-cta="guide">${g.cta}</a></div></div></main>` }))
+}
+
+// ── Sitemap ─────────────────────────────────────────────────────────────────
+const SITE = "https://kolbi-smoky.vercel.app"
+const urls = ["/", "/en", L.de.guide.href, L.en.guide.href, "/impressum", "/datenschutz", "/nutzungsbedingungen", "/en/imprint", "/en/privacy", "/en/terms"]
+fs.writeFileSync(`${OUT}/sitemap.xml`, `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(u => `  <url><loc>${SITE}${u === "/" ? "" : u}</loc></url>`).join("\n")}\n</urlset>\n`)
+
 // ── Bilder: Screenshots als WebP, OG-Bild, Favicon ───────────────────────────
 fs.writeFileSync(`${OUT}/img/icon.svg`, fs.readFileSync("brand/kolbi-happy.svg", "utf8").replace(/width="512" height="512"/, 'width="64" height="64"'))
 const browser = await chromium.launch()
@@ -220,7 +236,7 @@ body{margin:0;font-family:Nunito,sans-serif}</style></head><body><div style="wid
 }
 await browser.close()
 
-fs.writeFileSync(`${OUT}/robots.txt`, DRAFT ? "User-agent: *\nDisallow: /\n" : "User-agent: *\nAllow: /\n")
+fs.writeFileSync(`${OUT}/robots.txt`, DRAFT ? "User-agent: *\nDisallow: /\n" : "User-agent: *\nAllow: /\nSitemap: https://kolbi-smoky.vercel.app/sitemap.xml\n")
 fs.writeFileSync(`${OUT}/vercel.json`, JSON.stringify({
   cleanUrls: true,
   rewrites: [...CHANNELS.map(c => ({ source: `/${c}`, destination: "/index.html" })), ...CHANNELS.map(c => ({ source: `/en/${c}`, destination: "/en.html" }))],
