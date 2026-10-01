@@ -172,10 +172,27 @@ const RESET_OPTIONS = [
   { days: 7, label: t("7 Tage"), sub: t("am genauesten") },
 ]
 
+/** Einstieg von der Website: ?s=magnesium,vitd (Kosten-Rechner) oder src=testmagnesium (Selbsttest-Seite) → schon ausgewählt */
+function prefillSupps(): MySupp[] {
+  try {
+    const q = new URLSearchParams(window.location.search)
+    const ids = (q.get("s") ?? "").split(",")
+    const src = q.get("src") ?? ""
+    if (src.startsWith("test")) ids.push(src.slice(4))
+    const out: MySupp[] = []
+    for (const raw of ids) {
+      const key = raw.toLowerCase().replace(/[^a-z]/g, "")
+      const lib = key ? LIBRARY.find(l => l.id.replace(/[^a-z]/g, "") === key) : undefined
+      if (lib && lib.category !== "Peptide" && !out.some(x => x.lib === lib.id)) out.push(makeSupp(lib, lib.name, out))
+    }
+    return out.slice(0, 12)
+  } catch { return [] }
+}
+
 export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) => void; onDemo: () => void }) {
   const [step, setStep] = useState(0)
   const [goals, setGoals] = useState<GoalId[]>([])
-  const [supps, setSupps] = useState<MySupp[]>([])
+  const [supps, setSupps] = useState<MySupp[]>(prefillSupps)
   const [rhythm, setRhythm] = useState("normal")
   const [settings, setSettings] = useState<Settings>({ wake: "07:00", bed: "23:00", training: null, washoutDays: 1 })
   const [trainingSet, setTrainingSet] = useState(false)

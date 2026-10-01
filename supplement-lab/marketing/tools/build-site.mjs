@@ -205,7 +205,8 @@ for (const l of Object.values(L)) {
 }
 
 // ── Kosten-Rechner (Werkzeug: teilbar, verlinkbar, ohne Gesundheitsversprechen) ──
-const CALC_ITEMS = [["🌙", "Magnesium", "Magnesium", 10], ["🌞", "Vitamin D3 + K2", "Vitamin D3 + K2", 6], ["🐟", "Omega-3", "Omega-3", 15], ["🏋️", "Kreatin", "Creatine", 12], ["🛡️", "Zink", "Zinc", 5], ["🌈", "Multivitamin", "Multivitamin", 12], ["🌿", "Ashwagandha", "Ashwagandha", 15], ["🍵", "L-Theanin", "L-Theanine", 15], ["🔋", "Vitamin B12", "Vitamin B12", 6], ["🦠", "Probiotika", "Probiotics", 20], ["✨", "Kollagen", "Collagen", 30], ["🥛", "Whey Protein", "Whey protein", 35], ["❤️", "Coenzym Q10", "Coenzyme Q10", 20], ["🍄", "Lion's Mane", "Lion's Mane", 25]]
+// [emoji, DE, EN, €/Monat, App-Bibliotheks-ID → ?s= wählt sie im Onboarding schon aus]
+const CALC_ITEMS = [["🌙", "Magnesium", "Magnesium", 10, "magnesium"], ["🌞", "Vitamin D3 + K2", "Vitamin D3 + K2", 6, "vitd"], ["🐟", "Omega-3", "Omega-3", 15, "omega3"], ["🏋️", "Kreatin", "Creatine", 12, "kreatin"], ["🛡️", "Zink", "Zinc", 5, "zink"], ["🌈", "Multivitamin", "Multivitamin", 12, "multivitamin"], ["🌿", "Ashwagandha", "Ashwagandha", 15, "ashwagandha"], ["🍵", "L-Theanin", "L-Theanine", 15, "theanin"], ["🔋", "Vitamin B12", "Vitamin B12", 6, "b12"], ["🦠", "Probiotika", "Probiotics", 20, "probiotika"], ["✨", "Kollagen", "Collagen", 30, "kollagen"], ["🥛", "Whey Protein", "Whey protein", 35, "whey"], ["❤️", "Coenzym Q10", "Coenzyme Q10", 20, "q10"], ["🍄", "Lion's Mane", "Lion's Mane", 25, "lionsmane"]]
 const CALC = {
   de: { path: "/rechner", title: "Supplement-Kosten-Rechner: Was kostet dein Schrank im Jahr?", h: "Was kostet dein Supplement-Schrank?", lead: "Hak an, was du nimmst – Preise sind grobe Schätzwerte pro Monat, du kannst sie anpassen.",
     month: "im Monat", year: "im Jahr", what: "Und wenn 2 davon bei dir keinen spürbaren Unterschied machen?", save: "Dann zahlst du dafür {a} bis {b} im Jahr – ohne es zu merken.",
@@ -216,7 +217,7 @@ const CALC = {
 }
 for (const [lang, C] of Object.entries(CALC)) {
   const l = L[lang]
-  const rows = CALC_ITEMS.map(([e, de, en, pr], i) => `<label class="calc-row"><input type="checkbox" data-i="${i}"${i < 3 ? " checked" : ""}><span class="ce">${e}</span><span class="cn">${lang === "en" ? en : de}</span><input type="number" min="0" step="1" value="${pr}" data-p="${i}" aria-label="€"><span class="cu">€</span></label>`).join("")
+  const rows = CALC_ITEMS.map(([e, de, en, pr, id], i) => `<label class="calc-row"><input type="checkbox" data-i="${i}" data-id="${id}"${i < 3 ? " checked" : ""}><span class="ce">${e}</span><span class="cn">${lang === "en" ? en : de}</span><input type="number" min="0" step="1" value="${pr}" data-p="${i}" aria-label="€"><span class="cu">€</span></label>`).join("")
   const curFn = C.cur.toString()
   fs.mkdirSync(`${OUT}${C.path.slice(0, C.path.lastIndexOf("/")) || ""}`, { recursive: true })
   fs.writeFileSync(`${OUT}${C.path}.html`, page(l, { title: `${C.title} – Kolbi`, desc: C.lead, path: "calc", body: `<main class="wrap doc">
@@ -236,7 +237,8 @@ for (const [lang, C] of Object.entries(CALC)) {
   const cur = ${curFn}, T = ${JSON.stringify({ month: C.month, year: C.year, what: C.what, save: C.save, none: C.none, cta: C.cta, share: C.share, shareText: C.shareText })}
   const app = ${JSON.stringify(APP)} + "?lang=${l.lang}&src=calc"
   const calc = () => {
-    const sel = [...document.querySelectorAll("[data-i]")].filter(c => c.checked).map(c => +document.querySelector('[data-p="' + c.dataset.i + '"]').value || 0)
+    const on = [...document.querySelectorAll("[data-i]")].filter(c => c.checked)
+    const sel = on.map(c => +document.querySelector('[data-p="' + c.dataset.i + '"]').value || 0)
     const el = document.getElementById("tot")
     const bar = document.getElementById("bar")
     if (!sel.length) { el.innerHTML = "<p>" + T.none + "</p>"; bar.textContent = T.none; return }
@@ -245,7 +247,7 @@ for (const [lang, C] of Object.entries(CALC)) {
     bar.innerHTML = "<b>" + cur(y) + "</b> " + T.year + " · " + cur(m) + " " + T.month
     el.innerHTML = "<p><b>" + cur(y) + "</b> " + T.year + " · " + cur(m) + " " + T.month + "</p>"
       + (sel.length >= 2 ? "<p style='margin-top:10px;font-weight:800'>" + T.what + "</p><p>" + T.save.replace("{a}", cur(lo)).replace("{b}", cur(hi)) + "</p>" : "")
-      + "<div style='display:flex;flex-wrap:wrap;gap:8px;margin-top:12px'><a class='btn' href='" + app + "' data-cta='calc' style='background:#fff;color:#14122b'>" + T.cta + "</a><button class='btn ghost' id='sh' style='border:0;cursor:pointer;font-family:inherit'>" + T.share + "</button></div>"
+      + "<div style='display:flex;flex-wrap:wrap;gap:8px;margin-top:12px'><a class='btn' href='" + app + "&s=" + on.map(c => c.dataset.id).join(",") + "' data-cta='calc' style='background:#fff;color:#14122b'>" + T.cta + "</a><button class='btn ghost' id='sh' style='border:0;cursor:pointer;font-family:inherit'>" + T.share + "</button></div>"
     document.getElementById("sh").onclick = async () => {
       const text = T.shareText.replace("{y}", cur(y)), url = location.origin + location.pathname
       try { if (navigator.share) { await navigator.share({ text, url }); return } } catch (e) { return }
