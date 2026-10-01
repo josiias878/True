@@ -31,3 +31,6 @@ Thumbs.db
 
 # PM2
 ecosystem.config.js
+
+# Isolierte Arbeitskopien der Agenten
+.claude/worktrees/
