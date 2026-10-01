@@ -62,3 +62,6 @@
 - 2026-10-01 · Rechtstexte-Entwürfe (Datenschutz, Nutzungsbedingungen, Impressum-Vorlage, Health-Claims-Check)
 - 2026-10-01 · Store-Auftritt: 6 Screenshots DE/EN (1290×2796), Texte + Keywords + Datenschutz-Label (`store/listing.md`),
   Feature-Grafik Google Play, Kolbi-Markenpaket (`brand/`: SVG/PNG je Stimmung, Profilbild, Banner, Schrift Nunito/OFL)
+- 2026-10-01 · Landingpage `marketing/site/` (Generator `tools/build-site.mjs`): Hero mit anstupsbarem Kolbi,
+  3 Schritte, Screenshots, Features, Datenschutz, Gründer-Beta, FAQ, Rechtsseiten. Bis Impressum-Daten da
+  sind: `noindex` (robots + Header). CTA führt direkt in die Beta-PWA (keine E-Mail-Liste nötig).
