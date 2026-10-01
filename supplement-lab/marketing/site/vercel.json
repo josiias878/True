@@ -1,5 +1,71 @@
 {
   "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/reddit",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/tiktok",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/insta",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/youtube",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/producthunt",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/hn",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/facebook",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/linkedin",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/x",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/threads",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/discord",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/betalist",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/indiehackers",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/pinterest",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/forum",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/qr",
+      "destination": "/index.html"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

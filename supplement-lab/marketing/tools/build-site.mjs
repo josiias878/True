@@ -7,6 +7,8 @@ const require = createRequire(import.meta.url)
 const { chromium } = require(require("child_process").execSync("npm root -g").toString().trim() + "/playwright")
 
 const APP = "https://supplement-lab-six.vercel.app"
+/** Kanal-Links: gleiche Startseite unter eigenem Pfad → Vercel Analytics zeigt Besuche je Kanal (ohne Cookies). */
+export const CHANNELS = ["reddit", "tiktok", "insta", "youtube", "producthunt", "hn", "facebook", "linkedin", "x", "threads", "discord", "betalist", "indiehackers", "pinterest", "forum", "qr"]
 const OUT = "site"
 fs.rmSync(OUT, { recursive: true, force: true })
 fs.mkdirSync(`${OUT}/img`, { recursive: true }); fs.mkdirSync(`${OUT}/fonts`, { recursive: true })
@@ -210,6 +212,7 @@ await browser.close()
 fs.writeFileSync(`${OUT}/robots.txt`, DRAFT ? "User-agent: *\nDisallow: /\n" : "User-agent: *\nAllow: /\n")
 fs.writeFileSync(`${OUT}/vercel.json`, JSON.stringify({
   cleanUrls: true,
+  rewrites: CHANNELS.map(c => ({ source: `/${c}`, destination: "/index.html" })),
   headers: [
     ...(DRAFT ? [{ source: "/(.*)", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] }] : []),
     { source: "/fonts/(.*)", headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }] },
