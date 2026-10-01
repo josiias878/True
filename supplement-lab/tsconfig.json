@@ -16,7 +16,9 @@
       "@/*": ["../*"],
       "next/link": ["./src/shims/next-link.tsx"],
       "react": ["./node_modules/@types/react"],
-      "react/*": ["./node_modules/@types/react/*"]
+      "react/*": ["./node_modules/@types/react/*"],
+      "react-dom": ["./node_modules/@types/react-dom"],
+      "react-dom/*": ["./node_modules/@types/react-dom/*"]
     }
   },
   "include": ["src", "vite.config.ts", "capacitor.config.ts", "../app/lab/LabApp.tsx", "../app/lab/flows.tsx", "../app/lab/charts.tsx", "../app/lab/ui.tsx", "../app/lab/mascot.tsx", "../app/lab/install.tsx", "../lib/supplementLab.ts", "../lib/labReminders.ts", "../lib/labCoach.ts", "../lib/health.ts", "../components/Confetti.tsx"]
