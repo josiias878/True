@@ -42,41 +42,55 @@ Feedback aus `lab_feedback` einarbeiten; Store-Build vorbereiten, sobald der App
 - Unser Vorsprung: Kolbi/Gamification, Tagesrunde in 1 Minute, Community-Daten, Kosten & Sparen,
   Wechselwirkungen, fertige Experimente, deutsch
 
-## 🎯 Ziel bis 5. Januar 2027 (von Claude gesetzt)
+## 🎯 Experiment: Kolbi als Vollzeit-Einkommen (von Claude gesetzt, 1. Okt 2026)
 
-**Geld: 250 € Umsatz netto** (Stretch: 500 €) → Apple-Gebühr (99 €) ist gedeckt, das Projekt trägt sich.
-**Nutzer (wichtiger als Geld):** 1.000 eingerichtet · 250 mit ≥ 7 Check-ins · 50 Feedbacks · 4,5★ im Store.
+**Ziel: 1.500 € netto im Monat ≈ 2.500 € Umsatz/Monat** (nach Store-Anteil; Steuern + Krankenversicherung
+als Selbstständiger fressen grob ein Drittel – genaue Zahlen mit Steuerberatung klären).
+**Zieltermin: Oktober 2027** (12 Monate). Ehrlich: Das schaffen nur wenige Indie-Apps – deshalb mit festen
+Prüfpunkten, an denen wir umsteuern.
 
-Ehrliche Rechnung: Mit 1,99 € einmalig und „Gründer bekommen Pro gratis“ bringt eine Beta kaum Geld.
-Bis Januar geht es darum zu beweisen, dass Menschen dranbleiben – Umsatz skaliert erst 2027 mit
-mehr Nutzern. Deshalb:
+### Warum das Geschäftsmodell sich ändern muss
+Mit „4,99 € einmalig“ bräuchte man ~600 neue Käufer **jeden Monat** – das trägt kein Einkommen.
+Ein Einkommen braucht **wiederkehrende** Einnahmen:
 
-| Quelle | Annahme | Ziel |
+| Säule | Modell | Ziel/Monat (Okt 2027) |
 |---|---|---|
-| Lab Pro (ab 1. Dez, **4,99 € einmalig**, App Store + Web) | ~400 neue Nutzer im Dez · 6–8 % kaufen | ~150 € |
-| Amazon-Partnerlinks (als „Anzeige“ markiert, schon in der App) | ~150 aktive Nutzer · Nachkauf über Link | ~50 € |
-| „Kolbi unterstützen“ (freiwillig, für Gründer) | 10–20 Leute à 3–5 € | ~50 € |
+| **Lab Pro Abo** | 2,99 €/Monat oder 19,99 €/Jahr (Kern bleibt gratis, Gründer behalten Pro) | ~900 Abos ≈ **1.700 €** |
+| **Partnerlinks** | Nachkauf der Supplements, die man ohnehin nimmt – Amazon + Partnerprogramme von Supplement-Shops (5–12 % Provision), immer als „Anzeige“, **nie** nach Provision sortiert | ~290 Bestellungen ≈ **800 €** |
+| *(später, optional)* Coaches | Trainer/Ernährungsberater begleiten Klienten mit Kolbi, 19 €/Monat | Bonus |
 
-**Trichter, der dafür nötig ist** (gemessen in `lab_funnel`): ~8.000 Besuche Landingpage → ~2.500 öffnen die
-App → 1.000 eingerichtet (40 %) → 700 erster Check-in → 250 mit 7 Check-ins.
+### Was das an Nutzern bedeutet
+~**15.000 aktive Nutzer pro Monat** (6 % zahlen, 2 % bestellen über einen Link) → ca. 50.000 Installationen
+über 12 Monate ≈ **4.000 neue pro Monat** im Schnitt. Das geht nur mit: App Store + Google Play,
+TikTok/Reels als Hauptkanal (ein viraler Clip bringt mehr als alles andere), Store-Optimierung,
+Weiterempfehlungen aus der App.
 
-**Meilensteine**
-- **31. Okt:** Reddit-Konto aufgewärmt · TikTok/Instagram laufen (3 Posts/Woche) · 100 eingerichtet · Impressum live, Google indexiert
-- **30. Nov:** Product Hunt + Show HN gelaufen · 500 eingerichtet · Beta endet → Gründer-Pro für alle bis dahin
-- **1. Dez:** Lab Pro 4,99 € live (Web + iOS) · Amazon-Partnerlinks aktiv
-- **5. Jan:** 1.000 eingerichtet · 250 € Umsatz
+### Fahrplan
+| Monat | Umsatz/Monat | Aktive Nutzer | Schwerpunkt |
+|---|---|---|---|
+| **Jan 2027** | 250 € | 700 | Beta → Store-Start (iOS), Abo live, Partnerlinks |
+| **Apr 2027** | 800 € | 5.000 | Android, 5 Videos/Woche, Store-Optimierung, Einladungen |
+| **Jul 2027** | 1.600 € | 10.000 | Englische Märkte (USA/UK), Partnerprogramme ausbauen |
+| **Okt 2027** | 2.500 € | 15.000 | **Ziel: 1.500 € netto** |
 
-**Wenn es nicht läuft** (Prüfung jeweils am Monatsende): < 30 % der Eingerichteten machen einen 2. Check-in → zuerst
-Onboarding/Erinnerungen verbessern statt mehr Werbung. Ein Kanal bringt nach 2 Wochen < 20 Einrichtungen → Zeit in
-den besten Kanal stecken.
+### Prüfpunkte (ehrlich bleiben)
+- **31. Jan 2027:** < 30 % der Neuen machen einen 2. Check-in → Produkt verbessern, nicht mehr Werbung.
+- **30. Apr 2027:** < 2.000 aktive Nutzer **oder** < 3 % zahlen → Plan B: Coaches-Version (wenige zahlende
+  Profis statt vieler Endnutzer) oder anderes Segment (z. B. Sportler).
+- Jeden Monat: Kanäle ohne Wirkung streichen, Gewinner verdoppeln.
+
+### Wie ich „Vollzeit“ arbeite
+Jeden **Montag** ein Wochen-Sprint: Zahlen (`lab_funnel`, Feedback) auswerten → das Wichtigste bauen/verbessern
+→ neue Videos/Posts vorbereiten → dir einen kurzen Bericht schicken: Zahlen vs. Plan, was erledigt ist, was ich
+von dir brauche.
 
 ## Geschäftsmodell
 
 - **Beta: alles gratis** („Gründer-Pro“ für alle Beta-Tester, als Dankeschön → Bewertungen)
 - Danach **Freemium**: Basis gratis (Reset, 1 Test, Check-ins, Kolbi) · **Lab Pro einmalig 1,99 €**
   (unbegrenzte Tests, Muster-Detektor, Kosten, Wochenrückblick, Community-Details, Experimente, Export)
-- **Vorschlag Claude (1. Okt):** Preis auf **4,99 € einmalig** anheben (1,99 € ist kaum spürbar mehr wert als gratis und
-  deckt nach Apple-Anteil fast nichts), Beta-Ende **30. Nov** – wartet auf OK des Inhabers
+- **Vorschlag Claude (1. Okt, ersetzt „4,99 € einmalig“):** Lab Pro als **Abo 2,99 €/Monat · 19,99 €/Jahr**,
+  Beta-Ende **30. Nov** (alle bis dahin: Gründer-Pro gratis, dauerhaft) – wartet auf OK des Inhabers
 
 ## Phasen
 
@@ -121,3 +135,6 @@ den besten Kanal stecken.
   `tools/i18n-ui-check.mjs`.
 - 2026-10-01 · Anonyme Funnel-Statistik je Kanal (`lab_funnel`), Ratgeber DE/EN (`/ratgeber/…`, `/en/guide/…`) +
   Sitemap, Product-Hunt-Paket (`launch/`: animiertes Logo, Galerie, Ablauf). Fix: kein Neuladen beim ersten Besuch.
+- 2026-10-01 · Experiment-Ziel gesetzt: **1.500 € netto/Monat bis Okt 2027** (≈ 2.500 € Umsatz: Abo + Partnerlinks,
+  ~15.000 aktive Nutzer). Öffentliche Preisangaben („einmalig 1,99 €“) neutralisiert, bis das Preismodell entschieden ist.
+  Wöchentlicher Sprint jeden Montag 08:47 (Routine).

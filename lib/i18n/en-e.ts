@@ -153,7 +153,7 @@ export const EN_E: Record<string, string> = {
   "Danke, dass du in der Beta dabei bist – Pro bleibt für dich gratis.": "Thanks for being in the beta – Pro stays free for you.",
   "Alles freigeschaltet": "Everything unlocked",
   "Einmalig {price} · kein Abo": "One-time {price} · no subscription",
-  "Beta: alles kostenlos. Später bleibt der Kern gratis, Pro kostet einmalig {price}.": "Beta: everything's free. Later the core stays free, Pro is a one-time {price}.",
+  "Beta: alles kostenlos. Später bleibt der Kern gratis – wer jetzt dabei ist, behält Pro dauerhaft.": "Beta: everything's free. Later the core stays free – if you join now, you keep Pro forever.",
   "🔗 Link kopiert – schick ihn weiter!": "🔗 Link copied – pass it on!",
   "💌 Danke fürs Weitersagen!": "💌 Thanks for spreading the word!",
   "⚠️ Teilen hat nicht geklappt": "⚠️ Sharing didn't work",
@@ -193,4 +193,5 @@ export const EN_E: Record<string, string> = {
   "📲 Jetzt installieren": "📲 Install now",
   "Hinweis schließen": "Close hint",
   "Teilen-Symbol": "Share icon",
+  "Bald verfügbar": "Coming soon",
 }

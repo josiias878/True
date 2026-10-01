@@ -2,7 +2,7 @@
 // ── Wachstum: Lab-Pro-Karte, Freunde einladen, Bewertungs-Moment, Feedback ─────
 import React, { useState } from "react"
 import type { LabState } from "@/lib/supplementLab"
-import { BETA, PRO_FEATURES, PRO_PRICE, inviteFriends, isPro, nativeReview, sendFeedback } from "@/lib/labGrow"
+import { BETA, PRO_FEATURES, inviteFriends, isPro, nativeReview, sendFeedback } from "@/lib/labGrow"
 import { Btn, Sheet, haptic } from "./ui"
 import { Mascot } from "./mascot"
 import { track } from "@/lib/labStats"
@@ -22,7 +22,7 @@ export function ProCard({ s }: { s: LabState }) {
         <span style={{ flex: 1 }}>
           <span style={{ display: "block", fontWeight: 900, fontSize: "1rem" }}>{founder ? t("Gründer-Pro aktiv") : pro ? t("Lab Pro aktiv") : "Lab Pro"}</span>
           <span style={{ display: "block", fontSize: "0.76rem", opacity: 0.92 }}>
-            {founder ? t("Danke, dass du in der Beta dabei bist – Pro bleibt für dich gratis.") : pro ? t("Alles freigeschaltet") : t("Einmalig {price} · kein Abo", { price: PRO_PRICE })}
+            {founder ? t("Danke, dass du in der Beta dabei bist – Pro bleibt für dich gratis.") : pro ? t("Alles freigeschaltet") : t("Bald verfügbar")}
           </span>
         </span>
         <span style={{ fontWeight: 900, transform: open ? "rotate(90deg)" : "none", transition: "transform .3s" }}>›</span>
@@ -39,7 +39,7 @@ export function ProCard({ s }: { s: LabState }) {
               <div style={{ fontSize: "0.68rem", opacity: 0.9, lineHeight: 1.35 }}>{f.text}</div>
             </div>
           ))}
-          {BETA && <div style={{ gridColumn: "1 / -1", fontSize: "0.7rem", opacity: 0.9, textAlign: "center", marginTop: 2 }}>{t("Beta: alles kostenlos. Später bleibt der Kern gratis, Pro kostet einmalig {price}.", { price: PRO_PRICE })}</div>}
+          {BETA && <div style={{ gridColumn: "1 / -1", fontSize: "0.7rem", opacity: 0.9, textAlign: "center", marginTop: 2 }}>{t("Beta: alles kostenlos. Später bleibt der Kern gratis – wer jetzt dabei ist, behält Pro dauerhaft.")}</div>}
         </div>
       )}
     </div>
