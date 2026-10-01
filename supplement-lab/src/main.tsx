@@ -6,6 +6,7 @@ import LabApp from "@/app/lab/LabApp"
 import { initNative } from "./native"
 import { initHealth } from "./health"
 import { allowPush } from "@/lib/labPush"
+import { initBilling } from "./billing"
 
 // System-Theme live übernehmen (solange keins fest gewählt ist)
 try {
@@ -20,6 +21,8 @@ try {
 async function boot() {
   const native = await initNative().catch(() => false)
   await initHealth().catch(() => false)
+  // Bezahlen (RevenueCat) nur mit Schlüssel; höchstens 2,5 s warten, damit der Start nie hängt
+  await Promise.race([initBilling().catch(() => false), new Promise(r => setTimeout(r, 2500))])
   // Anonyme Öffnungs-Zählung (nur Web/PWA, kein Tracking-Profil, keine Health-Daten) —
   // sichtbar als aggregierte Zahl im Vercel-Dashboard, nicht pro Person
   if (!native) inject()

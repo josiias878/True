@@ -16,6 +16,8 @@
     "@capacitor/core": "^8.5.2",
     "@capacitor/ios": "^8.5.2",
     "@capacitor/local-notifications": "^8.3.1",
+    "@revenuecat/purchases-capacitor": "^13.7.0",
+    "@revenuecat/purchases-js": "^1.67.1",
     "@vercel/analytics": "^1.4.1",
     "capacitor-supp-health": "file:./packages/capacitor-supp-health",
     "react": "19.2.4",
@@ -23,9 +25,9 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.2",
+    "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/node": "^20",
     "@vitejs/plugin-react": "^6.1.1",
     "typescript": "^5",
     "vite": "^8.3.1"

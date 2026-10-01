@@ -210,3 +210,18 @@ Ohne Small Business Program wären es 30 % Gebühr (z. B. Jahresabo nur ≈ 11,7
 9. **7 Tage gratis** beim Jahresabo okay?
 10. **iOS-Build:** über deinen MacBook (du klickst, Claude sagt was) oder automatisch in der Cloud?
 11. **Wer sind die 12 Google-Tester?** (Beta-Nutzer mit Android-Handy und Google-Konto.)
+
+---
+
+## 🔌 Bezahlen anschließen (Code ist fertig: `src/billing.ts`)
+
+Sobald RevenueCat eingerichtet ist, trägt Claude die **öffentlichen** Schlüssel als Build-Variablen ein – sonst nichts:
+
+| Variable | Wert | Wo |
+|---|---|---|
+| `VITE_RC_IOS_KEY` | `appl_…` | iOS-Build |
+| `VITE_RC_ANDROID_KEY` | `goog_…` | Android-Build |
+| `VITE_RC_WEB_KEY` | `rcb_…` (optional, Web über Stripe) | Vercel → Projekt supplement-lab → Environment Variables |
+
+RevenueCat-Offering „default“ mit den Paketen `$rc_monthly`, `$rc_annual`, `$rc_lifetime` (→ Produkte `kolbi_pro_monthly`,
+`kolbi_pro_yearly`, `kolbi_pro_lifetime`), Entitlement `pro`. Ohne Schlüssel bleibt alles gratis.

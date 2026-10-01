@@ -27,6 +27,7 @@ import { ShopButton, ShoppingCard, StockCard, StockSheet } from "./stock"
 import { KolbiPage } from "./kolbi"
 import { FounderWelcome, PaywallSheet, ProGate, ReviewSheet } from "./grow"
 import { SITE_URL, betaOpen, claimFounder, markPurchased, markReviewAsked, shouldAskReview, type ProFeature } from "@/lib/labGrow"
+import { checkEntitlement } from "@/lib/labBilling"
 import { configureStats, srcFromUrl, track, trackCheckin, trackOnce } from "@/lib/labStats"
 import { RoadPath } from "./path"
 import { ShareButton, makeResultCard } from "./share"
@@ -356,6 +357,13 @@ export default function LabApp() {
     return () => window.removeEventListener("lab-paywall", on)
   }, [])
   useEffect(() => { if (paywall) track("paywall_view") }, [paywall])
+  // Store ist die Wahrheit: Kauf übernehmen bzw. abgelaufenes Abo beenden (Gründer bleiben Gründer)
+  useEffect(() => {
+    checkEntitlement().then(v => {
+      if (v === true && !s.pro?.purchased) update(p => markPurchased(p, "restored", today))
+      else if (v === false && s.pro?.purchased) update(p => { p.pro = { ...p.pro, purchased: undefined, plan: undefined }; return p })
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Beta: jeder wird Gründer (Lab Pro bleibt dauerhaft) – einmalig, still im Hintergrund
   useEffect(() => { if (!s.pro?.founder && s.startDate) update(p => claimFounder(p, today)) }, [s.pro?.founder, s.startDate, today, update])
