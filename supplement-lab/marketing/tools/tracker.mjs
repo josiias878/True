@@ -148,7 +148,7 @@ function sheet(t, which) {
   const rowH = one ? 15.4 : 7.3
   const head = `<tr><th class="l" style="width:17mm">${t.day}${one ? `<small>${t.date}</small>` : ""}</th>${t.areas.map(a => `<th class="sep">${a}</th>`).join("")}<th class="sep"><span class="free"></span><small>${t.free}</small></th><th class="dis" style="width:34mm">${t.dis}</th></tr>`
   const rows = Array.from({ length: days }, (_, i) => `<tr style="height:${rowH}mm"><td class="l">${t.day} ${i + 1}${one ? `<small>${t.blankDate}</small>` : ""}</td>${Array.from({ length: 6 }, () => `<td class="sep">${boxes()}</td>`).join("")}<td class="dis"></td></tr>`).join("")
-  const ex = [4, 2, 3, 4, 3]
+  const ex = [2, 2, 3, 4, 3]
   const exRow = one ? `<tr class="ex" style="height:10mm"><td class="l">${t.example}<small>${t.exDate}</small></td>${ex.map(v => `<td class="sep"><span class="bxs">${[1, 2, 3, 4, 5].map(n => `<i${n === v ? ' class="x"' : ""}>${n}</i>`).join("")}</span></td>`).join("")}<td class="sep"></td><td class="dis exn">${t.exDis}</td></tr>` : ""
   const avg = `<tr class="avg" style="height:${one ? 12 : 10}mm"><td class="l"><span class="big">Ø</span><small>${t.avgHint}</small></td>${Array.from({ length: 6 }, () => `<td class="sep"><span class="avgbox"></span></td>`).join("")}<td class="dis"></td></tr>`
   const title = one

@@ -539,7 +539,7 @@ export default function LabApp() {
 
   const wins = phaseWindows(s)
   const autoAdv = resetOver(s, wins, today)
-  const adv = advOptIn || autoAdv
+  const adv = advOptIn || autoAdv || !!s.pro?.purchased // gekaufte Funktionen sofort sichtbar
   const lvl = levelFor(s.xp)
   const st = streak(s)
 
