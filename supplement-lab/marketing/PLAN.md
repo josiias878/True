@@ -87,13 +87,11 @@ von dir brauche.
 ## Geschäftsmodell
 
 - **Beta bis 30. Nov: alles gratis** („Gründer-Pro“ für immer für alle, die bis dahin starten)
-- Danach **Freemium**: Basis gratis (Reset, 1 Test, Check-ins, Kolbi) · **Lab Pro einmalig 1,99 €**
-  (unbegrenzte Tests, Muster-Detektor, Kosten, Wochenrückblick, Community-Details, Experimente, Export)
 - ✅ **Entschieden (1. Okt, Inhaber: „mach den Preis so, wie du es für richtig hältst“):**
   Lab Pro **2,99 €/Monat · 19,99 €/Jahr · 39,99 € einmalig (Lifetime)**. **Beta-Ende 30. Nov 2026**: Wer bis dahin
   startet, ist Gründer → Pro für immer gratis. Gesperrt wird erst, wenn Bezahlen wirklich geht (`PAYMENTS_READY`
   in `lib/labGrow.ts`). Gratis bleibt: Reset, Testen, Check-ins, Erinnerungen, Kolbi, Ergebnis je Test.
-  Pro: Muster-Detektor, Kosten & Sparen, alle Experimente, Kalender-Abo, Wochen-Story teilen, Community-Vergleich.
+  Pro: Muster-Detektor, Kosten & Sparen, alle Experimente, Timing, Kalender-Abo, Community-Vergleich. Wochen-Story teilen bleibt gratis (Weitersagen).
 
 ## Phasen
 
