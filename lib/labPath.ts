@@ -38,6 +38,9 @@ export function pathStops(s: LabState, today: string, now: Date, checkinLocked: 
   const add = (x: Omit<Stop, "state"> & { state?: Stop["state"] }) => out.push({ state: "future", ...x })
 
   // ── Heute
+  const yesterday = addDays(today, -1)
+  if (!notStarted && yesterday >= first.start && !s.checkins[yesterday])
+    out.push({ key: "catchup", date: today, kind: "checkin", emoji: "🌅", title: "Gestern nachtragen", sub: "10 Sekunden", state: "now" })
   if (!notStarted) {
     const took = s.took[today] ?? []
     const ids = [...intakeOn(s, today)].sort((a, b) => suppMinutes(a, s) - suppMinutes(b, s))

@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react"
 import {
   FACES, SIDE_BY_ID, SIDE_EFFECTS, DIM_BY_ID,
-  activeDims, intakeOn, knownSides, phaseWindows, signal, testResult, slotFor, slotMinutes, toMin, suppColor, streak, timeTip, relMin, suppMinutes,
+  activeDims, intakeOn, knownSides, phaseWindows, addDays, signal, testResult, slotFor, slotMinutes, toMin, suppColor, streak, timeTip, relMin, suppMinutes,
   type LabState, type CheckIn, type Scores, type Decision, type Dim,
 } from "@/lib/supplementLab"
 import { Btn, SideChips, Stars } from "./ui"
@@ -12,7 +12,7 @@ import { FACT_COUNT, nextFact, type Fact } from "@/lib/labKnowledge"
 
 export type RoundStep =
   | { kind: "take"; id: string }
-  | { kind: "checkin" }
+  | { kind: "checkin"; date?: string }
   | { kind: "sides" }
   | { kind: "reveal"; suppId: string }
 
@@ -25,7 +25,10 @@ function dueIntakes(s: LabState, today: string, now: Date) {
 
 export function roundSteps(s: LabState, today: string, now: Date, checkinLocked: boolean): RoundStep[] {
   if (!s.startDate || today < (phaseWindows(s)[0]?.start ?? today)) return []
-  const steps: RoundStep[] = dueIntakes(s, today, now).map(id => ({ kind: "take" as const, id }))
+  // Gestern vergessen? Dann zuerst nachtragen (zählt sonst in der Auswertung als Lücke)
+  const y = addDays(today, -1)
+  const catchUp: RoundStep[] = !s.checkins[y] && y >= (phaseWindows(s)[0]?.start ?? today) ? [{ kind: "checkin", date: y }] : []
+  const steps: RoundStep[] = [...catchUp, ...dueIntakes(s, today, now).map(id => ({ kind: "take" as const, id }))]
   if (!s.checkins[today] && !checkinLocked) {
     steps.push({ kind: "checkin" })
     if (intakeOn(s, today).length) steps.push({ kind: "sides" })
@@ -78,11 +81,11 @@ export function DailyRound({ s, today, steps, onTake, onCheckin, onVerdict, onLe
   useEffect(() => { if (done && fact) learnRef.current(fact.id) }, [done, fact])
 
   const next = () => setI(n => n + 1)
-  const saveCheckin = (withSides: Record<string, number>, sc: Scores = scores) => {
+  const saveCheckin = (withSides: Record<string, number>, sc: Scores = scores, date = today) => {
     const dims = activeDims(s)
     const full: Scores = {}
     dims.forEach(d => { full[d.id] = sc[d.id] ?? 3 })
-    onCheckin({ date: today, scores: full, tags: [], sides: withSides, note: "", quick: false })
+    onCheckin({ date, scores: full, tags: [], sides: withSides, note: "", quick: false })
   }
 
   return (
@@ -102,7 +105,8 @@ export function DailyRound({ s, today, steps, onTake, onCheckin, onVerdict, onLe
         <div key={done ? "done" : i} className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 18, padding: "12px 0" }}>
           {done ? <DoneStep s={s} fact={fact} onClose={onClose} />
             : step.kind === "take" ? <TakeStep s={s} id={step.id} onDone={() => { onTake(step.id); setTimeout(next, 450) }} onSkip={next} />
-            : step.kind === "checkin" ? <CheckinStep s={s} scores={scores} setScores={setScores} onDone={sc => {
+            : step.kind === "checkin" ? <CheckinStep s={s} scores={scores} setScores={setScores} yesterday={!!step.date && step.date !== today} onDone={sc => {
+                if (step.date && step.date !== today) { saveCheckin({}, sc, step.date); setScores({}); next(); return }
                 if (steps[i + 1]?.kind === "sides") next(); else { saveCheckin({}, sc); next() }
               }} />
             : step.kind === "sides" ? <SidesStep s={s} today={today} value={sides} onChange={setSides} onDone={v => { saveCheckin(v); next() }} />
@@ -148,7 +152,7 @@ function TakeStep({ s, id, onDone, onSkip }: { s: LabState; id: string; onDone: 
   )
 }
 
-function CheckinStep({ s, scores, setScores, onDone }: { s: LabState; scores: Scores; setScores: React.Dispatch<React.SetStateAction<Scores>>; onDone: (sc: Scores) => void }) {
+function CheckinStep({ s, scores, setScores, onDone, yesterday }: { s: LabState; scores: Scores; setScores: React.Dispatch<React.SetStateAction<Scores>>; onDone: (sc: Scores) => void; yesterday?: boolean }) {
   const dims = activeDims(s)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
@@ -162,7 +166,9 @@ function CheckinStep({ s, scores, setScores, onDone }: { s: LabState; scores: Sc
   const avg = filled.length ? filled.reduce((a, d) => a + scores[d.id]!, 0) / filled.length : null
   return (
     <>
-      <Title sub="Tippe die Sterne pro Bereich — alles auf einem Blick.">Wie war dein Tag?</Title>
+      {yesterday
+        ? <Title sub="Gestern ist der Check-in durchgerutscht – kurz nachtragen, dann fehlt nichts in deiner Auswertung.">🌅 Wie war gestern?</Title>
+        : <Title sub="Tippe die Sterne pro Bereich — alles auf einem Blick.">Wie war dein Tag?</Title>}
       <div className="lab-card" style={{ padding: "4px 16px" }}>
         {dims.map((d, k) => (
           <div key={d.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "10px 0", borderTop: k ? "1px solid var(--border)" : "none" }}>

@@ -198,6 +198,17 @@ export function notificationPlan(s: LabState, days = 7, now = new Date()): Plann
       }
     }
 
+    // Morgens: Check-in von gestern vergessen? (Wird beim nächsten Öffnen neu geplant – wer abends
+    // eincheckt, bekommt diese Nachricht also gar nicht erst.)
+    const prevDay = addDays(date, -1)
+    if (prevDay >= wins[0].start && !s.checkins[prevDay]) {
+      out.push({
+        key: `catchup-${date}`, kind: "checkin", url: round, at: atDate(date, wake + 45),
+        title: "🌅 Wie war gestern?", body: "Der Check-in fehlt noch – 10 Sekunden nachtragen, dann bleibt deine Auswertung genau.",
+        generic: { title: "🌅 Wie war gestern?", body: "10 Sekunden nachtragen, dann bleibt deine Auswertung genau." },
+      })
+    }
+
     // Abends: Tagesrunde (+ Serien-Retter heute). Einnahmen ±60 Min. davon werden mitgenommen → weniger Pings.
     if (!(date === today && s.checkins[date])) {
       let m = toMin(s.reminders.checkin)

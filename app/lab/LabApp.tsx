@@ -6,7 +6,7 @@ import {
   DIMS, FACES, FACE_LABELS, ONSET_INFO, SIDE_EFFECTS, SIDE_BY_ID, LIB_SIDES, knownSides, ROUTE_INFO, SLOTS, BADGES, GOALS,
   loadState, saveState, emptyState, demoState, computeBadges, levelFor, streak, hydrate,
   phaseWindows, phaseAt, testResult, checkinsIn, buildStack, allowedSlots, slotTime, slotFor, stackMembers, intakeOn,
-  STORE_MODE, LAB_BASE, todayIso, addDays, diffDays, fmtDate, suppColor, daySum, activeDims, signal, libOf, makeSupp, defaultCheckinTime,
+  STORE_MODE, LAB_BASE, todayIso, setDayBoundary, relMin, toMin, addDays, diffDays, fmtDate, suppColor, daySum, activeDims, signal, libOf, makeSupp, defaultCheckinTime,
   nextCandidates, suppStatus, takingInfo, avgIntakeMinutes, phaseEndsAt, fmtCountdown, nowTime, closeActive, looksPrescribed,
   startTest, startStack, startCheck, applyVerdict, resolveCheck, fromMin, timeTip, LIB_BY_ID, slotMinutes,
   type SlotId, type LabState, type Decision, type Dim, type PhaseWindow, type MySupp, type LibSupp, type Settings, type CheckIn, type Scores, type SuppStatusKey,
@@ -298,6 +298,7 @@ export default function LabApp() {
     return () => { cancelled = true; clearInterval(id) }
   }, [s.healthEnabled, s.startDate, update])
 
+  setDayBoundary(s.settings) // Lab-Tag beginnt kurz vor deiner Aufstehzeit
   const today = todayIso()
   const toggleTook = useCallback((id: string) => {
     const on = (s.took[today] ?? []).includes(id)
@@ -394,10 +395,9 @@ export default function LabApp() {
   // Check-in erst ab der gewünschten Uhrzeit — früher nur per Long-Press entsperrbar
   const checkinLocked = useMemo(() => {
     if (!s.reminders.enabled || unlockedFor === today) return false
-    const [h, m] = s.reminders.checkin.split(":").map(Number)
-    const d = new Date(now); d.setHours(h, m, 0, 0)
-    return now.getTime() < d.getTime()
-  }, [s.reminders.enabled, s.reminders.checkin, unlockedFor, today, now])
+    // relativ zum Lab-Tag: nach Mitternacht ist der Abend-Check-in natürlich offen
+    return relMin(now.getHours() * 60 + now.getMinutes(), s.settings) < relMin(toMin(s.reminders.checkin), s.settings)
+  }, [s.reminders.enabled, s.reminders.checkin, s.settings, unlockedFor, today, now])
   const pending = useMemo(() => roundSteps(s, today, now, checkinLocked), [s, today, now, checkinLocked])
 
   // Aus einer Benachrichtigung geöffnet → direkt in die Tagesrunde (Sperrzeit gilt dann nicht)
@@ -697,8 +697,9 @@ function KolbiHero({ s, today, now, pending, sleepy, lockedUntil, notStarted, st
     setTapped(true)
     setTimeout(() => { onRound(); setTapped(false) }, 380)
   }
+  const catchUp = pending.some(p => p.kind === "checkin" && p.date && p.date !== today)
   const title = notStarted ? "Bald geht's los"
-    : n ? (reveal && n === 1 ? "Ein Ergebnis wartet" : `${n} ${n === 1 ? "Sache" : "Dinge"} für jetzt`)
+    : n ? (reveal && n === 1 ? "Ein Ergebnis wartet" : catchUp && n === 1 ? "Gestern fehlt noch" : `${n} ${n === 1 ? "Sache" : "Dinge"} für jetzt`)
     : fill >= 1 ? "Heute alles erledigt" : "Gerade nichts zu tun"
   const sub = notStarted ? `Start in ${startIn != null ? fmtCountdown(startIn) : "Kürze"} – bis dahin alles wie gewohnt.`
     : n ? "Ich führe dich Schritt für Schritt durch."
@@ -855,13 +856,6 @@ function Dashboard({ s, wins, today, now, msgs, onAction, onQuick, onTake, onPha
             <button onClick={() => goTab("reise")} style={{ background: "none", border: "none", color: "var(--accent)", fontWeight: 800, fontSize: "0.8rem", cursor: "pointer" }}>Ganzer Verlauf ›</button>
           </div>
           <RoadPath stops={road.stops} goal={road.goal} today={today} onStop={onStop} />
-        </div>
-      )}
-
-      {missedYesterday && !notStarted && (
-        <div className="lab-card lab-rise" style={{ padding: 14 }}>
-          <div style={{ fontSize: "0.85rem", fontWeight: 800, marginBottom: 8 }}>🕐 Gestern vergessen? 1 Tipp zum Nachtragen</div>
-          <FaceRow onPick={v => onQuick(yesterday, v)} faces={FACES} size={44} />
         </div>
       )}
 

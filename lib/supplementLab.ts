@@ -250,7 +250,7 @@ export function slotTime(slot: SlotId, s: Settings) { return fromMin(slotMinutes
  * Uhrzeit (Minuten seit Mitternacht) auf den „Aufsteh-Tag“ beziehen: Der Tag beginnt 3 h vor
  * der Aufstehzeit – alles davor (z. B. 00:30) zählt noch zum Vorabend (→ +1440).
  */
-export function relMin(m: number, s: Settings) { return m < toMin(s.wake) - 180 ? m + 1440 : m }
+export function relMin(m: number, s: Settings) { return m < dayStartMin(s) ? m + 1440 : m }
 
 /** Standard-Zeit für den abendlichen Check-in: 1 h vor dem Schlafen. */
 export function defaultCheckinTime(s: Settings) {
@@ -842,6 +842,7 @@ export function hydrate(raw: unknown): LabState {
     c.sides = { ...Object.fromEntries(legacy.map(t => [LEGACY_TAG_SIDES[t], 1])), ...c.sides }
     c.tags = c.tags.filter(t => !LEGACY_TAG_SIDES[t])
   }
+  setDayBoundary(s.settings)
   if (p.taken) {
     for (const [date, v] of Object.entries(p.taken)) {
       const id = v ? testSuppOn(s, date) : null
@@ -896,7 +897,14 @@ export function libOf(s: MySupp | undefined) { return s?.lib ? LIB_BY_ID[s.lib] 
 export function isoDate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 }
-export function todayIso() { return isoDate(new Date()) }
+/**
+ * Der „Lab-Tag“ beginnt nicht um Mitternacht, sondern kurz vor dem Aufstehen (Aufstehzeit − 3 h,
+ * frühestens 0:00, spätestens 5:00). Ein Check-in um 0:30 gehört so noch zum Vortag.
+ */
+let DAY_START = 240
+export function dayStartMin(st: Pick<Settings, "wake">) { return Math.max(0, Math.min(300, toMin(st.wake) - 180)) }
+export function setDayBoundary(st: Pick<Settings, "wake">) { DAY_START = dayStartMin(st) }
+export function todayIso() { return isoDate(new Date(Date.now() - DAY_START * 60_000)) }
 export function addDays(iso: string, n: number) {
   const [y, m, d] = iso.split("-").map(Number)
   return isoDate(new Date(y, m - 1, d + n))
