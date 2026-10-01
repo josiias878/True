@@ -31,5 +31,8 @@ and in accordance with mandatory statutory provisions.
 
 ## Purchases
 
-In-app purchases are handled by Apple or Google; their terms apply. “Lab Pro” is
-a one-time purchase with no subscription.
+The core features are free. “Lab Pro” is available as a subscription (monthly or yearly) or as a
+one-time purchase (“lifetime”). Purchases are handled by Apple or Google; their terms apply. Subscriptions
+renew automatically unless cancelled in your store account settings at least 24 hours before the end of the
+current period. Prices are shown in the app before purchase. Anyone who starts using the app on or before
+30 November 2026 (“founders”) gets Lab Pro permanently at no cost.

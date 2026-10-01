@@ -25,8 +25,8 @@ import { factsFor, partnerTips, recentSides, sideCauses } from "@/lib/labKnowled
 import { openShop, refillStock, shoppingList, stockInfo } from "@/lib/labStock"
 import { ShopButton, ShoppingCard, StockCard, StockSheet } from "./stock"
 import { KolbiPage } from "./kolbi"
-import { PaywallSheet, ProGate, ReviewSheet } from "./grow"
-import { claimFounder, markPurchased, markReviewAsked, shouldAskReview, type ProFeature } from "@/lib/labGrow"
+import { FounderWelcome, PaywallSheet, ProGate, ReviewSheet } from "./grow"
+import { SITE_URL, betaOpen, claimFounder, markPurchased, markReviewAsked, shouldAskReview, type ProFeature } from "@/lib/labGrow"
 import { configureStats, srcFromUrl, track, trackCheckin, trackOnce } from "@/lib/labStats"
 import { RoadPath } from "./path"
 import { ShareButton, makeResultCard } from "./share"
@@ -190,6 +190,7 @@ export default function LabApp() {
   const [unlockedFor, setUnlockedFor] = useState<string | null>(null)
   const [stockFor, setStockFor] = useState<string | null>(null)
   const [reviewOpen, setReviewOpen] = useState<false | "ask" | "feedback">(false)
+  const [founderHello, setFounderHello] = useState(false)
   const [paywall, setPaywall] = useState<false | { from?: ProFeature }>(() => {
     try { return new URLSearchParams(location.search).get("paywall") ? {} : false } catch { return false }
   })
@@ -485,6 +486,7 @@ export default function LabApp() {
             next.src = srcFromUrl()
             track(typeof matchMedia !== "undefined" && matchMedia("(display-mode: standalone)").matches ? "onboarded_pwa" : "onboarded")
             saveState(next); setS(next); setTab("heute"); setConfetti(true)
+            if (betaOpen(todayIso())) setTimeout(() => setFounderHello(true), 1400)
             if (wantsCalendar) {
               if (pushAvailable()) enablePush(next).then(() => pushState()).then(setPushSt).catch(() => {})
               else downloadIcs(next)
@@ -581,6 +583,7 @@ export default function LabApp() {
       {askCommunity !== false && !round && !newBadge && <CommunityConsent s={s} suppId={askCommunity}
         onYes={() => { const id = askCommunity; setAskCommunity(false); update(p => { p.community = true; return p }, { amount: 10, label: t("Community") }); if (id && s.verdicts[id]) setPendingShare(id) }}
         onNo={() => { setAskCommunity(false); update(p => { p.community = false; return p }) }} />}
+      {founderHello && !newBadge && <FounderWelcome onFlash={setFlash} onClose={() => setFounderHello(false)} />}
       {paywall && <PaywallSheet s={s} from={paywall.from} onFlash={setFlash} onClose={() => setPaywall(false)}
         onPurchased={plan => { update(p => markPurchased(p, plan, today)); setPaywall(false); setConfetti(true); track(plan === "restored" ? "restore" : "purchase") }} />}
       {reviewOpen && !round && !newBadge && !recapEnd && askCommunity === false && <ReviewSheet start={reviewOpen} onFlash={setFlash}
@@ -2095,6 +2098,15 @@ function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnable
         <button onClick={async () => { await removeMyResults(); update(p => { p.community = false; return p }); alert(t("Deine geteilten Ergebnisse wurden gelöscht.")) }} style={{ marginTop: 8, background: "none", border: "none", color: "var(--text-dim)", fontSize: "0.76rem", fontWeight: 700, cursor: "pointer", padding: 0 }}>{t("Meine geteilten Ergebnisse löschen")}</button>
       </Card>
 
+      {canSwitchLang() && (
+        <Card style={{ marginBottom: 12 }}>
+          <Label>{t("📄 Rechtliches")}</Label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 16px", marginTop: 8, fontSize: "0.84rem", fontWeight: 800 }}>
+            {(isEn ? [["Privacy Policy", "/en/privacy"], ["Terms of Use", "/en/terms"], ["Legal notice", "/en/imprint"]] : [["Datenschutz", "/datenschutz"], ["Nutzungsbedingungen", "/nutzungsbedingungen"], ["Impressum", "/impressum"]])
+              .map(([l, href]) => <a key={href} href={`${SITE_URL}${href}`} target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>{l}</a>)}
+          </div>
+        </Card>
+      )}
       {canSwitchLang() && (
         <Card style={{ marginBottom: 12 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>

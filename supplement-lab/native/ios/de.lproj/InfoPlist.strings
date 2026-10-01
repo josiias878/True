@@ -1,0 +1,7 @@
+/* Deutsch – Texte für Systemdialoge (überschreiben die Werte aus Info.plist) */
+
+/* Name unter dem App-Icon */
+"CFBundleDisplayName" = "Kolbi";
+
+/* Nur nötig, wenn das Apple-Health-Plugin (capacitor-supp-health) aktiv ist */
+"NSHealthShareUsageDescription" = "Kolbi liest nur deine Schlafdauer und HRV aus Apple Health, um sie neben deinen Check-ins anzuzeigen. Die Werte bleiben auf deinem Gerät und werden nie hochgeladen.";

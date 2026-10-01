@@ -224,4 +224,11 @@ export const EN_E: Record<string, string> = {
   "Nutzungsbedingungen": "Terms of Use",
   "Datenschutz": "Privacy",
   "Gerade ist alles gratis 🎁": "Everything's free right now 🎁",
+  "GRÜNDER-BETA": "FOUNDER BETA",
+  "Du bist Gründer!": "You're a founder!",
+  "Weil du in der Beta dabei bist, ist Lab Pro für dich für immer gratis – sonst {price}. Danke! 💚": "Because you joined the beta, Lab Pro is free for you forever – otherwise {price}. Thank you! 💚",
+  "Freunden Bescheid sagen": "Tell your friends",
+  "Los geht's": "Let's go",
+  "Du musst nichts kaufen. Wenn du Kolbi trotzdem unterstützen magst: danke! 💚": "You don't need to buy anything. If you'd like to support Kolbi anyway: thank you! 💚",
+  "💚 Kolbi trotzdem unterstützen": "💚 Support Kolbi anyway",
 }

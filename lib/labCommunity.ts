@@ -78,7 +78,9 @@ export async function fetchOverview() {
   if (overview && Date.now() - overview.t < 10 * 60_000) return overview.v
   try {
     const res = await fetch(`${URL_}?all=1`)
-    const v = res.ok ? await res.json() : null
+    const raw = res.ok ? await res.json() : null
+    // Nur gültige Antworten übernehmen – sonst lieber „keine Daten“ als ein Absturz
+    const v = raw && typeof raw.total === "number" && raw.libs && typeof raw.libs === "object" ? raw : null
     overview = { t: Date.now(), v }
     return v as { total: number; libs: Record<string, { n: number; keepPct: number | null }> } | null
   } catch { return null }

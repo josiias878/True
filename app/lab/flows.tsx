@@ -30,7 +30,7 @@ export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd,
   const [lastAdded, setLastAdded] = useState<LibSupp | null>(null)
   // Social Proof: wie viele andere haben es nach dem Test behalten? (ab genug Beiträgen)
   const [crowd, setCrowd] = useState<Record<string, { n: number; keepPct: number | null }>>({})
-  useEffect(() => { let on = true; fetchOverview().then(v => { if (on && v) setCrowd(v.libs) }); return () => { on = false } }, [])
+  useEffect(() => { let on = true; fetchOverview().then(v => { if (on && v?.libs) setCrowd(v.libs) }); return () => { on = false } }, [])
   const [paste, setPaste] = useState("")
   const sel = new Set(selected.map(s => s.lib ?? s.id))
   const ql = q.trim().toLowerCase()

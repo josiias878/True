@@ -26,12 +26,12 @@ const beat = (a, b, html, { inn = "pop", out = "fadeout", style = "", cls = "" }
   `<div class="beat ${cls}" style="animation: ${inn} .55s cubic-bezier(.3,1.5,.5,1) ${a}s both${b != null ? `, ${out} .35s ease-in ${b - 0.35}s forwards` : ""};${style}">${html}</div>`
 const big = (t, size = 96) => `<div class="big" style="font-size:${size}px">${t}</div>`
 const small = t => `<div class="small">${t}</div>`
-const ctaEnd = a => beat(a, null, `
+const ctaEnd = (a, sub) => beat(a, null, `
   <div class="center col">
     <div class="float">${kolbi("party-alive", 460)}</div>
     ${big(tx("Finde raus, was<br>bei <span class='grad'>DIR</span> wirkt.", "Find out what<br>works for <span class='grad'>YOU</span>."), 92)}
     <div class="pill">🧪 Kolbi · Supplement Lab</div>
-    ${small(tx("Kostenlos in der Beta · Link in Bio", "Free during the beta · link in bio"))}
+    ${small(sub || tx("Kostenlos in der Beta · Link in Bio", "Free during the beta · link in bio"))}
   </div>`)
 
 const CSS = `
@@ -70,6 +70,19 @@ body{width:${W}px;height:${H}px;overflow:hidden;font-family:Nunito,sans-serif;co
 .count{counter-reset:n var(--n)}
 .count::before{content:counter(n)}
 @keyframes count{from{--n:0}to{--n:var(--to)}}
+.count2{counter-reset:n var(--n)}
+.count2::before{content:counter(n,decimal-leading-zero)}
+.beat.safe{padding:160px 165px 400px 110px}
+.badge{display:flex;align-items:center;justify-content:center;width:120px;height:120px;border-radius:50%;background:#e34948;font-size:72px;font-weight:900;box-shadow:0 10px 40px rgba(227,73,72,.45)}
+.fix{font-size:50px;font-weight:900;padding:18px 34px;border-radius:32px;background:#1baf7a;line-height:1.15;text-align:center}
+@keyframes fadein{from{opacity:0}}
+@keyframes growh{from{height:0}}
+@keyframes drop{0%{opacity:0;transform:translateY(-1100px) rotate(var(--r))}70%{opacity:1;transform:translateY(18px) rotate(0)}85%{transform:translateY(-10px)}100%{opacity:1;transform:none}}
+@keyframes flip{to{transform:rotateY(180deg)}}
+.flip{perspective:1800px}
+.flip-in{position:relative;width:100%;height:100%;transform-style:preserve-3d}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px}
+.face.back{transform:rotateY(180deg);box-shadow:0 30px 80px rgba(0,0,0,.3)}
 `
 
 // ── Die Videos ───────────────────────────────────────────────────────────────
@@ -129,6 +142,120 @@ V["05-kolbi-entdeckt-muster"] = { dur: 11, cover: 3.6, html: [
   </div>`),
   beat(6.4, 8.6, `<div class="center col">${kolbi("party-glow", 420)}${big(tx("Muster, die dir<br>selbst nie<br>auffallen würden.", "Patterns you'd<br>never notice<br>on your own."), 100)}</div>`),
   ctaEnd(8.6),
+] }
+
+// ── Serie 2 (06–12) ──────────────────────────────────────────────────────────
+// Safe Zones: Text bleibt aus den unteren 20 % und dem rechten Rand (TikTok-Buttons) raus → sb() statt beat().
+// Health-Claims: nur über die Methode reden (testen, vergleichen, eigene Daten, sparen). Zahlen = „Beispiel“.
+const sb = (a, b, html, o = {}) => beat(a, b, html, { ...o, cls: `safe ${o.cls || ""}` })
+const at = (a, d = 0.5) => `animation:pop ${d}s cubic-bezier(.3,1.5,.5,1) ${a}s both`
+
+const mistake = (n, emo, title, fix, a) => `<div class="card center col" style="width:100%;gap:30px">
+  <div style="display:flex;align-items:center;gap:26px"><div class="badge">${n}</div><div style="font-size:96px">${emo}</div></div>
+  ${big(title, 84)}
+  <div class="fix" style="${at(a + 1.0)}">✅ ${fix}</div></div>`
+V["06-drei-fehler"] = { dur: 12, cover: 1.0, html: [
+  sb(0.1, 2.2, `<div class="center col"><div style="animation:shake .4s ease-in-out .5s 3">${kolbi("alert", 400)}</div>${big(tx("3 Fehler beim<br>Supplement-<br>Testen ❌", "3 mistakes<br>when testing<br>supplements ❌"), 96)}</div>`),
+  sb(2.2, 4.6, mistake(1, "💊🌿🍵", tx("Alles<br>gleichzeitig", "Everything<br>at once"), tx("Eins nach<br>dem anderen", "One at<br>a time"), 2.2), { inn: "slidein", out: "slideout" }),
+  sb(4.6, 7.0, mistake(2, "❓", tx("Kein Normal", "No baseline"), tx("Erst ein paar Tage<br>dein Normal messen", "First a few days<br>to learn your normal"), 4.6), { inn: "slidein", out: "slideout" }),
+  sb(7.0, 9.4, mistake(3, "⏱️", tx("Nach 2 Tagen<br>aufgeben", "Quitting<br>after 2 days"), tx("Jedem Test<br>genug Tage geben", "Give each test<br>enough days"), 7.0), { inn: "slidein", out: "slideout" }),
+  ctaEnd(9.4),
+] }
+
+V["07-tag-1-vs-tag-14"] = { dur: 12.6, cover: 1.6, html: [
+  sb(0.1, 2.8, `<div class="center col">${big(tx("Tag 1 <span style='opacity:.6'>vs.</span> Tag 14", "Day 1 <span style='opacity:.6'>vs.</span> Day 14"), 88)}
+    <div style="display:flex;gap:30px;align-items:flex-end">
+      <div class="center col" style="gap:14px">${kolbi("happy-empty", 340)}<div class="pill">${tx("Tag 1", "Day 1")}</div></div>
+      <div class="center col" style="gap:14px;${at(1.0, 0.55)}">${kolbi("happy-glow", 340)}<div class="pill" style="background:#1baf7a">${tx("Tag 14", "Day 14")}</div></div>
+    </div></div>`),
+  sb(2.8, 4.8, `<div class="center col">${kolbi("think-murky", 420)}${big(tx("Tag 1:<br>keine Daten.<br>Nur Bauchgefühl.", "Day 1:<br>no data.<br>Just a gut feeling."), 88)}</div>`),
+  sb(4.8, 8.0, `<div class="card center col" style="width:100%;gap:30px">
+    <div style="font-size:150px;font-weight:900;line-height:1">🔥 <span class="count" style="--to:14;animation:count 2.4s linear 5.0s both"></span></div>
+    ${big(tx("Check-ins<br>in Folge", "check-ins<br>in a row"), 64)}
+    <div style="display:grid;grid-template-columns:repeat(7,80px);gap:14px">
+      ${Array.from({ length: 14 }, (_, i) => `<div style="width:80px;height:80px;border-radius:22px;background:rgba(255,255,255,.12);position:relative"><div style="position:absolute;inset:0;border-radius:22px;background:#2ECC8A;display:flex;align-items:center;justify-content:center;font-size:46px;font-weight:900;${at(5.0 + ((i + 1) * 2.4) / 14 - 0.12, 0.35)}">✓</div></div>`).join("")}
+    </div>
+    ${small(tx("je 1 Minute am Abend", "1 minute each evening"))}</div>`),
+  sb(8.0, 10.2, `<div class="center col">${kolbi("happy-glow", 420)}${big(tx("Tag 14:<br><span class='grad'>deine eigenen<br>Daten.</span>", "Day 14:<br><span class='grad'>your own<br>data.</span>"), 92)}${small(tx("Jetzt kannst du vergleichen.", "Now you can compare."))}</div>`),
+  ctaEnd(10.2),
+] }
+
+const vbar = (label, v, txt, c, a) => `<div class="center col" style="gap:14px;justify-content:flex-end;height:100%">
+  <div style="font-size:56px;font-weight:900;${at(a + 0.7, 0.4)}">${txt}★</div>
+  <div style="width:190px;height:${Math.round(v * 90)}px;border-radius:28px 28px 12px 12px;background:${c};animation:growh .8s ease-out ${a}s both"></div>
+  <div style="font-size:46px;font-weight:900">${label}</div></div>`
+V["08-was-ist-eine-baseline"] = { dur: 12.8, cover: 6.8, html: [
+  sb(0.1, 2.2, `<div class="center col">${kolbi("think-alive", 420)}${big(tx("Was ist eine<br><span class='grad'>Baseline</span>? 🤔", "What's a<br><span class='grad'>baseline</span>? 🤔"), 100)}</div>`),
+  sb(2.2, 4.4, `<div class="center col">${kolbi("happy", 360)}${big(tx("= dein <span class='grad'>Normal</span>.", "= your <span class='grad'>normal</span>."), 100)}${small(tx("Ein paar Abende bewerten –<br>ohne etwas Neues.", "Rate a few evenings –<br>with nothing new."))}</div>`),
+  sb(4.4, 8.4, `<div class="card center col" style="width:100%;gap:24px">
+    ${big(tx("⭐ Deine Tagesbewertung", "⭐ Your daily rating"), 52)}
+    <div style="display:flex;align-items:flex-end;gap:70px;height:540px">${vbar("Normal", 3.4, tx("3,4", "3.4"), "#b4b0d6", 4.7)}${vbar("Test", 3.9, tx("3,9", "3.9"), "#2ECC8A", 5.5)}</div>
+    <div style="font-size:100px;font-weight:900;color:#7CF5C0;${at(6.4, 0.6)}">${tx("+0,5★", "+0.5★")}</div>
+    ${small(tx("Beispiel · eigene Bewertungen", "Example · your own ratings"))}</div>`),
+  sb(8.4, 10.4, `<div class="center col">${kolbi("happy-shades", 420)}${big(tx("Ohne Normal<br><span class='grad'>kein Vergleich.</span>", "No baseline,<br><span class='grad'>no comparison.</span>"), 96)}</div>`),
+  ctaEnd(10.4),
+] }
+
+const shelf = ["🫙", "💊", "🧴", "🫙", "🍵", "🌿", "🫙", "🐟", "💊", "🧴", "⚡", "🫙", "🌙", "💊", "🫙", "🌞", "🧴", "🫙"]
+const shelfPos = [5, 4, 4, 3, 2].flatMap((n, r) => Array.from({ length: n }, (_, k) => [512 + (k - (n - 1) / 2) * 150 - 65, 1330 - r * 125]))
+V["09-pov-supplement-schrank"] = { dur: 11.8, cover: 4.4, html: [
+  `<div class="beat" style="padding:0;display:block;animation:fadein .3s ease-out .1s both, fadeout .35s ease-in 7.05s forwards">${shelf.map((e, i) => {
+    const [x, y] = shelfPos[i]
+    return `<span style="position:absolute;left:${x}px;top:${y}px;font-size:130px;line-height:1;--r:${(i % 2 ? 1 : -1) * (20 + i * 7)}deg;animation:drop .6s ease-out ${0.4 + i * 0.1}s both">${e}</span>`
+  }).join("")}</div>`,
+  sb(0.1, 3.6, `<div class="center col" style="gap:20px">${small("POV:")}${big(tx("Dein<br>Supplement-<br>Schrank 🫙", "Your<br>supplement<br>shelf 🫙"), 96)}</div>`, { style: "align-items:flex-start" }),
+  sb(3.6, 7.4, `<div class="center col" style="gap:24px">${kolbi("happy-shades", 300)}${big(tx("Welches davon<br>merkst du<br><span class='grad'>wirklich</span>? 👀", "Which of these<br>do you <span class='grad'>actually</span><br>notice? 👀"), 84)}</div>`, { style: "align-items:flex-start" }),
+  sb(7.4, 9.4, `<div class="center col">${kolbi("think-alive", 380)}${big(tx("Eins nach dem<br>anderen testen.<br><span class='grad'>Nur behalten, was<br>du merkst.</span>", "Test them<br>one at a time.<br><span class='grad'>Keep only what<br>you notice.</span>"), 84)}</div>`),
+  ctaEnd(9.4),
+] }
+
+const flipCard = (name, a, bg, back) => `<div class="flip" style="width:370px;height:540px"><div class="flip-in" style="animation:flip .8s cubic-bezier(.45,1.35,.5,1) ${a}s both">
+  <div class="face card"><div style="font-size:170px;font-weight:900;line-height:1">?</div><div style="font-size:44px;font-weight:900">${name}</div></div>
+  <div class="face back" style="background:${bg}">${back}</div></div></div>`
+const flipBack = (emo, verdict, val, note) => `<div style="font-size:110px;line-height:1">${emo}</div><div style="font-size:62px;font-weight:900">${verdict}</div>
+  <div style="font-size:76px;font-weight:900">${val}</div><div style="font-size:34px;font-weight:800;opacity:.9">${note}</div>`
+V["10-behalten-oder-raus"] = { dur: 11.6, cover: 5.6, html: [
+  sb(0.1, 2.2, `<div class="center col">${kolbi("think-alive", 420)}${big(tx("Behalten<br>oder raus? 🤔", "Keep it<br>or drop it? 🤔"), 104)}</div>`),
+  sb(2.2, 6.6, `<div class="center col" style="gap:30px">${big(tx("Nach dem Test:", "After the test:"), 76)}
+    <div style="display:flex;gap:30px">
+      ${flipCard("Supplement A", 3.0, "linear-gradient(160deg,#21c487,#0f7f58)", flipBack("💚", tx("Behalten", "Keep"), tx("+0,6★", "+0.6★"), tx("vs. dein Normal", "vs. your normal")))}
+      ${flipCard("Supplement B", 4.2, "linear-gradient(160deg,#e05a59,#a8302f)", flipBack("✂️", tx("Raus", "Drop"), tx("±0,0★", "±0.0★"), tx("spart 18 €/Monat", "saves €18/month")))}
+    </div>
+    ${small(tx("Beispiel · vs. dein Normal", "Example · vs. your normal"))}</div>`),
+  sb(6.6, 8.9, `<div class="center col">${kolbi("happy-shades", 420)}${big(tx("Du entscheidest –<br><span class='grad'>mit deinen<br>eigenen Daten.</span>", "You decide –<br><span class='grad'>with your<br>own data.</span>"), 92)}</div>`),
+  ctaEnd(8.9),
+] }
+
+const rateRows = [["🌙", tx("Schlaf", "Sleep"), 4], ["⚡", tx("Energie", "Energy"), 3], ["🍃", tx("Ruhe", "Calm"), 4], ["🎯", tx("Fokus", "Focus"), 5]]
+V["11-1-minute-am-abend"] = { dur: 12.8, cover: 5.6, html: [
+  sb(0.1, 2.4, `<div class="center col">${kolbi("sleepy-nightcap", 420)}${big(tx("1 Minute<br>am Abend. 🌙", "1 minute 🌙<br>each evening."), 104)}${small(tx("Mehr braucht Kolbi nicht.", "That's all Kolbi needs."))}</div>`),
+  sb(2.4, 8.4, `<div class="center col" style="gap:30px">
+    <div class="pill" style="font-size:76px;padding:14px 40px">⏱️ 0:<span class="count2" style="--to:59;animation:count 5s linear 2.7s both reverse"></span></div>
+    <div class="card col" style="display:flex;width:100%;gap:34px">
+      ${big(tx("Check-in · heute", "Check-in · today"), 56)}
+      ${rateRows.map(([e, l, v], i) => `<div style="display:flex;align-items:center;gap:20px">
+        <span style="font-size:60px">${e}</span><span style="flex:1;font-size:50px;font-weight:900">${l}</span>
+        <span style="display:flex;gap:6px">${[0, 1, 2, 3, 4].map(j => `<span style="position:relative;font-size:64px;line-height:1;color:rgba(255,255,255,.22)">★${j < v ? `<span style="position:absolute;left:0;top:0;color:#ffc93c;${at(3.0 + i * 1.1 + j * 0.18, 0.3)}">★</span>` : ""}</span>`).join("")}</span></div>`).join("")}
+      <div class="pill" style="align-self:center;background:#1baf7a;font-size:52px;${at(7.3)}">${tx("✓ Gespeichert", "✓ Saved")}</div>
+    </div></div>`),
+  sb(8.4, 10.4, `<div class="center col">${kolbi("happy-glow", 420)}${big(tx("Fertig.<br>Kolbi rechnet<br>den Rest. 📊", "Done.<br>Kolbi does<br>the math. 📊"), 100)}</div>`),
+  ctaEnd(10.4),
+] }
+
+V["12-gruender-beta"] = { dur: 11, cover: 1.2, html: [
+  sb(0.1, 2.4, `<div class="center col"><div style="animation:shake .4s ease-in-out .4s 3">${kolbi("alert", 400)}</div>${big(tx("⏳ Nur bis<br><span class='grad'>30. November</span>", "⏳ Only until<br><span class='grad'>November 30</span>"), 100)}</div>`),
+  sb(2.4, 5.8, `<div class="card center col" style="width:100%;gap:26px">
+    <div style="font-size:130px;line-height:1">🏅</div>
+    ${big(tx("Gründer-Beta", "Founder beta"), 76)}
+    ${big(tx("<span class='grad'>Pro für immer<br>gratis.</span>", "<span class='grad'>Pro free<br>forever.</span>"), 96)}
+    ${small(tx("Wer bis 30.11. startet,<br>behält Pro – für immer.", "Start by Nov 30 and<br>keep Pro – forever."))}</div>`),
+  sb(5.8, 8.6, `<div class="center col">
+    <div style="width:400px;border-radius:48px;overflow:hidden;background:#fff;color:#1a1c20;box-shadow:0 30px 80px rgba(0,0,0,.35);animation:shake .5s ease-in-out 6.3s 2">
+      <div style="background:#e34948;color:#fff;font-size:64px;font-weight:900;padding:18px 0;text-align:center;letter-spacing:.08em">${tx("NOV", "NOV")}</div>
+      <div style="font-size:220px;font-weight:900;line-height:1.1;text-align:center;padding-bottom:16px">30</div></div>
+    ${big(tx("Ab 1.12.:<br>2,99 €/Monat.<br><span class='grad'>Jetzt: 0 €.</span>", "From Dec 1:<br>€2.99/month.<br><span class='grad'>Now: €0.</span>"), 80)}
+    ${small(tx("Kein Konto nötig.", "No account needed."))}</div>`),
+  ctaEnd(8.6, tx("🏅 Gründer-Pro gratis bis 30.11.<br>Link in Bio", "🏅 Founder Pro free until Nov 30<br>link in bio")),
 ] }
 
 // ── Rendern ──────────────────────────────────────────────────────────────────

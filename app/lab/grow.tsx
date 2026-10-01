@@ -14,6 +14,10 @@ const GRAD = "linear-gradient(135deg, #9085e9, #e87ba4)"
 /** Lab Pro: in der Beta als „Gründer-Pro“ freigeschaltet – zeigt, was drin ist. */
 export function ProCard({ s }: { s: LabState }) {
   const [open, setOpen] = useState(false)
+  // In der Store-App kommen die Preise aus dem Store (Währung/Land), sonst unsere Standardpreise
+  const [store, setStore] = useState<Partial<Record<Plan, string>>>({})
+  React.useEffect(() => { storePrices().then(setStore) }, [])
+  const P = { monthly: store.monthly ? t("{p}/Monat", { p: store.monthly }) : PRICE_LABEL.monthly, yearly: store.yearly ? t("{p}/Jahr", { p: store.yearly }) : PRICE_LABEL.yearly, lifetime: store.lifetime ? t("{p} einmalig", { p: store.lifetime }) : PRICE_LABEL.lifetime }
   const pro = isPro(s)
   const founder = !!s.pro?.founder
   return (
@@ -23,7 +27,7 @@ export function ProCard({ s }: { s: LabState }) {
         <span style={{ flex: 1 }}>
           <span style={{ display: "block", fontWeight: 900, fontSize: "1rem" }}>{founder ? t("Gründer-Pro aktiv") : pro ? t("Lab Pro aktiv") : "Lab Pro"}</span>
           <span style={{ display: "block", fontSize: "0.76rem", opacity: 0.92 }}>
-            {founder ? t("Für dich für immer gratis – sonst {price}.", { price: PRICE_LABEL.yearly }) : pro ? t("Gerade noch frei – bald ab {price}", { price: PRICE_LABEL.monthly }) : t("ab {price}", { price: PRICE_LABEL.monthly })}
+            {founder ? t("Für dich für immer gratis – sonst {price}.", { price: P.yearly }) : pro ? t("Gerade noch frei – bald ab {price}", { price: P.monthly }) : t("ab {price}", { price: P.monthly })}
           </span>
         </span>
         <span style={{ fontWeight: 900, transform: open ? "rotate(90deg)" : "none", transition: "transform .3s" }}>›</span>
@@ -41,7 +45,7 @@ export function ProCard({ s }: { s: LabState }) {
             </div>
           ))}
           <div style={{ gridColumn: "1 / -1", fontSize: "0.7rem", opacity: 0.92, textAlign: "center", marginTop: 2, lineHeight: 1.45 }}>
-            {t("Lab Pro: {m} · {y} · {l}", { m: PRICE_LABEL.monthly, y: PRICE_LABEL.yearly, l: PRICE_LABEL.lifetime })}<br />
+            {t("Lab Pro: {m} · {y} · {l}", { m: P.monthly, y: P.yearly, l: P.lifetime })}<br />
             {betaOpen(todayIso()) && t("Beta: alles kostenlos. Wer bis {date} startet, behält Pro für immer.", { date: betaEndLabel() })}
           </div>
         </div>
@@ -192,9 +196,9 @@ export function PaywallSheet({ s, from, onClose, onPurchased, onFlash }: {
   const founder = !!s.pro?.founder
   const save = Math.round((1 - PRICES.yearly / (PRICES.monthly * 12)) * 100)
   const plans: { id: Plan; title: string; price: string; sub: string; badge?: string }[] = [
-    { id: "yearly", title: t("Jährlich"), price: store.yearly ?? PRICE_LABEL.yearly, sub: t("nur {p} im Monat", { p: euro(PRICES.yearly / 12, true) }), badge: t("Beliebt · spar {n} %", { n: save }) },
-    { id: "monthly", title: t("Monatlich"), price: store.monthly ?? PRICE_LABEL.monthly, sub: t("jederzeit kündbar") },
-    { id: "lifetime", title: t("Für immer"), price: store.lifetime ?? PRICE_LABEL.lifetime, sub: t("einmal zahlen, kein Abo") },
+    { id: "yearly", title: t("Jährlich"), price: store.yearly ? t("{p}/Jahr", { p: store.yearly }) : PRICE_LABEL.yearly, sub: t("nur {p} im Monat", { p: euro(PRICES.yearly / 12, true) }), badge: t("Beliebt · spar {n} %", { n: save }) },
+    { id: "monthly", title: t("Monatlich"), price: store.monthly ? t("{p}/Monat", { p: store.monthly }) : PRICE_LABEL.monthly, sub: t("jederzeit kündbar") },
+    { id: "lifetime", title: t("Für immer"), price: store.lifetime ? t("{p} einmalig", { p: store.lifetime }) : PRICE_LABEL.lifetime, sub: t("einmal zahlen, kein Abo") },
   ]
   const go = async () => {
     haptic(); setBusy(true)
@@ -229,9 +233,13 @@ export function PaywallSheet({ s, from, onClose, onPurchased, onFlash }: {
         ))}
       </div>
 
-      {founder ? (
-        <div style={{ textAlign: "center", padding: 14, borderRadius: 18, background: "var(--accent-dim)", fontWeight: 900 }}>🏅 {t("Du bist Gründer – Lab Pro ist für dich für immer gratis.")}</div>
-      ) : <>
+      {founder && (
+        <div style={{ textAlign: "center", padding: 12, borderRadius: 18, background: "var(--accent-dim)", marginBottom: 12 }}>
+          <div style={{ fontWeight: 900 }}>🏅 {t("Du bist Gründer – Lab Pro ist für dich für immer gratis.")}</div>
+          <div style={{ fontSize: "0.76rem", color: "var(--text-dim)", marginTop: 2 }}>{t("Du musst nichts kaufen. Wenn du Kolbi trotzdem unterstützen magst: danke! 💚")}</div>
+        </div>
+      )}
+      <>
         <div role="radiogroup" aria-label={t("Tarif wählen")} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {plans.map(p => {
             const on = plan === p.id
@@ -251,14 +259,33 @@ export function PaywallSheet({ s, from, onClose, onPurchased, onFlash }: {
             )
           })}
         </div>
-        <Btn full disabled={busy} onClick={go} style={{ marginTop: 14 }}>{busy ? t("Einen Moment …") : t("Weiter")}</Btn>
+        <Btn full disabled={busy} onClick={go} style={{ marginTop: 14 }}>{busy ? t("Einen Moment …") : founder ? t("💚 Kolbi trotzdem unterstützen") : t("Weiter")}</Btn>
         <button onClick={restore} disabled={busy} style={{ display: "block", margin: "10px auto 0", background: "none", border: "none", color: "var(--text-dim)", fontWeight: 800, fontSize: "0.8rem", cursor: "pointer" }}>{t("Käufe wiederherstellen")}</button>
         <div style={{ fontSize: "0.66rem", color: "var(--text-dim)", lineHeight: 1.45, marginTop: 10, textAlign: "center" }}>
           {plan !== "lifetime" && <>{t("Das Abo verlängert sich automatisch, wenn du es nicht mindestens 24 Stunden vor Ablauf kündigst. Kündigen kannst du jederzeit in den Einstellungen deines Store-Kontos.")}{" "}</>}
           <a href={LEGAL.terms} target="_blank" rel="noreferrer" style={{ color: "inherit" }}>{t("Nutzungsbedingungen")}</a> · <a href={LEGAL.privacy} target="_blank" rel="noreferrer" style={{ color: "inherit" }}>{t("Datenschutz")}</a>
         </div>
         {freeForAll() && <div style={{ fontSize: "0.72rem", textAlign: "center", marginTop: 10, fontWeight: 800, color: "var(--accent)" }}>{t("Gerade ist alles gratis 🎁")}</div>}
-      </>}
+      </>
     </Sheet>
+  )
+}
+
+/** Nach der Einrichtung in der Beta: „Du bist Gründer“ – Freude + Anlass zum Weitersagen */
+export function FounderWelcome({ onClose, onFlash }: { onClose: () => void; onFlash: (m: string) => void }) {
+  return (
+    <div className="lab-fade" onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 520, background: "rgba(5,5,12,.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div className="lab-pop lab-card" onClick={e => e.stopPropagation()} style={{ padding: 26, textAlign: "center", maxWidth: 340, overflow: "hidden", position: "relative" }}>
+        <div aria-hidden style={{ position: "absolute", inset: "0 0 auto 0", height: 120, background: GRAD, opacity: 0.25 }} />
+        <div className="lab-float" style={{ display: "inline-block", position: "relative" }}><Mascot mood="party" size={104} alive glow fill={0.9} accessory="shades" /></div>
+        <div style={{ fontSize: "0.72rem", fontWeight: 900, letterSpacing: ".1em", color: "#9085e9", marginTop: 6 }}>{t("GRÜNDER-BETA")}</div>
+        <div style={{ fontSize: "1.45rem", fontWeight: 900, marginTop: 2 }}>🏅 {t("Du bist Gründer!")}</div>
+        <div style={{ color: "var(--text-dim)", margin: "8px 0 18px", lineHeight: 1.45, fontSize: "0.9rem" }}>
+          {t("Weil du in der Beta dabei bist, ist Lab Pro für dich für immer gratis – sonst {price}. Danke! 💚", { price: PRICE_LABEL.yearly })}
+        </div>
+        <Btn full onClick={async () => { const r = await inviteFriends(); if (r === "copied") onFlash(t("🔗 Link kopiert – schick ihn weiter!")); onClose() }}>💌 {t("Freunden Bescheid sagen")}</Btn>
+        <Btn full variant="ghost" onClick={onClose} style={{ marginTop: 8 }}>{t("Los geht's")}</Btn>
+      </div>
+    </div>
   )
 }

@@ -144,3 +144,8 @@ von dir brauche.
 - 2026-10-01 · **Preis entschieden:** 2,99 €/Monat · 19,99 €/Jahr · 39,99 € Lifetime, Beta-Ende 30. Nov. In App
   (Pro-Karte mit Preisen, „Gründer-Pro für immer – sonst 19,99 €/Jahr“, Einladen mit Frist) und Landingpage umgesetzt.
   Neuer Kanal-Link `/invite` für Weiterempfehlungen.
+- 2026-10-01 · **Startklar-Paket:** Pro-Seite + Freischaltung (RevenueCat-Schnittstelle, Produkt-IDs, aus bis Bezahlen geht),
+  Gründer-Willkommen nach dem Onboarding, Rechtliches-Links in den Einstellungen, AGB/Datenschutz für Abo + RevenueCat.
+  Store-Checkliste rückwärts vom 1. Dez (`STORE.md`), iOS-Datenschutz-Manifest, Review-Notes, Abo-Setup.
+  7 neue Videos DE/EN (06–12) + 30-Tage-Kalender DE/EN. **Fix:** Onboarding stürzte ab, wenn die Community-Statistik
+  eine unerwartete Antwort lieferte.

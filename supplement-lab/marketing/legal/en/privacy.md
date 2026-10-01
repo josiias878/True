@@ -113,7 +113,9 @@ receive a commission if you make a purchase – the price does not change for yo
 ## 11. In-app purchases (store app)
 
 Purchases (e.g. “Lab Pro”) are handled entirely by Apple or Google. We do not receive any payment
-data.
+data. To check whether “Lab Pro” is active, we use **RevenueCat** (RevenueCat, Inc., USA; EU-US Data Privacy
+Framework): a random app user ID and purchase receipts (product, time, status) are processed – no health
+data, no name, no email address. Legal basis: Art. 6(1)(b) GDPR (performance of a contract).
 
 ## 12. Storage period
 

@@ -29,5 +29,8 @@ sowie nach den zwingenden gesetzlichen Vorschriften.
 
 ## Käufe
 
-In-App-Käufe werden über Apple bzw. Google abgewickelt; es gelten deren Bedingungen. „Lab Pro“ ist
-ein einmaliger Kauf ohne Abo.
+Die Grundfunktionen sind kostenlos. „Lab Pro“ gibt es als Abo (monatlich oder jährlich) oder als
+einmaligen Kauf („für immer“). Käufe werden über Apple bzw. Google abgewickelt; es gelten deren Bedingungen.
+Abos verlängern sich automatisch, wenn sie nicht mindestens 24 Stunden vor Ablauf in den Einstellungen des
+Store-Kontos gekündigt werden. Preise stehen vor dem Kauf in der App. Wer bis einschließlich 30. November 2026
+mit der App startet („Gründer“), erhält Lab Pro dauerhaft ohne Kosten.

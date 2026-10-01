@@ -33,6 +33,27 @@ Beste Zeiten (DE): werktags 18–20 Uhr, Wochenende 11–13 Uhr. Gleiches Video 
 
 Cover/Thumbnail: jeweils `videos/<name>-cover.jpg`.
 
+## 30-Tage-Kalender (ab Mo 05.10.) – ersetzt den Plan oben
+
+Fertig ausgeplant, jeden Tag mit Datei, Hook, Caption und Hashtags (kopierfertig), inkl. Reposts mit neuem Hook,
+2× pro Woche „Build in Public“ und Gründer-Beta-Frist (30. Nov) als Hook in ca. jedem 4. Post:
+
+- **Deutsch** (TikTok · Reels · Shorts, Karussell auf IG): [`calendar-30.md`](calendar-30.md)
+- **Englisch** (TikTok · Reels · Shorts EN + X/Threads): [`calendar-30-en.md`](calendar-30-en.md)
+
+Neue Videos (DE in `videos/`, EN in `videos-en/`, je mit `-cover.jpg`; neu rendern: `node tools/videos.mjs 06 07 …`,
+englisch mit `VLANG=en`):
+
+| Datei | Inhalt |
+|---|---|
+| `06-drei-fehler.mp4` | 3 Fehler beim Supplement-Testen (alles gleichzeitig · kein Normal · nach 2 Tagen aufgeben) + jeweils die Lösung |
+| `07-tag-1-vs-tag-14.mp4` | Kolbi leer/trüb → leuchtend, 🔥-Zähler 0→14 Check-ins, „Tag 14: deine eigenen Daten“ |
+| `08-was-ist-eine-baseline.mp4` | Baseline = dein Normal; Balken Normal vs. Test (Beispiel) – „Ohne Normal kein Vergleich“ |
+| `09-pov-supplement-schrank.mp4` | Dosen fallen zu einem Berg, Kolbi mit Sonnenbrille: „Welches davon merkst du wirklich?“ |
+| `10-behalten-oder-raus.mp4` | Zwei Karten drehen sich um: 💚 Behalten / ✂️ Raus (Beispielwerte, Supplement A/B) |
+| `11-1-minute-am-abend.mp4` | Check-in-Mock: 4 Sterne-Reihen füllen sich, Timer 0:59 → 0:00, „✓ Gespeichert“ |
+| `12-gruender-beta.mp4` | ⏳ Nur bis 30. November: Gründer-Pro für immer gratis, ab 1.12. 2,99 €/Monat |
+
 ## Captions (kopierfertig)
 
 **A · Hallo Kolbi**

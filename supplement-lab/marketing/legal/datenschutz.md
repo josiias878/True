@@ -115,7 +115,10 @@ Preis nicht.
 ## 11. In-App-Käufe (Store-App)
 
 Käufe (z. B. „Lab Pro“) werden vollständig über Apple bzw. Google abgewickelt. Wir erhalten keine
-Zahlungsdaten.
+Zahlungsdaten. Um zu prüfen, ob „Lab Pro“ aktiv ist, nutzen wir **RevenueCat** (RevenueCat, Inc., USA;
+EU-US Data Privacy Framework): Dabei werden eine zufällige App-Nutzer-ID sowie Kaufbelege (Produkt, Zeitpunkt,
+Status) verarbeitet – keine Gesundheitsdaten, kein Name, keine E-Mail-Adresse. Rechtsgrundlage: Art. 6 Abs. 1
+lit. b DSGVO (Vertragserfüllung).
 
 ## 12. Speicherdauer
 
