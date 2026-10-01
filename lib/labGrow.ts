@@ -1,20 +1,21 @@
 // ── Wachstum: Lab Pro (Beta = alles frei), Freunde einladen, Bewertungs-Moment, Feedback ──
 import { addDays, streak, type LabState } from "./supplementLab"
+import { t, euro } from "./labI18n"
 
 /** Solange true, ist alles freigeschaltet und jeder Nutzer wird „Gründer“ (Pro bleibt dauerhaft). */
 export const BETA = true
-export const PRO_PRICE = "1,99 €"
+export const PRO_PRICE = euro(1.99)
 export const SITE_URL = "https://kolbi-smoky.vercel.app"
 const FEEDBACK_URL = "https://mkdfohmshuuiroeruyyz.supabase.co/functions/v1/lab-feedback"
 export const APP_VERSION = "0.9-beta"
 
 export const PRO_FEATURES = [
-  { emoji: "🔎", title: "Muster-Detektor", text: "Was deinen Schlaf & deine Energie beeinflusst" },
-  { emoji: "💸", title: "Kosten & Sparen", text: "Was dein Stack kostet – und was du sparst" },
-  { emoji: "🧭", title: "Alle Experimente", text: "Schlaf, Fokus, Ruhe, Training und mehr" },
-  { emoji: "📅", title: "Kalender-Abo", text: "Ergebnisse automatisch im Kalender" },
-  { emoji: "📊", title: "Wochen-Story teilen", text: "Deine Woche als schönes Bild" },
-  { emoji: "👥", title: "Community-Vergleich", text: "Was andere mit demselben Supplement erlebt haben" },
+  { emoji: "🔎", title: t("Muster-Detektor"), text: t("Was deinen Schlaf & deine Energie beeinflusst") },
+  { emoji: "💸", title: t("Kosten & Sparen"), text: t("Was dein Stack kostet – und was du sparst") },
+  { emoji: "🧭", title: t("Alle Experimente"), text: t("Schlaf, Fokus, Ruhe, Training und mehr") },
+  { emoji: "📅", title: t("Kalender-Abo"), text: t("Ergebnisse automatisch im Kalender") },
+  { emoji: "📊", title: t("Wochen-Story teilen"), text: t("Deine Woche als schönes Bild") },
+  { emoji: "👥", title: t("Community-Vergleich"), text: t("Was andere mit demselben Supplement erlebt haben") },
 ]
 
 export function isPro(s: LabState): boolean { return BETA || !!s.pro?.founder || !!s.pro?.purchased }
@@ -28,7 +29,7 @@ export function claimFounder(p: LabState, today: string): LabState {
 // ── Freunde einladen ──────────────────────────────────────────────────────────
 export async function inviteFriends(): Promise<"shared" | "copied" | "cancelled" | "failed"> {
   const url = `${SITE_URL}/?ref=invite`
-  const text = "Ich teste gerade mit Kolbi, welche Supplements bei mir wirklich was bringen 🧪 Probier's aus:"
+  const text = t("Ich teste gerade mit Kolbi, welche Supplements bei mir wirklich was bringen 🧪 Probier's aus:")
   try {
     if (navigator.share) { await navigator.share({ title: "Kolbi · Supplement Lab", text, url }); return "shared" }
   } catch (e) { if ((e as Error)?.name === "AbortError") return "cancelled" }

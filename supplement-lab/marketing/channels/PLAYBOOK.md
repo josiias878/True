@@ -2,7 +2,7 @@
 
 Stand: 1. Okt 2026 · Regeln recherchiert. Vor jedem Post die Regeln der jeweiligen Gruppe noch mal ansehen,
 denn die ändern sich. Jeder Kanal hat einen **eigenen Link**, damit wir sehen, was wirkt:
-`https://kolbi-smoky.vercel.app/<kanal>`. Kanäle: `reddit`, `tiktok`, `insta`, `youtube`, `producthunt`, `hn`,
+`https://kolbi-smoky.vercel.app/<kanal>` (deutsche Seite) bzw. `https://kolbi-smoky.vercel.app/en/<kanal>` (englische Seite – für alle englischen Posts). Kanäle: `reddit`, `tiktok`, `insta`, `youtube`, `producthunt`, `hn`,
 `facebook`, `linkedin`, `x`, `threads`, `discord`, `indiehackers`, `pinterest`, `forum`, `qr`.
 
 > **[Platzhalter]** in eckigen Klammern vor dem Posten durch deine echten Angaben ersetzen – nichts erfinden.
@@ -18,7 +18,7 @@ denn die ändern sich. Jeder Kanal hat einen **eigenen Link**, damit wir sehen, 
 
 ## Fahrplan
 
-| Wann | Deutsch (geht sofort, App ist deutsch) | Englisch (erst wenn die App auf Englisch da ist) |
+| Wann | Deutsch (geht sofort, App ist deutsch) | Englisch (App + Seite sind jetzt auf Englisch da: `/en`) |
 |---|---|---|
 | **Woche 1–2** | TikTok + Instagram nach `../content/posting-plan.md` · Reddit-Konto anlegen und aufwärmen · LinkedIn-Post · Podcast-Pitch | – |
 | **Woche 3** | r/FitnessDE (nach Mod-OK) · Facebook-Gruppen (nach Admin-OK) · t3n-Tipp | AlternativeTo + SaaSHub eintragen |
@@ -68,7 +68,7 @@ Fragen beantworten (Tracking, Routinen, wie man Dinge sauber ausprobiert). **Ohn
 >
 > Link: https://kolbi-smoky.vercel.app/reddit
 
-### r/QuantifiedSelf (EN) – Feedback-Post *(nach englischer App)*
+### r/QuantifiedSelf (EN) – Feedback-Post *(englisch – Link `/en/…`)*
 
 Titel: *I built a tiny n-of-1 tool to test supplements one at a time – looking for feedback on the method*
 > I kept stacking supplements without knowing what any of them did, so I built a small app around a simple protocol:
@@ -84,9 +84,9 @@ Titel: *I built a tiny n-of-1 tool to test supplements one at a time – looking
 > - Is a 5–10 day window per supplement too short to be useful for you?
 > - How would you handle confounders (training days, stress) in such a simple setup?
 >
-> https://kolbi-smoky.vercel.app/reddit (free, no sign-up)
+> https://kolbi-smoky.vercel.app/en/reddit (free, no sign-up)
 
-### r/SideProject (EN) *(nach englischer App)*
+### r/SideProject (EN) *(englisch – Link `/en/…`)*
 
 Titel: *Kolbi – a cute lab flask that helps you find out which supplements actually do something for you*
 > **What:** free web app (installable PWA) for structured self-experiments with supplements.
@@ -95,17 +95,17 @@ Titel: *Kolbi – a cute lab flask that helps you find out which supplements act
 > **Stack/decisions:** React + Vite, local-first (no backend for your data), optional push via Supabase,
 > mascot drawn in SVG and animated in CSS.
 >
-> Screens: [store screenshots] · Try it: https://kolbi-smoky.vercel.app/reddit
+> Screens: [store screenshots] · Try it: https://kolbi-smoky.vercel.app/en/reddit
 > Happy to answer anything about building it. Brutal feedback welcome.
 
-### r/alphaandbetausers (EN) *(nach englischer App)*
+### r/alphaandbetausers (EN) *(englisch – Link `/en/…`)*
 
 Titel: *[Beta] Kolbi – test your supplements one at a time (free, no account)*
 > Looking for 20 beta testers who take 2+ supplements. You'd do a 1-minute check-in each evening for ~2 weeks.
 > In return: lifetime "Founder Pro" for free + I'll build the features you ask for. Feedback button is in the app.
-> https://kolbi-smoky.vercel.app/reddit
+> https://kolbi-smoky.vercel.app/en/reddit
 
-### r/Biohackers (EN) – nur nach Mod-OK *(nach englischer App)*
+### r/Biohackers (EN) – nur nach Mod-OK *(englisch – Link `/en/…`)*
 
 **Modmail:**
 > Hi mods, solo dev here. I built a free, local-first tool for n-of-1 supplement tests (baseline → one change
@@ -114,13 +114,13 @@ Titel: *[Beta] Kolbi – test your supplements one at a time (free, no account)*
 
 ---
 
-## 2 · Product Hunt + Show HN (Launch-Tag, nach englischer App)
+## 2 · Product Hunt + Show HN (Launch-Tag)
 
 **Product Hunt** (Launch 00:01 Uhr Pacific = 09:01 Uhr bei uns, Di–Do; vorher eine Woche Maker-Profil pflegen)
 - **Name:** Kolbi
 - **Tagline (≤ 60):** `Find out which supplements actually work for you`
 - **Beschreibung (≤ 260):** `Kolbi is a free, local-first app for personal supplement experiments: a few baseline days, then one supplement at a time with a 1-minute evening check-in. It compares each test with your own normal so you can keep, maybe or drop. No account.`
-- **Galerie:** englische Store-Screenshots (`../store/screenshots-en/`) + Video `../content/videos/02-so-gehts.mp4` (EN-Version folgt)
+- **Galerie:** englische Store-Screenshots (`../store/screenshots-en/`) + Video `../content/videos-en/02-so-gehts.mp4`
 - **Erster Kommentar (Maker):**
 > Hey PH 👋 I built Kolbi because my supplement shelf was costing me [your amount] €/month and I couldn't tell what any
 > of it did. Kolbi turns that into a simple personal experiment: baseline → one change at a time → compare.
@@ -135,7 +135,7 @@ Titel: *[Beta] Kolbi – test your supplements one at a time (free, no account)*
 > Vite) that keeps all data in localStorage, with no account. Optional features (push reminders, calendar feed,
 > anonymous aggregate stats with k≥5) run on small Supabase edge functions that never see your entries.
 > Happy to talk about the protocol's limits (no blinding, confounders, regression to the mean) and the design.
-> https://kolbi-smoky.vercel.app/hn
+> https://kolbi-smoky.vercel.app/en/hn
 
 ---
 
@@ -148,10 +148,10 @@ Text für alle:
 
 | Verzeichnis | Hinweis | Link-Suffix |
 |---|---|---|
-| AlternativeTo | als Alternative zu **Bearable, Exist, Daylio** eintragen | `/forum` |
-| SaaSHub | Kategorie Health / Self-tracking | `/forum` |
-| Fazier, Uneed, Microlaunch, Peerlist, Launching Next, TinyLaunch | jeweils kostenlose Variante | `/producthunt` |
-| QS-Forum „Apps & Tools“ | Text wie r/QuantifiedSelf | `/forum` |
+| AlternativeTo | als Alternative zu **Bearable, Exist, Daylio** eintragen | `/en/forum` |
+| SaaSHub | Kategorie Health / Self-tracking | `/en/forum` |
+| Fazier, Uneed, Microlaunch, Peerlist, Launching Next, TinyLaunch | jeweils kostenlose Variante | `/en/producthunt` |
+| QS-Forum „Apps & Tools“ | Text wie r/QuantifiedSelf | `/en/forum` |
 
 ---
 
@@ -210,7 +210,7 @@ Nur hilfreich antworten, **kein Link im Beitrag**. Link nur in Profil oder Signa
 | YouTube Shorts | gleiche Videos wie TikTok, Banner `../brand/banner.png` | `/youtube` |
 | Threads / X | Video + 1 Satz, „Build in Public“-Updates (z. B. „Woche 2: 31 Tester, das häufigste Feedback war …“) | `/threads`, `/x` |
 | Pinterest | Karussell-Slides als Pins („Supplements selbst testen in 3 Schritten“) | `/pinterest` |
-| Discord (EN) | Biohacker Lounge, Biohackers HQ: nur im #self-promo-Kanal, Text wie r/alphaandbetausers | `/discord` |
+| Discord (EN) | Biohacker Lounge, Biohackers HQ: nur im #self-promo-Kanal, Text wie r/alphaandbetausers | `/en/discord` |
 | Flyer/QR | z. B. Aushang im Gym (QR-Code kann ich erzeugen) | `/qr` |
 
 ## 6 · „Oben stehen“ bei Google

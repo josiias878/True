@@ -1,10 +1,10 @@
 // Rohe App-Screenshots (iPhone 6,7"/6,9": 430×932 @3x) mit realistischen Beispieldaten.
-// Aufruf: node raw-shots.mjs <url> <outdir> [dark|light]
+// Aufruf: node raw-shots.mjs <url> <outdir> [dark|light] [de|en]
 import { createRequire } from "module"
 import fs from "fs"
 const require = createRequire(import.meta.url)
 const { chromium } = require(require("child_process").execSync("npm root -g").toString().trim() + "/playwright")
-const [URL_, OUT = "raw", SCHEME = "dark"] = process.argv.slice(2)
+const [URL_, OUT = "raw", SCHEME = "dark", LANGX = "de"] = process.argv.slice(2)
 fs.mkdirSync(OUT, { recursive: true })
 const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`
 const base = new Date(2026, 9, 4, 21, 20) // Sonntagabend, Check-in offen
@@ -44,11 +44,11 @@ const state = {
   learned: ["magnesium:0", "magnesium:1", "kreatin:0", "general:1", "general:2", "theanin:0", "vitd:0"], community: true, recapSeen: "2026-09-27",
 }
 const browser = await chromium.launch()
-const ctx = await browser.newContext({ viewport: { width: 430, height: 932 }, deviceScaleFactor: 3, colorScheme: SCHEME })
+const ctx = await browser.newContext({ viewport: { width: 430, height: 932 }, deviceScaleFactor: 3, colorScheme: SCHEME, locale: LANGX === "en" ? "en-US" : "de-DE" })
 const page = await ctx.newPage()
 await page.clock.install({ time: base })
 await page.route("**/functions/v1/**", r => r.fulfill({ json: { lib: "magnesium", n: 214, min: 5, keepPct: 61, maybePct: 22, avg: 0.38, quantiles: [-0.5, 0.0, 0.4, 0.8, 1.2], dims: { schlaf: 0.7, ruhe: 0.4, energie: 0.1 }, sides: {}, avgDays: 6, total: 1873, libs: { magnesium: { n: 214, keepPct: 61 } } } }))
-await page.addInitScript(([s, sch]) => { if (!sessionStorage.getItem("seeded")) { localStorage.setItem("true-supplement-lab-v1", s); localStorage.setItem("true-lab-tab", "heute"); localStorage.setItem("lab-theme", sch); sessionStorage.setItem("seeded", "1") } }, [JSON.stringify(state), SCHEME])
+await page.addInitScript(([s, sch, lx]) => { if (!sessionStorage.getItem("seeded")) { localStorage.setItem("true-supplement-lab-v1", s); localStorage.setItem("true-lab-tab", "heute"); localStorage.setItem("lab-theme", sch); localStorage.setItem("lab-lang", lx); sessionStorage.setItem("seeded", "1") } }, [JSON.stringify(state), SCHEME, LANGX])
 await page.goto(URL_, { waitUntil: "networkidle" }); await page.clock.runFor(1500)
 const real = ms => new Promise(r => setTimeout(r, ms))
 const nice = async () => { for (let k = 0; k < 4; k++) { const b = page.getByRole("button", { name: /Nice!/ }); if (await b.count()) { await b.click(); await page.clock.runFor(300) } } }
@@ -57,27 +57,27 @@ await nice(); await page.mouse.move(80, 200)
 await shot("1-heute")
 await page.evaluate(() => window.scrollTo(0, 620)); await shot("2-weg"); await page.evaluate(() => window.scrollTo(0, 0))
 // Tagesrunde: Einnahme-Schritt, dann Check-in-Tabelle (halb ausgefüllt)
-await page.getByRole("button", { name: /Los geht's|aufdecken/ }).first().click(); await page.clock.runFor(1600)
+await page.getByRole("button", { name: /Los geht's|aufdecken|Let's go|Reveal result/ }).first().click(); await page.clock.runFor(1600)
 await shot("3-runde")
-for (let g = 0; g < 4; g++) { const take = page.getByRole("button", { name: / genommen$/ }); if (await take.count()) { await take.click(); await page.clock.runFor(900) } else break }
-const s4 = page.getByRole("button", { name: /4 Sterne/ }); const n4 = await s4.count()
+for (let g = 0; g < 4; g++) { const take = page.getByRole("button", { name: / genommen$| taken$/ }); if (await take.count()) { await take.click(); await page.clock.runFor(900) } else break }
+const s4 = page.getByRole("button", { name: /4 Sterne|4 stars/ }); const n4 = await s4.count()
 for (let k = 0; k < Math.max(0, n4 - 3); k++) await s4.nth(k).click()
 await shot("3b-checkin")
-await page.getByRole("button", { name: /Runde schließen/ }).click(); await page.clock.runFor(600); await nice()
+await page.getByRole("button", { name: /Runde schließen|Close round/ }).click(); await page.clock.runFor(600); await nice()
 // Ergebnisse
-await page.getByRole("button", { name: "Ergebnisse" }).click({ force: true }); await page.clock.runFor(900); await nice(); await shot("4-muster")
+await page.getByRole("button", { name: /^(Ergebnisse|Results)$/ }).click({ force: true }); await page.clock.runFor(900); await nice(); await shot("4-muster")
 // Meine (Kosten)
-await page.getByRole("button", { name: "Meine" }).click({ force: true }); await page.clock.runFor(900); await nice(); await shot("5-kosten")
+await page.getByRole("button", { name: /^(Meine|Supps)$/ }).click({ force: true }); await page.clock.runFor(900); await nice(); await shot("5-kosten")
 await page.locator("button", { hasText: "Magnesium" }).first().click(); await page.clock.runFor(900)
-await page.getByText("Was andere erlebt haben").evaluate(el => el.scrollIntoView({ block: "start" })); await page.evaluate(() => { const sc = [...document.querySelectorAll("div")].find(d => d.style.maxHeight === "92dvh"); sc?.scrollBy(0, -40) })
+await page.getByText(/Was andere erlebt haben|What others/).first().evaluate(el => el.scrollIntoView({ block: "start" })); await page.evaluate(() => { const sc = [...document.querySelectorAll("div")].find(d => d.style.maxHeight === "92dvh"); sc?.scrollBy(0, -40) })
 await shot("6-community")
 await page.keyboard.press("Escape"); await page.clock.runFor(500)
-await page.getByRole("button", { name: /🧪 Experimente/ }).click(); await page.clock.runFor(900); await shot("7-experimente")
+await page.getByRole("button", { name: /🧪 Experimente|🧪 Experiments/ }).click(); await page.clock.runFor(900); await shot("7-experimente")
 // Kolbi
 await page.getByRole("button", { name: "Kolbi", exact: true }).click({ force: true }); await page.clock.runFor(900); await shot("8-kolbi")
 // Wochenrückblick
-await page.getByRole("button", { name: "Ergebnisse" }).click({ force: true }); await page.clock.runFor(700)
-await page.getByRole("button", { name: /Wochenrückblick ansehen/ }).click(); await page.clock.runFor(800)
+await page.getByRole("button", { name: /^(Ergebnisse|Results)$/ }).click({ force: true }); await page.clock.runFor(700)
+await page.getByRole("button", { name: /Wochenrückblick ansehen|See weekly recap/ }).click(); await page.clock.runFor(800)
 await page.mouse.click(380, 500); await page.clock.runFor(300); await page.mouse.click(380, 500); await page.clock.runFor(300)
 await shot("9-story")
 await browser.close()

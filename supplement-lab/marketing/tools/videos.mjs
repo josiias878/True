@@ -9,7 +9,9 @@ const require = createRequire(import.meta.url)
 const { chromium } = require(execFileSync("npm", ["root", "-g"]).toString().trim() + "/playwright")
 const FFMPEG = process.env.FFMPEG || "ffmpeg"
 const FPS = 30, W = 1080, H = 1920
-const OUT = "content/videos", TMP = process.env.TMPDIR_FRAMES || "/tmp/kolbi-frames"
+const EN = process.env.VLANG === "en"
+const tx = (de, en) => (EN ? en : de)
+const OUT = EN ? "content/videos-en" : "content/videos", TMP = process.env.TMPDIR_FRAMES || "/tmp/kolbi-frames"
 fs.mkdirSync(OUT, { recursive: true })
 
 const FONT = fs.readFileSync("brand/fonts/Nunito-latin.woff2").toString("base64")
@@ -27,9 +29,9 @@ const small = t => `<div class="small">${t}</div>`
 const ctaEnd = a => beat(a, null, `
   <div class="center col">
     <div class="float">${kolbi("party-alive", 460)}</div>
-    ${big("Finde raus, was<br>bei <span class='grad'>DIR</span> wirkt.", 92)}
+    ${big(tx("Finde raus, was<br>bei <span class='grad'>DIR</span> wirkt.", "Find out what<br>works for <span class='grad'>YOU</span>."), 92)}
     <div class="pill">🧪 Kolbi · Supplement Lab</div>
-    ${small("Kostenlos in der Beta · Link in Bio")}
+    ${small(tx("Kostenlos in der Beta · Link in Bio", "Free during the beta · link in bio"))}
   </div>`)
 
 const CSS = `
@@ -74,58 +76,58 @@ body{width:${W}px;height:${H}px;overflow:hidden;font-family:Nunito,sans-serif;co
 const V = {}
 
 V["01-hallo-kolbi"] = { dur: 10, cover: 1.2, html: [
-  beat(0.1, 2.6, `<div class="center col"><div class="bubble">Hi, ich bin Kolbi! 👋</div><div class="float">${kolbi("happy-alive", 560)}</div></div>`),
-  beat(2.6, 5.0, `<div class="center col">${big("Du nimmst 5 Supplements …", 104)}<div>${["💊", "🌙", "🍵", "🌿", "🏋️"].map((e, i) => `<span class="emo" style="animation:pop .5s cubic-bezier(.3,1.5,.5,1) ${2.9 + i * 0.18}s both">${e}</span>`).join(" ")}</div></div>`),
-  beat(5.0, 7.6, `<div class="center col">${kolbi("think-alive", 420)}${big("… aber welches<br>bringt <span class='grad'>bei dir</span><br>wirklich was?", 104)}</div>`),
+  beat(0.1, 2.6, `<div class="center col"><div class="bubble">${tx("Hi, ich bin Kolbi! 👋", "Hi, I'm Kolbi! 👋")}</div><div class="float">${kolbi("happy-alive", 560)}</div></div>`),
+  beat(2.6, 5.0, `<div class="center col">${big(tx("Du nimmst 5 Supplements …", "You take 5 supplements …"), 104)}<div>${["💊", "🌙", "🍵", "🌿", "🏋️"].map((e, i) => `<span class="emo" style="animation:pop .5s cubic-bezier(.3,1.5,.5,1) ${2.9 + i * 0.18}s both">${e}</span>`).join(" ")}</div></div>`),
+  beat(5.0, 7.6, `<div class="center col">${kolbi("think-alive", 420)}${big(tx("… aber welches<br>bringt <span class='grad'>bei dir</span><br>wirklich was?", "… but which one<br>actually does<br>something <span class='grad'>for you</span>?"), 104)}</div>`),
   ctaEnd(7.6),
 ] }
 
 V["02-so-gehts"] = { dur: 12, cover: 0.9, html: [
-  beat(0.1, 1.9, `<div class="center col">${big("Supplements testen<br>in 3 Schritten", 108)}${kolbi("happy-alive", 360)}</div>`),
-  beat(1.9, 4.3, `<div class="card center col" style="width:100%">${kolbi("think", 300)}${big("1 · Reset", 96)}${small("Ein paar Tage ohne Neues –<br>Kolbi lernt dein Normal.")}</div>`, { inn: "slidein", out: "slideout" }),
-  beat(4.3, 6.7, `<div class="card center col" style="width:100%">${kolbi("happy", 300)}${big("2 · Testen", 96)}${small("Eins nach dem anderen.<br>Abends 1 Minute Check-in.")}</div>`, { inn: "slidein", out: "slideout" }),
-  beat(6.7, 9.4, `<div class="card center col" style="width:100%">${kolbi("party-glow", 300)}${big("3 · Aufdecken", 96)}
-    <div class="pill" style="font-size:64px;background:#1baf7a;animation:pop .6s cubic-bezier(.3,1.5,.5,1) 7.5s both">💚 Behalten</div>${small("oder raus – <b>deine</b> Entscheidung.")}</div>`, { inn: "slidein", out: "slideout" }),
+  beat(0.1, 1.9, `<div class="center col">${big(tx("Supplements testen<br>in 3 Schritten", "Test your<br>supplements<br>in 3 steps"), 108)}${kolbi("happy-alive", 360)}</div>`),
+  beat(1.9, 4.3, `<div class="card center col" style="width:100%">${kolbi("think", 300)}${big("1 · Reset", 96)}${small(tx("Ein paar Tage ohne Neues –<br>Kolbi lernt dein Normal.", "A few days without anything new –<br>Kolbi learns your normal."))}</div>`, { inn: "slidein", out: "slideout" }),
+  beat(4.3, 6.7, `<div class="card center col" style="width:100%">${kolbi("happy", 300)}${big(tx("2 · Testen", "2 · Test"), 96)}${small(tx("Eins nach dem anderen.<br>Abends 1 Minute Check-in.", "One at a time.<br>1-minute check-in each evening."))}</div>`, { inn: "slidein", out: "slideout" }),
+  beat(6.7, 9.4, `<div class="card center col" style="width:100%">${kolbi("party-glow", 300)}${big(tx("3 · Aufdecken", "3 · Reveal"), 96)}
+    <div class="pill" style="font-size:64px;background:#1baf7a;animation:pop .6s cubic-bezier(.3,1.5,.5,1) 7.5s both">${tx("💚 Behalten", "💚 Keep")}</div>${small(tx("oder raus – <b>deine</b> Entscheidung.", "or drop it – <b>your</b> call."))}</div>`, { inn: "slidein", out: "slideout" }),
   ctaEnd(9.4),
 ] }
 
 const chaos = ["💊", "🌙", "🍵", "🌿", "🏋️", "🐟", "🌞", "⚡"]
 V["03-alles-gleichzeitig"] = { dur: 11, cover: 2.2, html: [
-  beat(0.1, 3.6, `<div class="center col">${small("POV:")}${big("Du startest 5 neue<br>Supplements<br>gleichzeitig.", 100)}</div>`),
+  beat(0.1, 3.6, `<div class="center col">${small("POV:")}${big(tx("Du startest 5 neue<br>Supplements<br>gleichzeitig.", "You start 5 new<br>supplements<br>at once."), 100)}</div>`),
   beat(1.4, 3.6, `<div style="position:absolute;inset:0">${chaos.map((e, i) => {
     const x = [8, 70, 15, 78, 40, 60, 5, 82][i], y = [10, 12, 70, 68, 82, 6, 24, 60][i]
     return `<span class="emo" style="position:absolute;left:${x}%;top:${y}%;--x:${(50 - x) * 8}px;--y:${(50 - y) * 8}px;--r:${i * 40}deg;animation:flyin .5s ease-out ${1.4 + i * 0.12}s both, jitter .5s ease-in-out ${2 + i * 0.05}s infinite">${e}</span>`
   }).join("")}</div>`, { inn: "pop" }),
-  beat(3.6, 6.4, `<div class="center col"><div style="animation:shake .4s ease-in-out 3.8s 3">${kolbi("alert", 440)}</div>${big("Und danach weißt<br>du nicht, was was<br>gemacht hat. 🤷", 96)}</div>`),
-  beat(6.4, 8.7, `<div class="center col">${kolbi("happy-shades", 440)}${big("Eins nach dem anderen.<br><span class='grad'>Dann siehst du's.</span>", 96)}</div>`),
+  beat(3.6, 6.4, `<div class="center col"><div style="animation:shake .4s ease-in-out 3.8s 3">${kolbi("alert", 440)}</div>${big(tx("Und danach weißt<br>du nicht, was was<br>gemacht hat. 🤷", "And afterwards<br>you have no idea<br>what did what. 🤷"), 96)}</div>`),
+  beat(6.4, 8.7, `<div class="center col">${kolbi("happy-shades", 440)}${big(tx("Eins nach dem anderen.<br><span class='grad'>Dann siehst du's.</span>", "One at a time.<br><span class='grad'>Then you'll see.</span>"), 96)}</div>`),
   ctaEnd(8.7),
 ] }
 
-const items = [["🌙", "Magnesium", 17, "#9085e9"], ["🏋️", "Kreatin", 25, "#2ECC8A"], ["🌞", "Vitamin D3", 15, "#eda100"], ["🌿", "Ashwagandha", 18, "#e87ba4"], ["🍵", "L-Theanin", 19, "#3987e5"]]
+const items = [["🌙", "Magnesium", 17, "#9085e9"], ["🏋️", tx("Kreatin", "Creatine"), 25, "#2ECC8A"], ["🌞", "Vitamin D3", 15, "#eda100"], ["🌿", "Ashwagandha", 18, "#e87ba4"], ["🍵", tx("L-Theanin", "L-Theanine"), 19, "#3987e5"]]
 V["04-was-kostet-dein-schrank"] = { dur: 12, cover: 3.2, html: [
-  beat(0.1, 2.4, `<div class="center col">${kolbi("think-alive", 380)}${big("Was kostet dein<br>Supplement-Schrank<br>im Monat?", 100)}</div>`),
+  beat(0.1, 2.4, `<div class="center col">${kolbi("think-alive", 380)}${big(tx("Was kostet dein<br>Supplement-Schrank<br>im Monat?", "What does your<br>supplement shelf<br>cost per month?"), 100)}</div>`),
   beat(2.4, 6.6, `<div class="card col" style="display:flex;width:100%;gap:26px">
     ${items.map(([e, n, p, c], i) => `<div style="display:flex;align-items:center;gap:22px;font-size:48px;font-weight:900;animation:rise .45s ease-out ${2.6 + i * 0.22}s both">
       <span style="font-size:64px">${e}</span><span style="flex:1">${n}</span>
       <span style="width:220px;height:26px;border-radius:13px;background:rgba(255,255,255,.15);overflow:hidden"><span style="display:block;height:100%;width:${p * 8}px;background:${c};border-radius:13px;animation:grow .7s ease-out ${2.8 + i * 0.22}s both"></span></span>
-      <span style="width:130px;text-align:right">${p} €</span></div>`).join("")}
+      <span style="width:130px;text-align:right">${tx(`${p} €`, `€${p}`)}</span></div>`).join("")}
     <div style="border-top:2px solid rgba(255,255,255,.25);padding-top:22px;display:flex;justify-content:space-between;font-size:64px;font-weight:900">
-      <span>Summe</span><span><span class="count" style="--to:94;animation:count 1.6s ease-out 3.4s both"></span> €</span></div>
+      <span>${tx("Summe", "Total")}</span><span>${tx("", "€")}<span class="count" style="--to:94;animation:count 1.6s ease-out 3.4s both"></span>${tx(" €", "")}</span></div>
   </div>`),
-  beat(6.6, 9.2, `<div class="center col">${kolbi("happy-shades", 420)}${big("Teste, was <span class='grad'>bei dir</span><br>einen Unterschied macht.<br>Spar dir den Rest. ✂️", 92)}</div>`),
+  beat(6.6, 9.2, `<div class="center col">${kolbi("happy-shades", 420)}${big(tx("Teste, was <span class='grad'>bei dir</span><br>einen Unterschied macht.<br>Spar dir den Rest. ✂️", "Test what makes<br>a difference <span class='grad'>for you</span>.<br>Skip the rest. ✂️"), 92)}</div>`),
   ctaEnd(9.2),
 ] }
 
 V["05-kolbi-entdeckt-muster"] = { dur: 11, cover: 3.6, html: [
-  beat(0.1, 2.3, `<div class="center col">${kolbi("think-alive", 440)}${big("Kolbi hat in<br>deinen Daten<br>was entdeckt 🔎", 104)}</div>`),
+  beat(0.1, 2.3, `<div class="center col">${kolbi("think-alive", 440)}${big(tx("Kolbi hat in<br>deinen Daten<br>was entdeckt 🔎", "Kolbi found<br>something in<br>your data 🔎"), 104)}</div>`),
   beat(2.3, 6.4, `<div class="card col" style="display:flex;width:100%">
-    <div style="display:flex;align-items:center;gap:26px"><span style="font-size:110px">🍷</span><div><div class="big" style="font-size:66px;text-align:left">An Tagen mit Alkohol</div><div class="small" style="text-align:left">🌙 dein Schlaf</div></div></div>
-    ${[["mit", 2.3, "#e34948"], ["ohne", 3.6, "#b4b0d6"]].map(([l, v, c], i) => `<div style="display:flex;align-items:center;gap:24px;font-size:52px;font-weight:900">
-      <span style="width:150px;text-align:right;opacity:.8">${l}</span><span style="flex:1;height:40px;border-radius:20px;background:rgba(255,255,255,.12);overflow:hidden"><span style="display:block;height:100%;width:${v * 20}%;background:${c};border-radius:20px;animation:grow .9s ease-out ${3 + i * 0.3}s both"></span></span><span style="width:130px">${String(v).replace(".", ",")}★</span></div>`).join("")}
-    <div style="font-size:120px;font-weight:900;color:#ff8a8a;text-align:center;animation:pop .6s cubic-bezier(.3,1.5,.5,1) 4.2s both">−1,3★</div>
-    ${small("Beispiel · deine eigenen Bewertungen")}
+    <div style="display:flex;align-items:center;gap:26px"><span style="font-size:110px">🍷</span><div><div class="big" style="font-size:66px;text-align:left">${tx("An Tagen mit Alkohol", "On days with alcohol")}</div><div class="small" style="text-align:left">${tx("🌙 dein Schlaf", "🌙 your sleep")}</div></div></div>
+    ${[[tx("mit", "with"), 2.3, "#e34948"], [tx("ohne", "without"), 3.6, "#b4b0d6"]].map(([l, v, c], i) => `<div style="display:flex;align-items:center;gap:24px;font-size:52px;font-weight:900">
+      <span style="width:${tx(150, 230)}px;text-align:right;opacity:.8">${l}</span><span style="flex:1;height:40px;border-radius:20px;background:rgba(255,255,255,.12);overflow:hidden"><span style="display:block;height:100%;width:${v * 20}%;background:${c};border-radius:20px;animation:grow .9s ease-out ${3 + i * 0.3}s both"></span></span><span style="width:130px">${tx(String(v).replace(".", ","), String(v))}★</span></div>`).join("")}
+    <div style="font-size:120px;font-weight:900;color:#ff8a8a;text-align:center;animation:pop .6s cubic-bezier(.3,1.5,.5,1) 4.2s both">${tx("−1,3★", "−1.3★")}</div>
+    ${small(tx("Beispiel · deine eigenen Bewertungen", "Example · your own ratings"))}
   </div>`),
-  beat(6.4, 8.6, `<div class="center col">${kolbi("party-glow", 420)}${big("Muster, die dir<br>selbst nie<br>auffallen würden.", 100)}</div>`),
+  beat(6.4, 8.6, `<div class="center col">${kolbi("party-glow", 420)}${big(tx("Muster, die dir<br>selbst nie<br>auffallen würden.", "Patterns you'd<br>never notice<br>on your own."), 100)}</div>`),
   ctaEnd(8.6),
 ] }
 

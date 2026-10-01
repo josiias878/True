@@ -8,6 +8,7 @@ import {
 } from "./supplementLab"
 import { partnerTips } from "./labKnowledge"
 import { LOW_DAYS, buyInfo, inUse, stockInfo } from "./labStock"
+import { t, clock } from "./labI18n"
 
 const APP_URL = STORE_MODE ? "" : "https://get-true.de/lab"
 
@@ -15,8 +16,8 @@ function icsDate(iso: string, time: string) {
   const m = toMin(time)
   const dayOffset = Math.floor(m / 1440)
   const d = addDays(iso, dayOffset).replace(/-/g, "")
-  const t = fromMin(m).replace(":", "")
-  return `${d}T${t}00`
+  const hm = fromMin(m).replace(":", "")
+  return `${d}T${hm}00`
 }
 function esc(s: string) { return s.replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\n/g, "\\n") }
 function stamp() { return new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "") }
@@ -51,8 +52,8 @@ export function buildIcs(s: LabState): string {
   const ev: string[] = []
 
   // Täglicher Check-in
-  ev.push(event("checkin", icsDate(from, s.reminders.checkin), "🧪 Supplement-Check-in (1 Klick)",
-    "Wie war dein Tag? Einmal tippen, fertig.", icsDate(checkinUntil, "23:59")))
+  ev.push(event("checkin", icsDate(from, s.reminders.checkin), t("🧪 Supplement-Check-in (1 Klick)"),
+    t("Wie war dein Tag? Einmal tippen, fertig."), icsDate(checkinUntil, "23:59")))
 
   // Einnahmen pro Test-Phase
   if (s.reminders.intake) {
@@ -64,18 +65,18 @@ export function buildIcs(s: LabState): string {
         if (start > horizon) continue
         const time = fromMin(suppMinutes(supp.id, s))
         const lib = supp.lib ? LIB_BY_ID[supp.lib] : undefined
-        ev.push(event(`take-${w.id}`, icsDate(start, time), `${supp.emoji} ${supp.name} nehmen`,
+        ev.push(event(`take-${w.id}`, icsDate(start, time), t("{emoji} {name} nehmen", { emoji: supp.emoji, name: supp.name }),
           `${supp.dose ? supp.dose + " · " : ""}${lib?.timing ?? ""}`, icsDate(w.end, "23:59")))
       }
       if ((w.kind === "baseline" || w.kind === "washout") && w.start >= from) {
         ev.push(event(`phase-${w.id}`, icsDate(w.start, s.settings.wake),
-          w.kind === "baseline" ? "🧘 Reset startet: heute nichts nehmen" : "💧 Auswaschpause: heute nichts testen",
-          "Einfach wie gewohnt einchecken."))
+          w.kind === "baseline" ? t("🧘 Reset startet: heute nichts nehmen") : t("💧 Auswaschpause: heute nichts testen"),
+          t("Einfach wie gewohnt einchecken.")))
       }
       if (w.kind === "test" && w.suppId && w.end >= from) {
         const supp = s.supps.find(x => x.id === w.suppId)
-        ev.push(event(`verdict-${w.id}`, icsDate(addDays(w.end, 1), "10:00"), `⚖️ Urteil fällig: ${supp?.name ?? "Test"}`,
-          "Die App hat schon einen Vorschlag für dich — 1 Klick zum Bestätigen."))
+        ev.push(event(`verdict-${w.id}`, icsDate(addDays(w.end, 1), "10:00"), t("⚖️ Urteil fällig: {name}", { name: supp?.name ?? t("Test") }),
+          t("Die App hat schon einen Vorschlag für dich — 1 Klick zum Bestätigen.")))
       }
     }
     // Stack-Phase: alle behaltenen täglich
@@ -83,7 +84,7 @@ export function buildIcs(s: LabState): string {
     if (stack) {
       for (const supp of s.supps.filter(x => s.verdicts[x.id]?.decision === "keep" && x.mode !== "konstant" && isHere(x))) {
         const time = fromMin(suppMinutes(supp.id, s))
-        ev.push(event(`stack-${supp.id}`, icsDate(stack.start > from ? stack.start : from, time), `${supp.emoji} ${supp.name} nehmen`, supp.dose || "", icsDate(last.end, "23:59")))
+        ev.push(event(`stack-${supp.id}`, icsDate(stack.start > from ? stack.start : from, time), t("{emoji} {name} nehmen", { emoji: supp.emoji, name: supp.name }), supp.dose || "", icsDate(last.end, "23:59")))
       }
     }
     // Durchgehende Supplements
@@ -92,7 +93,7 @@ export function buildIcs(s: LabState): string {
       const time = fromMin(suppMinutes(supp.id, s))
       // wöchentliche am Wochentag des Experiment-Starts
       const first = lib?.weekly ? addDays(wins[0].start, Math.ceil(Math.max(0, diffDays(wins[0].start, from)) / 7) * 7) : from
-      ev.push(event(`const-${supp.id}`, icsDate(first, time), `${supp.emoji} ${supp.name}${lib?.weekly ? " (wöchentlich)" : ""} nehmen`,
+      ev.push(event(`const-${supp.id}`, icsDate(first, time), lib?.weekly ? t("{emoji} {name} (wöchentlich) nehmen", { emoji: supp.emoji, name: supp.name }) : t("{emoji} {name} nehmen", { emoji: supp.emoji, name: supp.name }),
         supp.dose || "", icsDate(last.end, "23:59"), lib?.weekly ? "WEEKLY" : "DAILY"))
     }
   }
@@ -148,7 +149,7 @@ function hashId(s: string) {
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0
   return Math.abs(h) % 2_000_000_000
 }
-function shorten(t: string, n: number) { return t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t }
+function shorten(str: string, n: number) { return str.length > n ? str.slice(0, n - 1).trimEnd() + "…" : str }
 function joinNames(names: string[]) {
   if (names.length <= 1) return names.join("")
   if (names.length === 2) return `${names[0]} & ${names[1]}`
@@ -186,14 +187,14 @@ export function notificationPlan(s: LabState, days = 7, now = new Date()): Plann
         if (!supps.length) continue
         const slot: SlotId = slotFor(supps[0].id, s)
         const custom = supps.some(x => x.time)
-        const info = custom ? { emoji: "⏰", label: `${fromMin(m)} Uhr` } : SLOTS.find(x => x.id === slot)!
+        const info = custom ? { emoji: "⏰", label: clock(fromMin(m)) } : SLOTS.find(x => x.id === slot)!
         const lib = libOf(supps[0])
         out.push({
           key: `take-${date}-${m}`, kind: "take", suppIds: supps.map(x => x.id), url: round,
           at: atDate(date, m),
           title: `${info.emoji} ${info.label}: ${joinNames(supps.map(x => x.name))}`,
-          body: supps.length === 1 && lib ? shorten(`💡 ${lib.timing}`, 150) : `${supps.map(x => x.emoji).join(" ")} Tippe „Genommen“ oder öffne deine Runde.`,
-          generic: { title: `${info.emoji} ${info.label}: Zeit für deine Supplements`, body: "Tippe, um abzuhaken." },
+          body: supps.length === 1 && lib ? shorten(`💡 ${lib.timing}`, 150) : `${supps.map(x => x.emoji).join(" ")} ${t("Tippe „Genommen“ oder öffne deine Runde.")}`,
+          generic: { title: t("{emoji} {label}: Zeit für deine Supplements", { emoji: info.emoji, label: info.label }), body: t("Tippe, um abzuhaken.") },
         })
       }
     }
@@ -204,8 +205,8 @@ export function notificationPlan(s: LabState, days = 7, now = new Date()): Plann
     if (prevDay >= wins[0].start && !s.checkins[prevDay]) {
       out.push({
         key: `catchup-${date}`, kind: "checkin", url: round, at: atDate(date, wake + 45),
-        title: "🌅 Wie war gestern?", body: "Der Check-in fehlt noch – 10 Sekunden nachtragen, dann bleibt deine Auswertung genau.",
-        generic: { title: "🌅 Wie war gestern?", body: "10 Sekunden nachtragen, dann bleibt deine Auswertung genau." },
+        title: t("🌅 Wie war gestern?"), body: t("Der Check-in fehlt noch – 10 Sekunden nachtragen, dann bleibt deine Auswertung genau."),
+        generic: { title: t("🌅 Wie war gestern?"), body: t("10 Sekunden nachtragen, dann bleibt deine Auswertung genau.") },
       })
     }
 
@@ -219,18 +220,18 @@ export function notificationPlan(s: LabState, days = 7, now = new Date()): Plann
       for (const n of near) out.splice(out.indexOf(n), 1)
       const names = ids.map(id => s.supps.find(x => x.id === id)?.name).filter(Boolean) as string[]
       const text = names.length
-        ? { title: "🧪 Deine Abendrunde", body: `${joinNames(names)} nehmen + 1 Minute Check-in. So sehe ich, was bei dir wirklich wirkt.` }
-        : { title: "🧪 Kolbi wartet auf dich", body: "1 Minute: Wie war dein Tag? So sehe ich, was bei dir wirklich wirkt." }
+        ? { title: t("🧪 Deine Abendrunde"), body: t("{names} nehmen + 1 Minute Check-in. So sehe ich, was bei dir wirklich wirkt.", { names: joinNames(names) }) }
+        : { title: t("🧪 Kolbi wartet auf dich"), body: t("1 Minute: Wie war dein Tag? So sehe ich, was bei dir wirklich wirkt.") }
       out.push({
         key: `checkin-${date}`, kind: "checkin", url: round, at, ...text, ...(ids.length ? { suppIds: ids } : {}),
-        generic: names.length ? { title: "🧪 Deine Abendrunde wartet", body: "Einnahme + 1 Minute Check-in." } : text,
+        generic: names.length ? { title: t("🧪 Deine Abendrunde wartet"), body: t("Einnahme + 1 Minute Check-in.") } : text,
       })
       if (i === 0 && st >= 3) {
         const sm = Math.min(m + 90, bed - 15)
         if (sm > m + 20) out.push({
           key: `streak-${date}`, kind: "streak", url: round, at: atDate(date, sm),
-          title: `🔥 Deine ${st}-Tage-Serie reißt heute`, body: "Noch schnell einchecken – dauert keine Minute.",
-          generic: { title: "🔥 Deine Serie wartet", body: "Noch schnell einchecken – dauert keine Minute." },
+          title: t("🔥 Deine {n}-Tage-Serie reißt heute", { n: st }), body: t("Noch schnell einchecken – dauert keine Minute."),
+          generic: { title: t("🔥 Deine Serie wartet"), body: t("Noch schnell einchecken – dauert keine Minute.") },
         })
       }
     }
@@ -241,8 +242,8 @@ export function notificationPlan(s: LabState, days = 7, now = new Date()): Plann
       const supp = s.supps.find(x => x.id === w.suppId)
       out.push({
         key: `result-${w.id}`, kind: "result", url: round, at: atDate(date, wake + 60),
-        title: `🎁 Dein Ergebnis zu ${supp?.name ?? "deinem Test"} ist da`, body: "Tippe, um aufzudecken, ob es bei dir wirkt.",
-        generic: { title: "🎁 Ein Test-Ergebnis ist da", body: "Tippe, um aufzudecken, ob es bei dir wirkt." },
+        title: supp ? t("🎁 Dein Ergebnis zu {name} ist da", { name: supp.name }) : t("🎁 Dein Ergebnis zu deinem Test ist da"), body: t("Tippe, um aufzudecken, ob es bei dir wirkt."),
+        generic: { title: t("🎁 Ein Test-Ergebnis ist da"), body: t("Tippe, um aufzudecken, ob es bei dir wirkt.") },
       })
     }
 
@@ -250,8 +251,8 @@ export function notificationPlan(s: LabState, days = 7, now = new Date()): Plann
     if (new Date(`${date}T12:00:00`).getDay() === 0 && diffDays(s.startDate, date) >= 3) {
       out.push({
         key: `recap-${date}`, kind: "tip", url: `${LAB_BASE}?recap=1`, at: atDate(date, 18 * 60 + 30),
-        title: "📊 Dein Wochenrückblick ist da", body: "Wie war deine Woche? Kolbi hat alles zusammengestellt – 30 Sekunden zum Durchwischen.",
-        generic: { title: "📊 Dein Wochenrückblick ist da", body: "30 Sekunden zum Durchwischen." },
+        title: t("📊 Dein Wochenrückblick ist da"), body: t("Wie war deine Woche? Kolbi hat alles zusammengestellt – 30 Sekunden zum Durchwischen."),
+        generic: { title: t("📊 Dein Wochenrückblick ist da"), body: t("30 Sekunden zum Durchwischen.") },
       })
     }
 
@@ -264,9 +265,9 @@ export function notificationPlan(s: LabState, days = 7, now = new Date()): Plann
         const partner = partnerTips(s, supp.id)[0]
         out.push({
           key: `tip-${date}`, kind: "tip", url: LAB_BASE, at: atDate(date, 11 * 60),
-          title: `💡 ${supp.emoji} ${supp.name}: so holst du mehr raus`,
+          title: t("💡 {emoji} {name}: so holst du mehr raus", { emoji: supp.emoji, name: supp.name }),
           body: shorten(partner ? `${partner.title}. ${partner.text}` : libOf(supp)!.timing, 170),
-          generic: { title: "💡 Kolbis Praxis-Tipp der Woche", body: "Ein kurzer Tipp für deinen Alltag." },
+          generic: { title: t("💡 Kolbis Praxis-Tipp der Woche"), body: t("Ein kurzer Tipp für deinen Alltag.") },
         })
       }
     }
@@ -281,9 +282,9 @@ export function notificationPlan(s: LabState, days = 7, now = new Date()): Plann
     const alt = buyInfo(x).alt
     out.push({
       key: `stock-${x.id}-${x.stock.at}`, kind: "stock", url: LAB_BASE, at: atDate(date, wake + 150),
-      title: `🛒 ${x.name} reicht noch ${left} ${left === 1 ? "Tag" : "Tage"}`,
-      body: shorten(alt ? `Zeit nachzubestellen. 💡 ${alt}` : "Zeit nachzubestellen, damit keine Lücke entsteht.", 170),
-      generic: { title: "🛒 Dein Vorrat geht bald aus", body: "Zeit nachzubestellen, damit keine Lücke entsteht." },
+      title: left === 1 ? t("🛒 {name} reicht noch 1 Tag", { name: x.name }) : t("🛒 {name} reicht noch {n} Tage", { name: x.name, n: left }),
+      body: shorten(alt ? t("Zeit nachzubestellen. 💡 {tip}", { tip: alt }) : t("Zeit nachzubestellen, damit keine Lücke entsteht."), 170),
+      generic: { title: t("🛒 Dein Vorrat geht bald aus"), body: t("Zeit nachzubestellen, damit keine Lücke entsteht.") },
     })
   }
   return out.filter(n => n.at > now).sort((a, b) => +a.at - +b.at).slice(0, 60).map(n => ({ ...n, id: hashId(n.key) }))
@@ -313,7 +314,7 @@ export function checkLabReminders() {
       navigator.serviceWorker?.ready.then(reg => reg.showNotification(n.title, {
         body: n.body, icon: "./icon-192.png", badge: "./icon-192.png", tag: `true-lab-${n.kind}`,
         data: { url: n.url, taken: n.suppIds?.join(",") },
-        ...(n.suppIds ? { actions: [{ action: "lab-taken", title: "✓ Genommen" }] } : {}),
+        ...(n.suppIds ? { actions: [{ action: "lab-taken", title: t("✓ Genommen") }] } : {}),
       } as NotificationOptions))
     }
   } catch {}

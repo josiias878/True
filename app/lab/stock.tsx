@@ -7,6 +7,7 @@ import {
 } from "@/lib/labStock"
 import { Btn, Sheet } from "./ui"
 import { KolbiTip, Mascot } from "./mascot"
+import { t, euro } from "@/lib/labI18n"
 
 // ── Animierte Dose: Füllstand = Vorrat ─────────────────────────────────────────
 
@@ -70,13 +71,13 @@ function NumberPick({ value, onChange, chips, unit, max, step = 1 }: { value: nu
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <button className="lab-press" style={b} aria-label="weniger" onClick={() => set(value - step)}>−</button>
+        <button className="lab-press" style={b} aria-label={t("weniger")} onClick={() => set(value - step)}>−</button>
         <label style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
           <input type="number" inputMode="decimal" value={value || ""} placeholder="0" onChange={e => set(Number(e.target.value.replace(",", ".")))}
             style={{ width: 110, textAlign: "center", fontSize: "2.4rem", fontWeight: 900, border: "none", background: "transparent", color: "var(--text)", outline: "none", fontVariantNumeric: "tabular-nums" }} />
           <span style={{ fontWeight: 800, color: "var(--text-dim)" }}>{unit}</span>
         </label>
-        <button className="lab-press" style={b} aria-label="mehr" onClick={() => set(value + step)}>+</button>
+        <button className="lab-press" style={b} aria-label={t("mehr")} onClick={() => set(value + step)}>+</button>
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
         {chips.map(c => (
@@ -137,14 +138,14 @@ export function StockSheet({ s, suppId, onClose, onSave }: {
   const check = doseCheck(x, stock)
   const color = suppColor(x)
   const steps = 4
-  const perUnit = form === "kapseln" ? "Kapsel" : form === "tropfen" ? "Tropfen" : form === "pulver" ? "g" : "ml"
+  const perUnit = form === "kapseln" ? t("Kapsel") : form === "tropfen" ? t("Tropfen") : form === "pulver" ? "g" : "ml"
 
   return (
-    <Sheet open onClose={onClose} title={`${x.emoji} Vorrat: ${x.name}`}>
+    <Sheet open onClose={onClose} title={`${x.emoji} ${t("Vorrat: {name}", { name: x.name })}`}>
       <Dots n={steps} i={step} />
       {step === 0 && (
         <div key="s0" className="lab-rise" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: "1.25rem", fontWeight: 900, textAlign: "center", marginBottom: 6 }}>Wie sieht es aus?</div>
+          <div style={{ fontSize: "1.25rem", fontWeight: 900, textAlign: "center", marginBottom: 6 }}>{t("Wie sieht es aus?")}</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             {(Object.keys(FORMS) as StockForm[]).map(k => (
               <button key={k} className="lab-press" onClick={() => pickForm(k)} style={{
@@ -160,11 +161,11 @@ export function StockSheet({ s, suppId, onClose, onSave }: {
       )}
       {step === 1 && (
         <div key="s1" className="lab-rise" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ fontSize: "1.25rem", fontWeight: 900, textAlign: "center" }}>Wie viel ist in einer Packung?</div>
-          <div style={{ fontSize: "0.82rem", color: "var(--text-dim)", textAlign: "center", marginTop: -10 }}>Steht meist vorne drauf{form === "tropfen" ? " (Inhalt in ml)" : ""}.</div>
+          <div style={{ fontSize: "1.25rem", fontWeight: 900, textAlign: "center" }}>{t("Wie viel ist in einer Packung?")}</div>
+          <div style={{ fontSize: "0.82rem", color: "var(--text-dim)", textAlign: "center", marginTop: -10 }}>{form === "tropfen" ? t("Steht meist vorne drauf (Inhalt in ml).") : t("Steht meist vorne drauf.")}</div>
           <NumberPick value={pack} onChange={setPack} chips={f.packChips} unit={f.packUnit} max={f.packMax} step={form === "kapseln" ? 10 : form === "pulver" ? 50 : 5} />
           <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-            {[[false, "📦 Neu / voll"], [true, "✂️ Schon angebrochen"]].map(([v, l]) => (
+            {[[false, t("📦 Neu / voll")], [true, t("✂️ Schon angebrochen")]].map(([v, l]) => (
               <button key={String(v)} className="lab-press" onClick={() => { setOpened(v as boolean); if (v && !left) setLeft(Math.round(pack / 2)) }} style={{
                 padding: "9px 14px", borderRadius: 999, fontWeight: 800, fontSize: "0.82rem",
                 border: opened === v ? "2px solid var(--accent)" : "1px solid var(--border)", background: opened === v ? "var(--accent-dim)" : "transparent", color: "var(--text)",
@@ -173,35 +174,35 @@ export function StockSheet({ s, suppId, onClose, onSave }: {
           </div>
           {opened && (
             <div className="lab-rise" style={{ padding: 14, borderRadius: 20, background: "var(--surface-2)" }}>
-              <div style={{ fontWeight: 800, textAlign: "center", marginBottom: 8 }}>Ungefähr noch drin?</div>
+              <div style={{ fontWeight: 800, textAlign: "center", marginBottom: 8 }}>{t("Ungefähr noch drin?")}</div>
               <NumberPick value={left} onChange={setLeft} chips={[0.25, 0.5, 0.75].map(k => Math.round(pack * k))} unit={f.packUnit} max={pack} step={form === "kapseln" ? 5 : 10} />
             </div>
           )}
-          <Btn full disabled={!pack} onClick={() => setStep(2)}>Weiter</Btn>
+          <Btn full disabled={!pack} onClick={() => setStep(2)}>{t("Weiter")}</Btn>
         </div>
       )}
       {step === 2 && (
         <div key="s2" className="lab-rise" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ fontSize: "1.25rem", fontWeight: 900, textAlign: "center" }}>Wie viel nimmst du {libOf(x)?.weekly ? "pro Einnahme" : "am Tag"}?</div>
-          {libOf(x) && <div style={{ fontSize: "0.82rem", color: "var(--text-dim)", textAlign: "center", marginTop: -10 }}>Übliche Menge: {libOf(x)!.dose}</div>}
+          <div style={{ fontSize: "1.25rem", fontWeight: 900, textAlign: "center" }}>{libOf(x)?.weekly ? t("Wie viel nimmst du pro Einnahme?") : t("Wie viel nimmst du am Tag?")}</div>
+          {libOf(x) && <div style={{ fontSize: "0.82rem", color: "var(--text-dim)", textAlign: "center", marginTop: -10 }}>{t("Übliche Menge: {dose}", { dose: libOf(x)!.dose })}</div>}
           <NumberPick value={perDay} onChange={setPerDay} chips={f.doseChips} unit={f.doseUnit} max={f.doseMax} step={form === "fluessig" ? 5 : 1} />
           {askActive && (
             <div style={{ padding: 14, borderRadius: 20, background: "var(--surface-2)" }}>
-              <div style={{ fontWeight: 800, textAlign: "center" }}>Wirkstoff pro {perUnit}? <span style={{ fontWeight: 600, color: "var(--text-dim)" }}>(optional)</span></div>
-              <div style={{ fontSize: "0.75rem", color: "var(--text-dim)", textAlign: "center", margin: "2px 0 10px" }}>Dann rechne ich nach, ob die Dosis passt.</div>
+              <div style={{ fontWeight: 800, textAlign: "center" }}>{t("Wirkstoff pro {unit}?", { unit: perUnit })} <span style={{ fontWeight: 600, color: "var(--text-dim)" }}>{t("(optional)")}</span></div>
+              <div style={{ fontSize: "0.75rem", color: "var(--text-dim)", textAlign: "center", margin: "2px 0 10px" }}>{t("Dann rechne ich nach, ob die Dosis passt.")}</div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                <input type="number" inputMode="decimal" value={active || ""} placeholder="z. B. 25" onChange={e => setActive(Math.max(0, Number(e.target.value.replace(",", "."))))}
+                <input type="number" inputMode="decimal" value={active || ""} placeholder={t("z. B. 25")} onChange={e => setActive(Math.max(0, Number(e.target.value.replace(",", "."))))}
                   style={{ width: 110, padding: "10px 12px", borderRadius: 14, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "1.1rem", fontWeight: 800, textAlign: "center" }} />
                 {(range?.unit === "IE" ? ["IE"] as const : ["mg", "µg"] as const).map(u => (
                   <button key={u} className="lab-press" onClick={() => setActiveUnit(u)} style={{
                     padding: "9px 12px", borderRadius: 12, border: "none", fontWeight: 800,
                     background: activeUnit === u ? "var(--accent)" : "var(--surface)", color: activeUnit === u ? "#fff" : "var(--text)",
-                  }}>{u}</button>
+                  }}>{u === "IE" ? t("IE") : u}</button>
                 ))}
               </div>
             </div>
           )}
-          <Btn full disabled={!perDay} onClick={() => setStep(3)}>Ausrechnen ✨</Btn>
+          <Btn full disabled={!perDay} onClick={() => setStep(3)}>{t("Ausrechnen ✨")}</Btn>
         </div>
       )}
       {step === 3 && (
@@ -210,23 +211,23 @@ export function StockSheet({ s, suppId, onClose, onSave }: {
             <Jar form={form} pct={stock.left / pack} color={color} size={130} />
             <div className="lab-pop" style={{ position: "absolute", right: -30, bottom: 6 }}><Mascot mood="party" size={54} /></div>
           </div>
-          <div style={{ fontSize: "0.72rem", fontWeight: 900, letterSpacing: ".1em", color: "var(--accent)" }}>REICHT FÜR CA.</div>
-          <div style={{ fontSize: "3rem", fontWeight: 900, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}><CountUp to={days} /> <span style={{ fontSize: "1.3rem" }}>Tage</span></div>
+          <div style={{ fontSize: "0.72rem", fontWeight: 900, letterSpacing: ".1em", color: "var(--accent)" }}>{t("REICHT FÜR CA.")}</div>
+          <div style={{ fontSize: "3rem", fontWeight: 900, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}><CountUp to={days} /> <span style={{ fontSize: "1.3rem" }}>{t("Tage")}</span></div>
           <div style={{ color: "var(--text-dim)", fontSize: "0.88rem" }}>
-            {days > 0 ? `bis ${fmtDate(addDays(todayIso(), days))} · ${doseLabel(stock)} ${libOf(x)?.weekly ? "pro Woche" : "am Tag"}` : "Da ist nichts mehr drin."}
+            {days > 0 ? `${t("bis {date}", { date: fmtDate(addDays(todayIso(), days)) })} · ${doseLabel(stock)} ${libOf(x)?.weekly ? t("pro Woche") : t("am Tag")}` : t("Da ist nichts mehr drin.")}
           </div>
           {check && (
             <div className="lab-late" style={{ width: "100%", textAlign: "left" }}>
-              <KolbiTip mood={check.level === "ok" ? "happy" : "think"} title={`${check.level === "ok" ? "✅" : check.level === "high" ? "⚠️" : "🤏"} ${check.amount} am Tag`}>
+              <KolbiTip mood={check.level === "ok" ? "happy" : "think"} title={`${check.level === "ok" ? "✅" : check.level === "high" ? "⚠️" : "🤏"} ${t("{amount} am Tag", { amount: check.amount })}`}>
                 {check.text}
-                {check.better && <> <b>{check.better === 1 ? "1 Kapsel würde" : `${check.better} Kapseln würden`} reichen</b> – dann hält die Packung ca. {Math.floor(stock.left / check.better)} statt {uses} Tage.</>}
+                {check.better && <> <b>{check.better === 1 ? t("1 Kapsel würde reichen") : t("{n} Kapseln würden reichen", { n: check.better })}</b> {t("– dann hält die Packung ca. {a} statt {b} Tage.", { a: Math.floor(stock.left / check.better), b: uses })}</>}
               </KolbiTip>
             </div>
           )}
           <div className="lab-late" style={{ width: "100%", padding: 14, borderRadius: 20, background: "var(--surface-2)", textAlign: "left" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ fontSize: "1.4rem" }}>💶</span>
-              <span style={{ flex: 1, fontWeight: 900, fontSize: "0.9rem" }}>Preis pro Packung <span style={{ fontWeight: 600, color: "var(--text-dim)" }}>(optional)</span></span>
+              <span style={{ flex: 1, fontWeight: 900, fontSize: "0.9rem" }}>{t("Preis pro Packung")} <span style={{ fontWeight: 600, color: "var(--text-dim)" }}>{t("(optional)")}</span></span>
               <label style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 10px", borderRadius: 12, background: "var(--surface)", border: "1px solid var(--border)" }}>
                 <input type="number" inputMode="decimal" value={price || ""} placeholder="0" onChange={e => setPrice(Math.max(0, Number(e.target.value.replace(",", "."))))}
                   style={{ width: 64, border: "none", background: "transparent", color: "var(--text)", fontSize: "1.05rem", fontWeight: 900, textAlign: "right", outline: "none" }} />
@@ -236,37 +237,37 @@ export function StockSheet({ s, suppId, onClose, onSave }: {
             <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
               {[10, 15, 20, 25, 35].map(v => (
                 <button key={v} className="lab-press" onClick={() => setPrice(v)} style={{ padding: "6px 11px", borderRadius: 999, border: "none", fontWeight: 800, fontSize: "0.8rem",
-                  background: price === v ? "var(--accent)" : "var(--surface)", color: price === v ? "#fff" : "var(--text)" }}>{v} €</button>
+                  background: price === v ? "var(--accent)" : "var(--surface)", color: price === v ? "#fff" : "var(--text)" }}>{euro(v)}</button>
               ))}
             </div>
             {perMonth != null && (
               <div key={Math.round(perMonth * 100)} className="lab-pop" style={{ marginTop: 10, display: "inline-flex", alignItems: "baseline", gap: 6, padding: "8px 14px", borderRadius: 999, background: "linear-gradient(135deg, #1baf7a, #2ECC8A)", color: "#fff" }}>
-                <span style={{ fontSize: "1.2rem", fontWeight: 900 }}>{fmtEuro(perMonth)}</span><span style={{ fontSize: "0.78rem", fontWeight: 800 }}>pro Monat</span>
+                <span style={{ fontSize: "1.2rem", fontWeight: 900 }}>{fmtEuro(perMonth)}</span><span style={{ fontSize: "0.78rem", fontWeight: 800 }}>{t("pro Monat")}</span>
               </div>
             )}
           </div>
-          <div className="lab-late" style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>🛒 Ich sag dir {LOW_DAYS} Tage vorher Bescheid.</div>
+          <div className="lab-late" style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>{t("🛒 Ich sag dir {n} Tage vorher Bescheid.", { n: LOW_DAYS })}</div>
           <div style={{ display: "flex", gap: 8, width: "100%", marginTop: 6 }}>
-            <Btn variant="soft" onClick={() => setStep(2)} style={{ flex: 1 }}>Ändern</Btn>
-            <Btn onClick={() => onSave(stock, doseLabel(stock))} style={{ flex: 2 }}>Speichern</Btn>
+            <Btn variant="soft" onClick={() => setStep(2)} style={{ flex: 1 }}>{t("Ändern")}</Btn>
+            <Btn onClick={() => onSave(stock, doseLabel(stock))} style={{ flex: 2 }}>{t("Speichern")}</Btn>
           </div>
         </div>
       )}
-      {step > 0 && step < 3 && <button onClick={() => setStep(step - 1)} style={{ display: "block", margin: "12px auto 0", background: "none", border: "none", color: "var(--text-dim)", fontWeight: 700 }}>← Zurück</button>}
+      {step > 0 && step < 3 && <button onClick={() => setStep(step - 1)} style={{ display: "block", margin: "12px auto 0", background: "none", border: "none", color: "var(--text-dim)", fontWeight: 700 }}>{t("← Zurück")}</button>}
     </Sheet>
   )
 }
 
 // ── Kauf-Link (bei Affiliate als Anzeige markiert) ─────────────────────────────
 
-export function ShopButton({ x, label = "🛒 Kaufen", small }: { x: MySupp; label?: string; small?: boolean }) {
+export function ShopButton({ x, label = t("🛒 Kaufen"), small }: { x: MySupp; label?: string; small?: boolean }) {
   if (!shopUrl(x)) return null
   return (
     <button className="lab-press" onClick={e => { e.stopPropagation(); openShop(x) }} style={{
       padding: small ? "7px 11px" : "10px 14px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)",
       fontWeight: 800, fontSize: small ? "0.75rem" : "0.85rem", display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0,
     }}>
-      {label}{shopIsAd() && <span style={{ fontSize: "0.58rem", fontWeight: 700, color: "var(--text-dim)" }}>Anzeige</span>}
+      {label}{shopIsAd() && <span style={{ fontSize: "0.58rem", fontWeight: 700, color: "var(--text-dim)" }}>{t("Anzeige")}</span>}
     </button>
   )
 }
@@ -282,8 +283,8 @@ export function StockCard({ s, x, onEdit, onRefill, onOrdered }: {
       <button className="lab-press lab-card" onClick={onEdit} style={{ display: "flex", alignItems: "center", gap: 12, padding: 14, width: "100%", textAlign: "left", color: "var(--text)" }}>
         <Jar form={guessForm(x)} pct={0.35} color={suppColor(x)} size={46} animate={false} />
         <span style={{ flex: 1 }}>
-          <span style={{ display: "block", fontWeight: 900 }}>📦 Vorrat eintragen</span>
-          <span style={{ display: "block", fontSize: "0.78rem", color: "var(--text-dim)" }}>Ich rechne aus, wie lange es reicht, und erinnere dich rechtzeitig.</span>
+          <span style={{ display: "block", fontWeight: 900 }}>{t("📦 Vorrat eintragen")}</span>
+          <span style={{ display: "block", fontSize: "0.78rem", color: "var(--text-dim)" }}>{t("Ich rechne aus, wie lange es reicht, und erinnere dich rechtzeitig.")}</span>
         </span>
         <span style={{ color: "var(--text-dim)" }}>›</span>
       </button>
@@ -295,24 +296,24 @@ export function StockCard({ s, x, onEdit, onRefill, onOrdered }: {
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <Jar form={x.stock.form} pct={info.pct} color={info.low ? "#eda100" : suppColor(x)} size={58} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: "0.68rem", fontWeight: 900, letterSpacing: ".08em", color: info.low ? "var(--warning)" : "var(--text-dim)" }}>VORRAT</div>
-          <div style={{ fontWeight: 900, fontSize: "1.05rem" }}>{info.empty ? "Leer" : `Reicht noch ${info.days} ${info.days === 1 ? "Tag" : "Tage"}`}</div>
+          <div style={{ fontSize: "0.68rem", fontWeight: 900, letterSpacing: ".08em", color: info.low ? "var(--warning)" : "var(--text-dim)" }}>{t("VORRAT")}</div>
+          <div style={{ fontWeight: 900, fontSize: "1.05rem" }}>{info.empty ? t("Leer") : info.days === 1 ? t("Reicht noch 1 Tag") : t("Reicht noch {n} Tage", { n: info.days })}</div>
           <div style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>
-            {fmtNum(info.left)} {FORMS[x.stock.form].packUnit} übrig · {doseLabel(x.stock)}{info.until ? ` · bis ${fmtDate(info.until)}` : ""}{monthlyCost(x) != null ? ` · 💶 ${fmtEuro(monthlyCost(x)!)}/Monat` : ""}
+            {fmtNum(info.left)} {FORMS[x.stock.form].packUnit} {t("übrig")} · {doseLabel(x.stock)}{info.until ? ` · ${t("bis {date}", { date: fmtDate(info.until) })}` : ""}{monthlyCost(x) != null ? ` · 💶 ${t("{amount}/Monat", { amount: fmtEuro(monthlyCost(x)!) })}` : ""}
           </div>
         </div>
-        <button className="lab-press" onClick={onEdit} aria-label="Vorrat ändern" style={{ border: "none", background: "var(--surface-2)", borderRadius: 12, padding: "8px 10px", color: "var(--text-dim)", fontWeight: 800 }}>✎</button>
+        <button className="lab-press" onClick={onEdit} aria-label={t("Vorrat ändern")} style={{ border: "none", background: "var(--surface-2)", borderRadius: 12, padding: "8px 10px", color: "var(--text-dim)", fontWeight: 800 }}>✎</button>
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
         {x.stock.ordered
-          ? <Btn onClick={onRefill} style={{ flex: 1, padding: "10px 12px", fontSize: "0.85rem" }}>📦 Neue Packung ist da</Btn>
+          ? <Btn onClick={onRefill} style={{ flex: 1, padding: "10px 12px", fontSize: "0.85rem" }}>{t("📦 Neue Packung ist da")}</Btn>
           : <>
-              <Btn variant="soft" onClick={onRefill} style={{ flex: 1, padding: "10px 12px", fontSize: "0.85rem" }}>↻ Nachgekauft</Btn>
-              {info.low && <Btn variant="soft" onClick={onOrdered} style={{ flex: 1, padding: "10px 12px", fontSize: "0.85rem" }}>📦 Bestellt</Btn>}
+              <Btn variant="soft" onClick={onRefill} style={{ flex: 1, padding: "10px 12px", fontSize: "0.85rem" }}>{t("↻ Nachgekauft")}</Btn>
+              {info.low && <Btn variant="soft" onClick={onOrdered} style={{ flex: 1, padding: "10px 12px", fontSize: "0.85rem" }}>{t("📦 Bestellt")}</Btn>}
             </>}
-        <ShopButton x={x} label="🛒 Nachkaufen" />
+        <ShopButton x={x} label={t("🛒 Nachkaufen")} />
       </div>
-      {info.low && alt && <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", marginTop: 10, lineHeight: 1.45 }}>💡 Beim Nachkauf: {alt}</div>}
+      {info.low && alt && <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", marginTop: 10, lineHeight: 1.45 }}>{t("💡 Beim Nachkauf:")} {alt}</div>}
     </div>
   )
 }
@@ -330,13 +331,13 @@ export function ShoppingCard({ s, away, low, onArrived, onOpen }: {
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: "block", fontWeight: 800, fontSize: "0.92rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{x.name}</span>
         <span style={{ display: "block", fontSize: "0.72rem", color: info ? "var(--warning)" : "var(--text-dim)" }}>
-          {info ? (info.empty ? "leer" : `reicht noch ${info.days} ${info.days === 1 ? "Tag" : "Tage"}`) : x.stock?.ordered ? "bestellt" : "noch nicht da"}
+          {info ? (info.empty ? t("leer") : info.days === 1 ? t("reicht noch 1 Tag") : t("reicht noch {n} Tage", { n: info.days })) : x.stock?.ordered ? t("bestellt") : t("noch nicht da")}
         </span>
       </span>
       {x.away
         ? <button className="lab-press" onClick={e => { e.stopPropagation(); setPopped(x.id); setTimeout(() => onArrived(x.id), 250) }} style={{
             padding: "8px 12px", borderRadius: 12, border: "none", background: "var(--accent)", color: "#fff", fontWeight: 800, fontSize: "0.78rem", flexShrink: 0,
-          }}>✓ Ist da</button>
+          }}>{t("✓ Ist da")}</button>
         : <ShopButton x={x} small />}
     </div>
   )
@@ -344,7 +345,7 @@ export function ShoppingCard({ s, away, low, onArrived, onOpen }: {
     <div className="lab-card lab-rise" style={{ padding: "14px 16px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
         <span className="lab-wiggle" style={{ fontSize: "1.2rem", display: "inline-block" }}>🛒</span>
-        <span style={{ fontWeight: 900 }}>Einkaufsliste</span>
+        <span style={{ fontWeight: 900 }}>{t("Einkaufsliste")}</span>
         <span style={{ marginLeft: "auto", fontSize: "0.72rem", fontWeight: 800, color: "var(--text-dim)" }}>{away.length + low.length}</span>
       </div>
       {away.map(x => row(x, null))}

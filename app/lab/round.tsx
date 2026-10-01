@@ -9,6 +9,7 @@ import {
 import { Btn, SideChips, Stars } from "./ui"
 import { KolbiTip, Mascot } from "./mascot"
 import { FACT_COUNT, nextFact, type Fact } from "@/lib/labKnowledge"
+import { t, dec, clock } from "@/lib/labI18n"
 
 export type RoundStep =
   | { kind: "take"; id: string }
@@ -48,11 +49,11 @@ export function dayProgress(s: LabState, today: string) {
 }
 
 const DECISIONS: { id: Decision; emoji: string; label: string }[] = [
-  { id: "keep", emoji: "💚", label: "Behalten" },
-  { id: "maybe", emoji: "🤔", label: "Vielleicht" },
-  { id: "drop", emoji: "✂️", label: "Raus" },
+  { id: "keep", emoji: "💚", label: t("Behalten") },
+  { id: "maybe", emoji: "🤔", label: t("Vielleicht") },
+  { id: "drop", emoji: "✂️", label: t("Raus") },
 ]
-const fmt = (n: number) => n.toFixed(1).replace(".", ",")
+const fmt = (n: number) => dec(n, 1)
 
 export function DailyRound({ s, today, steps, onTake, onCheckin, onVerdict, onLearn, onClose }: {
   s: LabState; today: string; steps: RoundStep[]
@@ -99,7 +100,7 @@ export function DailyRound({ s, today, steps, onTake, onCheckin, onVerdict, onLe
               <div key={k} style={{ flex: 1, height: 5, borderRadius: 3, background: k < i ? "var(--accent)" : k === i ? "color-mix(in srgb, var(--accent) 45%, var(--surface-2))" : "var(--surface-2)", transition: "background .3s" }} />
             ))}
           </div>
-          <button onClick={onClose} className="lab-press" aria-label="Runde schließen" style={{ width: 36, height: 36, borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text-dim)", fontSize: "0.95rem" }}>✕</button>
+          <button onClick={onClose} className="lab-press" aria-label={t("Runde schließen")} style={{ width: 36, height: 36, borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text-dim)", fontSize: "0.95rem" }}>✕</button>
         </div>
 
         <div key={done ? "done" : i} className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 18, padding: "12px 0" }}>
@@ -136,18 +137,18 @@ function TakeStep({ s, id, onDone, onSkip }: { s: LabState; id: string; onDone: 
   const c = suppColor(x)
   return (
     <>
-      <Title sub={`${tip.emoji} ${tip.label} · ${tip.time} Uhr${x.dose ? ` · ${x.dose}` : ""}`}>Zeit für {x.name}</Title>
+      <Title sub={`${tip.emoji} ${tip.label} · ${clock(tip.time)}${x.dose ? ` · ${x.dose}` : ""}`}>{t("Zeit für {name}", { name: x.name })}</Title>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 22, marginTop: 8 }}>
         <div style={{ width: 112, height: 112, borderRadius: 34, background: `linear-gradient(145deg, ${c}, color-mix(in srgb, ${c} 60%, #0b0b1a))`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "3.4rem", boxShadow: `0 18px 40px color-mix(in srgb, ${c} 40%, transparent)` }}>{x.emoji}</div>
-        <button className="lab-press" aria-label={`${x.name} genommen`} onClick={() => { if (ok) return; setOk(true); onDone() }} style={{
+        <button className="lab-press" aria-label={t("{name} genommen", { name: x.name })} onClick={() => { if (ok) return; setOk(true); onDone() }} style={{
           width: 96, height: 96, borderRadius: 999, fontSize: "2.2rem", fontWeight: 900,
           border: ok ? "none" : "3px dashed var(--border)", background: ok ? "var(--accent)" : "transparent", color: ok ? "#fff" : "var(--text-dim)",
           animation: ok ? "labCheck .45s ease" : undefined, boxShadow: ok ? "0 12px 30px rgba(46,204,138,.45)" : undefined,
         }}>{ok ? "✓" : ""}</button>
-        <div style={{ fontSize: "0.82rem", color: "var(--text-dim)", fontWeight: 700 }}>Tippen, wenn genommen</div>
+        <div style={{ fontSize: "0.82rem", color: "var(--text-dim)", fontWeight: 700 }}>{t("Tippen, wenn genommen")}</div>
       </div>
-      <KolbiTip title={tip.own ? `⏰ Deine Zeit: ${tip.label}` : "⏰ Warum jetzt?"}>{tip.why}</KolbiTip>
-      <button onClick={onSkip} style={{ alignSelf: "center", background: "none", border: "none", color: "var(--text-dim)", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", marginTop: 8 }}>Später</button>
+      <KolbiTip title={tip.own ? t("⏰ Deine Zeit: {label}", { label: tip.label }) : t("⏰ Warum jetzt?")}>{tip.why}</KolbiTip>
+      <button onClick={onSkip} style={{ alignSelf: "center", background: "none", border: "none", color: "var(--text-dim)", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", marginTop: 8 }}>{t("Später")}</button>
     </>
   )
 }
@@ -167,8 +168,8 @@ function CheckinStep({ s, scores, setScores, onDone, yesterday }: { s: LabState;
   return (
     <>
       {yesterday
-        ? <Title sub="Gestern ist der Check-in durchgerutscht – kurz nachtragen, dann fehlt nichts in deiner Auswertung.">🌅 Wie war gestern?</Title>
-        : <Title sub="Tippe die Sterne pro Bereich — alles auf einem Blick.">Wie war dein Tag?</Title>}
+        ? <Title sub={t("Gestern ist der Check-in durchgerutscht – kurz nachtragen, dann fehlt nichts in deiner Auswertung.")}>{t("🌅 Wie war gestern?")}</Title>
+        : <Title sub={t("Tippe die Sterne pro Bereich — alles auf einem Blick.")}>{t("Wie war dein Tag?")}</Title>}
       <div className="lab-card" style={{ padding: "4px 16px" }}>
         {dims.map((d, k) => (
           <div key={d.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "10px 0", borderTop: k ? "1px solid var(--border)" : "none" }}>
@@ -181,10 +182,10 @@ function CheckinStep({ s, scores, setScores, onDone, yesterday }: { s: LabState;
         ))}
       </div>
       <div style={{ textAlign: "center", fontSize: "0.85rem", fontWeight: 800, color: avg != null ? "#f5b400" : "var(--text-dim)", minHeight: 20 }}>
-        {avg != null ? `${FACES[Math.round(avg) - 1]} Ø ★ ${fmt(avg)} · ${filled.length}/${dims.length}` : `0/${dims.length} bewertet`}
+        {avg != null ? `${FACES[Math.round(avg) - 1]} Ø ★ ${fmt(avg)} · ${filled.length}/${dims.length}` : t("0/{n} bewertet", { n: dims.length })}
       </div>
       {filled.length > 0 && filled.length < dims.length && (
-        <button onClick={() => { if (timer.current) clearTimeout(timer.current); onDone(scores) }} style={{ alignSelf: "center", background: "none", border: "none", color: "var(--text-dim)", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer" }}>Rest überspringen →</button>
+        <button onClick={() => { if (timer.current) clearTimeout(timer.current); onDone(scores) }} style={{ alignSelf: "center", background: "none", border: "none", color: "var(--text-dim)", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer" }}>{t("Rest überspringen →")}</button>
       )}
     </>
   )
@@ -195,10 +196,10 @@ function SidesStep({ s, today, value, onChange, onDone }: { s: LabState; today: 
   const any = Object.values(value).some(Boolean)
   return (
     <>
-      <Title sub="Einmal tippen = leicht, zweimal = stark.">Nebenwirkungen heute?</Title>
-      <Btn full onClick={() => onDone({})} style={{ padding: "18px 20px", fontSize: "1.05rem" }}>✓ Nein, alles gut</Btn>
+      <Title sub={t("Einmal tippen = leicht, zweimal = stark.")}>{t("Nebenwirkungen heute?")}</Title>
+      <Btn full onClick={() => onDone({})} style={{ padding: "18px 20px", fontSize: "1.05rem" }}>{t("✓ Nein, alles gut")}</Btn>
       <SideChips value={value} onChange={onChange} suggested={known.length ? known : SIDE_EFFECTS.slice(0, 6)} all={SIDE_EFFECTS} />
-      {any && <Btn full variant="soft" onClick={() => onDone(value)}>Weiter</Btn>}
+      {any && <Btn full variant="soft" onClick={() => onDone(value)}>{t("Weiter")}</Btn>}
     </>
   )
 }
@@ -214,17 +215,17 @@ function RevealStep({ s, suppId, onDecide }: { s: LabState; suppId: string; onDe
   const top = [...sig.pros.slice(0, 2), ...sig.cons.slice(0, 1)]
   return (
     <>
-      <Title sub={open ? undefined : "Dein Test ist fertig. Tipp auf die Karte."}>{open ? `${x.emoji} ${x.name}` : "Ergebnis ist da!"}</Title>
+      <Title sub={open ? undefined : t("Dein Test ist fertig. Tipp auf die Karte.")}>{open ? `${x.emoji} ${x.name}` : t("Ergebnis ist da!")}</Title>
       <div className="lab-flip" style={{ width: "100%" }}>
         <div className={`lab-flip-inner ${open ? "on" : ""}`}>
           {/* Rückseite (verdeckt) */}
-          <button className="lab-flip-face lab-press" onClick={() => setOpen(true)} aria-label="Ergebnis aufdecken" style={{
+          <button className="lab-flip-face lab-press" onClick={() => setOpen(true)} aria-label={t("Ergebnis aufdecken")} style={{
             width: "100%", minHeight: 260, borderRadius: 28, border: "none", color: "#fff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14,
             background: `radial-gradient(circle at 30% 20%, rgba(255,255,255,.25), transparent 40%), linear-gradient(145deg, ${c}, #1b1b33)`, boxShadow: `0 24px 50px color-mix(in srgb, ${c} 35%, transparent)`,
           }}>
             <span className="lab-float"><Mascot mood="think" size={96} /></span>
             <span style={{ fontSize: "2.6rem", fontWeight: 900, lineHeight: 1 }}>?</span>
-            <span style={{ fontWeight: 800, opacity: 0.9 }}>{x.name} · {r?.n ?? 0} Tage Daten</span>
+            <span style={{ fontWeight: 800, opacity: 0.9 }}>{t("{name} · {n} Tage Daten", { name: x.name, n: r?.n ?? 0 })}</span>
           </button>
           {/* Vorderseite (Ergebnis) */}
           <div className="lab-flip-face lab-flip-back lab-card" style={{ padding: 20, display: "flex", flexDirection: "column", gap: 14, overflowY: "auto" }}>
@@ -234,7 +235,7 @@ function RevealStep({ s, suppId, onDecide }: { s: LabState; suppId: string; onDe
             </div>
             {r?.overall.base != null && r.overall.test != null && (
               <div style={{ display: "flex", gap: 10 }}>
-                {([["Reset", r.overall.base], ["Mit " + x.name, r.overall.test]] as const).map(([l, v], k) => (
+                {([[t("Reset"), r.overall.base], [t("Mit {name}", { name: x.name }), r.overall.test]] as const).map(([l, v], k) => (
                   <div key={l} style={{ flex: 1, borderRadius: 16, padding: "10px 12px", background: k ? "var(--accent-dim)" : "var(--surface-2)" }}>
                     <div style={{ fontSize: "0.68rem", fontWeight: 800, color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l}</div>
                     <div style={{ fontSize: "1.4rem", fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>{fmt(v)} <span style={{ color: "#f5b400", fontSize: "1rem" }}>★</span></div>
@@ -257,7 +258,7 @@ function RevealStep({ s, suppId, onDecide }: { s: LabState; suppId: string; onDe
             )}
             {r && r.sides.list.length > 0 && (
               <div style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>
-                Nebenwirkungen: {r.sides.list.slice(0, 3).map(x => `${SIDE_BY_ID[x.id]?.emoji ?? ""} ${SIDE_BY_ID[x.id]?.label ?? x.id}`).join(", ")}
+                {t("Nebenwirkungen:")} {r.sides.list.slice(0, 3).map(x => `${SIDE_BY_ID[x.id]?.emoji ?? ""} ${SIDE_BY_ID[x.id]?.label ?? x.id}`).join(", ")}
               </div>
             )}
           </div>
@@ -274,7 +275,7 @@ function RevealStep({ s, suppId, onDecide }: { s: LabState; suppId: string; onDe
                 border: sug ? "2px solid var(--accent)" : "1px solid var(--border)", background: picked === d.id ? "var(--accent-dim)" : "var(--surface)",
                 opacity: picked && picked !== d.id ? 0.4 : 1,
               }}>
-                {sug && <span style={{ position: "absolute", top: -9, fontSize: "0.58rem", background: "var(--accent)", color: "#fff", padding: "2px 7px", borderRadius: 6, whiteSpace: "nowrap" }}>Kolbis Tipp</span>}
+                {sug && <span style={{ position: "absolute", top: -9, fontSize: "0.58rem", background: "var(--accent)", color: "#fff", padding: "2px 7px", borderRadius: 6, whiteSpace: "nowrap" }}>{t("Kolbis Tipp")}</span>}
                 <span style={{ fontSize: "1.5rem" }}>{d.emoji}</span>{d.label}
               </button>
             )
@@ -293,20 +294,20 @@ function DoneStep({ s, fact, onClose }: { s: LabState; fact: Fact | null; onClos
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, textAlign: "center" }}>
       <span className="lab-pop"><Mascot mood="party" size={fact ? 120 : 150} fill={1} glow /></span>
-      <div style={{ fontSize: "1.7rem", fontWeight: 900 }}>Alles erledigt! 🎉</div>
-      {st > 0 && <div style={{ padding: "8px 16px", borderRadius: 999, background: "rgba(235,104,52,.14)", fontWeight: 900 }}>🔥 {st} {st === 1 ? "Tag" : "Tage"} am Stück</div>}
+      <div style={{ fontSize: "1.7rem", fontWeight: 900 }}>{t("Alles erledigt! 🎉")}</div>
+      {st > 0 && <div style={{ padding: "8px 16px", borderRadius: 999, background: "rgba(235,104,52,.14)", fontWeight: 900 }}>{st === 1 ? t("🔥 1 Tag am Stück") : t("🔥 {n} Tage am Stück", { n: st })}</div>}
       {fact ? (
         <div className="lab-card lab-rise" style={{ padding: 16, width: "100%", textAlign: "left", animationDelay: ".25s" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-            <span style={{ fontSize: "0.7rem", fontWeight: 900, letterSpacing: ".08em", color: "var(--accent)" }}>📚 NEU ENTDECKT{lib ? ` · ${lib.emoji} ${lib.name.toUpperCase()}` : ""}</span>
+            <span style={{ fontSize: "0.7rem", fontWeight: 900, letterSpacing: ".08em", color: "var(--accent)" }}>{t("📚 NEU ENTDECKT")}{lib ? ` · ${lib.emoji} ${lib.name.toUpperCase()}` : ""}</span>
             <span style={{ fontSize: "0.7rem", fontWeight: 800, color: "var(--text-dim)", fontVariantNumeric: "tabular-nums" }}>{known.size}/{FACT_COUNT}</span>
           </div>
           <div style={{ fontSize: "0.95rem", lineHeight: 1.5, fontWeight: 600 }}>{fact.text}</div>
         </div>
       ) : (
-        <div style={{ color: "var(--text-dim)" }}>Ich melde mich, wenn wieder etwas dran ist.</div>
+        <div style={{ color: "var(--text-dim)" }}>{t("Ich melde mich, wenn wieder etwas dran ist.")}</div>
       )}
-      <Btn variant={fact ? "primary" : "soft"} onClick={onClose} style={{ marginTop: 6 }}>Zur Übersicht</Btn>
+      <Btn variant={fact ? "primary" : "soft"} onClick={onClose} style={{ marginTop: 6 }}>{t("Zur Übersicht")}</Btn>
     </div>
   )
 }

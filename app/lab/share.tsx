@@ -6,11 +6,12 @@ import { createRoot } from "react-dom/client"
 import { DIMS, addDays, daySum, streak, suppColor, testResult, type Dim, type LabState } from "@/lib/supplementLab"
 import { Mascot } from "./mascot"
 import { haptic } from "./ui"
+import { t, dec } from "@/lib/labI18n"
 
 const W = 1080, H = 1920
-const fmt1 = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : "±"}${Math.abs(n).toFixed(1).replace(".", ",")}`
+const fmt1 = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : "±"}${dec(Math.abs(n), 1)}`
 const DECISION: Record<string, { label: string; color: string }> = {
-  keep: { label: "💚 Behalten", color: "#1baf7a" }, maybe: { label: "🤔 Vielleicht", color: "#eda100" }, drop: { label: "✂️ Fliegt raus", color: "#e34948" },
+  keep: { label: t("💚 Behalten"), color: "#1baf7a" }, maybe: { label: t("🤔 Vielleicht"), color: "#eda100" }, drop: { label: t("✂️ Fliegt raus"), color: "#e34948" },
 }
 
 async function kolbiImage(mood: "party" | "happy" | "think", size: number): Promise<HTMLImageElement | null> {
@@ -57,7 +58,7 @@ async function footer(g: CanvasRenderingContext2D, mood: "party" | "happy" | "th
   const k = await kolbiImage(mood, 230)
   if (k) g.drawImage(k, 70, H - 330, 230, 230)
   g.fillStyle = "rgba(255,255,255,.16)"; g.beginPath(); g.roundRect(330, H - 300, 680, 150, 40); g.fill()
-  g.fillStyle = "#fff"; g.textAlign = "left"; g.font = font(40, 800); g.fillText(line, 370, H - 248)
+  g.fillStyle = "#fff"; g.textAlign = "left"; g.font = font(40, 800); g.fillText(line, 370, H - 248, 610)
   g.font = font(34, 700); g.globalAlpha = 0.85; g.fillText("🧪 Supplement Lab", 370, H - 196); g.globalAlpha = 1; g.textAlign = "center"
 }
 
@@ -71,14 +72,14 @@ export async function makeResultCard(s: LabState, suppId: string): Promise<Blob 
   const delta = r.overall.test - r.overall.base
   const v = s.verdicts[suppId]?.decision
 
-  g.font = font(40, 900); g.globalAlpha = 0.85; g.fillText("M E I N   S E L B S T V E R S U C H", W / 2, 170); g.globalAlpha = 1
+  g.font = font(40, 900); g.globalAlpha = 0.85; g.fillText(t("M E I N   S E L B S T V E R S U C H"), W / 2, 170); g.globalAlpha = 1
   g.fillStyle = "rgba(255,255,255,.18)"; g.beginPath(); g.arc(W / 2, 400, 150, 0, Math.PI * 2); g.fill()
   g.fillStyle = "#fff"; g.font = font(170, 400); g.fillText(x.emoji, W / 2, 410)
   g.font = font(x.name.length > 16 ? 70 : 88); g.fillText(x.name, W / 2, 640)
-  g.font = font(40, 700); g.globalAlpha = 0.85; g.fillText(`${r.n} Tage getestet · vs. mein Normal`, W / 2, 715); g.globalAlpha = 1
+  g.font = font(40, 700); g.globalAlpha = 0.85; g.fillText(t("{n} Tage getestet · vs. mein Normal", { n: r.n }), W / 2, 715, W - 120); g.globalAlpha = 1
 
   g.font = font(250); g.fillText(`${fmt1(delta)}★`, W / 2, 920)
-  g.font = font(44, 800); g.globalAlpha = 0.9; g.fillText("Gesamtgefühl", W / 2, 1065); g.globalAlpha = 1
+  g.font = font(44, 800); g.globalAlpha = 0.9; g.fillText(t("Gesamtgefühl"), W / 2, 1065); g.globalAlpha = 1
 
   // Bereiche: auseinanderlaufende Balken um die Mitte
   const dims = (r.dims as Dim[]).map(d => ({ d, v: (r.delta as Record<string, number> | null)?.[d] ?? 0 }))
@@ -96,7 +97,7 @@ export async function makeResultCard(s: LabState, suppId: string): Promise<Blob 
     y += 112
   }
   if (v) pill(g, W / 2, Math.min(y + 30, H - 390), DECISION[v].label, 52, DECISION[v].color)
-  await footer(g, delta > 0.2 ? "party" : delta < -0.2 ? "think" : "happy", "Finde raus, was bei DIR wirkt.")
+  await footer(g, delta > 0.2 ? "party" : delta < -0.2 ? "think" : "happy", t("Finde raus, was bei DIR wirkt."))
   return new Promise(res => c.toBlob(b => res(b), "image/png"))
 }
 
@@ -108,10 +109,10 @@ export async function makeWeekCard(s: LabState, end: string): Promise<Blob | nul
   if (!got.length) return null
   const avg = got.reduce((a, c) => a + daySum(c!), 0) / got.length
   const { c, g } = setup("#3987e5", "#2b1d5c")
-  g.font = font(40, 900); g.globalAlpha = 0.85; g.fillText("M E I N E   W O C H E", W / 2, 170); g.globalAlpha = 1
-  g.font = font(300); g.fillText(`${avg.toFixed(1).replace(".", ",")}★`, W / 2, 460)
-  g.font = font(46, 800); g.fillText("so habe ich mich gefühlt", W / 2, 640)
-  const WD = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"]
+  g.font = font(40, 900); g.globalAlpha = 0.85; g.fillText(t("M E I N E   W O C H E"), W / 2, 170); g.globalAlpha = 1
+  g.font = font(300); g.fillText(`${dec(avg, 1)}★`, W / 2, 460)
+  g.font = font(46, 800); g.fillText(t("so habe ich mich gefühlt"), W / 2, 640)
+  const WD = [t("So"), t("Mo"), t("Di"), t("Mi"), t("Do"), t("Fr"), t("Sa")]
   const bw = 90, gap = 34, x0 = (W - (7 * bw + 6 * gap)) / 2, base = 1180
   const best = cs.reduce((bi, cc, i) => (cc && (bi < 0 || daySum(cc) > daySum(cs[bi]!)) ? i : bi), -1)
   days.forEach((d, i) => {
@@ -121,10 +122,10 @@ export async function makeWeekCard(s: LabState, end: string): Promise<Blob | nul
     g.fillStyle = "#fff"; g.font = font(38, 800); g.fillText(WD[new Date(`${d}T12:00:00`).getDay()], x0 + i * (bw + gap) + bw / 2, base + 50)
     if (i === best) { g.font = font(56, 400); g.fillText("👑", x0 + i * (bw + gap) + bw / 2, base - h - 50) }
   })
-  pill(g, W / 2 - 230, 1400, `📅 ${got.length}/7 Tage`, 46, "rgba(255,255,255,.18)")
+  pill(g, W / 2 - 230, 1400, t("📅 {n}/7 Tage", { n: got.length }), 46, "rgba(255,255,255,.18)")
   const st = streak(s)
-  pill(g, W / 2 + 230, 1400, `🔥 ${st} Tage Serie`, 46, "rgba(255,255,255,.18)")
-  await footer(g, "party", "Ich teste, was bei mir wirkt.")
+  pill(g, W / 2 + 230, 1400, st === 1 ? t("🔥 1 Tage Serie") : t("🔥 {n} Tage Serie", { n: st }), 46, "rgba(255,255,255,.18)")
+  await footer(g, "party", t("Ich teste, was bei mir wirkt."))
   return new Promise(res => c.toBlob(b => res(b), "image/png"))
 }
 
@@ -139,7 +140,7 @@ export async function shareImage(blob: Blob, name: string, text: string): Promis
   return "downloaded"
 }
 
-export function ShareButton({ make, name, text, label = "📤 Teilen", style, light }: {
+export function ShareButton({ make, name, text, label = t("📤 Teilen"), style, light }: {
   make: () => Promise<Blob | null>; name: string; text: string; label?: string; style?: React.CSSProperties; light?: boolean
 }) {
   const [busy, setBusy] = useState(false)
@@ -151,6 +152,6 @@ export function ShareButton({ make, name, text, label = "📤 Teilen", style, li
       display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 18px", borderRadius: 16, border: "none", fontWeight: 900, fontSize: "0.9rem",
       background: light ? "#fff" : "linear-gradient(135deg, #9085e9, #e87ba4)", color: light ? "#0b0b1a" : "#fff",
       boxShadow: light ? "none" : "inset 0 1px 0 rgba(255,255,255,.4), 0 10px 24px rgba(144,133,233,.35)", opacity: busy ? 0.6 : 1, ...style,
-    }}>{busy ? "Erstelle Bild …" : label}</button>
+    }}>{busy ? t("Erstelle Bild …") : label}</button>
   )
 }

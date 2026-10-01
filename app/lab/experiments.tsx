@@ -5,6 +5,7 @@ import { LIB_BY_ID, type LabState } from "@/lib/supplementLab"
 import { availableExperiments, type Experiment } from "@/lib/labExperiments"
 import { Btn, Sheet } from "./ui"
 import { Mascot } from "./mascot"
+import { t } from "@/lib/labI18n"
 
 export function ExperimentsView({ s, onPick }: { s: LabState; onPick: (e: Experiment) => void }) {
   const list = availableExperiments()
@@ -13,8 +14,8 @@ export function ExperimentsView({ s, onPick }: { s: LabState; onPick: (e: Experi
       <div className="lab-rise" style={{ display: "flex", alignItems: "center", gap: 12, padding: "4px 2px" }}>
         <Mascot mood="think" size={48} alive />
         <div>
-          <div style={{ fontWeight: 900, fontSize: "1.1rem" }}>Was willst du herausfinden?</div>
-          <div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>Fertige Experimente – ich plane Reihenfolge und Dauer.</div>
+          <div style={{ fontWeight: 900, fontSize: "1.1rem" }}>{t("Was willst du herausfinden?")}</div>
+          <div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>{t("Fertige Experimente – ich plane Reihenfolge und Dauer.")}</div>
         </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -33,7 +34,7 @@ export function ExperimentsView({ s, onPick }: { s: LabState; onPick: (e: Experi
               <span style={{ fontSize: "0.72rem", opacity: 0.9, lineHeight: 1.3, flex: 1 }}>{e.question}</span>
               <span style={{ display: "flex", gap: 3, alignItems: "center" }}>
                 {e.supps.map(x => <span key={x.lib} style={{ width: 24, height: 24, borderRadius: 999, background: "rgba(255,255,255,.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem" }}>{LIB_BY_ID[x.lib]?.emoji}</span>)}
-                <span style={{ marginLeft: "auto", fontSize: "0.62rem", fontWeight: 900, padding: "2px 7px", borderRadius: 999, background: running ? "#fff" : "rgba(0,0,0,.18)", color: running ? e.colors[0] : "#fff" }}>{running ? "LÄUFT" : e.weeks}</span>
+                <span style={{ marginLeft: "auto", fontSize: "0.62rem", fontWeight: 900, padding: "2px 7px", borderRadius: 999, background: running ? "#fff" : "rgba(0,0,0,.18)", color: running ? e.colors[0] : "#fff" }}>{running ? t("LÄUFT") : e.weeks}</span>
               </span>
             </button>
           )
@@ -63,7 +64,7 @@ export function ExperimentSheet({ s, e, onClose, onStart }: { s: LabState; e: Ex
 
       {/* Ablauf als kleine Strecke */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, overflowX: "auto", padding: "18px 2px 6px" }} className="lab-scroll">
-        {[{ e: "🧘", l: resetDone ? "Reset ✓" : "Reset", done: resetDone }, ...tests.map(x => ({ e: LIB_BY_ID[x.lib]?.emoji ?? "💊", l: LIB_BY_ID[x.lib]?.name.replace(/\s*\(.*\)/, "") ?? x.lib, done: !!s.verdicts[have(x.lib)?.id ?? ""] })), { e: "🏆", l: "Dein Ergebnis", done: false }].map((st, i, arr) => (
+        {[{ e: "🧘", l: resetDone ? t("Reset ✓") : t("Reset"), done: resetDone }, ...tests.map(x => ({ e: LIB_BY_ID[x.lib]?.emoji ?? "💊", l: LIB_BY_ID[x.lib]?.name.replace(/\s*\(.*\)/, "") ?? x.lib, done: !!s.verdicts[have(x.lib)?.id ?? ""] })), { e: "🏆", l: t("Dein Ergebnis"), done: false }].map((st, i, arr) => (
           <React.Fragment key={i}>
             <div className="lab-pop" style={{ animationDelay: `${i * 70}ms`, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0, width: 70 }}>
               <span style={{ width: 46, height: 46, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem",
@@ -85,10 +86,10 @@ export function ExperimentSheet({ s, e, onClose, onStart }: { s: LabState; e: Ex
               <span style={{ fontSize: "1.4rem" }}>{lib?.emoji}</span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: "block", fontWeight: 900, fontSize: "0.9rem" }}>{lib?.name}</span>
-                <span style={{ display: "block", fontSize: "0.72rem", color: "var(--text-dim)" }}>{x.mode === "test" ? "🔬 wird getestet" : "📌 läuft durchgehend"}{have(x.lib) ? " · schon in deiner Liste" : ""}</span>
+                <span style={{ display: "block", fontSize: "0.72rem", color: "var(--text-dim)" }}>{x.mode === "test" ? t("🔬 wird getestet") : t("📌 läuft durchgehend")}{have(x.lib) ? t(" · schon in deiner Liste") : ""}</span>
               </span>
               <span style={{ display: "flex", borderRadius: 12, background: "var(--surface-2)", padding: 3 }}>
-                {[[false, "✓ Da"], [true, "🛒 Kaufen"]].map(([v, l]) => (
+                {[[false, t("✓ Da")], [true, t("🛒 Kaufen")]].map(([v, l]) => (
                   <button key={String(v)} className="lab-press" onClick={() => toggle(x.lib, v as boolean)} style={{
                     border: "none", borderRadius: 10, padding: "6px 9px", fontSize: "0.72rem", fontWeight: 900,
                     background: isAway === v ? "var(--surface)" : "transparent", color: isAway === v ? "var(--text)" : "var(--text-dim)", boxShadow: isAway === v ? "0 1px 4px rgba(0,0,0,.12)" : "none",
@@ -99,8 +100,8 @@ export function ExperimentSheet({ s, e, onClose, onStart }: { s: LabState; e: Ex
           )
         })}
       </div>
-      <Btn full onClick={() => onStart(away)} style={{ marginTop: 16 }}>🚀 Experiment starten</Btn>
-      {steady.length > 0 && tests.length === 0 && <div style={{ fontSize: "0.74rem", color: "var(--text-dim)", textAlign: "center", marginTop: 8 }}>Kein Test nötig – alles läuft durchgehend mit.</div>}
+      <Btn full onClick={() => onStart(away)} style={{ marginTop: 16 }}>{t("🚀 Experiment starten")}</Btn>
+      {steady.length > 0 && tests.length === 0 && <div style={{ fontSize: "0.74rem", color: "var(--text-dim)", textAlign: "center", marginTop: 8 }}>{t("Kein Test nötig – alles läuft durchgehend mit.")}</div>}
     </Sheet>
   )
 }

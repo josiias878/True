@@ -4,17 +4,18 @@ import {
   DIMS, FACES, SIDE_BY_ID, addDays, diffDays, fmtDate, todayIso, phaseWindows, daySum, suppColor, testResult, signal,
   type Dim, type LabState, type Scores,
 } from "@/lib/supplementLab"
+import { t, dec } from "@/lib/labI18n"
 
 const POS = "#1baf7a"
 const NEG = "#e34948"
-const fmt = (n: number, sign = false) => `${sign && n > 0 ? "+" : ""}${n.toFixed(1).replace(".", ",")}`
+const fmt = (n: number, sign = false) => `${sign && n > 0 ? "+" : ""}${dec(n, 1)}`
 
 function phaseName(s: LabState, kind: string, suppId?: string) {
-  if (kind === "baseline") return "Reset"
-  if (kind === "washout") return "Pause"
-  if (kind === "stack") return "Stack"
-  if (kind === "check") return `Ohne ${s.supps.find(x => x.id === suppId)?.name ?? "?"}`
-  return s.supps.find(x => x.id === suppId)?.name ?? "Test"
+  if (kind === "baseline") return t("Reset")
+  if (kind === "washout") return t("Pause")
+  if (kind === "stack") return t("Stack")
+  if (kind === "check") return t("Ohne {name}", { name: s.supps.find(x => x.id === suppId)?.name ?? "?" })
+  return s.supps.find(x => x.id === suppId)?.name ?? t("Test")
 }
 
 // ── Verlauf einer Dimension über das Experiment ────────────────────────────────
@@ -82,7 +83,7 @@ export function DimLineChart({ s, dim }: { s: LabState; dim: Dim | "gesamt" }) {
   return (
     <div ref={wrap} style={{ position: "relative", touchAction: "pan-y" }} onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={() => setHover(null)}>
       <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} style={{ display: "block", overflow: "visible" }} role="img"
-        aria-label={`Verlauf ${dim === "gesamt" ? "Gesamtgefühl" : DIMS.find(d => d.id === dim)?.label} über ${data.n} Tage`}>
+        aria-label={t("Verlauf {what} über {n} Tage", { what: dim === "gesamt" ? t("Gesamtgefühl") : String(DIMS.find(d => d.id === dim)?.label), n: data.n })}>
         {/* Phasen-Bänder */}
         {wins.map(w => {
           const i0 = diffDays(s.startDate!, w.start)
@@ -112,7 +113,7 @@ export function DimLineChart({ s, dim }: { s: LabState; dim: Dim | "gesamt" }) {
           <g>
             <line x1={L} x2={W - R} y1={y(data.baseAvg)} y2={y(data.baseAvg)} stroke="var(--text-dim)" strokeWidth={1.5} opacity={0.7} />
             <rect x={W - R - 76} y={y(data.baseAvg) - 9} width={76} height={18} rx={9} fill="var(--surface-2)" stroke="var(--border)" />
-            <text x={W - R - 38} y={y(data.baseAvg) + 4} textAnchor="middle" fontSize="11" fontWeight={700} fill="var(--text-dim)">Ø Reset {fmt(data.baseAvg)}</text>
+            <text x={W - R - 38} y={y(data.baseAvg) + 4} textAnchor="middle" fontSize="11" fontWeight={700} fill="var(--text-dim)">{t("Ø Reset {v}", { v: fmt(data.baseAvg) })}</text>
           </g>
         )}
         {/* Linie + Punkte */}
@@ -121,8 +122,8 @@ export function DimLineChart({ s, dim }: { s: LabState; dim: Dim | "gesamt" }) {
           <circle key={p.i} cx={x(p.i)} cy={y(p.v)} r={hover === p.i ? 6 : 4} fill="var(--accent)" stroke="var(--surface)" strokeWidth={2} />
         ))}
         {/* X-Achse: Starttag + heute */}
-        <text x={L} y={H - 6} fontSize="11" fill="var(--text-dim)">Tag 1</text>
-        <text x={W - R} y={H - 6} fontSize="11" fill="var(--text-dim)" textAnchor="end">Tag {data.n}</text>
+        <text x={L} y={H - 6} fontSize="11" fill="var(--text-dim)">{t("Tag {n}", { n: 1 })}</text>
+        <text x={W - R} y={H - 6} fontSize="11" fill="var(--text-dim)" textAnchor="end">{t("Tag {n}", { n: data.n })}</text>
         {/* Crosshair */}
         {hp && <line x1={x(hp.i)} x2={x(hp.i)} y1={T} y2={T + ih} stroke="var(--text-dim)" strokeWidth={1} opacity={0.6} />}
       </svg>
@@ -133,9 +134,9 @@ export function DimLineChart({ s, dim }: { s: LabState; dim: Dim | "gesamt" }) {
           background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "8px 10px",
           boxShadow: "var(--shadow)", fontSize: "0.78rem", whiteSpace: "nowrap", zIndex: 2,
         }}>
-          <div style={{ fontWeight: 800 }}>Tag {hp.i + 1} · {fmtDate(hp.date)}</div>
+          <div style={{ fontWeight: 800 }}>{t("Tag {n}", { n: hp.i + 1 })} · {fmtDate(hp.date)}</div>
           <div style={{ color: "var(--text-dim)" }}>{hw ? phaseName(s, hw.kind, hw.suppId) : "—"}</div>
-          <div style={{ fontWeight: 800, marginTop: 2 }}>{hp.v != null ? `${FACES[Math.round(hp.v) - 1]} ${fmt(hp.v)} / 5` : "kein Check-in"}</div>
+          <div style={{ fontWeight: 800, marginTop: 2 }}>{hp.v != null ? `${FACES[Math.round(hp.v) - 1]} ${fmt(hp.v)} / 5` : t("kein Check-in")}</div>
         </div>
       )}
     </div>
@@ -174,7 +175,7 @@ export function DeltaBars({ delta, avg, base, dims }: { delta: Scores; avg: Scor
             </div>
             {open === d.id && (
               <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", margin: "2px 0 2px 112px" }}>
-                Reset Ø {fmt(base[d.id] ?? 0)} → Test Ø {fmt(avg[d.id] ?? 0)}
+                {t("Reset Ø {a} → Test Ø {b}", { a: fmt(base[d.id] ?? 0), b: fmt(avg[d.id] ?? 0) })}
               </div>
             )}
           </div>
@@ -182,8 +183,8 @@ export function DeltaBars({ delta, avg, base, dims }: { delta: Scores; avg: Scor
       })}
       <div style={{ display: "grid", gridTemplateColumns: "104px 1fr 54px", gap: 8, fontSize: "0.68rem", color: "var(--text-dim)", marginTop: 2 }}>
         <span />
-        <div style={{ display: "flex", justifyContent: "space-between" }}><span>← schlechter</span><span>besser →</span></div>
-        <span style={{ textAlign: "right" }}>vs. Reset</span>
+        <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("← schlechter")}</span><span>{t("besser →")}</span></div>
+        <span style={{ textAlign: "right" }}>{t("vs. Reset")}</span>
       </div>
     </div>
   )
@@ -208,7 +209,7 @@ export function MoodCalendar({ s, onPick }: { s: LabState; onPick?: (date: strin
         const future = date > today
         const avg = c ? daySum(c) : null
         return (
-          <button key={date} onClick={() => !future && onPick?.(date)} title={`${fmtDate(date)} · ${w ? phaseName(s, w.kind, w.suppId) : ""}${avg ? ` · Ø ${fmt(avg)}` : ""}`}
+          <button key={date} onClick={() => !future && onPick?.(date)} title={`${fmtDate(date)} · ${w ? phaseName(s, w.kind, w.suppId) : ""}${avg ? ` · ${t("Ø {v}", { v: fmt(avg) })}` : ""}`}
             className={!future ? "lab-press" : undefined}
             style={{
               aspectRatio: "1", borderRadius: 12, border: date === today ? "2px solid var(--accent)" : "1px solid var(--border)",
@@ -249,31 +250,31 @@ export function ProCon({ s, suppId }: { s: LabState; suppId: string }) {
   return (
     <div>
       <svg viewBox={`0 0 ${W} 136`} width="100%" style={{ display: "block", maxWidth: 360, margin: "0 auto" }} role="img"
-        aria-label={`Nutzen ${fmt(sig.benefit, true)} Sterne gegen Nebenwirkungen ${fmt(sig.cost)} pro Tag`}>
+        aria-label={t("Nutzen {a} Sterne gegen Nebenwirkungen {b} pro Tag", { a: fmt(sig.benefit, true), b: fmt(sig.cost) })}>
         <path d={`M${cx - 18},100 L${cx + 18},100 L${cx + 4},${beamY} L${cx - 4},${beamY} Z`} fill="var(--surface-2)" stroke="var(--border)" />
         <line x1={lx} y1={ly} x2={rx} y2={ry} stroke="var(--text-dim)" strokeWidth={3} strokeLinecap="round" style={{ transition: "all .8s" }} />
         <circle cx={cx} cy={beamY} r={5} fill="var(--text-dim)" />
-        {pan(lx, ly, POS, "Nutzen", `${fmt(sig.benefit, true)} ★`)}
-        {pan(rx, ry, NEG, "Nebenwirk.", sig.cost > 0.05 ? `+${fmt(sig.cost)} / Tag` : "keine extra")}
+        {pan(lx, ly, POS, t("Nutzen"), `${fmt(sig.benefit, true)} ★`)}
+        {pan(rx, ry, NEG, t("Nebenwirk."), sig.cost > 0.05 ? t("+{v} / Tag", { v: fmt(sig.cost) }) : t("keine extra"))}
       </svg>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 8 }}>
         <div>
-          <div style={{ fontSize: "0.72rem", fontWeight: 900, color: POS, marginBottom: 4 }}>✅ PRO</div>
+          <div style={{ fontSize: "0.72rem", fontWeight: 900, color: POS, marginBottom: 4 }}>{t("✅ PRO")}</div>
           {sig.pros.length ? sig.pros.map(d => (
             <div key={d} style={{ fontSize: "0.8rem", padding: "2px 0" }}>{DIMS.find(x => x.id === d)?.emoji} {DIMS.find(x => x.id === d)?.label} <b>{fmt(r.delta![d]!, true)}</b></div>
-          )) : <div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>kein spürbarer Vorteil</div>}
+          )) : <div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>{t("kein spürbarer Vorteil")}</div>}
         </div>
         <div>
-          <div style={{ fontSize: "0.72rem", fontWeight: 900, color: NEG, marginBottom: 4 }}>❌ CONTRA</div>
+          <div style={{ fontSize: "0.72rem", fontWeight: 900, color: NEG, marginBottom: 4 }}>{t("❌ CONTRA")}</div>
           {sig.cons.map(d => (
             <div key={d} style={{ fontSize: "0.8rem", padding: "2px 0" }}>{DIMS.find(x => x.id === d)?.emoji} {DIMS.find(x => x.id === d)?.label} <b>{fmt(r.delta![d]!, true)}</b></div>
           ))}
           {r.sides.list.map(x => (
             <div key={x.id} style={{ fontSize: "0.8rem", padding: "2px 0" }}>
-              {SIDE_BY_ID[x.id]?.emoji} {SIDE_BY_ID[x.id]?.label} <b>{x.days}/{n} T</b>{x.strong ? <span style={{ color: NEG, fontWeight: 800 }}> · {x.strong}× stark</span> : ""}
+              {SIDE_BY_ID[x.id]?.emoji} {SIDE_BY_ID[x.id]?.label} <b>{t("{a}/{b} T", { a: x.days, b: n })}</b>{x.strong ? <span style={{ color: NEG, fontWeight: 800 }}> · {t("{n}× stark", { n: x.strong })}</span> : ""}
             </div>
           ))}
-          {!sig.cons.length && !r.sides.list.length && <div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>keine Nachteile bemerkt 🎉</div>}
+          {!sig.cons.length && !r.sides.list.length && <div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>{t("keine Nachteile bemerkt 🎉")}</div>}
         </div>
       </div>
     </div>
@@ -333,7 +334,7 @@ export function MoodCurve({ s, days = 14 }: { s: LabState; days?: number }) {
 
   return (
     <div ref={wrap} style={{ position: "relative", touchAction: "pan-y" }} onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={() => setHover(null)}>
-      <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} style={{ display: "block", overflow: "visible" }} role="img" aria-label={`Wohlfühl-Kurve der letzten ${n} Tage`}>
+      <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} style={{ display: "block", overflow: "visible" }} role="img" aria-label={t("Wohlfühl-Kurve der letzten {n} Tage", { n })}>
         <defs>
           <linearGradient id="moodArea" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor="#2ECC8A" stopOpacity="0.35" />
@@ -348,7 +349,7 @@ export function MoodCurve({ s, days = 14 }: { s: LabState; days?: number }) {
         {baseAvg != null && (
           <g>
             <line x1={L} x2={W - R} y1={y(baseAvg)} y2={y(baseAvg)} stroke="var(--text-dim)" strokeWidth={1.5} opacity={0.6} />
-            <text x={L + 2} y={y(baseAvg) - 5} fontSize="10" fontWeight={700} fill="var(--text-dim)">Ø Reset {fmt(baseAvg)}★</text>
+            <text x={L + 2} y={y(baseAvg) - 5} fontSize="10" fontWeight={700} fill="var(--text-dim)">{t("Ø Reset {v}", { v: fmt(baseAvg) })}★</text>
           </g>
         )}
         {area && <path d={area} fill="url(#moodArea)" />}
@@ -358,7 +359,7 @@ export function MoodCurve({ s, days = 14 }: { s: LabState; days?: number }) {
         {pts.map(p => <rect key={p.i} x={x(p.i) - iw / (2 * Math.max(1, n - 1))} y={H - 12} width={Math.max(2, iw / Math.max(1, n - 1) - 2)} height={5} rx={2.5} fill={phaseCol(p.w)} opacity={p.w?.kind === "washout" ? 0.4 : 0.9} />)}
         {hp && <line x1={x(hp.i)} x2={x(hp.i)} y1={T} y2={T + ih} stroke="var(--text-dim)" strokeWidth={1} opacity={0.5} />}
       </svg>
-      {!valid.length && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", color: "var(--text-dim)" }}>Nach deinem ersten Check-in erscheint hier deine Kurve.</div>}
+      {!valid.length && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", color: "var(--text-dim)" }}>{t("Nach deinem ersten Check-in erscheint hier deine Kurve.")}</div>}
       {hp && (
         <div style={{
           position: "absolute", top: -6, pointerEvents: "none", left: `${(x(hp.i) / W) * 100}%`, transform: `translateX(${hp.i > n / 2 ? "-105%" : "5%"})`,
@@ -366,7 +367,7 @@ export function MoodCurve({ s, days = 14 }: { s: LabState; days?: number }) {
         }}>
           <div style={{ fontWeight: 800 }}>{fmtDate(hp.date)}</div>
           <div style={{ color: "var(--text-dim)" }}>{hp.w ? phaseName(s, hp.w.kind, hp.w.suppId) : "—"}</div>
-          <div style={{ fontWeight: 800 }}>{hp.v != null ? `${FACES[Math.round(hp.v) - 1]} ${fmt(hp.v)}★` : "kein Check-in"}</div>
+          <div style={{ fontWeight: 800 }}>{hp.v != null ? `${FACES[Math.round(hp.v) - 1]} ${fmt(hp.v)}★` : t("kein Check-in")}</div>
         </div>
       )}
     </div>

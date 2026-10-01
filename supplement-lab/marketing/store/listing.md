@@ -143,8 +143,8 @@ Neu erzeugen: `node tools/raw-shots.mjs <rohordner>` (Vorschau-Server auf :4173)
 `node tools/compose.mjs <rohordner> store/screenshots-de de` bzw. `… en`.
 Community- und Kolbi-Tab sind absichtlich **nicht** dabei (dort stünden Beispielzahlen).
 
-> ⚠️ Die App-Oberfläche ist noch nur Deutsch. Englische Store-Texte erst nutzen, wenn die App
-> übersetzt ist – sonst Ablehnung/Frust. Bis dahin: nur DE-Store (DE/AT/CH).
+> ✅ Die App ist zweisprachig (Deutsch/Englisch, automatisch nach Gerätesprache, umschaltbar in den Einstellungen).
+> Englische Screenshots zeigen die englische Oberfläche.
 
 ---
 

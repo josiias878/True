@@ -5,6 +5,7 @@
 
 import { notificationPlan, PUSH_ON_KEY } from "./labReminders"
 import type { LabState } from "./supplementLab"
+import { t } from "./labI18n"
 
 const REGISTER_URL = "https://mkdfohmshuuiroeruyyz.supabase.co/functions/v1/push-register"
 const VAPID_PUBLIC = "BDcNj1aTIToVgJ2mgcEiaaaPPQssZUeveuj12LT4eGnK7rtGE_ppoY8jUlSBUtc8yIRumi8erDzIv9Z-tix-5Ns"
@@ -82,7 +83,7 @@ export async function syncPush(s: LabState): Promise<boolean> {
     if (!sub) return false
     const plan = notificationPlan(s, 7)
 
-    const personal = plan.map(n => ({ id: n.key, title: n.title, body: n.body, url: n.url, taken: n.suppIds?.join(",") }))
+    const personal = plan.map(n => ({ id: n.key, title: n.title, body: n.body, url: n.url, taken: n.suppIds?.join(","), ...(n.suppIds ? { takenLabel: t("✓ Genommen") } : {}) }))
     const cache = await caches.open(CACHE)
     await cache.put(PLAN_URL, new Response(JSON.stringify(personal), { headers: { "Content-Type": "application/json" } }))
 

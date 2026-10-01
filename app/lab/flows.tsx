@@ -14,6 +14,7 @@ import { Btn, Capsule, Card, FaceRow, Label, Segmented, SideChips, Stars } from 
 import { KolbiTip, MASCOT_NAME, Mascot } from "./mascot"
 import { InstallHint } from "./install"
 import type { Mood } from "@/lib/labCoach"
+import { t, dec, clock } from "@/lib/labI18n"
 
 // ── Supplement-Auswahl: antippen oder Liste einfügen ───────────────────────────
 
@@ -49,7 +50,7 @@ export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd,
       }}>
         <span>{l.emoji}</span>{l.name}
         {l.route && l.route !== "oral" && <span style={{ fontSize: "0.75rem" }}>{ROUTE_INFO[l.route].emoji}</span>}
-        {crowd[l.id]?.keepPct != null && <span title={`${crowd[l.id].n} Tests in der Community`} style={{ fontSize: "0.68rem", fontWeight: 800, padding: "1px 6px", borderRadius: 999, background: "color-mix(in srgb, #1baf7a 15%, transparent)", color: "#1baf7a" }}>👥 {crowd[l.id].keepPct} %</span>}
+        {crowd[l.id]?.keepPct != null && <span title={t("{n} Tests in der Community", { n: crowd[l.id].n })} style={{ fontSize: "0.68rem", fontWeight: 800, padding: "1px 6px", borderRadius: 999, background: "color-mix(in srgb, #1baf7a 15%, transparent)", color: "#1baf7a" }}>👥 {crowd[l.id].keepPct} %</span>}
         {on && <span>✓</span>}
       </button>
     )
@@ -58,40 +59,40 @@ export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd,
   return (
     <div>
       <div style={{ marginBottom: 14 }}>
-        <Segmented value={mode} onChange={setMode} options={[{ id: "tap", label: "👆 Antippen" }, { id: "paste", label: "📋 Liste einfügen" }]} />
+        <Segmented value={mode} onChange={setMode} options={[{ id: "tap", label: t("👆 Antippen") }, { id: "paste", label: t("📋 Liste einfügen") }]} />
       </div>
 
       {mode === "paste" ? (
         <div className="lab-rise">
           <textarea value={paste} onChange={e => setPaste(e.target.value)} rows={5} autoFocus
-            placeholder={"Einfach reinkopieren, z. B.:\nMagnesium 400mg, Vitamin D3, Omega 3\nBPC-157, Kreatin 5g, Ashwagandha"}
+            placeholder={t("Einfach reinkopieren, z. B.:\nMagnesium 400mg, Vitamin D3, Omega 3\nBPC-157, Kreatin 5g, Ashwagandha")}
             style={{ width: "100%", padding: 14, borderRadius: 16, fontSize: "0.95rem", resize: "vertical" }} />
           {parsed.length > 0 && (
             <div style={{ marginTop: 12 }}>
-              <Label style={{ marginBottom: 8 }}>Erkannt · {parsed.length}</Label>
+              <Label style={{ marginBottom: 8 }}>{t("Erkannt · {n}", { n: parsed.length })}</Label>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {parsed.map((p, i) => (
                   <span key={i} style={{
                     padding: "7px 11px", borderRadius: 999, fontSize: "0.82rem", fontWeight: 700,
                     background: p.lib ? "var(--accent-dim)" : "var(--surface-2)", border: p.lib ? "1px solid var(--accent)" : "1px dashed var(--border)",
-                  }}>{p.lib?.emoji ?? "💊"} {p.name}{p.dose && <span style={{ color: "var(--text-dim)", fontWeight: 600 }}> · {p.dose}</span>}{!p.lib && <span style={{ color: "var(--text-dim)", fontWeight: 600 }}> · eigenes</span>}</span>
+                  }}>{p.lib?.emoji ?? "💊"} {p.name}{p.dose && <span style={{ color: "var(--text-dim)", fontWeight: 600 }}> · {p.dose}</span>}{!p.lib && <span style={{ color: "var(--text-dim)", fontWeight: 600 }}> · {t("eigenes")}</span>}</span>
                 ))}
               </div>
               <div style={{ marginTop: 12 }}>
-                <Btn full onClick={() => { onPasteAdd(parsed); setPaste(""); setMode("tap") }}>✓ Alle {parsed.length} übernehmen</Btn>
+                <Btn full onClick={() => { onPasteAdd(parsed); setPaste(""); setMode("tap") }}>{t("✓ Alle {n} übernehmen", { n: parsed.length })}</Btn>
               </div>
             </div>
           )}
         </div>
       ) : (
         <div className="lab-rise">
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="🔍 Suchen … (z. B. Magnesium, BPC)"
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder={t("🔍 Suchen … (z. B. Magnesium, BPC)")}
             style={{ width: "100%", padding: "12px 14px", borderRadius: 14, fontSize: "0.95rem", marginBottom: 14 }} />
           {lastAdded && sel.has(lastAdded.id) && (() => {
             const tip = libTimeTip(lastAdded)
             return (
               <div key={lastAdded.id} className="lab-rise" style={{ position: "sticky", top: 8, zIndex: 2, marginBottom: 14 }}>
-                <KolbiTip title={`${lastAdded.emoji} ${lastAdded.name}: am besten ${tip.emoji} ${tip.label.charAt(0).toLowerCase()}${tip.label.slice(1)}`}>{tip.why}</KolbiTip>
+                <KolbiTip title={`${lastAdded.emoji} ${t("{name}: am besten {when}", { name: lastAdded.name, when: `${tip.emoji} ${tip.label.charAt(0).toLowerCase()}${tip.label.slice(1)}` })}`}>{tip.why}</KolbiTip>
                 {(() => {
                   const pairs = pairsWith({ supps: selected }, lastAdded.id)
                   if (!pairs.length) return null
@@ -103,7 +104,7 @@ export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd,
                           <div key={p.other.id} className="lab-pop" style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 14,
                             background: bad ? "var(--warning-dim)" : "var(--accent-dim)", fontSize: "0.78rem", lineHeight: 1.35 }}>
                             <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0, fontSize: "1rem" }}>{lastAdded.emoji}<span style={{ fontSize: "0.8rem" }}>{bad ? "⚡" : "✨"}</span>{p.other.emoji}</span>
-                            <span><b>{bad ? `Mit ${p.other.name} trennen` : `Passt zu ${p.other.name}`}</b> · {bad ? "ich achte auf 2 h Abstand" : p.rule.text}</span>
+                            <span><b>{bad ? t("Mit {name} trennen", { name: p.other.name }) : t("Passt zu {name}", { name: p.other.name })}</b> · {bad ? t("ich achte auf 2 h Abstand") : p.rule.text}</span>
                           </div>
                         )
                       })}
@@ -120,8 +121,8 @@ export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd,
                   )
                   return (
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-                      <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "var(--text-dim)", flexShrink: 0 }}>Schon zu Hause?</span>
-                      {opt(false, "✓ Ja")}{opt(true, "🛒 Noch nicht")}
+                      <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "var(--text-dim)", flexShrink: 0 }}>{t("Schon zu Hause?")}</span>
+                      {opt(false, t("✓ Ja"))}{opt(true, t("🛒 Noch nicht"))}
                     </div>
                   )
                 })()}
@@ -130,7 +131,7 @@ export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd,
           })()}
           {!ql && suggested.length > 0 && (
             <div style={{ marginBottom: 16 }}>
-              <Label style={{ marginBottom: 8, color: "var(--accent)" }}>⭐ Passt zu deinen Zielen</Label>
+              <Label style={{ marginBottom: 8, color: "var(--accent)" }}>{t("⭐ Passt zu deinen Zielen")}</Label>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{suggested.slice(0, 12).map(chip)}</div>
             </div>
           )}
@@ -139,17 +140,17 @@ export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd,
             if (!items.length) return null
             return (
               <div key={cat} style={{ marginBottom: 16 }}>
-                <Label style={{ marginBottom: 8 }}>{cat === "Peptide" ? "🧬 Peptide" : cat}</Label>
+                <Label style={{ marginBottom: 8 }}>{cat === "Peptide" ? t("🧬 Peptide") : t(cat)}</Label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{items.map(chip)}</div>
               </div>
             )
           })}
           {ql && !LIBRARY.some(l => l.name.toLowerCase().includes(ql)) && (
-            <Btn variant="soft" full onClick={() => { onAddCustom(q.trim()); setQ("") }}>+ „{q.trim()}“ als eigenes hinzufügen</Btn>
+            <Btn variant="soft" full onClick={() => { onAddCustom(q.trim()); setQ("") }}>{t("+ „{name}“ als eigenes hinzufügen", { name: q.trim() })}</Btn>
           )}
           {selected.filter(s => !s.lib).length > 0 && (
             <div style={{ marginTop: 6 }}>
-              <Label style={{ marginBottom: 8 }}>Eigene</Label>
+              <Label style={{ marginBottom: 8 }}>{t("Eigene")}</Label>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {selected.filter(s => !s.lib).map(s => <Capsule key={s.id} supp={s} size="sm" />)}
               </div>
@@ -166,9 +167,9 @@ export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd,
 export interface OnboardResult { state: Partial<LabState>; wantsCalendar: boolean }
 
 const RESET_OPTIONS = [
-  { days: 3, label: "3 Tage", sub: "schnell" },
-  { days: 5, label: "5 Tage", sub: "empfohlen" },
-  { days: 7, label: "7 Tage", sub: "am genauesten" },
+  { days: 3, label: t("3 Tage"), sub: t("schnell") },
+  { days: 5, label: t("5 Tage"), sub: t("empfohlen") },
+  { days: 7, label: t("7 Tage"), sub: t("am genauesten") },
 ]
 
 export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) => void; onDemo: () => void }) {
@@ -222,7 +223,7 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
       }}>{text}</div>
     </div>
   )
-  const question = (t: string) => <div style={{ fontSize: "1.55rem", fontWeight: 900, lineHeight: 1.15, marginBottom: 16, textWrap: "balance" }}>{t}</div>
+  const question = (text: string) => <div style={{ fontSize: "1.55rem", fontWeight: 900, lineHeight: 1.15, marginBottom: 16, textWrap: "balance" }}>{text}</div>
   const footer = (children: React.ReactNode) => (
     <div style={{ position: "sticky", bottom: 0, paddingTop: 16, paddingBottom: 4, marginTop: "auto", background: "linear-gradient(transparent, var(--background) 35%)" }}>{children}</div>
   )
@@ -243,7 +244,7 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
     <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", maxWidth: 560, margin: "0 auto", padding: "18px 18px 24px" }}>
       {step > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
-          <button className="lab-press" onClick={() => setStep(s => s - 1)} aria-label="Zurück" style={{ width: 34, height: 34, borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text)", flexShrink: 0 }}>←</button>
+          <button className="lab-press" onClick={() => setStep(s => s - 1)} aria-label={t("Zurück")} style={{ width: 34, height: 34, borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text)", flexShrink: 0 }}>←</button>
           <div style={{ flex: 1, display: "flex", gap: 5 }}>
             {Array.from({ length: STEPS }).map((_, i) => (
               <div key={i} style={{ flex: 1, height: 5, borderRadius: 3, background: i < step ? "var(--accent)" : "var(--border)", transition: "background .3s" }} />
@@ -259,41 +260,41 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
           <div style={{ display: "flex", justifyContent: "center", margin: "28px 0 8px" }}>
             <div className="lab-float"><Mascot mood="happy" size={150} /></div>
           </div>
-          <div style={{ textAlign: "center", fontSize: "2rem", fontWeight: 900, lineHeight: 1.1, margin: "8px 0 10px" }}>Hi, ich bin {MASCOT_NAME}!</div>
+          <div style={{ textAlign: "center", fontSize: "2rem", fontWeight: 900, lineHeight: 1.1, margin: "8px 0 10px" }}>{t("Hi, ich bin {name}!", { name: MASCOT_NAME })}</div>
           <div style={{ textAlign: "center", fontSize: "1.02rem", color: "var(--text-dim)", lineHeight: 1.5, marginBottom: 22, textWrap: "balance" }}>
-            Ich finde mit dir heraus, welche Supplements bei dir wirklich wirken. Du tippst nur, ich plane und werte aus.
+            {t("Ich finde mit dir heraus, welche Supplements bei dir wirklich wirken. Du tippst nur, ich plane und werte aus.")}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
-            {[["🧘", "Ein paar Tage nichts nehmen", "So lerne ich dein Normal kennen."], ["🔬", "Dann eins nach dem anderen testen", "Immer nur ein Supplement für ein paar Tage."], ["🏆", "Am Ende: dein Stack", "Was wirkt, bleibt. Ich passe auf, dass es so bleibt."]].map(([e, t, d]) => (
-              <div key={t} style={{ display: "flex", gap: 12, alignItems: "center", padding: "10px 12px", borderRadius: 16, background: "var(--surface)", border: "1px solid var(--border)" }}>
+            {[["🧘", t("Ein paar Tage nichts nehmen"), t("So lerne ich dein Normal kennen.")], ["🔬", t("Dann eins nach dem anderen testen"), t("Immer nur ein Supplement für ein paar Tage.")], ["🏆", t("Am Ende: dein Stack"), t("Was wirkt, bleibt. Ich passe auf, dass es so bleibt.")]].map(([e, ti, d]) => (
+              <div key={ti} style={{ display: "flex", gap: 12, alignItems: "center", padding: "10px 12px", borderRadius: 16, background: "var(--surface)", border: "1px solid var(--border)" }}>
                 <span style={{ fontSize: "1.5rem" }}>{e}</span>
-                <div><div style={{ fontWeight: 800, fontSize: "0.92rem" }}>{t}</div><div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>{d}</div></div>
+                <div><div style={{ fontWeight: 800, fontSize: "0.92rem" }}>{ti}</div><div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>{d}</div></div>
               </div>
             ))}
           </div>
           {STORE_MODE && <div style={{ marginBottom: 14 }}><InstallHint compact /></div>}
           <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
-            <Btn full onClick={next}>Los geht&apos;s · 1 Minute</Btn>
-            <Btn full variant="ghost" onClick={onDemo}>Erst mal mit Beispiel-Daten umschauen</Btn>
+            <Btn full onClick={next}>{t("Los geht's · 1 Minute")}</Btn>
+            <Btn full variant="ghost" onClick={onDemo}>{t("Erst mal mit Beispiel-Daten umschauen")}</Btn>
           </div>
         </div>
       )}
 
       {step === 1 && (
         <div className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          {kolbi("happy", <>Damit ich weiß, worauf ich achten soll: <b>Was möchtest du verbessern?</b> Mehrere sind okay.</>)}
-          {question("Deine Ziele")}
+          {kolbi("happy", <>{t("Damit ich weiß, worauf ich achten soll:")} <b>{t("Was möchtest du verbessern?")}</b> {t("Mehrere sind okay.")}</>)}
+          {question(t("Deine Ziele"))}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
             {GOALS.map(g => tile(goals.includes(g.id), () => setGoals(p => p.includes(g.id) ? p.filter(x => x !== g.id) : [...p, g.id]), g.emoji, g.label))}
           </div>
-          {footer(<Btn full onClick={next}>{goals.length ? "Weiter" : "Überspringen"}</Btn>)}
+          {footer(<Btn full onClick={next}>{goals.length ? t("Weiter") : t("Überspringen")}</Btn>)}
         </div>
       )}
 
       {step === 2 && (
         <div className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          {kolbi("happy", <>Tipp an, <b>was du gerade nimmst</b>. Oder kopier deine Liste rein, ich erkenne sie. Später ergänzen geht jederzeit.</>)}
-          {question("Was nimmst du gerade?")}
+          {kolbi("happy", <>{t("Tipp an,")} <b>{t("was du gerade nimmst")}</b>{t(". Oder kopier deine Liste rein, ich erkenne sie. Später ergänzen geht jederzeit.")}</>)}
+          {question(t("Was nimmst du gerade?"))}
           {supps.length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
               {supps.map(s => <Capsule key={s.id} supp={s} size="sm" onClick={() => setSupps(p => p.filter(x => x.id !== s.id))} right={<span style={{ color: "var(--text-dim)" }}>✕</span>} />)}
@@ -301,100 +302,100 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
           )}
           <SuppPicker selected={supps} goals={goals} onToggle={toggleSupp} onAddCustom={addCustom} onPasteAdd={pasteAdd}
             onAway={(libId, v) => setSupps(prev => prev.map(x => x.lib === libId ? { ...x, away: v ? todayIso() : undefined } : x))} />
-          {footer(<Btn full disabled={!supps.length} onClick={next}>{supps.length ? `Weiter mit ${supps.length}` : "Wähle mindestens eins"}</Btn>)}
+          {footer(<Btn full disabled={!supps.length} onClick={next}>{supps.length ? t("Weiter mit {n}", { n: supps.length }) : t("Wähle mindestens eins")}</Btn>)}
         </div>
       )}
 
       {step === 3 && (
         <div className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          {kolbi("sleepy", <>Damit ich dich <b>zur richtigen Uhrzeit</b> erinnere: Wie sieht dein Tag aus?</>)}
-          {question("Wann stehst du auf?")}
+          {kolbi("sleepy", <>{t("Damit ich dich")} <b>{t("zur richtigen Uhrzeit")}</b> {t("erinnere: Wie sieht dein Tag aus?")}</>)}
+          {question(t("Wann stehst du auf?"))}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, marginBottom: 10 }}>
             {RHYTHMS.map(r => tile(rhythm === r.id, () => { setRhythm(r.id); setSettings(s => ({ ...s, wake: r.wake, bed: r.bed })) }, r.emoji, r.label, `${r.wake}–${r.bed}`))}
           </div>
           <button onClick={() => setRhythm("custom")} style={{ background: "none", border: "none", color: "var(--text-dim)", fontSize: "0.85rem", fontWeight: 700, textAlign: "left", padding: "6px 0", cursor: "pointer" }}>
-            {rhythm === "custom" ? "Deine Zeiten:" : "✏️ Andere Zeiten eingeben"}
+            {rhythm === "custom" ? t("Deine Zeiten:") : t("✏️ Andere Zeiten eingeben")}
           </button>
           {rhythm === "custom" && (
             <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-              {([["wake", "🌅 Aufstehen"], ["bed", "🛌 Schlafen"]] as const).map(([k, l]) => (
+              {([["wake", t("🌅 Aufstehen")], ["bed", t("🛌 Schlafen")]] as const).map(([k, l]) => (
                 <label key={k} style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4, fontWeight: 800, fontSize: "0.8rem" }}>{l}
                   <input type="time" value={settings[k]} onChange={ev => setSettings(s => ({ ...s, [k]: ev.target.value }))} style={{ padding: "10px", borderRadius: 12, fontWeight: 700, fontSize: "1rem" }} />
                 </label>
               ))}
             </div>
           )}
-          {footer(<Btn full onClick={next}>Weiter</Btn>)}
+          {footer(<Btn full onClick={next}>{t("Weiter")}</Btn>)}
         </div>
       )}
 
       {step === 4 && (
         <div className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          {kolbi("happy", <>Manche Supplements wirken am besten <b>vor dem Training</b>. Deshalb frage ich.</>)}
-          {question("Wann trainierst du meistens?")}
+          {kolbi("happy", <>{t("Manche Supplements wirken am besten")} <b>{t("vor dem Training")}</b>{t(". Deshalb frage ich.")}</>)}
+          {question(t("Wann trainierst du meistens?"))}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
-            {TRAININGS.map(t => tile(trainingSet && settings.training === t.time, () => { setSettings(s => ({ ...s, training: t.time })); setTrainingSet(true); setTimeout(next, 250) }, t.emoji, t.label))}
+            {TRAININGS.map(tr => tile(trainingSet && settings.training === tr.time, () => { setSettings(s => ({ ...s, training: tr.time })); setTrainingSet(true); setTimeout(next, 250) }, tr.emoji, tr.label))}
           </div>
-          {footer(<Btn full variant="ghost" onClick={next}>Überspringen</Btn>)}
+          {footer(<Btn full variant="ghost" onClick={next}>{t("Überspringen")}</Btn>)}
         </div>
       )}
 
       {step === 5 && (
         <div className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          {kolbi("think", <>Zuerst nimmst du <b>ein paar Tage gar nichts</b>. So weiß ich, wie du dich ohne Supplements fühlst.{rx.length > 0 && <> Ausnahme: <b>{rx.map(x => x.name).join(", ")}</b> ist ärztlich verordnet und läuft einfach weiter.</>}</>)}
-          {question("Wie lange willst du pausieren?")}
+          {kolbi("think", <>{t("Zuerst nimmst du")} <b>{t("ein paar Tage gar nichts")}</b>{t(". So weiß ich, wie du dich ohne Supplements fühlst.")}{rx.length > 0 && <> {t("Ausnahme:")} <b>{rx.map(x => x.name).join(", ")}</b> {t("ist ärztlich verordnet und läuft einfach weiter.")}</>}</>)}
+          {question(t("Wie lange willst du pausieren?"))}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
             {RESET_OPTIONS.map(o => tile(baseline === o.days, () => setBaseline(o.days), o.days === 3 ? "⚡" : o.days === 5 ? "⭐" : "🎯", o.label, o.sub))}
           </div>
           {supps.some(x => x.lib === "koffein") && (
-            <div style={{ marginTop: 14, fontSize: "0.82rem", color: "var(--text-dim)", lineHeight: 1.45 }}>☕ Ohne Kaffee sind Kopfschmerzen in den ersten Tagen normal. Wenn du Kaffee nicht testen willst, entferne ihn einfach aus deiner Liste.</div>
+            <div style={{ marginTop: 14, fontSize: "0.82rem", color: "var(--text-dim)", lineHeight: 1.45 }}>{t("☕ Ohne Kaffee sind Kopfschmerzen in den ersten Tagen normal. Wenn du Kaffee nicht testen willst, entferne ihn einfach aus deiner Liste.")}</div>
           )}
-          {footer(<Btn full onClick={next}>Weiter</Btn>)}
+          {footer(<Btn full onClick={next}>{t("Weiter")}</Btn>)}
         </div>
       )}
 
       {step === 6 && (
         <div className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          {kolbi("happy", <>Ich melde mich <b>zur Einnahme-Zeit</b> und <b>abends um {defaultCheckinTime(settings)} Uhr</b> für den Check-in. Aus der Nachricht heraus reicht ein Tipp.</>)}
-          {question("Soll ich dich erinnern?")}
+          {kolbi("happy", <>{t("Ich melde mich")} <b>{t("zur Einnahme-Zeit")}</b> {t("und")} <b>{t("abends um {time}", { time: clock(defaultCheckinTime(settings)) })}</b> {t("für den Check-in. Aus der Nachricht heraus reicht ein Tipp.")}</>)}
+          {question(t("Soll ich dich erinnern?"))}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
-            {tile(remind === true, () => { setRemind(true); setTimeout(next, 250) }, "🔔", "Ja, gerne", "empfohlen")}
-            {tile(remind === false, () => { setRemind(false); setTimeout(next, 250) }, "🔕", "Nein, danke")}
+            {tile(remind === true, () => { setRemind(true); setTimeout(next, 250) }, "🔔", t("Ja, gerne"), t("empfohlen"))}
+            {tile(remind === false, () => { setRemind(false); setTimeout(next, 250) }, "🔕", t("Nein, danke"))}
           </div>
-          {remind && !hasNativeReminders() && <div style={{ marginTop: 12, fontSize: "0.78rem", color: "var(--text-dim)" }}>📅 Beim Start trage ich die Termine in deinen Kalender ein, damit es auch klappt, wenn die App zu ist.</div>}
+          {remind && !hasNativeReminders() && <div style={{ marginTop: 12, fontSize: "0.78rem", color: "var(--text-dim)" }}>{t("📅 Beim Start trage ich die Termine in deinen Kalender ein, damit es auch klappt, wenn die App zu ist.")}</div>}
         </div>
       )}
 
       {step === 7 && (
         <div className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          {kolbi("party", <>Alles klar, <b>ich hab deinen Plan</b>. Ab jetzt sage ich dir jeden Tag, was dran ist.</>)}
-          {question("Wann legst du los?")}
+          {kolbi("party", <>{t("Alles klar,")} <b>{t("ich hab deinen Plan")}</b>{t(". Ab jetzt sage ich dir jeden Tag, was dran ist.")}</>)}
+          {question(t("Wann legst du los?"))}
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
             {[
-              ["🧘", `${baseline} Tage Reset`, "nichts nehmen, jeden Abend 1 Tipp"],
-              ["🔬", `Dann ${testOrder.length} Test${testOrder.length === 1 ? "" : "s"}, einzeln`, testOrder.slice(0, 4).map(x => x.name).join(" → ") + (testOrder.length > 4 ? " …" : "")],
-              ["🏆", "Dein Stack", "alles, was wirkt, zusammen"],
-            ].map(([e, t, d]) => (
-              <div key={t} style={{ display: "flex", gap: 12, alignItems: "center", padding: "12px 14px", borderRadius: 16, background: "var(--surface)", border: "1px solid var(--border)" }}>
+              ["🧘", t("{n} Tage Reset", { n: baseline }), t("nichts nehmen, jeden Abend 1 Tipp")],
+              ["🔬", testOrder.length === 1 ? t("Dann 1 Test, einzeln") : t("Dann {n} Tests, einzeln", { n: testOrder.length }), testOrder.slice(0, 4).map(x => x.name).join(" → ") + (testOrder.length > 4 ? " …" : "")],
+              ["🏆", t("Dein Stack"), t("alles, was wirkt, zusammen")],
+            ].map(([e, ti, d]) => (
+              <div key={ti} style={{ display: "flex", gap: 12, alignItems: "center", padding: "12px 14px", borderRadius: 16, background: "var(--surface)", border: "1px solid var(--border)" }}>
                 <span style={{ fontSize: "1.5rem" }}>{e}</span>
-                <div style={{ minWidth: 0 }}><div style={{ fontWeight: 800 }}>{t}</div><div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>{d}</div></div>
+                <div style={{ minWidth: 0 }}><div style={{ fontWeight: 800 }}>{ti}</div><div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>{d}</div></div>
               </div>
             ))}
           </div>
           {special.length > 0 && (
             <div style={{ fontSize: "0.78rem", lineHeight: 1.5, padding: "10px 12px", borderRadius: 14, background: "var(--danger-dim)", marginBottom: 10 }}>
               {STORE_MODE
-                ? <>⚕️ <b>Eigene Substanzen:</b> Ich protokolliere nur, was du einträgst, und empfehle keine Substanzen oder Dosierungen. Alles über normale Nahrungsergänzung hinaus bitte ärztlich abklären.</>
-                : <>🧬 <b>Peptide:</b> Die meisten sind nicht als Arzneimittel zugelassen und kaum am Menschen untersucht. Nur mit ärztlicher Begleitung und geprüfter Quelle.</>}
+                ? <>⚕️ <b>{t("Eigene Substanzen:")}</b> {t("Ich protokolliere nur, was du einträgst, und empfehle keine Substanzen oder Dosierungen. Alles über normale Nahrungsergänzung hinaus bitte ärztlich abklären.")}</>
+                : <>🧬 <b>{t("Peptide:")}</b> {t("Die meisten sind nicht als Arzneimittel zugelassen und kaum am Menschen untersucht. Nur mit ärztlicher Begleitung und geprüfter Quelle.")}</>}
             </div>
           )}
           <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", lineHeight: 1.5 }}>
-            ⚕️ Kein medizinischer Rat. Verschriebene Medikamente nie eigenmächtig absetzen.
+            {t("⚕️ Kein medizinischer Rat. Verschriebene Medikamente nie eigenmächtig absetzen.")}
           </div>
           {footer(
             <div style={{ display: "flex", gap: 8 }}>
-              <Btn full onClick={() => start(0)}>Heute starten 🚀</Btn>
-              <Btn variant="soft" onClick={() => start(1)} style={{ whiteSpace: "nowrap" }}>Morgen</Btn>
+              <Btn full onClick={() => start(0)}>{t("Heute starten 🚀")}</Btn>
+              <Btn variant="soft" onClick={() => start(1)} style={{ whiteSpace: "nowrap" }}>{t("Morgen")}</Btn>
             </div>
           )}
         </div>
@@ -419,7 +420,8 @@ export function CheckInSheet({ s, date, phaseLabel, onDone, onClose }: {
   const [sides, setSides] = useState<Record<string, number>>(existing?.sides ?? {})
   const suggestedSides = knownSides(s, intakeOn(s, date)).map(id => SIDE_BY_ID[id]).filter(Boolean)
   const [showTags, setShowTags] = useState(!!existing?.tags.length)
-  const dayLabel = date === todayIso() ? "Heute" : diffDays(date, todayIso()) === 1 ? "Gestern" : fmtDate(date)
+  const isToday = date === todayIso()
+  const dayLabel = isToday ? t("Heute") : diffDays(date, todayIso()) === 1 ? t("Gestern") : fmtDate(date)
 
   const pickOverall = (v: number) => {
     setOverall(v)
@@ -443,24 +445,24 @@ export function CheckInSheet({ s, date, phaseLabel, onDone, onClose }: {
             <div style={{ fontSize: "1.3rem", fontWeight: 900 }}>Check-in · {dayLabel}</div>
             <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", fontWeight: 700 }}>{phaseLabel}</div>
           </div>
-          <button className="lab-press" onClick={onClose} aria-label="Schließen" style={{ width: 38, height: 38, borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text)" }}>✕</button>
+          <button className="lab-press" onClick={onClose} aria-label={t("Schließen")} style={{ width: 38, height: 38, borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text)" }}>✕</button>
         </div>
 
         <Card style={{ marginBottom: 12 }}>
-          <div style={{ fontWeight: 900, marginBottom: 10 }}>Wie war {dayLabel === "Heute" ? "dein Tag" : "der Tag"} insgesamt?</div>
+          <div style={{ fontWeight: 900, marginBottom: 10 }}>{isToday ? t("Wie war dein Tag insgesamt?") : t("Wie war der Tag insgesamt?")}</div>
           <FaceRow value={overall} onPick={pickOverall} faces={FACES} labels={FACE_LABELS} />
           {yesterday && !existing && (
             <button className="lab-press" onClick={() => { setScores({ ...yesterday.scores }); setOverall(Math.round(daySum(yesterday))); setTouched(new Set(Object.keys(yesterday.scores) as Dim[])) }}
               style={{ marginTop: 10, background: "none", border: "1px dashed var(--border)", borderRadius: 12, padding: "8px 12px", color: "var(--text-dim)", fontWeight: 700, fontSize: "0.8rem", width: "100%" }}>
-              ↺ Wie gestern übernehmen
+              {t("↺ Wie gestern übernehmen")}
             </button>
           )}
         </Card>
 
         <Card style={{ marginBottom: 12, padding: "12px 14px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-            <Label>Einzeln bewerten (optional)</Label>
-            {avg != null && <span style={{ fontSize: "0.85rem", fontWeight: 900, color: "#f5b400" }}>Ø ★ {avg.toFixed(1).replace(".", ",")}</span>}
+            <Label>{t("Einzeln bewerten (optional)")}</Label>
+            {avg != null && <span style={{ fontSize: "0.85rem", fontWeight: 900, color: "#f5b400" }}>Ø ★ {dec(avg, 1)}</span>}
           </div>
           {dims.map(d => (
             <div key={d.id} title={d.question} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "6px 0", borderTop: "1px solid var(--border)" }}>
@@ -475,34 +477,34 @@ export function CheckInSheet({ s, date, phaseLabel, onDone, onClose }: {
 
         <Card style={{ marginBottom: 12, padding: "12px 14px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-            <Label>Nebenwirkungen?</Label>
-            <span style={{ fontSize: "0.68rem", color: "var(--text-dim)" }}>1× leicht · 2× stark</span>
+            <Label>{t("Nebenwirkungen?")}</Label>
+            <span style={{ fontSize: "0.68rem", color: "var(--text-dim)" }}>{t("1× leicht · 2× stark")}</span>
           </div>
           <SideChips value={sides} onChange={setSides} suggested={suggestedSides.length ? suggestedSides : SIDE_EFFECTS.slice(0, 6)} all={SIDE_EFFECTS} />
         </Card>
 
         <button onClick={() => setShowTags(v => !v)} style={{ background: "none", border: "none", color: "var(--text-dim)", fontWeight: 800, fontSize: "0.85rem", padding: "4px 0 10px", cursor: "pointer" }}>
-          {showTags ? "▾" : "▸"} Störfaktoren & Notiz {tags.length ? `(${tags.length})` : "(Alkohol, Stress, krank …)"}
+          {showTags ? "▾" : "▸"} {t("Störfaktoren & Notiz")} {tags.length ? `(${tags.length})` : t("(Alkohol, Stress, krank …)")}
         </button>
         {showTags && (
           <div className="lab-rise" style={{ marginBottom: 12 }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 10 }}>
-              {TAGS.map(t => {
-                const on = tags.includes(t)
+              {TAGS.map(tag => {
+                const on = tags.includes(tag)
                 return (
-                  <button key={t} className="lab-press" onClick={() => setTags(p => on ? p.filter(x => x !== t) : [...p, t])} style={{
+                  <button key={tag} className="lab-press" onClick={() => setTags(p => on ? p.filter(x => x !== tag) : [...p, tag])} style={{
                     padding: "8px 12px", borderRadius: 999, fontSize: "0.8rem", fontWeight: on ? 800 : 600,
                     border: on ? "2px solid var(--accent)" : "1px solid var(--border)", background: on ? "var(--accent-dim)" : "var(--surface)", color: "var(--text)",
-                  }}>{t}</button>
+                  }}>{t(tag)}</button>
                 )
               })}
             </div>
-            <textarea value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder="Notiz (optional)"
+            <textarea value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder={t("Notiz (optional)")}
               style={{ width: "100%", padding: 12, borderRadius: 14, fontSize: "0.92rem", resize: "none" }} />
           </div>
         )}
 
-        <Btn full disabled={overall == null && !filled.length} onClick={save}>{existing ? "Speichern" : "Check-in abschließen ✨"}</Btn>
+        <Btn full disabled={overall == null && !filled.length} onClick={save}>{existing ? t("Speichern") : t("Check-in abschließen ✨")}</Btn>
       </div>
     </div>
   )

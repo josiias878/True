@@ -2,6 +2,7 @@
 import React, { useEffect } from "react"
 import type { MySupp } from "@/lib/supplementLab"
 import { suppColor } from "@/lib/supplementLab"
+import { t } from "@/lib/labI18n"
 
 // ── Lab-Styles (Animationen & wiederverwendbare Klassen) ────────────────────────
 
@@ -183,7 +184,7 @@ export function Sheet({ open, onClose, children, title }: { open: boolean; onClo
         {title && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
             <div style={{ fontSize: "1.2rem", fontWeight: 900 }}>{title}</div>
-            <button onClick={onClose} className="lab-press" aria-label="Schließen" style={{
+            <button onClick={onClose} className="lab-press" aria-label={t("Schließen")} style={{
               width: 34, height: 34, borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text-dim)", fontSize: "1rem",
             }}>✕</button>
           </div>
@@ -198,9 +199,9 @@ export function Stepper({ value, min, max, onChange, suffix }: { value: number; 
   const b: React.CSSProperties = { width: 32, height: 32, borderRadius: 10, border: "none", background: "var(--surface-2)", color: "var(--text)", fontWeight: 900, fontSize: "1rem" }
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-      <button className="lab-press" style={b} onClick={() => onChange(Math.max(min, value - 1))} aria-label="weniger">−</button>
+      <button className="lab-press" style={b} onClick={() => onChange(Math.max(min, value - 1))} aria-label={t("weniger")}>−</button>
       <span style={{ minWidth: 44, textAlign: "center", fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{value}{suffix}</span>
-      <button className="lab-press" style={b} onClick={() => onChange(Math.min(max, value + 1))} aria-label="mehr">+</button>
+      <button className="lab-press" style={b} onClick={() => onChange(Math.min(max, value + 1))} aria-label={t("mehr")}>+</button>
     </span>
   )
 }
@@ -243,11 +244,11 @@ export function XpToast({ amount, label }: { amount: number; label: string }) {
 /** Sterne-Bewertung 1–5 (ein Tipp). */
 export function Stars({ value, onChange, size = 26 }: { value: number | undefined; onChange?: (v: number) => void; size?: number }) {
   return (
-    <span style={{ display: "inline-flex", gap: 2 }} role={onChange ? "radiogroup" : "img"} aria-label={value ? `${value} von 5 Sternen` : "keine Bewertung"}>
+    <span style={{ display: "inline-flex", gap: 2 }} role={onChange ? "radiogroup" : "img"} aria-label={value ? t("{n} von 5 Sternen", { n: value }) : t("keine Bewertung")}>
       {[1, 2, 3, 4, 5].map(i => {
         const on = (value ?? 0) >= i
         return (
-          <button key={i} type="button" disabled={!onChange} onClick={() => onChange?.(i)} aria-label={`${i} Sterne`}
+          <button key={i} type="button" disabled={!onChange} onClick={() => onChange?.(i)} aria-label={i === 1 ? t("1 Sterne") : t("{n} Sterne", { n: i })}
             className={onChange ? "lab-press" : undefined}
             style={{
               width: size + 6, height: size + 6, border: "none", background: "none", padding: 0, cursor: onChange ? "pointer" : "default",
@@ -269,7 +270,7 @@ export function FaceRow({ value, onPick, faces, labels, size = 60 }: { value?: n
         const v = i + 1
         const on = value === v
         return (
-          <button key={i} className="lab-press" onClick={() => onPick(v)} aria-label={labels?.[i] ?? `${v} von 5`} style={{
+          <button key={i} className="lab-press" onClick={() => onPick(v)} aria-label={labels?.[i] ?? t("{n} von 5", { n: v })} style={{
             flex: 1, maxWidth: size + 16, minHeight: size, borderRadius: 18, padding: "8px 0 6px",
             border: on ? `3px solid ${hue[i]}` : "1px solid var(--border)",
             background: on ? `color-mix(in srgb, ${hue[i]} 18%, var(--surface))` : "var(--surface)",
@@ -322,7 +323,7 @@ export function SideChips({ value, onChange, suggested, all, compact }: {
         padding: compact ? "7px 10px" : "8px 12px", borderRadius: 999, fontSize: "0.8rem", fontWeight: sev ? 800 : 600, color: "var(--text)",
         border: sev ? `2px solid ${col}` : "1px solid var(--border)",
         background: sev === 2 ? "var(--danger-dim)" : sev === 1 ? "var(--warning-dim)" : "var(--surface)",
-      }}>{x.emoji} {x.label}{sev === 1 ? " · leicht" : sev === 2 ? " · stark" : ""}</button>
+      }}>{x.emoji} {x.label}{sev === 1 ? t(" · leicht") : sev === 2 ? t(" · stark") : ""}</button>
     )
   }
   return (
@@ -331,9 +332,9 @@ export function SideChips({ value, onChange, suggested, all, compact }: {
         <button className="lab-press" onClick={() => onChange({})} style={{
           padding: compact ? "7px 10px" : "8px 12px", borderRadius: 999, fontSize: "0.8rem", fontWeight: 800, color: "var(--text)",
           border: none ? "2px solid var(--accent)" : "1px solid var(--border)", background: none ? "var(--accent-dim)" : "var(--surface)",
-        }}>✓ Keine</button>
+        }}>{t("✓ Keine")}</button>
         {list.map(chip)}
-        {all && !more && <button onClick={() => setMore(true)} style={{ background: "none", border: "none", color: "var(--text-dim)", fontWeight: 800, fontSize: "0.8rem", cursor: "pointer" }}>+ mehr</button>}
+        {all && !more && <button onClick={() => setMore(true)} style={{ background: "none", border: "none", color: "var(--text-dim)", fontWeight: 800, fontSize: "0.8rem", cursor: "pointer" }}>{t("+ mehr")}</button>}
       </div>
     </div>
   )

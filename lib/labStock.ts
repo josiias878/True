@@ -6,14 +6,16 @@ import {
   addDays, intakeOn, libOf, todayIso, isHere, looksPrescribed,
   type LabState, type LibSupp, type MySupp, type Stock, type StockForm,
 } from "./supplementLab"
+import { t, euro, isEn, LOCALE } from "./labI18n"
 
+// „Tropfen“ allein ist im Wörterbuch schon als Einzahl belegt („pro Tropfen“ → drop), daher hier direkt.
 export const FORMS: Record<StockForm, {
   label: string; emoji: string; packUnit: string; doseUnit: string; packChips: number[]; doseChips: number[]; packMax: number; doseMax: number
 }> = {
-  kapseln:  { label: "Kapseln / Tabletten", emoji: "💊", packUnit: "Stück", doseUnit: "Stück", packChips: [30, 60, 90, 120, 180, 365], doseChips: [1, 2, 3, 4], packMax: 1000, doseMax: 20 },
-  pulver:   { label: "Pulver", emoji: "🥄", packUnit: "g", doseUnit: "g", packChips: [100, 250, 500, 1000], doseChips: [1, 3, 5, 10], packMax: 5000, doseMax: 100 },
-  tropfen:  { label: "Tropfen", emoji: "💧", packUnit: "ml", doseUnit: "Tropfen", packChips: [10, 20, 30, 50], doseChips: [1, 2, 3, 5], packMax: 500, doseMax: 60 },
-  fluessig: { label: "Flüssig", emoji: "🧴", packUnit: "ml", doseUnit: "ml", packChips: [100, 250, 500, 1000], doseChips: [5, 10, 15, 20], packMax: 5000, doseMax: 200 },
+  kapseln:  { label: t("Kapseln / Tabletten"), emoji: "💊", packUnit: t("Stück"), doseUnit: t("Stück"), packChips: [30, 60, 90, 120, 180, 365], doseChips: [1, 2, 3, 4], packMax: 1000, doseMax: 20 },
+  pulver:   { label: t("Pulver"), emoji: "🥄", packUnit: "g", doseUnit: "g", packChips: [100, 250, 500, 1000], doseChips: [1, 3, 5, 10], packMax: 5000, doseMax: 100 },
+  tropfen:  { label: isEn ? "Drops" : "Tropfen", emoji: "💧", packUnit: "ml", doseUnit: isEn ? "drops" : "Tropfen", packChips: [10, 20, 30, 50], doseChips: [1, 2, 3, 5], packMax: 500, doseMax: 60 },
+  fluessig: { label: t("Flüssig"), emoji: "🧴", packUnit: "ml", doseUnit: "ml", packChips: [100, 250, 500, 1000], doseChips: [5, 10, 15, 20], packMax: 5000, doseMax: 200 },
 }
 
 /** Grobe Faustregel für Öl-Tropfen (steht so auch auf vielen Fläschchen). */
@@ -21,16 +23,16 @@ export const DROPS_PER_ML = 30
 /** Ab so vielen Resttagen erinnert Kolbi ans Nachkaufen (Lieferzeit + Puffer). */
 export const LOW_DAYS = 7
 
-export const fmtNum = (n: number) => (Math.round(n * 10) / 10).toLocaleString("de-DE")
+export const fmtNum = (n: number) => (Math.round(n * 10) / 10).toLocaleString(LOCALE)
 
 /** Verbrauch pro Einnahme in Packungs-Einheiten. */
 export function perUse(st: Stock) { return st.form === "tropfen" ? st.perDay / DROPS_PER_ML : st.perDay }
 
 export function doseLabel(st: Pick<Stock, "form" | "perDay">) {
   const n = fmtNum(st.perDay)
-  if (st.form === "kapseln") return st.perDay === 1 ? "1 Kapsel" : `${n} Kapseln`
+  if (st.form === "kapseln") return st.perDay === 1 ? t("1 Kapsel") : t("{n} Kapseln", { n })
   if (st.form === "pulver") return `${n} g`
-  if (st.form === "tropfen") return `${n} Tropfen`
+  if (st.form === "tropfen") return t("{n} Tropfen", { n })
   return `${n} ml`
 }
 
@@ -66,19 +68,19 @@ export function inUse(s: LabState, x: MySupp, today = todayIso()) {
 // ── Dosis verstehen ────────────────────────────────────────────────────────────
 
 type DoseUnit = "mg" | "IE"
-/** „3–5 g“, „1.000–2.000 IE“, „50–100 µg“ → Bereich in mg bzw. IE. */
+/** „3–5 g“, „1.000–2.000 IE“, „50–100 µg“ → Bereich in mg bzw. IE (auch englisch: „1,000–2,000 IU“). */
 export function doseRange(lib: LibSupp | undefined): { min: number; max: number; unit: DoseUnit } | null {
   if (!lib) return null
-  const m = lib.dose.match(/(\d+(?:[.,]\d+)?)(?:\s*[–-]\s*(\d+(?:[.,]\d+)?))?\s*(mg|µg|g|IE)\b/)
+  const m = lib.dose.match(/(\d+(?:[.,]\d+)?)(?:\s*[–-]\s*(\d+(?:[.,]\d+)?))?\s*(mg|µg|g|IE|IU)\b/)
   if (!m) return null
-  const num = (v: string) => Number(v.replace(/\.(?=\d{3})/g, "").replace(",", "."))
+  const num = (v: string) => Number(v.replace(/[.,](?=\d{3}(?!\d))/g, "").replace(",", "."))
   const f = m[3] === "g" ? 1000 : m[3] === "µg" ? 0.001 : 1
   const min = num(m[1]) * f, max = num(m[2] ?? m[1]) * f
-  return { min, max, unit: m[3] === "IE" ? "IE" : "mg" }
+  return { min, max, unit: m[3] === "IE" || m[3] === "IU" ? "IE" : "mg" }
 }
 
 export function fmtAmount(v: number, unit: DoseUnit) {
-  if (unit === "IE") return `${fmtNum(v)} IE`
+  if (unit === "IE") return t("{n} IE", { n: fmtNum(v) })
   if (v >= 1000) return `${fmtNum(v / 1000)} g`
   if (v < 1) return `${fmtNum(v * 1000)} µg`
   return `${fmtNum(v)} mg`
@@ -87,7 +89,7 @@ export function fmtAmount(v: number, unit: DoseUnit) {
 /** Bereich in einer gemeinsamen Einheit: „3–5 g“, „250–1.000 µg“. */
 export function fmtRange(min: number, max: number, unit: DoseUnit) {
   if (min === max) return fmtAmount(min, unit)
-  if (unit === "IE") return `${fmtNum(min)}–${fmtNum(max)} IE`
+  if (unit === "IE") return t("{min}–{max} IE", { min: fmtNum(min), max: fmtNum(max) })
   if (min >= 1000) return `${fmtNum(min / 1000)}–${fmtNum(max / 1000)} g`
   if (min < 1 && max <= 1) return `${fmtNum(min * 1000)}–${fmtNum(max * 1000)} µg`
   return `${fmtNum(min)}–${fmtNum(max)} mg`
@@ -98,7 +100,7 @@ export function guessForm(x: MySupp): StockForm {
   if (lib?.id === "vitd") return "tropfen"
   if (lib?.id === "omega3") return "kapseln"
   const r = doseRange(lib)
-  if ((r?.unit === "mg" && r.min >= 1000) || /Portion/.test(lib?.dose ?? "")) return "pulver"
+  if ((r?.unit === "mg" && r.min >= 1000) || /Portion|serving/i.test(lib?.dose ?? "")) return "pulver"
   return "kapseln"
 }
 
@@ -137,10 +139,10 @@ export function doseCheck(x: MySupp, st: Stock): DoseCheck | null {
     const per = gramDosed(x, st.form) ? 1000 : st.active! * (st.activeUnit === "µg" ? 0.001 : 1)
     const better = st.form === "kapseln" && per > 0 ? Math.max(1, Math.floor(r.max / per)) : undefined
     return { level: "high", amount, rec, better: better && better < st.perDay ? better : undefined,
-      text: `Das ist mehr als die übliche Tagesmenge (${rec}). Mehr bringt hier meist nicht mehr – außer dein Arzt hat es so empfohlen.` }
+      text: t("Das ist mehr als die übliche Tagesmenge ({rec}). Mehr bringt hier meist nicht mehr – außer dein Arzt hat es so empfohlen.", { rec }) }
   }
-  if (amt < r.min * 0.75) return { level: "low", amount, rec, text: `Etwas weniger als üblich (${rec}). Kann reichen – wenn du nichts merkst, liegt es vielleicht an der Menge.` }
-  return { level: "ok", amount, rec, text: `Passt genau in die übliche Tagesmenge (${rec}).` }
+  if (amt < r.min * 0.75) return { level: "low", amount, rec, text: t("Etwas weniger als üblich ({rec}). Kann reichen – wenn du nichts merkst, liegt es vielleicht an der Menge.", { rec }) }
+  return { level: "ok", amount, rec, text: t("Passt genau in die übliche Tagesmenge ({rec}).", { rec }) }
 }
 
 // ── Einkaufen ──────────────────────────────────────────────────────────────────
@@ -154,34 +156,34 @@ export const shopIsAd = () => !!AFFILIATE.amazonTag
 
 /** Suchbegriff für den Nachkauf + Kolbis Tipp zur besseren Form. */
 const BUY: Record<string, { q: string; alt?: string }> = {
-  kupfer:      { q: "Kupfer Bisglycinat 2 mg", alt: "Kupfer-Bisglycinat ist gut verträglich – 1–2 mg am Tag reichen." },
-  magnesium:   { q: "Magnesium Glycinat", alt: "Glycinat ist sanft zum Magen. Citrat wirkt eher abführend, Oxid wird schlecht aufgenommen." },
-  kreatin:     { q: "Kreatin Monohydrat Pulver", alt: "Monohydrat ist die am besten untersuchte Form – teure „neue“ Formen bringen nachweislich nicht mehr." },
-  vitd:        { q: "Vitamin D3 K2 Tropfen", alt: "Tropfen in Öl sind günstig und lassen sich fein dosieren." },
-  omega3:      { q: "Omega 3 EPA DHA Kapseln", alt: "Achte auf EPA+DHA pro Kapsel, nicht nur „Fischöl“. Algenöl ist die vegane Variante." },
-  zink:        { q: "Zink Bisglycinat 15 mg", alt: "Bisglycinat oder Picolinat werden gut aufgenommen – 10–15 mg reichen meist." },
-  eisen:       { q: "Eisen Bisglycinat", alt: "Eisen-Bisglycinat ist deutlich magenschonender als Eisensulfat." },
-  b12:         { q: "Vitamin B12 Methylcobalamin Lutschtabletten", alt: "Methyl- oder Adenosylcobalamin, als Lutschtablette oder Tropfen." },
-  folat:       { q: "Folat 5-MTHF", alt: "5-MTHF (Methylfolat) ist die direkt aktive Form." },
+  kupfer:      { q: "Kupfer Bisglycinat 2 mg", alt: t("Kupfer-Bisglycinat ist gut verträglich – 1–2 mg am Tag reichen.") },
+  magnesium:   { q: "Magnesium Glycinat", alt: t("Glycinat ist sanft zum Magen. Citrat wirkt eher abführend, Oxid wird schlecht aufgenommen.") },
+  kreatin:     { q: "Kreatin Monohydrat Pulver", alt: t("Monohydrat ist die am besten untersuchte Form – teure „neue“ Formen bringen nachweislich nicht mehr.") },
+  vitd:        { q: "Vitamin D3 K2 Tropfen", alt: t("Tropfen in Öl sind günstig und lassen sich fein dosieren.") },
+  omega3:      { q: "Omega 3 EPA DHA Kapseln", alt: t("Achte auf EPA+DHA pro Kapsel, nicht nur „Fischöl“. Algenöl ist die vegane Variante.") },
+  zink:        { q: "Zink Bisglycinat 15 mg", alt: t("Bisglycinat oder Picolinat werden gut aufgenommen – 10–15 mg reichen meist.") },
+  eisen:       { q: "Eisen Bisglycinat", alt: t("Eisen-Bisglycinat ist deutlich magenschonender als Eisensulfat.") },
+  b12:         { q: "Vitamin B12 Methylcobalamin Lutschtabletten", alt: t("Methyl- oder Adenosylcobalamin, als Lutschtablette oder Tropfen.") },
+  folat:       { q: "Folat 5-MTHF", alt: t("5-MTHF (Methylfolat) ist die direkt aktive Form.") },
   theanin:     { q: "L-Theanin 200 mg" },
-  glycin:      { q: "Glycin Pulver", alt: "Als Pulver viel günstiger als Kapseln – schmeckt leicht süß." },
-  ashwagandha: { q: "Ashwagandha KSM-66", alt: "KSM-66 ist der am besten untersuchte Extrakt." },
-  curcumin:    { q: "Curcumin Piperin", alt: "Ohne Piperin oder Mizellen-Form wird kaum etwas aufgenommen." },
-  q10:         { q: "Coenzym Q10 Ubiquinol", alt: "Ubiquinol wird – besonders ab 40 – besser aufgenommen als Ubichinon." },
+  glycin:      { q: "Glycin Pulver", alt: t("Als Pulver viel günstiger als Kapseln – schmeckt leicht süß.") },
+  ashwagandha: { q: "Ashwagandha KSM-66", alt: t("KSM-66 ist der am besten untersuchte Extrakt.") },
+  curcumin:    { q: "Curcumin Piperin", alt: t("Ohne Piperin oder Mizellen-Form wird kaum etwas aufgenommen.") },
+  q10:         { q: "Coenzym Q10 Ubiquinol", alt: t("Ubiquinol wird – besonders ab 40 – besser aufgenommen als Ubichinon.") },
   kollagen:    { q: "Kollagen Peptide Pulver" },
   whey:        { q: "Whey Protein Pulver" },
   elektrolyte: { q: "Elektrolyt Pulver ohne Zucker" },
-  citrullin:   { q: "L-Citrullin Malat Pulver", alt: "Als Pulver viel günstiger – 6–8 g schafft man mit Kapseln kaum." },
+  citrullin:   { q: "L-Citrullin Malat Pulver", alt: t("Als Pulver viel günstiger – 6–8 g schafft man mit Kapseln kaum.") },
   betaalanin:  { q: "Beta Alanin Pulver" },
-  melatonin:   { q: "Melatonin 0,5 mg", alt: "Weniger ist oft mehr: 0,5–1 mg wirken meist genauso gut wie 5 mg." },
+  melatonin:   { q: "Melatonin 0,5 mg", alt: t("Weniger ist oft mehr: 0,5–1 mg wirken meist genauso gut wie 5 mg.") },
   probiotika:  { q: "Probiotika Kapseln magensaftresistent" },
-  vitc:        { q: "Vitamin C gepuffert", alt: "Gepuffertes Vitamin C ist sanfter zum Magen." },
+  vitc:        { q: "Vitamin C gepuffert", alt: t("Gepuffertes Vitamin C ist sanfter zum Magen.") },
   selen:       { q: "Selen 100 µg" },
   jod:         { q: "Jod 100 µg" },
   flohsamen:   { q: "Flohsamenschalen gemahlen" },
   multivitamin:{ q: "Multivitamin" },
   nac:         { q: "NAC 600 mg" },
-  taurin:      { q: "Taurin Pulver", alt: "Als Pulver sehr günstig und geschmacksneutral." },
+  taurin:      { q: "Taurin Pulver", alt: t("Als Pulver sehr günstig und geschmacksneutral.") },
 }
 
 export function buyInfo(x: MySupp): { q: string; alt?: string } {
@@ -231,7 +233,7 @@ export function monthlyCost(x: MySupp): number | null {
   return days > 0 ? (st.price / days) * DAYS_PER_MONTH : null
 }
 
-export const fmtEuro = (v: number) => `${v < 10 ? v.toFixed(2).replace(".", ",") : Math.round(v).toLocaleString("de-DE")} €`
+export const fmtEuro = (v: number) => euro(v)
 
 export interface CostSummary {
   total: number

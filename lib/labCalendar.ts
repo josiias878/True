@@ -4,6 +4,7 @@
 
 import { addDays, fromMin, toMin, todayIso, type LabState } from "./supplementLab"
 import { pathStops, type Stop } from "./labPath"
+import { t } from "./labI18n"
 
 const FEED_URL = "https://mkdfohmshuuiroeruyyz.supabase.co/functions/v1/lab-cal"
 const TOKEN_KEY = "lab-cal-token", ON_KEY = "lab-cal-on", NAMES_KEY = "lab-cal-names", HASH_KEY = "lab-cal-hash"
@@ -36,9 +37,9 @@ export function calendarUrls() {
 // ── ICS ────────────────────────────────────────────────────────────────────────
 
 const NEUTRAL: Record<Stop["kind"], string> = {
-  take: "💊 Einnahme", checkin: "⭐ Check-in", result: "🎁 Ein Test-Ergebnis ist da", lastDay: "🏁 Letzter Testtag",
-  nextTest: "🔬 Nächster Test (Vorschlag)", startTest: "🔬 Test starten", stock: "🛒 Vorrat nachkaufen", streak: "🔥 Serien-Meilenstein",
-  stack: "🏆 Stack starten", check: "🤔 Entscheidung fällig", reset: "🧘 Reset startet",
+  take: t("💊 Einnahme"), checkin: t("⭐ Check-in"), result: t("🎁 Ein Test-Ergebnis ist da"), lastDay: t("🏁 Letzter Testtag"),
+  nextTest: t("🔬 Nächster Test (Vorschlag)"), startTest: t("🔬 Test starten"), stock: t("🛒 Vorrat nachkaufen"), streak: t("🔥 Serien-Meilenstein"),
+  stack: t("🏆 Stack starten"), check: t("🤔 Entscheidung fällig"), reset: t("🧘 Reset startet"),
 }
 const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n")
 const stamp = () => new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "")
@@ -64,7 +65,7 @@ export function buildMilestoneIcs(s: LabState, opts: { names: boolean; origin: s
     for (const st of stops) {
       if (st.date <= today || st.kind === "take" || st.kind === "checkin") continue
       const title = opts.names ? `${st.emoji} ${st.title}` : NEUTRAL[st.kind]
-      const desc = opts.names && st.sub ? st.sub : st.est ? "Kolbis Vorschlag – du entscheidest in der App." : "Tippe auf den Link, um die App zu öffnen."
+      const desc = opts.names && st.sub ? st.sub : st.est ? t("Kolbis Vorschlag – du entscheidest in der App.") : t("Tippe auf den Link, um die App zu öffnen.")
       const min = st.kind === "result" ? wake + 60 : st.kind === "stock" ? wake + 150 : wake + 90
       add(`${st.key}-${st.date}`, st.date, min, 15, title, desc, `${app}/?round=1`, st.kind !== "streak")
     }
@@ -73,12 +74,12 @@ export function buildMilestoneIcs(s: LabState, opts: { names: boolean; origin: s
     for (let k = 0; k < 7 && new Date(`${d}T12:00:00`).getDay() !== 0; k++) d = addDays(d, 1)
     for (let w = 0; w < 8; w++) {
       const sun = addDays(d, w * 7)
-      add(`recap-${sun}`, sun, 18 * 60 + 30, 15, "📊 Dein Wochenrückblick", "30 Sekunden zum Durchwischen.", `${app}/?recap=1`, false)
+      add(`recap-${sun}`, sun, 18 * 60 + 30, 15, t("📊 Dein Wochenrückblick"), t("30 Sekunden zum Durchwischen."), `${app}/?recap=1`, false)
     }
   }
   return [
     "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Supplement Lab//DE", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
-    "X-WR-CALNAME:Supplement Lab 🧪", "X-WR-CALDESC:Deine großen Lab-Termine – aktualisiert sich automatisch.",
+    "X-WR-CALNAME:Supplement Lab 🧪", `X-WR-CALDESC:${esc(t("Deine großen Lab-Termine – aktualisiert sich automatisch."))}`,
     "REFRESH-INTERVAL;VALUE=DURATION:PT4H", "X-PUBLISHED-TTL:PT4H",
     ...ev, "END:VCALENDAR",
   ].join("\r\n")

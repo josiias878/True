@@ -2,6 +2,7 @@
 import React, { useEffect, useId, useRef, useState } from "react"
 import type { CoachAction, CoachMsg, Mood } from "@/lib/labCoach"
 import { Btn, Sheet } from "./ui"
+import { t } from "@/lib/labI18n"
 
 export const MASCOT_NAME = "Kolbi"
 
@@ -67,7 +68,7 @@ export function Mascot({ mood = "happy", size = 56, fill, glow, murky, alive, ac
     sleepy: <path d="M46 71 q4 3 8 0" stroke="#1a1c20" strokeWidth="2.4" fill="none" strokeLinecap="round" />,
   }[mood]
   return (
-    <svg ref={svgRef} width={size} height={size} viewBox="0 0 100 100" role="img" aria-label={`${MASCOT_NAME}, dein Lab-Coach`} style={{
+    <svg ref={svgRef} width={size} height={size} viewBox="0 0 100 100" role="img" aria-label={t("{name}, dein Lab-Coach", { name: MASCOT_NAME })} style={{
       display: "block", overflow: "visible",
       filter: glow ? "drop-shadow(0 0 10px rgba(46,204,138,.75))" : undefined, transition: "filter .6s",
     }}>
@@ -136,7 +137,7 @@ export function CoachBubble({ msg, onAction, more, onMore, compact }: { msg: Coa
         borderRadius: "20px 20px 20px 6px", padding: "12px 14px", boxShadow: "var(--shadow)",
       }}>
         {!compact && <span aria-hidden style={{ position: "absolute", left: -7, top: 22, width: 14, height: 14, background: "var(--surface)", borderLeft: "1px solid var(--border)", borderBottom: "1px solid var(--border)", transform: "rotate(45deg)" }} />}
-        {compact && <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.68rem", fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--text-dim)", marginBottom: 6 }}><Mascot mood={msg.mood} size={18} /> {MASCOT_NAME} meint</div>}
+        {compact && <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.68rem", fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--text-dim)", marginBottom: 6 }}><Mascot mood={msg.mood} size={18} /> {t("{name} meint", { name: MASCOT_NAME })}</div>}
         <div style={{ fontWeight: 900, fontSize: "0.98rem", marginBottom: 3 }}>{msg.title}</div>
         <div style={{ fontSize: "0.86rem", lineHeight: 1.45, color: "var(--text-dim)" }}>{msg.text}</div>
         {msg.actions && (
@@ -148,7 +149,7 @@ export function CoachBubble({ msg, onAction, more, onMore, compact }: { msg: Coa
         )}
         {more > 0 && (
           <button onClick={onMore} style={{ marginTop: 8, background: "none", border: "none", color: "var(--accent)", fontWeight: 800, fontSize: "0.78rem", cursor: "pointer", padding: 0 }}>
-            + {more} weitere{more === 1 ? "r" : ""} Tipp{more === 1 ? "" : "s"} von {MASCOT_NAME}
+            {more === 1 ? t("+ 1 weiterer Tipp von {name}", { name: MASCOT_NAME }) : t("+ {n} weitere Tipps von {name}", { n: more, name: MASCOT_NAME })}
           </button>
         )}
       </div>
@@ -174,7 +175,7 @@ export function KolbiTip({ title, children, mood = "happy" }: { title: React.Rea
 
 export function FloatingMascot({ mood, badge, onClick }: { mood: Mood; badge: number; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="lab-press" aria-label={`${MASCOT_NAME} fragen: Tipps und Hilfe`} style={{
+    <button onClick={onClick} className="lab-press" aria-label={t("{name} fragen: Tipps und Hilfe", { name: MASCOT_NAME })} style={{
       position: "fixed", right: 14, bottom: "calc(78px + env(safe-area-inset-bottom))", zIndex: 190,
       width: 62, height: 62, borderRadius: 999, border: "2px solid var(--accent)", background: "var(--surface)",
       boxShadow: "0 10px 30px rgba(0,0,0,.25)", display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
@@ -188,15 +189,15 @@ export function FloatingMascot({ mood, badge, onClick }: { mood: Mood; badge: nu
 }
 
 const GUIDE: { q: string; a: string }[] = [
-  { q: "Wie funktioniert das Lab?", a: "1) Reset: ein paar Tage gar nichts nehmen, so lerne ich dein Normal kennen. 2) Einzeln testen: immer nur ein Supplement für ein paar Tage, dazwischen kurze Pausen. 3) Stack: alles, was gewirkt hat, nimmst du am Ende zusammen, und ich passe auf, ob die Wirkung anhält." },
-  { q: "Was muss ich jeden Tag tun?", a: "Nur zwei Dinge: Einnahme abhaken (ein Tipp, die Uhrzeit speichere ich automatisch) und abends ein Gesicht antippen: Wie war dein Tag? Mehr nicht." },
-  { q: "Was ist „Feintuning“?", a: "Optional kannst du einzelne Bereiche mit Sternen bewerten, z. B. Schlaf oder Energie. Unter jedem Bereich steht, was gemeint ist. Der Tagesdurchschnitt wird automatisch berechnet." },
-  { q: "Warum Nebenwirkungen eintragen?", a: "Damit ich Nutzen gegen Nachteile abwägen kann. Tipp einmal für „leicht“, zweimal für „stark“. Bei starken Nebenwirkungen schlage ich dir vor, den Test abzubrechen." },
-  { q: "Woher weißt du, ob etwas wirkt?", a: "Ich vergleiche deine Werte im Test mit deinen Reset-Tagen, gewichte nach deinen Zielen und ziehe Nebenwirkungen ab. Am Ende eines Tests bekommst du einen Vorschlag: behalten, vielleicht oder raus. Du bestätigst mit einem Tipp." },
-  { q: "Was ist der Countdown oben?", a: "Er zeigt, wie lange die aktuelle Phase noch läuft, also wann der nächste Schritt kommt." },
-  { q: "Was passiert im Stack?", a: "Du nimmst alle behaltenen Supplements zusammen. Lässt die Wirkung nach, schlage ich vor, eins für 3 Tage wegzulassen. So findest du raus, ob es wirklich noch hilft oder ob andere Dinge (Schlaf, Stress) schuld sind." },
-  { q: "Kann ich die Reihenfolge ändern?", a: "Ja. Wenn ein Test ansteht, tippe auf „Anderes wählen“ oder direkt auf ein Supplement in deiner Liste." },
-  { q: "Wo sind meine Daten?", a: "Nur auf deinem Gerät. Unter ⚙️ kannst du ein Backup erstellen und auf ein anderes Gerät übertragen." },
+  { q: t("Wie funktioniert das Lab?"), a: t("1) Reset: ein paar Tage gar nichts nehmen, so lerne ich dein Normal kennen. 2) Einzeln testen: immer nur ein Supplement für ein paar Tage, dazwischen kurze Pausen. 3) Stack: alles, was gewirkt hat, nimmst du am Ende zusammen, und ich passe auf, ob die Wirkung anhält.") },
+  { q: t("Was muss ich jeden Tag tun?"), a: t("Nur zwei Dinge: Einnahme abhaken (ein Tipp, die Uhrzeit speichere ich automatisch) und abends ein Gesicht antippen: Wie war dein Tag? Mehr nicht.") },
+  { q: t("Was ist „Feintuning“?"), a: t("Optional kannst du einzelne Bereiche mit Sternen bewerten, z. B. Schlaf oder Energie. Unter jedem Bereich steht, was gemeint ist. Der Tagesdurchschnitt wird automatisch berechnet.") },
+  { q: t("Warum Nebenwirkungen eintragen?"), a: t("Damit ich Nutzen gegen Nachteile abwägen kann. Tipp einmal für „leicht“, zweimal für „stark“. Bei starken Nebenwirkungen schlage ich dir vor, den Test abzubrechen.") },
+  { q: t("Woher weißt du, ob etwas wirkt?"), a: t("Ich vergleiche deine Werte im Test mit deinen Reset-Tagen, gewichte nach deinen Zielen und ziehe Nebenwirkungen ab. Am Ende eines Tests bekommst du einen Vorschlag: behalten, vielleicht oder raus. Du bestätigst mit einem Tipp.") },
+  { q: t("Was ist der Countdown oben?"), a: t("Er zeigt, wie lange die aktuelle Phase noch läuft, also wann der nächste Schritt kommt.") },
+  { q: t("Was passiert im Stack?"), a: t("Du nimmst alle behaltenen Supplements zusammen. Lässt die Wirkung nach, schlage ich vor, eins für 3 Tage wegzulassen. So findest du raus, ob es wirklich noch hilft oder ob andere Dinge (Schlaf, Stress) schuld sind.") },
+  { q: t("Kann ich die Reihenfolge ändern?"), a: t("Ja. Wenn ein Test ansteht, tippe auf „Anderes wählen“ oder direkt auf ein Supplement in deiner Liste.") },
+  { q: t("Wo sind meine Daten?"), a: t("Nur auf deinem Gerät. Unter ⚙️ kannst du ein Backup erstellen und auf ein anderes Gerät übertragen.") },
 ]
 
 /** Kolbis aktuelle Tipps als Liste (Kolbi-Tab & Hilfe). */
@@ -247,18 +248,18 @@ export function HelpSheet({ msgs, onAction, onClose }: { msgs: CoachMsg[]; onAct
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
         <Mascot mood={msgs[0]?.mood ?? "happy"} size={64} />
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 900, fontSize: "1.2rem" }}>Hi, ich bin {MASCOT_NAME}!</div>
-          <div style={{ fontSize: "0.85rem", color: "var(--text-dim)" }}>Ich werte deine Daten aus und sage dir, was als Nächstes dran ist.</div>
+          <div style={{ fontWeight: 900, fontSize: "1.2rem" }}>{t("Hi, ich bin {name}!", { name: MASCOT_NAME })}</div>
+          <div style={{ fontSize: "0.85rem", color: "var(--text-dim)" }}>{t("Ich werte deine Daten aus und sage dir, was als Nächstes dran ist.")}</div>
         </div>
-        <button onClick={onClose} className="lab-press" aria-label="Schließen" style={{ width: 34, height: 34, borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text-dim)" }}>✕</button>
+        <button onClick={onClose} className="lab-press" aria-label={t("Schließen")} style={{ width: 34, height: 34, borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text-dim)" }}>✕</button>
       </div>
       {msgs.length > 0 && (
         <div style={{ marginBottom: 18 }}>
-          <div style={{ fontSize: "0.7rem", fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--text-dim)", marginBottom: 10 }}>Meine Tipps für dich</div>
+          <div style={{ fontSize: "0.7rem", fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--text-dim)", marginBottom: 10 }}>{t("Meine Tipps für dich")}</div>
           <TipsList msgs={msgs} onAction={onAction} onDone={onClose} />
         </div>
       )}
-      <div style={{ fontSize: "0.7rem", fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--text-dim)", marginBottom: 8 }}>So funktioniert die App</div>
+      <div style={{ fontSize: "0.7rem", fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--text-dim)", marginBottom: 8 }}>{t("So funktioniert die App")}</div>
       <Guide openFirst={!msgs.length} />
     </Sheet>
   )

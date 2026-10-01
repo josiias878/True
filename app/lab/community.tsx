@@ -5,8 +5,9 @@ import { DIMS, LIB_BY_ID, SIDE_BY_ID, testResult, type LabState } from "@/lib/su
 import { COMMUNITY_MIN, communityPayload, fetchStats, percentile, type CommunityStats } from "@/lib/labCommunity"
 import { Btn, Sheet } from "./ui"
 import { Mascot } from "./mascot"
+import { t, dec } from "@/lib/labI18n"
 
-const fmt1 = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : "±"}${Math.abs(n).toFixed(1).replace(".", ",")}`
+const fmt1 = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : "±"}${dec(Math.abs(n), 1)}`
 
 function KeepRing({ pct, size = 92 }: { pct: number; size?: number }) {
   const [on, setOn] = useState(false)
@@ -21,7 +22,7 @@ function KeepRing({ pct, size = 92 }: { pct: number; size?: number }) {
       </svg>
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
         <span style={{ fontSize: "1.25rem", fontWeight: 900, lineHeight: 1 }}>{pct}%</span>
-        <span style={{ fontSize: "0.6rem", fontWeight: 800, color: "var(--text-dim)" }}>behalten</span>
+        <span style={{ fontSize: "0.6rem", fontWeight: 800, color: "var(--text-dim)" }}>{t("behalten")}</span>
       </div>
     </div>
   )
@@ -41,11 +42,11 @@ function Spread({ q, mine }: { q: number[]; mine: number | null }) {
       {mine != null && (
         <span className="lab-pop" style={{ position: "absolute", left: x(mine), top: 21, transform: "translate(-50%, -50%)", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <span style={{ width: 18, height: 18, borderRadius: 999, background: "var(--accent)", border: "3px solid var(--surface)", boxShadow: "0 2px 8px rgba(0,0,0,.2)" }} />
-          <span style={{ marginTop: 2, fontSize: "0.62rem", fontWeight: 900, color: "var(--accent)" }}>DU</span>
+          <span style={{ marginTop: 2, fontSize: "0.62rem", fontWeight: 900, color: "var(--accent)" }}>{t("DU")}</span>
         </span>
       )}
-      <span style={{ position: "absolute", left: 0, top: 32, fontSize: "0.62rem", color: "var(--text-dim)" }}>schlechter</span>
-      <span style={{ position: "absolute", right: 0, top: 32, fontSize: "0.62rem", color: "var(--text-dim)" }}>besser</span>
+      <span style={{ position: "absolute", left: 0, top: 32, fontSize: "0.62rem", color: "var(--text-dim)" }}>{t("schlechter")}</span>
+      <span style={{ position: "absolute", right: 0, top: 32, fontSize: "0.62rem", color: "var(--text-dim)" }}>{t("besser")}</span>
     </div>
   )
 }
@@ -62,8 +63,8 @@ export function CommunityCard({ s, suppId, onJoin }: { s: LabState; suppId: stri
   return (
     <div className="lab-card lab-rise" style={{ padding: 16, marginBottom: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-        <span style={{ fontWeight: 900, fontSize: "1rem", flex: 1 }}>🌍 Was andere erlebt haben</span>
-        {st !== "loading" && st.n >= COMMUNITY_MIN && <span style={{ fontSize: "0.7rem", fontWeight: 800, color: "var(--text-dim)" }}>{st.n} Tests</span>}
+        <span style={{ fontWeight: 900, fontSize: "1rem", flex: 1 }}>{t("🌍 Was andere erlebt haben")}</span>
+        {st !== "loading" && st.n >= COMMUNITY_MIN && <span style={{ fontSize: "0.7rem", fontWeight: 800, color: "var(--text-dim)" }}>{t("{n} Tests", { n: st.n })}</span>}
       </div>
       {st === "loading" ? (
         <div className="lab-shine" style={{ height: 80, borderRadius: 16, background: "linear-gradient(90deg, var(--surface-2), color-mix(in srgb, var(--surface-2) 50%, var(--surface)), var(--surface-2))" }} />
@@ -75,7 +76,7 @@ export function CommunityCard({ s, suppId, onJoin }: { s: LabState; suppId: stri
             ))}
           </div>
           <span style={{ flex: 1, fontSize: "0.8rem", color: "var(--text-dim)", lineHeight: 1.4 }}>
-            {st.n ? `Erst ${st.n} von ${COMMUNITY_MIN} Tests` : "Noch niemand"} – ab {COMMUNITY_MIN} zeige ich, was andere erlebt haben.{s.community !== true && onJoin ? " Sei einer der Ersten!" : ""}
+            {st.n ? t("Erst {n} von {min} Tests", { n: st.n, min: COMMUNITY_MIN }) : t("Noch niemand")}{t(" – ab {min} zeige ich, was andere erlebt haben.", { min: COMMUNITY_MIN })}{s.community !== true && onJoin ? t(" Sei einer der Ersten!") : ""}
           </span>
         </div>
       ) : (
@@ -83,15 +84,15 @@ export function CommunityCard({ s, suppId, onJoin }: { s: LabState; suppId: stri
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <KeepRing pct={st.keepPct ?? 0} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: "0.72rem", fontWeight: 800, color: "var(--text-dim)" }}>Im Schnitt</div>
+              <div style={{ fontSize: "0.72rem", fontWeight: 800, color: "var(--text-dim)" }}>{t("Im Schnitt")}</div>
               <div style={{ fontSize: "1.9rem", fontWeight: 900, lineHeight: 1.05, color: (st.avg ?? 0) >= 0 ? "#1baf7a" : "#e34948" }}>{fmt1(st.avg ?? 0)}★</div>
-              <div style={{ fontSize: "0.74rem", color: "var(--text-dim)" }}>Gesamtgefühl · Ø {st.avgDays} Tage getestet</div>
+              <div style={{ fontSize: "0.74rem", color: "var(--text-dim)" }}>{t("Gesamtgefühl · Ø {n} Tage getestet", { n: st.avgDays ?? "" })}</div>
             </div>
           </div>
           {st.quantiles && <Spread q={st.quantiles} mine={mineDelta} />}
           {mineDelta != null && st.quantiles && (
             <div className="lab-pop" style={{ marginTop: 6, padding: "8px 12px", borderRadius: 14, background: "var(--accent-dim)", fontSize: "0.82rem", fontWeight: 800 }}>
-              Bei dir {fmt1(mineDelta)}★ – besser als ca. {percentile(mineDelta, st.quantiles)} % der anderen
+              {t("Bei dir {d}★ – besser als ca. {p} % der anderen", { d: fmt1(mineDelta), p: percentile(mineDelta, st.quantiles) ?? "" })}
             </div>
           )}
           {st.dims && Object.keys(st.dims).length > 0 && (
@@ -119,11 +120,11 @@ export function CommunityCard({ s, suppId, onJoin }: { s: LabState; suppId: stri
               ))}
             </div>
           )}
-          <div style={{ fontSize: "0.68rem", color: "var(--text-dim)", marginTop: 10 }}>Anonyme Selbstversuche anderer Nutzer – keine Studie, aber ein ehrliches Bild.</div>
+          <div style={{ fontSize: "0.68rem", color: "var(--text-dim)", marginTop: 10 }}>{t("Anonyme Selbstversuche anderer Nutzer – keine Studie, aber ein ehrliches Bild.")}</div>
         </>
       )}
       {s.community !== true && onJoin && (
-        <Btn variant="soft" onClick={onJoin} style={{ marginTop: 12, width: "100%", padding: "10px 12px", fontSize: "0.84rem" }}>🌍 Mitmachen – anonym teilen</Btn>
+        <Btn variant="soft" onClick={onJoin} style={{ marginTop: 12, width: "100%", padding: "10px 12px", fontSize: "0.84rem" }}>{t("🌍 Mitmachen – anonym teilen")}</Btn>
       )}
     </div>
   )
@@ -133,34 +134,34 @@ export function CommunityCard({ s, suppId, onJoin }: { s: LabState; suppId: stri
 export function CommunityConsent({ s, suppId, onYes, onNo }: { s: LabState; suppId: string | null; onYes: () => void; onNo: () => void }) {
   const p = suppId ? communityPayload(s, suppId) : null
   const lib = p ? LIB_BY_ID[p.lib] : null
-  const dec = p ? { keep: "💚 behalten", maybe: "🤔 vielleicht", drop: "✂️ raus" }[p.decision] : null
+  const verdict = p ? { keep: t("💚 behalten"), maybe: t("🤔 vielleicht"), drop: t("✂️ raus") }[p.decision] : null
   return (
     <Sheet open onClose={onNo}>
       <div style={{ textAlign: "center" }}>
         <div className="lab-float" style={{ display: "inline-block" }}><Mascot mood="happy" size={96} /></div>
-        <div style={{ fontSize: "1.35rem", fontWeight: 900, marginTop: 6 }}>🌍 Hilf anderen – anonym</div>
+        <div style={{ fontSize: "1.35rem", fontWeight: 900, marginTop: 6 }}>{t("🌍 Hilf anderen – anonym")}</div>
         <div style={{ fontSize: "0.88rem", color: "var(--text-dim)", marginTop: 6, lineHeight: 1.45 }}>
-          Dein Testergebnis fließt in „Was andere erlebt haben“ ein. So sieht jeder, wie ein Supplement bei echten Menschen wirkt – nicht nur in der Werbung.
+          {t("Dein Testergebnis fließt in „Was andere erlebt haben“ ein. So sieht jeder, wie ein Supplement bei echten Menschen wirkt – nicht nur in der Werbung.")}
         </div>
       </div>
-      <div style={{ marginTop: 16, fontSize: "0.72rem", fontWeight: 900, letterSpacing: ".08em", color: "var(--text-dim)" }}>DAS WÜRDE GETEILT</div>
+      <div style={{ marginTop: 16, fontSize: "0.72rem", fontWeight: 900, letterSpacing: ".08em", color: "var(--text-dim)" }}>{t("DAS WÜRDE GETEILT")}</div>
       <div className="lab-pop" style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6, padding: 12, borderRadius: 18, background: "var(--surface-2)" }}>
         {p && lib ? <>
           <span style={{ padding: "6px 10px", borderRadius: 999, background: "var(--surface)", fontWeight: 800, fontSize: "0.82rem" }}>{lib.emoji} {lib.name}</span>
-          <span style={{ padding: "6px 10px", borderRadius: 999, background: "var(--surface)", fontWeight: 800, fontSize: "0.82rem" }}>⏱️ {p.days} Tage</span>
+          <span style={{ padding: "6px 10px", borderRadius: 999, background: "var(--surface)", fontWeight: 800, fontSize: "0.82rem" }}>{t("⏱️ {n} Tage", { n: p.days })}</span>
           <span style={{ padding: "6px 10px", borderRadius: 999, background: "var(--surface)", fontWeight: 800, fontSize: "0.82rem" }}>{fmt1(p.delta)}★</span>
-          <span style={{ padding: "6px 10px", borderRadius: 999, background: "var(--surface)", fontWeight: 800, fontSize: "0.82rem" }}>{dec}</span>
+          <span style={{ padding: "6px 10px", borderRadius: 999, background: "var(--surface)", fontWeight: 800, fontSize: "0.82rem" }}>{verdict}</span>
           {p.sides.length > 0 && <span style={{ padding: "6px 10px", borderRadius: 999, background: "var(--surface)", fontWeight: 800, fontSize: "0.82rem" }}>{p.sides.map(id => SIDE_BY_ID[id]?.emoji).join(" ")}</span>}
-        </> : <span style={{ fontSize: "0.84rem", fontWeight: 700 }}>Supplement · Testdauer · ±★ · dein Urteil · Nebenwirkungen</span>}
+        </> : <span style={{ fontSize: "0.84rem", fontWeight: 700 }}>{t("Supplement · Testdauer · ±★ · dein Urteil · Nebenwirkungen")}</span>}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 14, fontSize: "0.84rem", fontWeight: 700 }}>
-        {["Keine Namen, kein Konto, keine Daten oder Notizen", "Nur Supplements aus der Bibliothek – nie eigene Einträge", "Jederzeit in den Einstellungen löschbar"].map(t => (
-          <div key={t} style={{ display: "flex", gap: 8 }}><span style={{ color: "var(--accent)" }}>✓</span>{t}</div>
+        {[t("Keine Namen, kein Konto, keine Daten oder Notizen"), t("Nur Supplements aus der Bibliothek – nie eigene Einträge"), t("Jederzeit in den Einstellungen löschbar")].map(x => (
+          <div key={x} style={{ display: "flex", gap: 8 }}><span style={{ color: "var(--accent)" }}>✓</span>{x}</div>
         ))}
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
-        <Btn variant="soft" onClick={onNo} style={{ flex: 1 }}>Nein danke</Btn>
-        <Btn onClick={onYes} style={{ flex: 2 }}>🌍 Ja, anonym teilen</Btn>
+        <Btn variant="soft" onClick={onNo} style={{ flex: 1 }}>{t("Nein danke")}</Btn>
+        <Btn onClick={onYes} style={{ flex: 2 }}>{t("🌍 Ja, anonym teilen")}</Btn>
       </div>
     </Sheet>
   )

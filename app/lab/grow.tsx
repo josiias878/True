@@ -5,6 +5,7 @@ import type { LabState } from "@/lib/supplementLab"
 import { BETA, PRO_FEATURES, PRO_PRICE, inviteFriends, isPro, nativeReview, sendFeedback } from "@/lib/labGrow"
 import { Btn, Sheet, haptic } from "./ui"
 import { Mascot } from "./mascot"
+import { t } from "@/lib/labI18n"
 
 const GRAD = "linear-gradient(135deg, #9085e9, #e87ba4)"
 
@@ -18,9 +19,9 @@ export function ProCard({ s }: { s: LabState }) {
       <button className="lab-press" onClick={() => { haptic(); setOpen(o => !o) }} aria-expanded={open} style={{ width: "100%", border: "none", background: "transparent", color: "inherit", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", textAlign: "left" }}>
         <span style={{ fontSize: "1.8rem" }}>{founder ? "🏅" : "⭐"}</span>
         <span style={{ flex: 1 }}>
-          <span style={{ display: "block", fontWeight: 900, fontSize: "1rem" }}>{founder ? "Gründer-Pro aktiv" : pro ? "Lab Pro aktiv" : "Lab Pro"}</span>
+          <span style={{ display: "block", fontWeight: 900, fontSize: "1rem" }}>{founder ? t("Gründer-Pro aktiv") : pro ? t("Lab Pro aktiv") : "Lab Pro"}</span>
           <span style={{ display: "block", fontSize: "0.76rem", opacity: 0.92 }}>
-            {founder ? "Danke, dass du in der Beta dabei bist – Pro bleibt für dich gratis." : pro ? "Alles freigeschaltet" : `Einmalig ${PRO_PRICE} · kein Abo`}
+            {founder ? t("Danke, dass du in der Beta dabei bist – Pro bleibt für dich gratis.") : pro ? t("Alles freigeschaltet") : t("Einmalig {price} · kein Abo", { price: PRO_PRICE })}
           </span>
         </span>
         <span style={{ fontWeight: 900, transform: open ? "rotate(90deg)" : "none", transition: "transform .3s" }}>›</span>
@@ -37,7 +38,7 @@ export function ProCard({ s }: { s: LabState }) {
               <div style={{ fontSize: "0.68rem", opacity: 0.9, lineHeight: 1.35 }}>{f.text}</div>
             </div>
           ))}
-          {BETA && <div style={{ gridColumn: "1 / -1", fontSize: "0.7rem", opacity: 0.9, textAlign: "center", marginTop: 2 }}>Beta: alles kostenlos. Später bleibt der Kern gratis, Pro kostet einmalig {PRO_PRICE}.</div>}
+          {BETA && <div style={{ gridColumn: "1 / -1", fontSize: "0.7rem", opacity: 0.9, textAlign: "center", marginTop: 2 }}>{t("Beta: alles kostenlos. Später bleibt der Kern gratis, Pro kostet einmalig {price}.", { price: PRO_PRICE })}</div>}
         </div>
       )}
     </div>
@@ -49,27 +50,27 @@ export function InviteRow({ onFlash, onFeedback }: { onFlash: (m: string) => voi
   const invite = async () => {
     haptic()
     const r = await inviteFriends()
-    if (r === "copied") onFlash("🔗 Link kopiert – schick ihn weiter!")
-    else if (r === "shared") onFlash("💌 Danke fürs Weitersagen!")
-    else if (r === "failed") onFlash("⚠️ Teilen hat nicht geklappt")
+    if (r === "copied") onFlash(t("🔗 Link kopiert – schick ihn weiter!"))
+    else if (r === "shared") onFlash(t("💌 Danke fürs Weitersagen!"))
+    else if (r === "failed") onFlash(t("⚠️ Teilen hat nicht geklappt"))
   }
   const box: React.CSSProperties = { flex: 1, display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 20, border: "1px solid var(--glass-line)", background: "var(--surface)", textAlign: "left", color: "var(--text)" }
   return (
     <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
       <button className="lab-press" onClick={invite} style={box}>
         <span style={{ fontSize: "1.5rem" }}>💌</span>
-        <span><span style={{ display: "block", fontWeight: 900, fontSize: "0.86rem" }}>Freunde einladen</span><span style={{ display: "block", fontSize: "0.7rem", color: "var(--text-dim)" }}>Zusammen testen</span></span>
+        <span><span style={{ display: "block", fontWeight: 900, fontSize: "0.86rem" }}>{t("Freunde einladen")}</span><span style={{ display: "block", fontSize: "0.7rem", color: "var(--text-dim)" }}>{t("Zusammen testen")}</span></span>
       </button>
       <button className="lab-press" onClick={() => { haptic(); onFeedback() }} style={box}>
         <span style={{ fontSize: "1.5rem" }}>💬</span>
-        <span><span style={{ display: "block", fontWeight: 900, fontSize: "0.86rem" }}>Feedback</span><span style={{ display: "block", fontSize: "0.7rem", color: "var(--text-dim)" }}>Sag mir, was fehlt</span></span>
+        <span><span style={{ display: "block", fontWeight: 900, fontSize: "0.86rem" }}>Feedback</span><span style={{ display: "block", fontSize: "0.7rem", color: "var(--text-dim)" }}>{t("Sag mir, was fehlt")}</span></span>
       </button>
     </div>
   )
 }
 
 type Mood = "love" | "ok" | "meh"
-const FACES: { m: Mood; e: string; l: string }[] = [{ m: "love", e: "😍", l: "Super" }, { m: "ok", e: "🙂", l: "Ganz gut" }, { m: "meh", e: "😕", l: "Geht so" }]
+const FACES: { m: Mood; e: string; l: string }[] = [{ m: "love", e: "😍", l: t("Super") }, { m: "ok", e: "🙂", l: t("Ganz gut") }, { m: "meh", e: "😕", l: t("Geht so") }]
 
 /**
  * Bewertungs-Moment nach einem Erfolgserlebnis (oder Feedback direkt, mit start="feedback").
@@ -92,7 +93,7 @@ export function ReviewSheet({ start = "ask", onAnswer, onClose, onFlash }: {
     setBusy(true)
     const ok = await sendFeedback(mood, text, start === "feedback" ? "kolbi" : "review")
     setBusy(false)
-    if (ok) setStep("thanks"); else onFlash("⚠️ Senden hat nicht geklappt – versuch's später nochmal")
+    if (ok) setStep("thanks"); else onFlash(t("⚠️ Senden hat nicht geklappt – versuch's später nochmal"))
   }
 
   return (
@@ -103,8 +104,8 @@ export function ReviewSheet({ start = "ask", onAnswer, onClose, onFlash }: {
         </div>
 
         {step === "ask" && <>
-          <div style={{ fontSize: "1.35rem", fontWeight: 900, marginTop: 8 }}>Wie gefällt dir Kolbi bisher?</div>
-          <div style={{ fontSize: "0.86rem", color: "var(--text-dim)", marginTop: 4 }}>Ehrlich – ich lerne daraus.</div>
+          <div style={{ fontSize: "1.35rem", fontWeight: 900, marginTop: 8 }}>{t("Wie gefällt dir Kolbi bisher?")}</div>
+          <div style={{ fontSize: "0.86rem", color: "var(--text-dim)", marginTop: 4 }}>{t("Ehrlich – ich lerne daraus.")}</div>
           <div style={{ display: "flex", gap: 10, justifyContent: "center", margin: "20px 0 6px" }}>
             {FACES.map((f, i) => (
               <button key={f.m} className="lab-press lab-pop" onClick={() => pick(f.m)} style={{
@@ -116,14 +117,14 @@ export function ReviewSheet({ start = "ask", onAnswer, onClose, onFlash }: {
         </>}
 
         {step === "love" && <>
-          <div style={{ fontSize: "1.35rem", fontWeight: 900, marginTop: 8 }}>Yay, das freut mich! 🥳</div>
-          <div style={{ fontSize: "0.88rem", color: "var(--text-dim)", margin: "4px 0 18px", lineHeight: 1.45 }}>Kennst du jemanden, der auch Supplements nimmt? Zusammen testen macht mehr Spaß.</div>
-          <Btn full onClick={async () => { const r = await inviteFriends(); if (r === "copied") onFlash("🔗 Link kopiert – schick ihn weiter!"); if (r !== "cancelled") onClose() }}>💌 Kolbi weiterempfehlen</Btn>
-          <Btn full variant="ghost" onClick={onClose} style={{ marginTop: 8 }}>Vielleicht später</Btn>
+          <div style={{ fontSize: "1.35rem", fontWeight: 900, marginTop: 8 }}>{t("Yay, das freut mich! 🥳")}</div>
+          <div style={{ fontSize: "0.88rem", color: "var(--text-dim)", margin: "4px 0 18px", lineHeight: 1.45 }}>{t("Kennst du jemanden, der auch Supplements nimmt? Zusammen testen macht mehr Spaß.")}</div>
+          <Btn full onClick={async () => { const r = await inviteFriends(); if (r === "copied") onFlash(t("🔗 Link kopiert – schick ihn weiter!")); if (r !== "cancelled") onClose() }}>{t("💌 Kolbi weiterempfehlen")}</Btn>
+          <Btn full variant="ghost" onClick={onClose} style={{ marginTop: 8 }}>{t("Vielleicht später")}</Btn>
         </>}
 
         {step === "feedback" && <>
-          <div style={{ fontSize: "1.3rem", fontWeight: 900, marginTop: 8 }}>{start === "feedback" ? "Was soll ich besser machen?" : "Was fehlt dir noch?"}</div>
+          <div style={{ fontSize: "1.3rem", fontWeight: 900, marginTop: 8 }}>{start === "feedback" ? t("Was soll ich besser machen?") : t("Was fehlt dir noch?")}</div>
           {start === "feedback" && (
             <div style={{ display: "flex", gap: 6, justifyContent: "center", margin: "12px 0 2px" }}>
               {FACES.map(f => (
@@ -134,18 +135,18 @@ export function ReviewSheet({ start = "ask", onAnswer, onClose, onFlash }: {
               ))}
             </div>
           )}
-          <textarea value={text} onChange={e => setText(e.target.value.slice(0, 1000))} rows={4} autoFocus placeholder="z. B. „Ich wünsche mir …“ oder „Das hat mich verwirrt …“" style={{
+          <textarea value={text} onChange={e => setText(e.target.value.slice(0, 1000))} rows={4} autoFocus placeholder={t("z. B. „Ich wünsche mir …“ oder „Das hat mich verwirrt …“")} style={{
             width: "100%", marginTop: 14, borderRadius: 18, border: "1px solid var(--border)", background: "var(--surface-2)", color: "var(--text)", padding: 14, fontSize: "0.95rem", fontFamily: "inherit", resize: "none", boxSizing: "border-box",
           }} />
-          <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", textAlign: "left", margin: "6px 2px 14px", lineHeight: 1.4 }}>🔒 Geht anonym an Kolbis Entwickler – ohne Geräte-ID. Bitte keine Namen oder persönlichen Gesundheitsdaten.</div>
-          <Btn full disabled={busy || !text.trim()} onClick={send}>{busy ? "Sende …" : "📨 Abschicken"}</Btn>
-          <Btn full variant="ghost" onClick={onClose} style={{ marginTop: 8 }}>Abbrechen</Btn>
+          <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", textAlign: "left", margin: "6px 2px 14px", lineHeight: 1.4 }}>{t("🔒 Geht anonym an Kolbis Entwickler – ohne Geräte-ID. Bitte keine Namen oder persönlichen Gesundheitsdaten.")}</div>
+          <Btn full disabled={busy || !text.trim()} onClick={send}>{busy ? t("Sende …") : t("📨 Abschicken")}</Btn>
+          <Btn full variant="ghost" onClick={onClose} style={{ marginTop: 8 }}>{t("Abbrechen")}</Btn>
         </>}
 
         {step === "thanks" && <>
-          <div style={{ fontSize: "1.35rem", fontWeight: 900, marginTop: 8 }}>Danke! 💚</div>
-          <div style={{ fontSize: "0.88rem", color: "var(--text-dim)", margin: "4px 0 18px" }}>Ich lese alles und werde besser.</div>
-          <Btn full onClick={onClose}>Gern geschehen</Btn>
+          <div style={{ fontSize: "1.35rem", fontWeight: 900, marginTop: 8 }}>{t("Danke! 💚")}</div>
+          <div style={{ fontSize: "0.88rem", color: "var(--text-dim)", margin: "4px 0 18px" }}>{t("Ich lese alles und werde besser.")}</div>
+          <Btn full onClick={onClose}>{t("Gern geschehen")}</Btn>
         </>}
       </div>
     </Sheet>

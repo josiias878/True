@@ -1,6 +1,7 @@
 // ── Supplement Lab: Fertige Experimente ───────────────────────────────────────
 // Vorlagen mit klarer Frage, Reihenfolge und Ziel – ein Tipp und Kolbi plant alles.
 
+import { t } from "./labI18n"
 import { LIB_BY_ID, makeSupp, todayIso, type GoalId, type LabState, type SuppMode } from "./supplementLab"
 
 export interface Experiment {
@@ -16,23 +17,23 @@ export interface Experiment {
 }
 
 export const EXPERIMENTS: Experiment[] = [
-  { id: "schlaf", emoji: "😴", title: "Besser schlafen", question: "Was hilft MIR beim Einschlafen und Durchschlafen?", goals: ["schlaf"],
-    colors: ["#6c5ce7", "#3987e5"], weeks: "ca. 3 Wochen", note: "Drei bewährte Kandidaten nacheinander – am Ende weißt du, welcher bei dir wirkt.",
+  { id: "schlaf", emoji: "😴", title: t("Besser schlafen"), question: t("Was hilft MIR beim Einschlafen und Durchschlafen?"), goals: ["schlaf"],
+    colors: ["#6c5ce7", "#3987e5"], weeks: t("ca. 3 Wochen"), note: t("Drei bewährte Kandidaten nacheinander – am Ende weißt du, welcher bei dir wirkt."),
     supps: [{ lib: "magnesium", mode: "test" }, { lib: "glycin", mode: "test" }, { lib: "theanin", mode: "test" }] },
-  { id: "fokus", emoji: "🧠", title: "Klarer Kopf", question: "Was gibt mir Fokus ohne Nervosität?", goals: ["fokus", "energie"],
-    colors: ["#3987e5", "#1baf9a"], weeks: "ca. 3 Wochen", note: "Vom sanften Theanin bis Citicolin – Koffein bleibt wie gewohnt.",
+  { id: "fokus", emoji: "🧠", title: t("Klarer Kopf"), question: t("Was gibt mir Fokus ohne Nervosität?"), goals: ["fokus", "energie"],
+    colors: ["#3987e5", "#1baf9a"], weeks: t("ca. 3 Wochen"), note: t("Vom sanften Theanin bis Citicolin – Koffein bleibt wie gewohnt."),
     supps: [{ lib: "theanin", mode: "test" }, { lib: "citicolin", mode: "test" }, { lib: "rhodiola", mode: "test" }] },
-  { id: "stress", emoji: "😌", title: "Weniger Stress", question: "Was macht mich gelassener im Alltag?", goals: ["stress", "schlaf"],
-    colors: ["#1baf7a", "#9ee6c5"], weeks: "ca. 3–4 Wochen", note: "Adaptogene brauchen etwas länger – Kolbi plant dafür mehr Tage ein.",
+  { id: "stress", emoji: "😌", title: t("Weniger Stress"), question: t("Was macht mich gelassener im Alltag?"), goals: ["stress", "schlaf"],
+    colors: ["#1baf7a", "#9ee6c5"], weeks: t("ca. 3–4 Wochen"), note: t("Adaptogene brauchen etwas länger – Kolbi plant dafür mehr Tage ein."),
     supps: [{ lib: "theanin", mode: "test" }, { lib: "rhodiola", mode: "test" }, { lib: "ashwagandha", mode: "test" }] },
-  { id: "training", emoji: "💪", title: "Mehr Power im Training", question: "Was bringt mir im Training wirklich etwas?", goals: ["muskel", "regeneration"],
-    colors: ["#eb6834", "#eda100"], weeks: "ca. 2–3 Wochen", note: "Kreatin läuft durchgehend (wirkt über Wochen), Citrullin & Elektrolyte werden getestet.",
+  { id: "training", emoji: "💪", title: t("Mehr Power im Training"), question: t("Was bringt mir im Training wirklich etwas?"), goals: ["muskel", "regeneration"],
+    colors: ["#eb6834", "#eda100"], weeks: t("ca. 2–3 Wochen"), note: t("Kreatin läuft durchgehend (wirkt über Wochen), Citrullin & Elektrolyte werden getestet."),
     supps: [{ lib: "kreatin", mode: "konstant" }, { lib: "citrullin", mode: "test" }, { lib: "elektrolyte", mode: "test" }] },
-  { id: "basis", emoji: "🛡️", title: "Gute Basis", question: "Bin ich gut versorgt – ohne Rätselraten?", goals: ["immun", "longevity"],
-    colors: ["#eda100", "#e87ba4"], weeks: "dauerhaft", note: "Kein Test nötig: läuft durchgehend. Sinnvoll: Vitamin D & Co. nach 8–12 Wochen per Blutbild prüfen.",
+  { id: "basis", emoji: "🛡️", title: t("Gute Basis"), question: t("Bin ich gut versorgt – ohne Rätselraten?"), goals: ["immun", "longevity"],
+    colors: ["#eda100", "#e87ba4"], weeks: t("dauerhaft"), note: t("Kein Test nötig: läuft durchgehend. Sinnvoll: Vitamin D & Co. nach 8–12 Wochen per Blutbild prüfen."),
     supps: [{ lib: "vitd", mode: "konstant" }, { lib: "omega3", mode: "konstant" }, { lib: "magnesium", mode: "konstant" }] },
-  { id: "darm", emoji: "🌿", title: "Ruhiger Bauch", question: "Was tut meiner Verdauung gut?", goals: ["darm"],
-    colors: ["#1baf7a", "#3987e5"], weeks: "ca. 3 Wochen", note: "Flohsamen wird getestet, Probiotika laufen durchgehend mit.",
+  { id: "darm", emoji: "🌿", title: t("Ruhiger Bauch"), question: t("Was tut meiner Verdauung gut?"), goals: ["darm"],
+    colors: ["#1baf7a", "#3987e5"], weeks: t("ca. 3 Wochen"), note: t("Flohsamen wird getestet, Probiotika laufen durchgehend mit."),
     supps: [{ lib: "flohsamen", mode: "test" }, { lib: "probiotika", mode: "konstant" }] },
 ]
 

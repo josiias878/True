@@ -7,6 +7,7 @@ import { EN_A } from "./i18n/en-a"
 import { EN_B } from "./i18n/en-b"
 import { EN_C } from "./i18n/en-c"
 import { EN_D } from "./i18n/en-d"
+import { EN_E } from "./i18n/en-e"
 
 export type Lang = "de" | "en"
 const KEY = "lab-lang"
@@ -26,7 +27,14 @@ export const isEn = LANG === "en"
 /** Für Datums- und Zahlenformate */
 export const LOCALE = isEn ? "en-US" : "de-DE"
 
-const DICT: Record<string, string> = isEn ? { ...EN_A, ...EN_B, ...EN_C, ...EN_D } : {}
+const ALL: Record<string, string> = { ...EN_A, ...EN_B, ...EN_C, ...EN_D, ...EN_E }
+const DICT: Record<string, string> = isEn ? ALL : {}
+let REV: Record<string, string> | null = null
+/** Englischen Text auf den deutschen Originaltext zurückführen (z. B. gespeicherte Namen nach Sprachwechsel). */
+export function toDe(s: string): string {
+  if (!REV) { REV = {}; for (const [de, en] of Object.entries(ALL)) if (!(en in REV)) REV[en] = de }
+  return REV[s] ?? s
+}
 const missing = new Set<string>()
 
 export function t(de: string, vars?: Record<string, string | number>): string {
@@ -53,7 +61,7 @@ export const dec = (n: number, digits = 1) => { const s = n.toFixed(digits); ret
 /** Euro-Betrag: „16,90 €“ bzw. „€16.90“ */
 export const euro = (v: number) => {
   const num = v < 10 ? v.toFixed(2) : Math.round(v).toLocaleString(LOCALE)
-  return isEn ? `€${num}` : `${num.replace(".", ",")} €`
+  return isEn ? `€${num}` : `${v < 10 ? num.replace(".", ",") : num} €`
 }
 /** Uhrzeit-Anzeige: „08:30 Uhr“ bzw. „8:30 AM“ wäre verwirrend neben Eingabefeldern → „08:30“ */
 export const clock = (hhmm: string) => (isEn ? hhmm : `${hhmm} Uhr`)

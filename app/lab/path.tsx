@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react"
 import { addDays, fmtDate } from "@/lib/supplementLab"
 import type { Stop } from "@/lib/labPath"
+import { t } from "@/lib/labI18n"
 
 type Point = { kind: "day"; label: string; key: string } | { kind: "stop"; stop: Stop; key: string }
 
@@ -11,8 +12,8 @@ const ROW = 74
 const DAY_ROW = 42
 
 function dayLabel(date: string, today: string) {
-  if (date === today) return "Heute"
-  if (date === addDays(today, 1)) return "Morgen"
+  if (date === today) return t("Heute")
+  if (date === addDays(today, 1)) return t("Morgen")
   return fmtDate(date)
 }
 
@@ -74,8 +75,8 @@ export function RoadPath({ stops, goal, today, onStop }: { stops: Stop[]; goal: 
         if (p.kind === "day") {
           return (
             <div key={p.key} className="lab-fade" style={{ position: "absolute", left: x, top: cy, transform: "translate(-50%, -50%)", animationDelay: `${i * 40}ms`,
-              padding: "4px 12px", borderRadius: 999, background: p.label === "Heute" ? "var(--accent)" : "var(--surface)", color: p.label === "Heute" ? "#fff" : "var(--text-dim)",
-              border: p.label === "Heute" ? "none" : "1px solid var(--border)", fontSize: "0.74rem", fontWeight: 900, letterSpacing: ".02em", whiteSpace: "nowrap", boxShadow: "0 2px 8px rgba(0,0,0,.08)" }}>
+              padding: "4px 12px", borderRadius: 999, background: p.label === t("Heute") ? "var(--accent)" : "var(--surface)", color: p.label === t("Heute") ? "#fff" : "var(--text-dim)",
+              border: p.label === t("Heute") ? "none" : "1px solid var(--border)", fontSize: "0.74rem", fontWeight: 900, letterSpacing: ".02em", whiteSpace: "nowrap", boxShadow: "0 2px 8px rgba(0,0,0,.08)" }}>
               {p.label}
             </div>
           )
@@ -109,7 +110,7 @@ export function RoadPath({ stops, goal, today, onStop }: { stops: Stop[]; goal: 
               animationDelay: `${i * 45 + 80}ms`,
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: labelLeft ? "flex-start" : "flex-end" }}>
-                {st.state === "now" && <span style={{ fontSize: "0.62rem", fontWeight: 900, color: "#fff", background: "var(--accent)", padding: "2px 6px", borderRadius: 6, flexShrink: 0 }}>JETZT</span>}
+                {st.state === "now" && <span style={{ fontSize: "0.62rem", fontWeight: 900, color: "#fff", background: "var(--accent)", padding: "2px 6px", borderRadius: 6, flexShrink: 0 }}>{t("JETZT")}</span>}
                 <span style={{ fontWeight: 900, fontSize: "0.88rem", lineHeight: 1.2, color: st.state === "done" ? "var(--text-dim)" : "var(--text)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", textDecoration: st.state === "done" && st.kind === "take" ? "line-through" : undefined }}>{st.title}</span>
               </div>
               {st.sub && <div style={{ fontSize: "0.74rem", color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontStyle: st.est ? "italic" : undefined }}>{st.sub}</div>}

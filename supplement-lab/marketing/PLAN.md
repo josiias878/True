@@ -12,6 +12,7 @@
 | Store-Auftritt | Texte, Keywords, Screenshots DE/EN, Feature-Grafik fertig (`store/`) |
 | In-App-Wachstum | Lab Pro (Beta frei, Gründer), Einladen, Bewertungs-Moment, anonymes Feedback |
 | Content | 5 Kolbi-Videos + 1 Karussell + 2-Wochen-Plan (`content/`) |
+| Sprachen | App, Landingpage (`/en`), Rechtstexte, Store-Bilder und Videos auf Deutsch **und Englisch** |
 | Native App (iOS/Android) | Capacitor-Projekt vorhanden, noch nicht im Store |
 | Phase | **1 · Startklar** → wartet auf Inhaber-To-dos (Konten, Impressum) |
 
@@ -82,3 +83,7 @@ Feedback aus `lab_feedback` einarbeiten; Store-Build vorbereiten, sobald der App
 - 2026-10-01 · Kanal-Recherche + `channels/PLAYBOOK.md`: Fahrplan DE sofort / EN nach Übersetzung, kopierfertige
   Posts (Reddit, Product Hunt, Show HN, Verzeichnisse, LinkedIn, Podcast, t3n, Facebook), Kanal-Links `/reddit` usw.
   Erkenntnis: Für Reddit-EN, Product Hunt und HN braucht die App eine englische Oberfläche → nächster Baustein.
+- 2026-10-01 · **Englische Version:** App komplett übersetzt (~1.560 Texte, `lib/labI18n.ts` + `lib/i18n/`), Sprache
+  automatisch nach Gerät, umschaltbar in den Einstellungen; deutsche Version pixelgleich geprüft. Landingpage `/en`,
+  englische Rechtstexte, Store-Screenshots EN neu, Videos EN (`content/videos-en/`). Prüfwerkzeuge: `tools/i18n-check.mjs`,
+  `tools/i18n-ui-check.mjs`.

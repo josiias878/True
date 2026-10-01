@@ -3,9 +3,10 @@
 // ausgelassene Einnahmen und Einnahme-Uhrzeit. Nur Hinweise – keine Beweise.
 
 import {
-  DIMS, TAGS, daySum, intakeOn, libOf, relMin, toMin, fromMin,
+  DIMS, TAGS, daySum, tagLabel, intakeOn, libOf, relMin, toMin, fromMin,
   type CheckIn, type Dim, type LabState,
 } from "./supplementLab"
+import { t } from "./labI18n"
 
 export interface Pattern {
   id: string
@@ -25,7 +26,8 @@ export const TAG_EMOJI: Record<string, string> = {
   "Wenig geschlafen": "😴", "Viel Stress": "😣", "Training": "🏋️", "Alkohol": "🍷", "Krank": "🤒",
   "Reise": "✈️", "Spät gegessen": "🍕", "Motiviert": "🚀", "Guter Pump": "💪",
 }
-const WEEKDAYS = ["Sonntags", "Montags", "Dienstags", "Mittwochs", "Donnerstags", "Freitags", "Samstags"]
+const WEEKDAYS = [t("Sonntags"), t("Montags"), t("Dienstags"), t("Mittwochs"), t("Donnerstags"), t("Freitags"), t("Samstags")]
+const WEEKDAY = [t("Sonntag"), t("Montag"), t("Dienstag"), t("Mittwoch"), t("Donnerstag"), t("Freitag"), t("Samstag")]
 const MIN_N = 3
 const MIN_DELTA = 0.4
 
@@ -57,8 +59,8 @@ export function findPatterns(s: LabState): Pattern[] {
   for (const tag of TAGS) {
     const yes = cs.filter(c => c.tags.includes(tag)), no = cs.filter(c => !c.tags.includes(tag))
     const b = bestSplit(yes, no, allDims)
-    if (b) out.push({ id: `tag:${tag}`, kind: "tag", emoji: TAG_EMOJI[tag] ?? "🏷️", title: tag === "Training" || tag === "Reise" ? `An ${tag}stagen` : `Bei „${tag}“`,
-      dim: b.dim, delta: b.d, with: b.w, without: b.wo, labelWith: "mit", labelWithout: "ohne", n: yes.length })
+    if (b) out.push({ id: `tag:${tag}`, kind: "tag", emoji: TAG_EMOJI[tag] ?? "🏷️", title: tag === "Training" ? t("An Trainingstagen") : tag === "Reise" ? t("An Reisetagen") : t("Bei „{tag}“", { tag: tagLabel(tag) }),
+      dim: b.dim, delta: b.d, with: b.w, without: b.wo, labelWith: t("mit"), labelWithout: t("ohne"), n: yes.length })
   }
 
   // Wochentage: schwächster bzw. stärkster Tag gegen den Rest
@@ -68,7 +70,7 @@ export function findPatterns(s: LabState): Pattern[] {
   for (const [d, list] of byDay) {
     const b = bestSplit(list, cs.filter(c => !list.includes(c)), [null])
     if (b && Math.abs(b.d) >= 0.5 && (!wd || Math.abs(b.d) > Math.abs(wd.delta)))
-      wd = { id: `weekday:${d}`, kind: "weekday", emoji: "📅", title: WEEKDAYS[d], dim: null, delta: b.d, with: b.w, without: b.wo, labelWith: WEEKDAYS[d].replace(/s$/, ""), labelWithout: "sonst", n: list.length }
+      wd = { id: `weekday:${d}`, kind: "weekday", emoji: "📅", title: WEEKDAYS[d], dim: null, delta: b.d, with: b.w, without: b.wo, labelWith: WEEKDAY[d], labelWithout: t("sonst"), n: list.length }
   }
   if (wd) out.push(wd)
 
@@ -78,8 +80,8 @@ export function findPatterns(s: LabState): Pattern[] {
     const yes = planned.filter(c => (s.took[c.date] ?? []).includes(x.id)), no = planned.filter(c => !(s.took[c.date] ?? []).includes(x.id))
     const dims = [null, ...(libOf(x)?.watch ?? [])] as (Dim | null)[]
     const b = bestSplit(yes, no, dims)
-    if (b) out.push({ id: `skip:${x.id}`, kind: "skip", emoji: x.emoji, title: `Mit ${x.name}`, dim: b.dim, delta: b.d, with: b.w, without: b.wo,
-      labelWith: "genommen", labelWithout: "vergessen", n: yes.length })
+    if (b) out.push({ id: `skip:${x.id}`, kind: "skip", emoji: x.emoji, title: t("Mit {name}", { name: x.name }), dim: b.dim, delta: b.d, with: b.w, without: b.wo,
+      labelWith: t("genommen"), labelWithout: t("vergessen"), n: yes.length })
   }
 
   // Einnahme-Uhrzeit: früher vs. später (Median-Split)
@@ -93,8 +95,8 @@ export function findPatterns(s: LabState): Pattern[] {
     if (!early.length || !late.length || mean(late.map(d => d.m)) - mean(early.map(d => d.m)) < 45) continue
     const dims = [null, ...(libOf(x)?.watch ?? [])] as (Dim | null)[]
     const b = bestSplit(early.map(d => d.c), late.map(d => d.c), dims)
-    if (b) out.push({ id: `time:${x.id}:${Math.round(mid / 30) * 30}`, kind: "time", emoji: "⏰", title: `${x.name} vor ${fromMin(Math.round(mid / 15) * 15)}`,
-      dim: b.dim, delta: b.d, with: b.w, without: b.wo, labelWith: "früher", labelWithout: "später", n: early.length })
+    if (b) out.push({ id: `time:${x.id}:${Math.round(mid / 30) * 30}`, kind: "time", emoji: "⏰", title: t("{name} vor {time}", { name: x.name, time: fromMin(Math.round(mid / 15) * 15) }),
+      dim: b.dim, delta: b.d, with: b.w, without: b.wo, labelWith: t("früher"), labelWithout: t("später"), n: early.length })
   }
 
   return out.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)).slice(0, 6)
@@ -102,5 +104,5 @@ export function findPatterns(s: LabState): Pattern[] {
 
 export function dimLabel(d: Dim | null) {
   const x = DIMS.find(q => q.id === d)
-  return x ? `${x.emoji} ${x.label}` : "✨ Gesamtgefühl"
+  return x ? `${x.emoji} ${x.label}` : t("✨ Gesamtgefühl")
 }
