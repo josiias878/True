@@ -154,6 +154,7 @@ Community- und Kolbi-Tab sind absichtlich **nicht** dabei (dort stünden Beispie
 |-------|----------|-----------------------|-------|
 | Gesundheit & Fitness (Check-in-Werte, Supplements) | **Nein** – bleibt auf dem Gerät | – | – |
 | Gesundheit (anonymes Test-Ergebnis: Supplement-ID, ±★, Urteil) | Ja, **nur mit Zustimmung** | Nein | App-Funktion (Community-Statistik) |
+| Feedback-Text (freiwillig, ohne Kennung) | Ja, nur beim Abschicken | Nein | App-Funktion / Produktverbesserung |
 | Geräte-ID (zufällig, für Löschen der eigenen Beiträge / Push) | Ja | Nein | App-Funktion |
 | Nutzungsdaten (anonyme Aufrufzählung, Vercel Analytics, nur Web) | Ja | Nein | Analyse |
 | Tracking über Apps hinweg | **Nein** | – | – |

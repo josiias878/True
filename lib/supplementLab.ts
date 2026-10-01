@@ -811,6 +811,8 @@ export interface LabState {
   community?: boolean // anonym Testergebnisse teilen? (undefined = noch nicht gefragt)
   queue?: string[]     // Test-Reihenfolge aus einem Experiment (Supplement-IDs)
   experiment?: string  // zuletzt gestartetes Experiment
+  pro?: { founder?: string; purchased?: string } // Lab Pro: Gründer (Beta) oder gekauft
+  review?: { asked: string[]; answer?: "love" | "ok" | "meh" } // Bewertungs-Moment
 }
 
 export const STORAGE_KEY = "true-supplement-lab-v1"

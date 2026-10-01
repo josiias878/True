@@ -25,6 +25,8 @@ import { factsFor, partnerTips, recentSides, sideCauses } from "@/lib/labKnowled
 import { openShop, refillStock, shoppingList, stockInfo } from "@/lib/labStock"
 import { ShopButton, ShoppingCard, StockCard, StockSheet } from "./stock"
 import { KolbiPage } from "./kolbi"
+import { ReviewSheet } from "./grow"
+import { claimFounder, markReviewAsked, shouldAskReview } from "@/lib/labGrow"
 import { RoadPath } from "./path"
 import { ShareButton, makeResultCard } from "./share"
 import { CommunityCard, CommunityConsent } from "./community"
@@ -183,6 +185,8 @@ export default function LabApp() {
   const [round, setRound] = useState<RoundStep[] | null>(null)
   const [unlockedFor, setUnlockedFor] = useState<string | null>(null)
   const [stockFor, setStockFor] = useState<string | null>(null)
+  const [reviewOpen, setReviewOpen] = useState<false | "ask" | "feedback">(false)
+  const [reviewCheck, setReviewCheck] = useState(false) // nach Erfolgserlebnis prüfen, ob Kolbi nach einer Bewertung fragt
   const [askCommunity, setAskCommunity] = useState<string | null | false>(false) // false = zu · null = allgemein · id = nach Urteil
   const [pendingShare, setPendingShare] = useState<string | null>(null)
   const [mineView, setMineView] = useState<"liste" | "stack" | "exp">("liste")
@@ -267,6 +271,7 @@ export default function LabApp() {
   const communityRef = useRef(s.community)
   communityRef.current = s.community
   const afterVerdict = useCallback((id: string) => {
+    setReviewCheck(true)
     if (communityRef.current === true) setPendingShare(id)
     else if (communityRef.current === undefined) setAskCommunity(id)
   }, [])
@@ -329,6 +334,15 @@ export default function LabApp() {
 
   setDayBoundary(s.settings) // Lab-Tag beginnt kurz vor deiner Aufstehzeit
   const today = todayIso()
+
+  // Beta: jeder wird Gründer (Lab Pro bleibt dauerhaft) – einmalig, still im Hintergrund
+  useEffect(() => { if (!s.pro?.founder && s.startDate) update(p => claimFounder(p, today)) }, [s.pro?.founder, s.startDate, today, update])
+  // Nach einem Erfolgserlebnis (Urteil, Wochen-Story) evtl. freundlich nach der Meinung fragen
+  useEffect(() => {
+    if (!reviewCheck) return
+    setReviewCheck(false)
+    if (shouldAskReview(s, today)) { update(p => markReviewAsked(p, today)); setTimeout(() => setReviewOpen("ask"), 1200) }
+  }, [reviewCheck, s, today, update])
   const toggleTook = useCallback((id: string) => {
     const on = (s.took[today] ?? []).includes(id)
     update(p => {
@@ -500,7 +514,8 @@ export default function LabApp() {
           {tab === "ergebnisse" && <ResultsView s={s} wins={wins} today={today} view={resView} setView={setResView}
             onVerdict={setVerdictFor} onCheckin={setCheckinDate} onPhase={setPhaseSheet} goTab={goTab} onRecap={() => setRecapEnd(recapWeekEnd(now, today))} />}
           {tab === "kolbi" && <KolbiPage s={s} mood={msgs[0]?.mood ?? "happy"} fill={dayProgress(s, today)} msgs={kolbiTips} onAction={runAction}
-            murky={(() => { const y = addDays(today, -1); return !!wins[0] && y >= wins[0].start && !s.checkins[y] && !s.checkins[today] })()} />}
+            murky={(() => { const y = addDays(today, -1); return !!wins[0] && y >= wins[0].start && !s.checkins[y] && !s.checkins[today] })()}
+            onFlash={setFlash} onFeedback={() => setReviewOpen("feedback")} />}
         </div>
       </main>
 
@@ -543,6 +558,8 @@ export default function LabApp() {
       {askCommunity !== false && !round && !newBadge && <CommunityConsent s={s} suppId={askCommunity}
         onYes={() => { const id = askCommunity; setAskCommunity(false); update(p => { p.community = true; return p }, { amount: 10, label: "Community" }); if (id && s.verdicts[id]) setPendingShare(id) }}
         onNo={() => { setAskCommunity(false); update(p => { p.community = false; return p }) }} />}
+      {reviewOpen && !round && !newBadge && !recapEnd && askCommunity === false && <ReviewSheet start={reviewOpen} onFlash={setFlash}
+        onAnswer={m => update(p => markReviewAsked(p, today, m))} onClose={() => setReviewOpen(false)} />}
       {expOpen && <ExperimentSheet s={s} e={expOpen} onClose={() => setExpOpen(null)} onStart={away => {
         const e = expOpen
         setExpOpen(null)
@@ -551,7 +568,7 @@ export default function LabApp() {
         setFlash(`${e.emoji} Experiment „${e.title}“ gestartet – Kolbi plant alles`)
         goTab("heute")
       }} />}
-      {recapEnd && <WeekRecap s={s} end={recapEnd} today={today} onClose={() => { const e = recapEnd; setRecapEnd(null); update(p => { p.recapSeen = e; return p }, s.recapSeen === e ? undefined : { amount: 10, label: "Woche angeschaut" }) }} />}
+      {recapEnd && <WeekRecap s={s} end={recapEnd} today={today} onClose={() => { const e = recapEnd; setRecapEnd(null); update(p => { p.recapSeen = e; return p }, s.recapSeen === e ? undefined : { amount: 10, label: "Woche angeschaut" }); setReviewCheck(true) }} />}
       {round && <DailyRound s={s} today={today} steps={round}
         onTake={id => update(p => { markTaken(p, today, id); return p }, { amount: 5, label: "Eingenommen" })}
         onCheckin={saveCheckin}

@@ -65,3 +65,6 @@
 - 2026-10-01 · Landingpage `marketing/site/` (Generator `tools/build-site.mjs`): Hero mit anstupsbarem Kolbi,
   3 Schritte, Screenshots, Features, Datenschutz, Gründer-Beta, FAQ, Rechtsseiten. Bis Impressum-Daten da
   sind: `noindex` (robots + Header). CTA führt direkt in die Beta-PWA (keine E-Mail-Liste nötig).
+- 2026-10-01 · In-App: Lab Pro (Beta = alles frei, Gründer-Status dauerhaft), Freunde einladen (Link zur
+  Landingpage), Bewertungs-Moment nach Erfolgserlebnis, anonymes Feedback (Supabase `lab_feedback`,
+  ohne Geräte-ID, Löschung nach 12 Monaten). Fix: ✕ in der Wochen-Story war vom Inhalt verdeckt.

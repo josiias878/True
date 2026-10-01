@@ -422,7 +422,7 @@ export function WeekRecap({ s, end, today, onClose }: { s: LabState; end: string
           </span>
         ))}
       </div>
-      <button onClick={e => { e.stopPropagation(); onClose() }} aria-label="Schließen" style={{ position: "absolute", top: "calc(22px + env(safe-area-inset-top))", right: 14, width: 36, height: 36, borderRadius: 999, border: "none", background: "rgba(0,0,0,.2)", color: "#fff", fontSize: "1rem" }}>✕</button>
+      <button onClick={e => { e.stopPropagation(); onClose() }} aria-label="Schließen" style={{ position: "absolute", zIndex: 2, top: "calc(22px + env(safe-area-inset-top))", right: 14, width: 36, height: 36, borderRadius: 999, border: "none", background: "rgba(0,0,0,.2)", color: "#fff", fontSize: "1rem" }}>✕</button>
       <div key={i} className="lab-tabin" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "20px 24px 40px" }}>
         {slides[i].body}
       </div>

@@ -6,6 +6,7 @@ import { FACT_COUNT, learnedFacts } from "@/lib/labKnowledge"
 import type { CoachAction, CoachMsg, Mood } from "@/lib/labCoach"
 import { Label } from "./ui"
 import { Guide, MASCOT_NAME, Mascot, TipsList } from "./mascot"
+import { InviteRow, ProCard } from "./grow"
 
 const JOBS = [
   { emoji: "⏰", title: "Erinnern", text: "Zur richtigen Zeit – gebündelt, nicht nervig." },
@@ -17,8 +18,9 @@ const JOBS = [
 ]
 
 /** Kolbi-Tab: seine Tipps, warum er so aussieht, was er macht, Wissens-Album, Abzeichen, Hilfe. */
-export function KolbiPage({ s, mood, fill, murky, msgs, onAction }: {
+export function KolbiPage({ s, mood, fill, murky, msgs, onAction, onFlash, onFeedback }: {
   s: LabState; mood: Mood; fill: number; murky: boolean; msgs: CoachMsg[]; onAction: (a: CoachAction, id: string) => void
+  onFlash: (m: string) => void; onFeedback: () => void
 }) {
   const [poke, setPoke] = useState(0)
   const lvl = levelFor(s.xp)
@@ -62,6 +64,8 @@ export function KolbiPage({ s, mood, fill, murky, msgs, onAction }: {
         </div>
       </div>
 
+      <ProCard s={s} />
+      <InviteRow onFlash={onFlash} onFeedback={onFeedback} />
       <CommunityStat />
 
       {/* Warum er so aussieht */}

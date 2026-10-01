@@ -43,6 +43,17 @@ Echte Push-Nachrichten, auch wenn die App geschlossen ist (iPhone ab iOS 16.4, n
   ±★ gesamt/je Bereich, Nebenwirkungs-IDs – keine Namen, Daten oder Notizen. Statistiken werden erst
   ab 5 Beiträgen gezeigt und nur aggregiert (Quantile statt Einzelwerte). Löschen per Einstellungen.
 
+## Feedback & Wachstum (gleiches Supabase-Projekt)
+
+- **Feedback** (`supabase/functions/lab-feedback`, Tabelle `lab_feedback`): 😍/🙂/😕 + Text, **ohne**
+  Geräte-ID. Lesen: `select created_at, mood, text from lab_feedback order by created_at desc;`
+  Ein Cron-Job löscht Einträge nach 12 Monaten.
+- **Lab Pro** (`lib/labGrow.ts`): solange `BETA = true`, ist alles frei und jeder Nutzer bekommt den
+  Gründer-Status (`s.pro.founder`), der auch nach der Beta gilt.
+- **Bewertungs-Moment:** nach einem Urteil oder der Wochen-Story, nur wenn ≥ 7 Check-ins und ein
+  Erfolg (behalten oder 7 Tage Serie), max. 3× mit 30 Tagen Abstand. In der Store-App ruft 😍 das
+  native Bewertungsfenster (Plugin `InAppReview`), im Web „Weiterempfehlen“.
+
 ## Wie oft wird die App geöffnet? (Vercel Web Analytics)
 
 Da es keine Accounts gibt, ist die einzige Möglichkeit zu sehen, ob die App überhaupt genutzt

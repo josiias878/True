@@ -79,29 +79,39 @@ nur zusammengefasst und erst ab 5 Beiträgen je Supplement (Anteile, Durchschnit
 Du kannst die Einwilligung jederzeit in den Einstellungen widerrufen und dort alle deine Beiträge
 löschen.
 
-## 7. Apple Health / Google Health Connect (nur App, optional)
+## 7. Feedback an Kolbi (optional)
+
+Wenn du in der App Feedback abschickst, speichern wir bei Supabase (Frankfurt) nur: deine Auswahl
+(😍/🙂/😕), deinen Text (max. 1000 Zeichen), wo in der App du ihn geschrieben hast, die App-Version
+und den Zeitpunkt – **ohne Geräte-ID oder sonstige Kennung**. Bitte schreib keine Namen oder
+persönlichen Gesundheitsdaten hinein. Wir nutzen das Feedback nur, um die App zu verbessern, und
+löschen es spätestens nach 12 Monaten. Rechtsgrundlage: Art. 6 Abs. 1 lit. a DSGVO (Einwilligung
+durch Abschicken). Da wir dich nicht identifizieren können, können wir einzelne Einträge nachträglich
+nicht dir zuordnen.
+
+## 8. Apple Health / Google Health Connect (nur App, optional)
 
 In der Store-App kannst du erlauben, Schlafdauer und Herzfrequenzvariabilität aus Apple Health bzw.
 Health Connect zu **lesen**. Diese Werte werden nur lokal ausgewertet und **niemals** übertragen.
 
-## 8. Kauf-Links
+## 9. Kauf-Links
 
 Bei manchen Supplements zeigen wir einen Link zur Suche bei Amazon. Erst wenn du darauf tippst,
 verlässt du die App; ab dann gilt die Datenschutzerklärung von Amazon. Sind diese Links als
 „Anzeige“ markiert, erhalten wir bei einem Kauf ggf. eine Provision – für dich ändert sich der
 Preis nicht.
 
-## 9. In-App-Käufe (Store-App)
+## 10. In-App-Käufe (Store-App)
 
 Käufe (z. B. „Lab Pro“) werden vollständig über Apple bzw. Google abgewickelt. Wir erhalten keine
 Zahlungsdaten.
 
-## 10. Speicherdauer
+## 11. Speicherdauer
 
 Lokale Daten: bis du sie löschst. Server-Daten: siehe die jeweiligen Abschnitte; sie werden gelöscht,
 sobald du die Funktion ausschaltest bzw. widerrufst.
 
-## 11. Deine Rechte
+## 12. Deine Rechte
 
 Du hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung,
 Datenübertragbarkeit und Widerspruch sowie das Recht, eine Einwilligung jederzeit mit Wirkung für
@@ -110,6 +120,6 @@ Lösch-Funktionen in der App oder schreib uns unter [E-Mail-Adresse].
 Du kannst dich außerdem bei einer Datenschutz-Aufsichtsbehörde beschweren, z. B. bei der Behörde
 deines Bundeslandes.
 
-## 12. Keine Weitergabe, kein Tracking
+## 13. Keine Weitergabe, kein Tracking
 
 Wir verkaufen keine Daten, nutzen keine Werbe-Tracker und keine Cookies zu Werbezwecken.
