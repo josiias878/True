@@ -3,10 +3,10 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Supplement-Kosten-Rechner: Was kostet dein Schrank im Jahr? – Kolbi</title><meta name="description" content="Hak an, was du nimmst – Preise sind grobe Schätzwerte pro Monat, du kannst sie anpassen.">
 <meta name="robots" content="noindex, nofollow">
-
+<link rel="alternate" hreflang="de" href="https://kolbi-smoky.vercel.app/rechner"><link rel="alternate" hreflang="en" href="https://kolbi-smoky.vercel.app/en/calculator"><link rel="alternate" hreflang="x-default" href="https://kolbi-smoky.vercel.app/rechner">
 <meta name="theme-color" content="#14122b">
 <meta property="og:title" content="Supplement-Kosten-Rechner: Was kostet dein Schrank im Jahr? – Kolbi"><meta property="og:description" content="Hak an, was du nimmst – Preise sind grobe Schätzwerte pro Monat, du kannst sie anpassen.">
-<meta property="og:image" content="/img/og.png"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image">
+<meta property="og:image" content="https://kolbi-smoky.vercel.app/img/og.png"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/img/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/img/kolbi.png">
 <link rel="preload" href="/fonts/Nunito-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>@font-face{font-family:Nunito;src:url(/fonts/Nunito-latin.woff2) format("woff2");font-weight:200 1000;font-display:swap}
@@ -144,7 +144,7 @@ code{background:var(--card);padding:1px 6px;border-radius:6px}
 <script defer src="/_vercel/insights/script.js"></script>
 </head><body class="legal" data-lang="de">
 <header class="nav"><a class="brand" href="/"><svg xmlns="http://www.w3.org/2000/svg" class="kolbi " aria-hidden="true" viewBox="0 0 100 100" style="display:block;overflow:visible;transition:filter .6s"><defs><linearGradient id="liq-k34" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2ECC8A"></stop><stop offset="1" stop-color="#3987e5"></stop></linearGradient><clipPath id="clip-k34"><path d="M40 14 h20 v22 l20 36 c5 9 -1 20 -11 20 H31 c-10 0 -16 -11 -11 -20 l20 -36 z"></path></clipPath></defs><path d="M40 14 h20 v22 l20 36 c5 9 -1 20 -11 20 H31 c-10 0 -16 -11 -11 -20 l20 -36 z" fill="#eafaf3"></path><g clip-path="url(#clip-k34)"><g style="transform:translateY(5px);transition:transform 1s cubic-bezier(.3,.9,.3,1)"><path class="lab-wave" d="M-20 50 C -2 44, 10 54, 22 49 S 48 44, 62 50 S 88 56, 100 49 S 124 44, 140 50 V 160 H-20 Z" fill="url(#liq-k34)"></path></g><circle cx="34" cy="82" r="3" fill="#fff" opacity=".5"></circle><circle cx="66" cy="78" r="2.2" fill="#fff" opacity=".5"></circle></g><path d="M40 14 h20 v22 l20 36 c5 9 -1 20 -11 20 H31 c-10 0 -16 -11 -11 -20 l20 -36 z" fill="none" stroke="#1a1c20" stroke-width="3" stroke-linejoin="round"></path><rect x="36" y="8" width="28" height="9" rx="4.5" fill="#fff" stroke="#1a1c20" stroke-width="3"></rect><circle cx="34" cy="68" r="4" fill="#ff8fa3" opacity=".7"></circle><circle cx="66" cy="68" r="4" fill="#ff8fa3" opacity=".7"></circle><g style="transform:translate(0px, 0px);transition:transform .35s cubic-bezier(.3,.9,.3,1)"><g><ellipse cx="41" cy="60" rx="4" ry="5" fill="#1a1c20"></ellipse><ellipse cx="59" cy="60" rx="4" ry="5" fill="#1a1c20"></ellipse><circle cx="42.5" cy="58" r="1.4" fill="#fff"></circle><circle cx="60.5" cy="58" r="1.4" fill="#fff"></circle></g></g><path d="M44 70 q6 6 12 0" stroke="#1a1c20" stroke-width="2.6" fill="none" stroke-linecap="round"></path></svg><span>Kolbi</span></a>
-<span class="nav-r"><a class="lang" href="/en" hreflang="en">EN</a><a class="btn small" href="https://supplement-lab-six.vercel.app?lang=de" data-cta="nav">Beta öffnen</a></span></header>
+<span class="nav-r"><a class="lang" href="/en/calculator" hreflang="en">EN</a><a class="btn small" href="https://supplement-lab-six.vercel.app?lang=de" data-cta="nav">Beta öffnen</a></span></header>
 <main class="wrap doc">
 <style>.calc-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:var(--card);border:1px solid var(--line);margin:6px 0;cursor:pointer}
 .calc-row input[type=checkbox]{width:20px;height:20px;accent-color:#2ECC8A}.ce{font-size:1.3rem}.cn{flex:1;font-weight:800}
@@ -159,31 +159,40 @@ code{background:var(--card);padding:1px 6px;border-radius:6px}
 <div class="calc-total" id="tot"></div>
 <p class="fine" style="margin-top:14px">Schätzwerte für typische Monatsmengen. Kolbi sagt dir nicht, was „wirkt“ – sondern hilft dir, es bei dir selbst zu testen.</p>
 <script>(() => {
-  const cur = (v) => `${Math.round(v).toLocaleString("de-DE")} €`, T = {"month":"im Monat","year":"im Jahr","what":"Und wenn 2 davon bei dir keinen spürbaren Unterschied machen?","save":"Dann zahlst du dafür {a} bis {b} im Jahr – ohne es zu merken.","none":"Hak mindestens ein Supplement an.","cta":"Finde mit Kolbi heraus, welche – kostenlos","share":"📤 Ergebnis teilen","shareText":"Mein Supplement-Schrank kostet {y} im Jahr 😳 Was kostet deiner?"}
+  const cur = (v) => `${Math.round(v).toLocaleString("de-DE")} €`, T = {"month":"im Monat","year":"im Jahr","what1":"Und wenn eins davon bei dir keinen spürbaren Unterschied macht?","what2":"Und wenn 2 davon bei dir keinen spürbaren Unterschied machen?","save1":"Dann zahlst du dafür {x} im Jahr – ohne es zu merken.","save2":"Dann zahlst du dafür {x} im Jahr – ohne es zu merken.","range":"{a} bis {b}","upto":"bis zu {b}","none":"Hak mindestens ein Supplement an.","cta":"Finde mit Kolbi heraus, welche – kostenlos","share":"📤 Ergebnis teilen","shareText":"Mein Supplement-Schrank kostet {y} im Jahr 😳 Was kostet deiner?"}
   const app = "https://supplement-lab-six.vercel.app" + "?lang=de&src=calc"
+  // Preis aus dem Feld: leer/ungültig = 0, nie negativ
+  const price = f => { const v = +f.value; return Number.isFinite(v) ? Math.max(0, v) : 0 }
   const calc = () => {
     const on = [...document.querySelectorAll("[data-i]")].filter(c => c.checked)
-    const sel = on.map(c => +document.querySelector('[data-p="' + c.dataset.i + '"]').value || 0)
+    const sel = on.map(c => price(document.querySelector('[data-p="' + c.dataset.i + '"]')))
     const el = document.getElementById("tot")
     const bar = document.getElementById("bar")
     if (!sel.length) { el.innerHTML = "<p>" + T.none + "</p>"; bar.textContent = T.none; return }
     const m = sel.reduce((a, b) => a + b, 0), y = m * 12, s = [...sel].sort((a, b) => a - b)
-    const lo = (s[0] + (s[1] || 0)) * 12, hi = (s[s.length - 1] + (s.length > 1 ? s[s.length - 2] : 0)) * 12
+    // ≥ 3: die zwei günstigsten bis die zwei teuersten · genau 2: das günstigere bis das teurere
+    const k = sel.length >= 3 ? 2 : 1, lo = s.slice(0, k).reduce((a, b) => a + b, 0) * 12, hi = s.slice(-k).reduce((a, b) => a + b, 0) * 12
+    const x = cur(lo) === cur(hi) ? cur(hi) : lo <= 0 ? T.upto.replace("{b}", cur(hi)) : T.range.replace("{a}", cur(lo)).replace("{b}", cur(hi))
     bar.innerHTML = "<b>" + cur(y) + "</b> " + T.year + " · " + cur(m) + " " + T.month
     el.innerHTML = "<p><b>" + cur(y) + "</b> " + T.year + " · " + cur(m) + " " + T.month + "</p>"
-      + (sel.length >= 2 ? "<p style='margin-top:10px;font-weight:800'>" + T.what + "</p><p>" + T.save.replace("{a}", cur(lo)).replace("{b}", cur(hi)) + "</p>" : "")
+      + (sel.length >= 2 && hi > 0 ? "<p style='margin-top:10px;font-weight:800'>" + T["what" + k] + "</p><p>" + T["save" + k].replace("{x}", x) + "</p>" : "")
       + "<div style='display:flex;flex-wrap:wrap;gap:8px;margin-top:12px'><a class='btn' href='" + app + "&s=" + on.map(c => c.dataset.id).join(",") + "' data-cta='calc' style='background:#fff;color:#14122b'>" + T.cta + "</a><button class='btn ghost' id='sh' style='border:0;cursor:pointer;font-family:inherit'>" + T.share + "</button></div>"
     document.getElementById("sh").onclick = async () => {
       const text = T.shareText.replace("{y}", cur(y)), url = location.origin + location.pathname
-      try { if (navigator.share) { await navigator.share({ text, url }); return } } catch (e) { return }
+      // Teilen-Menü; nur bewusstes Abbrechen (AbortError) beendet still – sonst (z. B. NotAllowedError) Zwischenablage
+      if (navigator.share) try { await navigator.share({ text, url }); return } catch (e) { if (e && e.name === "AbortError") return }
       try { await navigator.clipboard.writeText(text + " " + url); document.getElementById("sh").textContent = "✓" } catch {}
     }
   }
-  document.getElementById("rows").addEventListener("input", calc); calc()
+  const rowsEl = document.getElementById("rows")
+  rowsEl.addEventListener("input", calc)
+  // Negative Eingaben auch im Feld auf 0 setzen (beim Verlassen/Bestätigen, nicht mitten im Tippen)
+  rowsEl.addEventListener("change", e => { const f = e.target; if (f.dataset && f.dataset.p != null && f.value !== "" && +f.value < 0) { f.value = "0"; calc() } })
+  calc()
 })()</script></main>
 <footer class="foot"><div class="wrap">
 <div class="foot-brand"><svg xmlns="http://www.w3.org/2000/svg" class="kolbi " aria-hidden="true" viewBox="0 0 100 100" style="display:block;overflow:visible;transition:filter .6s"><defs><linearGradient id="liq-k35" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2ECC8A"></stop><stop offset="1" stop-color="#3987e5"></stop></linearGradient><clipPath id="clip-k35"><path d="M40 14 h20 v22 l20 36 c5 9 -1 20 -11 20 H31 c-10 0 -16 -11 -11 -20 l20 -36 z"></path></clipPath></defs><path d="M40 14 h20 v22 l20 36 c5 9 -1 20 -11 20 H31 c-10 0 -16 -11 -11 -20 l20 -36 z" fill="#eafaf3"></path><g clip-path="url(#clip-k35)"><g style="transform:translateY(-8px);transition:transform 1s cubic-bezier(.3,.9,.3,1)"><path class="lab-wave" d="M-20 50 C -2 44, 10 54, 22 49 S 48 44, 62 50 S 88 56, 100 49 S 124 44, 140 50 V 160 H-20 Z" fill="url(#liq-k35)"></path></g><circle cx="34" cy="82" r="3" fill="#fff" opacity=".5"></circle><circle cx="66" cy="78" r="2.2" fill="#fff" opacity=".5"></circle></g><path d="M40 14 h20 v22 l20 36 c5 9 -1 20 -11 20 H31 c-10 0 -16 -11 -11 -20 l20 -36 z" fill="none" stroke="#1a1c20" stroke-width="3" stroke-linejoin="round"></path><rect x="36" y="8" width="28" height="9" rx="4.5" fill="#fff" stroke="#1a1c20" stroke-width="3"></rect><circle cx="34" cy="68" r="4" fill="#ff8fa3" opacity=".7"></circle><circle cx="66" cy="68" r="4" fill="#ff8fa3" opacity=".7"></circle><g style="transform:translate(0px, 0px);transition:transform .35s cubic-bezier(.3,.9,.3,1)"><g><path d="M36 60 q5 4 10 0" stroke="#1a1c20" stroke-width="3" fill="none" stroke-linecap="round"></path><path d="M54 60 q5 4 10 0" stroke="#1a1c20" stroke-width="3" fill="none" stroke-linecap="round"></path></g></g><path d="M46 71 q4 3 8 0" stroke="#1a1c20" stroke-width="2.4" fill="none" stroke-linecap="round"></path><g class="lab-pop"><path d="M34 12 C 40 -4, 66 -8, 80 6 C 72 4, 70 8, 66 12 Z" fill="#5b6ee1" stroke="#1a1c20" stroke-width="2.4" stroke-linejoin="round"></path><path d="M34 12 h32" stroke="#fff" stroke-width="4" stroke-linecap="round"></path><circle cx="82" cy="8" r="5" fill="#fff" stroke="#1a1c20" stroke-width="2"></circle></g><text x="72" y="22" font-size="14" font-weight="900" fill="#7a7a9a">z</text></svg><span><b>Kolbi · Supplement Lab</b><br>Finde raus, was bei dir wirkt.</span></div>
-<nav><a href="/selbsttest">Selbsttests</a><a href="/rechner">Kosten-Rechner</a><a href="/vorlage">Vorlage zum Ausdrucken</a><a href="/ratgeber/supplements-selbst-testen">Ratgeber: Supplements selbst testen</a><a href="/presse">Presse</a><a href="/impressum">Impressum</a><a href="/datenschutz">Datenschutz</a><a href="/nutzungsbedingungen">Nutzungsbedingungen</a><a href="/en">🇬🇧 English version</a></nav>
+<nav><a href="/selbsttest">Selbsttests</a><a href="/rechner">Kosten-Rechner</a><a href="/vorlage">Vorlage zum Ausdrucken</a><a href="/ratgeber/supplements-selbst-testen">Ratgeber: Supplements selbst testen</a><a href="/presse">Presse</a><a href="/impressum">Impressum</a><a href="/datenschutz">Datenschutz</a><a href="/nutzungsbedingungen">Nutzungsbedingungen</a><a href="/en/calculator">🇬🇧 English version</a></nav>
 <p class="fine">Kolbi ist ein Tagebuch- und Experimentier-Werkzeug, kein Medizinprodukt. Keine Diagnose, keine Heilversprechen – die Ergebnisse sind deine persönliche Einschätzung. Bei Beschwerden, Schwangerschaft oder Medikamenten sprich vorher mit Ärztin, Arzt oder Apotheke.</p></div></footer>
 <script>window.KOLBI_LINES=["Hihi, das kitzelt! 😄","Ich teste mit dir. 🧪","Erst Reset, dann Test!","Behalten oder raus? Ich zeig's dir.","Hi, ich bin Kolbi! 👋"];// Kolbi anstupsen + Karten beim Scrollen einblenden
 document.documentElement.classList.add("js");
@@ -196,10 +205,15 @@ document.documentElement.classList.add("js");
     say.textContent = lines[i++ % lines.length]; say.classList.add("pop"); setTimeout(() => say.classList.remove("pop"), 300)
     if (navigator.vibrate) navigator.vibrate(8)
   })
-  // Kanal-Link (/reddit, /tiktok …): Herkunft an die Beta-Knöpfe hängen
-  const ch = location.pathname.replace(/^\/(en\/)?|\/$/g, "")
-  if (/^[a-z]{1,20}$/.test(ch) && !["impressum", "datenschutz", "nutzungsbedingungen", "en", "imprint", "privacy", "terms"].includes(ch))
-    document.querySelectorAll("a[data-cta]").forEach(a => { if (!/[?&]src=/.test(a.href)) a.href += (a.href.includes("?") ? "&" : "?") + "src=" + ch })
+  // Herkunft (src) an alle Beta-Knöpfe hängen, die noch keine haben – immer genau ein gültiges src (a–z, ≤ 20):
+  // Kanal-Link /reddit → reddit · /rechner → rechner · /selbsttest/magnesium → magnesium ·
+  // /selbsttest/omega-3 → selbsttest · /en/self-test → selftest · Startseite (/, /en) → home
+  const ok = s => /^[a-z]{1,20}$/.test(s)
+  const seg = location.pathname.toLowerCase().replace(/\.html$/, "").split("/").filter(Boolean)
+  if (seg[0] === "en") seg.shift()
+  const last = seg[seg.length - 1] || "", first = (seg[0] || "").replace(/[^a-z]/g, "").slice(0, 20)
+  const ch = !seg.length ? "home" : ok(last) ? last : ok(first) ? first : "web"
+  document.querySelectorAll("a[data-cta]").forEach(a => { if (!/[?&]src=/.test(a.href)) a.href += (a.href.includes("?") ? "&" : "?") + "src=" + ch })
   const io = "IntersectionObserver" in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target) } }), { threshold: .15 }) : null
   document.querySelectorAll(".reveal").forEach((el, k) => { el.style.transitionDelay = `${(k % 4) * 70}ms`; io ? io.observe(el) : el.classList.add("in") })
 })()

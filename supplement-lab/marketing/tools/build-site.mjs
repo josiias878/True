@@ -7,6 +7,8 @@ const require = createRequire(import.meta.url)
 const { chromium } = require(require("child_process").execSync("npm root -g").toString().trim() + "/playwright")
 
 const APP = "https://supplement-lab-six.vercel.app"
+/** Öffentliche Adresse der Website – für hreflang, og:image und Sitemap (müssen absolut sein). */
+const SITE = "https://kolbi-smoky.vercel.app"
 /** Kanal-Links: gleiche Startseite unter eigenem Pfad → Vercel Analytics zeigt Besuche je Kanal (ohne Cookies). */
 export const CHANNELS = ["invite", "reddit", "tiktok", "insta", "youtube", "producthunt", "hn", "facebook", "linkedin", "x", "threads", "discord", "betalist", "indiehackers", "pinterest", "forum", "qr"]
 const OUT = "site"
@@ -101,22 +103,26 @@ const L = {
 // ── Gemeinsames Gerüst ───────────────────────────────────────────────────────
 const CSS = fs.readFileSync(new URL("./site.css", import.meta.url), "utf8")
 const JS = fs.readFileSync(new URL("./site.js", import.meta.url), "utf8")
-const page = (l, { title, desc, body, path = "", alt, head = "" }) => `<!doctype html>
+/** alt = { de: "/pfad", en: "/en/pfad" }: hreflang-Paar (absolut) + Sprachumschalter/Fußzeilen-Link zum Gegenstück. */
+const page = (l0, { title, desc, body, path = "", alt, head = "" }) => {
+  const ol = l0.lang === "de" ? "en" : "de", abs = u => SITE + (u === "/" ? "" : u)
+  const l = alt ? { ...l0, other: { ...l0.other, href: alt[ol] } } : l0
+  return `<!doctype html>
 <html lang="${l.lang}"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${title}</title><meta name="description" content="${desc}">
 ${DRAFT ? '<meta name="robots" content="noindex, nofollow">' : ""}
-${alt ? `<link rel="alternate" hreflang="de" href="/"><link rel="alternate" hreflang="en" href="/en">` : ""}
+${alt ? `<link rel="alternate" hreflang="de" href="${abs(alt.de)}"><link rel="alternate" hreflang="en" href="${abs(alt.en)}"><link rel="alternate" hreflang="x-default" href="${abs(alt.de)}">` : ""}
 ${head}<meta name="theme-color" content="#14122b">
 <meta property="og:title" content="${title}"><meta property="og:description" content="${desc}">
-<meta property="og:image" content="/img/og${l.lang === "en" ? "-en" : ""}.png"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image">
+<meta property="og:image" content="${SITE}/img/og${l.lang === "en" ? "-en" : ""}.png"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/img/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/img/kolbi.png">
 <link rel="preload" href="/fonts/Nunito-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>${CSS}</style>
 <script defer src="/_vercel/insights/script.js"></script>
 </head><body${path ? ` class="legal"` : ""} data-lang="${l.lang}">
 <header class="nav"><a class="brand" href="${l.base || "/"}">${kolbi("happy")}<span>Kolbi</span></a>
-<span class="nav-r"><a class="lang" href="${l.other.href}" hreflang="${l.lang === "de" ? "en" : "de"}">${l.other.label}</a><a class="btn small" href="${APP}?lang=${l.lang}" data-cta="nav">${l.open}</a></span></header>
+<span class="nav-r"><a class="lang" href="${l.other.href}" hreflang="${ol}">${l.other.label}</a><a class="btn small" href="${APP}?lang=${l.lang}" data-cta="nav">${l.open}</a></span></header>
 ${body}
 <footer class="foot"><div class="wrap">
 <div class="foot-brand">${kolbi("sleepy-nightcap")}<span><b>Kolbi · Supplement Lab</b><br>${l.tagline}</span></div>
@@ -124,10 +130,11 @@ ${body}
 <p class="fine">${l.fine}</p></div></footer>
 <script>window.KOLBI_LINES=${JSON.stringify(l.lines)};${JS}</script>
 </body></html>`
+}
 
 function home(l) {
   const T = l.t, A = `${APP}?lang=${l.lang}`
-  return page(l, { title: l.ogTitle, desc: l.desc, alt: true, body: `
+  return page(l, { title: l.ogTitle, desc: l.desc, alt: { de: "/", en: "/en" }, body: `
 <main>
 <section class="hero"><div class="wrap hero-grid">
   <div class="hero-copy">
@@ -191,15 +198,17 @@ function home(l) {
 fs.mkdirSync(`${OUT}/en`, { recursive: true })
 fs.writeFileSync(`${OUT}/index.html`, home(L.de))
 fs.writeFileSync(`${OUT}/en.html`, home(L.en))
+/** Rechtsseiten-Paare DE ↔ EN (Index wie in L.de.legal / L.en.legal); Gegenstück nur, wenn die EN-Datei existiert */
+const legalAlt = i => fs.existsSync(`legal/en/${L.en.legal[i][0]}.md`) ? { de: `/${L.de.legal[i][2]}`, en: `/${L.en.legal[i][2]}` } : undefined
 for (const [n, t] of Object.entries(legalMd)) {
   const title = L.de.legalTitles[n]
-  fs.writeFileSync(`${OUT}/${n}.html`, page(L.de, { title: `${title} – Kolbi`, desc: `${title} von Kolbi · Supplement Lab`, path: n, body: `<main class="wrap doc">${md(t)}</main>` }))
+  fs.writeFileSync(`${OUT}/${n}.html`, page(L.de, { title: `${title} – Kolbi`, desc: `${title} von Kolbi · Supplement Lab`, path: n, alt: legalAlt(L.de.legal.findIndex(x => x[0] === n)), body: `<main class="wrap doc">${md(t)}</main>` }))
 }
-for (const n of ["imprint", "privacy", "terms"]) {
+for (const [i, n] of ["imprint", "privacy", "terms"].entries()) {
   const f = `legal/en/${n}.md`
   if (!fs.existsSync(f)) { console.log(`⚠️ ${f} fehlt – englische Rechtsseite übersprungen`); continue }
   const title = L.en.legalTitles[n]
-  fs.writeFileSync(`${OUT}/en/${n}.html`, page(L.en, { title: `${title} – Kolbi`, desc: `${title} of Kolbi · Supplement Lab`, path: n, body: `<main class="wrap doc">${md(fs.readFileSync(f, "utf8"))}</main>` }))
+  fs.writeFileSync(`${OUT}/en/${n}.html`, page(L.en, { title: `${title} – Kolbi`, desc: `${title} of Kolbi · Supplement Lab`, path: n, alt: legalAlt(i), body: `<main class="wrap doc">${md(fs.readFileSync(f, "utf8"))}</main>` }))
 }
 
 // ── Ratgeber ────────────────────────────────────────────────────────────────
@@ -207,7 +216,7 @@ for (const l of Object.values(L)) {
   const g = l.guide, src = fs.readFileSync(g.file, "utf8")
   const title = src.split("\n")[0].replace(/^# /, "")
   fs.mkdirSync(`${OUT}${g.href.slice(0, g.href.lastIndexOf("/"))}`, { recursive: true })
-  fs.writeFileSync(`${OUT}${g.href}.html`, page(l, { title: `${title} – Kolbi`, desc: g.desc, path: "guide", body: `<main class="wrap doc guide">${md(src)}
+  fs.writeFileSync(`${OUT}${g.href}.html`, page(l, { title: `${title} – Kolbi`, desc: g.desc, path: "guide", alt: { de: L.de.guide.href, en: L.en.guide.href }, body: `<main class="wrap doc guide">${md(src)}
     <p style="margin-top:22px"><a href="${l.lang === "en" ? "/en/template" : "/vorlage"}">${l.lang === "en" ? "📄 Prefer paper? Free printable tracker (PDF) →" : "📄 Lieber auf Papier? Gratis-Vorlage zum Ausdrucken (PDF) →"}</a></p>
     <div class="card founder" style="margin-top:36px">${kolbi("party-alive")}<div><h2>${l.tagline}</h2><a class="btn" href="${APP}?lang=${l.lang}" data-cta="guide">${g.cta}</a></div></div></main>` }))
 }
@@ -217,10 +226,12 @@ for (const l of Object.values(L)) {
 const CALC_ITEMS = [["🌙", "Magnesium", "Magnesium", 10, "magnesium"], ["🌞", "Vitamin D3 + K2", "Vitamin D3 + K2", 6, "vitd"], ["🐟", "Omega-3", "Omega-3", 15, "omega3"], ["🏋️", "Kreatin", "Creatine", 12, "kreatin"], ["🛡️", "Zink", "Zinc", 5, "zink"], ["🌈", "Multivitamin", "Multivitamin", 12, "multivitamin"], ["🌿", "Ashwagandha", "Ashwagandha", 15, "ashwagandha"], ["🍵", "L-Theanin", "L-Theanine", 15, "theanin"], ["🔋", "Vitamin B12", "Vitamin B12", 6, "b12"], ["🦠", "Probiotika", "Probiotics", 20, "probiotika"], ["✨", "Kollagen", "Collagen", 30, "kollagen"], ["🥛", "Whey Protein", "Whey protein", 35, "whey"], ["❤️", "Coenzym Q10", "Coenzyme Q10", 20, "q10"], ["🍄", "Lion's Mane", "Lion's Mane", 25, "lionsmane"]]
 const CALC = {
   de: { path: "/rechner", title: "Supplement-Kosten-Rechner: Was kostet dein Schrank im Jahr?", h: "Was kostet dein Supplement-Schrank?", lead: "Hak an, was du nimmst – Preise sind grobe Schätzwerte pro Monat, du kannst sie anpassen.",
-    month: "im Monat", year: "im Jahr", what: "Und wenn 2 davon bei dir keinen spürbaren Unterschied machen?", save: "Dann zahlst du dafür {a} bis {b} im Jahr – ohne es zu merken.",
+    month: "im Monat", year: "im Jahr", what1: "Und wenn eins davon bei dir keinen spürbaren Unterschied macht?", what2: "Und wenn 2 davon bei dir keinen spürbaren Unterschied machen?",
+    save1: "Dann zahlst du dafür {x} im Jahr – ohne es zu merken.", save2: "Dann zahlst du dafür {x} im Jahr – ohne es zu merken.", range: "{a} bis {b}", upto: "bis zu {b}",
     none: "Hak mindestens ein Supplement an.", cta: "Finde mit Kolbi heraus, welche – kostenlos", share: "📤 Ergebnis teilen", shareText: "Mein Supplement-Schrank kostet {y} im Jahr 😳 Was kostet deiner?", note: "Schätzwerte für typische Monatsmengen. Kolbi sagt dir nicht, was „wirkt“ – sondern hilft dir, es bei dir selbst zu testen.", cur: (v) => `${Math.round(v).toLocaleString("de-DE")} €` },
   en: { path: "/en/calculator", title: "Supplement cost calculator: what does your shelf cost per year?", h: "What does your supplement shelf cost?", lead: "Tick what you take – prices are rough monthly estimates, you can adjust them.",
-    month: "per month", year: "per year", what: "And if 2 of them make no noticeable difference for you?", save: "Then you're paying {a} to {b} a year for them – without noticing.",
+    month: "per month", year: "per year", what1: "And if one of them makes no noticeable difference for you?", what2: "And if 2 of them make no noticeable difference for you?",
+    save1: "Then you're paying {x} a year for it – without noticing.", save2: "Then you're paying {x} a year for them – without noticing.", range: "{a} to {b}", upto: "up to {b}",
     none: "Tick at least one supplement.", cta: "Find out which with Kolbi – free", share: "📤 Share result", shareText: "My supplement shelf costs {y} a year 😳 What does yours cost?", note: "Estimates for typical monthly amounts. Kolbi doesn't tell you what \"works\" – it helps you test it on yourself.", cur: (v) => `€${Math.round(v).toLocaleString("en-US")}` },
 }
 for (const [lang, C] of Object.entries(CALC)) {
@@ -228,7 +239,7 @@ for (const [lang, C] of Object.entries(CALC)) {
   const rows = CALC_ITEMS.map(([e, de, en, pr, id], i) => `<label class="calc-row"><input type="checkbox" data-i="${i}" data-id="${id}"${i < 3 ? " checked" : ""}><span class="ce">${e}</span><span class="cn">${lang === "en" ? en : de}</span><input type="number" min="0" step="1" value="${pr}" data-p="${i}" aria-label="€"><span class="cu">€</span></label>`).join("")
   const curFn = C.cur.toString()
   fs.mkdirSync(`${OUT}${C.path.slice(0, C.path.lastIndexOf("/")) || ""}`, { recursive: true })
-  fs.writeFileSync(`${OUT}${C.path}.html`, page(l, { title: `${C.title} – Kolbi`, desc: C.lead, path: "calc", body: `<main class="wrap doc">
+  fs.writeFileSync(`${OUT}${C.path}.html`, page(l, { title: `${C.title} – Kolbi`, desc: C.lead, path: "calc", alt: { de: CALC.de.path, en: CALC.en.path }, body: `<main class="wrap doc">
 <style>.calc-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:var(--card);border:1px solid var(--line);margin:6px 0;cursor:pointer}
 .calc-row input[type=checkbox]{width:20px;height:20px;accent-color:#2ECC8A}.ce{font-size:1.3rem}.cn{flex:1;font-weight:800}
 .calc-row input[type=number]{width:64px;padding:6px 8px;border-radius:10px;border:1px solid var(--line);background:#0e0c20;color:var(--text);font:inherit;text-align:right}
@@ -242,27 +253,36 @@ for (const [lang, C] of Object.entries(CALC)) {
 <div class="calc-total" id="tot"></div>
 <p class="fine" style="margin-top:14px">${C.note}</p>
 <script>(() => {
-  const cur = ${curFn}, T = ${JSON.stringify({ month: C.month, year: C.year, what: C.what, save: C.save, none: C.none, cta: C.cta, share: C.share, shareText: C.shareText })}
+  const cur = ${curFn}, T = ${JSON.stringify({ month: C.month, year: C.year, what1: C.what1, what2: C.what2, save1: C.save1, save2: C.save2, range: C.range, upto: C.upto, none: C.none, cta: C.cta, share: C.share, shareText: C.shareText })}
   const app = ${JSON.stringify(APP)} + "?lang=${l.lang}&src=calc"
+  // Preis aus dem Feld: leer/ungültig = 0, nie negativ
+  const price = f => { const v = +f.value; return Number.isFinite(v) ? Math.max(0, v) : 0 }
   const calc = () => {
     const on = [...document.querySelectorAll("[data-i]")].filter(c => c.checked)
-    const sel = on.map(c => +document.querySelector('[data-p="' + c.dataset.i + '"]').value || 0)
+    const sel = on.map(c => price(document.querySelector('[data-p="' + c.dataset.i + '"]')))
     const el = document.getElementById("tot")
     const bar = document.getElementById("bar")
     if (!sel.length) { el.innerHTML = "<p>" + T.none + "</p>"; bar.textContent = T.none; return }
     const m = sel.reduce((a, b) => a + b, 0), y = m * 12, s = [...sel].sort((a, b) => a - b)
-    const lo = (s[0] + (s[1] || 0)) * 12, hi = (s[s.length - 1] + (s.length > 1 ? s[s.length - 2] : 0)) * 12
+    // ≥ 3: die zwei günstigsten bis die zwei teuersten · genau 2: das günstigere bis das teurere
+    const k = sel.length >= 3 ? 2 : 1, lo = s.slice(0, k).reduce((a, b) => a + b, 0) * 12, hi = s.slice(-k).reduce((a, b) => a + b, 0) * 12
+    const x = cur(lo) === cur(hi) ? cur(hi) : lo <= 0 ? T.upto.replace("{b}", cur(hi)) : T.range.replace("{a}", cur(lo)).replace("{b}", cur(hi))
     bar.innerHTML = "<b>" + cur(y) + "</b> " + T.year + " · " + cur(m) + " " + T.month
     el.innerHTML = "<p><b>" + cur(y) + "</b> " + T.year + " · " + cur(m) + " " + T.month + "</p>"
-      + (sel.length >= 2 ? "<p style='margin-top:10px;font-weight:800'>" + T.what + "</p><p>" + T.save.replace("{a}", cur(lo)).replace("{b}", cur(hi)) + "</p>" : "")
+      + (sel.length >= 2 && hi > 0 ? "<p style='margin-top:10px;font-weight:800'>" + T["what" + k] + "</p><p>" + T["save" + k].replace("{x}", x) + "</p>" : "")
       + "<div style='display:flex;flex-wrap:wrap;gap:8px;margin-top:12px'><a class='btn' href='" + app + "&s=" + on.map(c => c.dataset.id).join(",") + "' data-cta='calc' style='background:#fff;color:#14122b'>" + T.cta + "</a><button class='btn ghost' id='sh' style='border:0;cursor:pointer;font-family:inherit'>" + T.share + "</button></div>"
     document.getElementById("sh").onclick = async () => {
       const text = T.shareText.replace("{y}", cur(y)), url = location.origin + location.pathname
-      try { if (navigator.share) { await navigator.share({ text, url }); return } } catch (e) { return }
+      // Teilen-Menü; nur bewusstes Abbrechen (AbortError) beendet still – sonst (z. B. NotAllowedError) Zwischenablage
+      if (navigator.share) try { await navigator.share({ text, url }); return } catch (e) { if (e && e.name === "AbortError") return }
       try { await navigator.clipboard.writeText(text + " " + url); document.getElementById("sh").textContent = "✓" } catch {}
     }
   }
-  document.getElementById("rows").addEventListener("input", calc); calc()
+  const rowsEl = document.getElementById("rows")
+  rowsEl.addEventListener("input", calc)
+  // Negative Eingaben auch im Feld auf 0 setzen (beim Verlassen/Bestätigen, nicht mitten im Tippen)
+  rowsEl.addEventListener("change", e => { const f = e.target; if (f.dataset && f.dataset.p != null && f.value !== "" && +f.value < 0) { f.value = "0"; calc() } })
+  calc()
 })()</script></main>` }))
 }
 
@@ -278,8 +298,8 @@ for (const lang of ["de", "en"]) {
     const ld = { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: p.faq.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) }
     const more = pages.filter(x => x.it !== it).map(x => `<a class="tchip" href="${base}/${x.p.slug}">${x.it.emoji} ${x.p.name}</a>`).join("")
     const src = "test" + it.id.replace(/[^a-z]/g, "")
-    fs.writeFileSync(`${OUT}${href}.html`, page({ ...l, other: { ...l.other, href: ohref } }, { title: `${p.title} – Kolbi`, desc: p.desc, path: "test",
-      head: `<link rel="alternate" hreflang="${lang}" href="${href}"><link rel="alternate" hreflang="${other}" href="${ohref}"><script type="application/ld+json">${JSON.stringify(ld)}</script>`,
+    fs.writeFileSync(`${OUT}${href}.html`, page(l, { title: `${p.title} – Kolbi`, desc: p.desc, path: "test", alt: { [lang]: href, [other]: ohref },
+      head: `<script type="application/ld+json">${JSON.stringify(ld)}</script>`,
       body: `<main class="wrap doc guide">${p.html}
 <div class="card founder" style="margin-top:32px">${kolbi("party-alive")}<div><h2>${en ? `Kolbi runs this ${p.name} test with you` : `Kolbi macht diesen ${p.name}-Test mit dir`}</h2><p>${en ? "Normal, test phase, evening check-in, honest comparison – with reminders. Free in the beta, no account." : "Normal, Testphase, Abend-Check-in, ehrlicher Vergleich – mit Erinnerungen. In der Beta kostenlos, ohne Konto."}</p><a class="btn" href="${APP}?lang=${lang}&src=${src}" data-cta="${src}">${en ? "Start the test for free" : "Test kostenlos starten"}</a></div></div>
 <h2>${en ? "More self-tests" : "Weitere Selbsttests"}</h2><div class="tchips">${more}</div>
@@ -288,8 +308,7 @@ for (const lang of ["de", "en"]) {
   }
   // Übersicht
   const hubT = en ? "Does my supplement work for me? Self-tests for 8 supplements" : "Wirkt mein Supplement bei mir? Selbsttests für 8 Supplements"
-  fs.writeFileSync(`${OUT}${base}.html`, page({ ...l, other: { ...l.other, href: TEST_BASE[other] } }, { title: `${hubT} – Kolbi`, desc: en ? "Step-by-step self-tests: find your normal, test one supplement at a time, compare honestly. No promises – just your own data." : "Schritt-für-Schritt-Selbsttests: dein Normal festhalten, eins nach dem anderen testen, ehrlich vergleichen. Keine Versprechen – nur deine eigenen Daten.", path: "test",
-    head: `<link rel="alternate" hreflang="${lang}" href="${base}"><link rel="alternate" hreflang="${other}" href="${TEST_BASE[other]}">`,
+  fs.writeFileSync(`${OUT}${base}.html`, page(l, { title: `${hubT} – Kolbi`, desc: en ? "Step-by-step self-tests: find your normal, test one supplement at a time, compare honestly. No promises – just your own data." : "Schritt-für-Schritt-Selbsttests: dein Normal festhalten, eins nach dem anderen testen, ehrlich vergleichen. Keine Versprechen – nur deine eigenen Daten.", path: "test", alt: TEST_BASE,
     body: `<main class="wrap doc"><p class="kicker">🧪 ${en ? "Self-tests" : "Selbsttests"}</p><h1>${en ? "Does it work for <span class=\"grad\">you</span>?" : "Wirkt es bei <span class=\"grad\">dir</span>?"}</h1>
 <p class="lead">${en ? "Pick a supplement – each guide shows what people pay attention to, how long to test and how to compare honestly." : "Such dir ein Supplement aus – jede Anleitung zeigt, worauf Leute achten, wie lange du testest und wie du ehrlich vergleichst."}</p>
 <div class="tgrid">${pages.map(({ it, p }) => `<a class="tcard" href="${base}/${p.slug}"><span>${it.emoji}</span><b>${p.name}</b><small>${en ? "Self-test →" : "Selbsttest →"}</small></a>`).join("")}</div>
@@ -321,8 +340,7 @@ const TPL = {
 for (const [lang, P] of Object.entries(TPL)) {
   const l = L[lang], f = TRACKER[lang]
   fs.mkdirSync(`${OUT}${P.path.slice(0, P.path.lastIndexOf("/")) || ""}`, { recursive: true })
-  fs.writeFileSync(`${OUT}${P.path}.html`, page({ ...l, other: { ...l.other, href: P.other } }, { title: `${P.title} – Kolbi`, desc: P.desc, path: "template",
-    head: `<link rel="alternate" hreflang="${lang}" href="${P.path}"><link rel="alternate" hreflang="${lang === "de" ? "en" : "de"}" href="${P.other}">`,
+  fs.writeFileSync(`${OUT}${P.path}.html`, page(l, { title: `${P.title} – Kolbi`, desc: P.desc, path: "template", alt: { de: TPL.de.path, en: TPL.en.path },
     body: `<main class="wrap doc">
 <style>.tpl-prev{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:22px 0 18px}
 .tpl-prev a{display:block;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 18px 40px rgba(0,0,0,.4);transition:transform .25s}
@@ -362,7 +380,7 @@ for (const [lang, P] of Object.entries(PRESS)) {
   const shots = l.shots.slice(0, 4).map(([f, a]) => `<a href="/img/${l.lang}-${f}.webp" download><img src="/img/${l.lang}-${f}.webp" alt="${a}" style="width:120px;border-radius:14px"></a>`).join("")
   const files = [["kolbi.svg", "Logo (SVG)"], ["kolbi.png", "Logo (PNG)"], ["kolbi-avatar.png", "Avatar"], ["kolbi-banner.png", "Banner"], ["kolbi-animated.gif", "Animated (GIF)"], ["kolbi-feature-de.png", "Feature graphic"]]
   fs.mkdirSync(`${OUT}${P.path.slice(0, P.path.lastIndexOf("/")) || ""}`, { recursive: true })
-  fs.writeFileSync(`${OUT}${P.path}.html`, page(l, { title: `${P.title} – Kolbi`, desc: P.lead, path: "press", body: `<main class="wrap doc">
+  fs.writeFileSync(`${OUT}${P.path}.html`, page(l, { title: `${P.title} – Kolbi`, desc: P.lead, path: "press", alt: { de: PRESS.de.path, en: PRESS.en.path }, body: `<main class="wrap doc">
 <h1>${P.h}</h1><p>${P.lead}</p>
 <div class="card" style="padding:18px 20px;margin:18px 0">${P.facts.map(([k, v]) => `<p style="margin:6px 0"><b>${k}:</b> ${v}</p>`).join("")}</div>
 <h2>${P.shortH}</h2><blockquote>${P.short}</blockquote>
@@ -373,7 +391,6 @@ for (const [lang, P] of Object.entries(PRESS)) {
 }
 
 // ── Sitemap ─────────────────────────────────────────────────────────────────
-const SITE = "https://kolbi-smoky.vercel.app"
 const urls = ["/", "/en", L.de.guide.href, L.en.guide.href, "/presse", "/en/press", "/rechner", "/en/calculator", "/vorlage", "/en/template", "/selbsttest", "/en/self-test", ...TESTS.flatMap(it => [`/selbsttest/${it.de.slug}`, `/en/self-test/${it.en.slug}`]), "/impressum", "/datenschutz", "/nutzungsbedingungen", "/en/imprint", "/en/privacy", "/en/terms"]
 fs.writeFileSync(`${OUT}/sitemap.xml`, `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(u => `  <url><loc>${SITE}${u === "/" ? "" : u}</loc></url>`).join("\n")}\n</urlset>\n`)
 
@@ -404,7 +421,7 @@ body{margin:0;font-family:Nunito,sans-serif}</style></head><body><div style="wid
 }
 await browser.close()
 
-fs.writeFileSync(`${OUT}/robots.txt`, DRAFT ? "User-agent: *\nDisallow: /\n" : "User-agent: *\nAllow: /\nSitemap: https://kolbi-smoky.vercel.app/sitemap.xml\n")
+fs.writeFileSync(`${OUT}/robots.txt`, DRAFT ? "User-agent: *\nDisallow: /\n" : `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml\n`)
 fs.writeFileSync(`${OUT}/vercel.json`, JSON.stringify({
   cleanUrls: true,
   rewrites: [...CHANNELS.map(c => ({ source: `/${c}`, destination: "/index.html" })), ...CHANNELS.map(c => ({ source: `/en/${c}`, destination: "/en.html" }))],

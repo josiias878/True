@@ -3,10 +3,10 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Does my supplement work for me? Self-tests for 8 supplements – Kolbi</title><meta name="description" content="Step-by-step self-tests: find your normal, test one supplement at a time, compare honestly. No promises – just your own data.">
 <meta name="robots" content="noindex, nofollow">
-
-<link rel="alternate" hreflang="en" href="/en/self-test"><link rel="alternate" hreflang="de" href="/selbsttest"><meta name="theme-color" content="#14122b">
+<link rel="alternate" hreflang="de" href="https://kolbi-smoky.vercel.app/selbsttest"><link rel="alternate" hreflang="en" href="https://kolbi-smoky.vercel.app/en/self-test"><link rel="alternate" hreflang="x-default" href="https://kolbi-smoky.vercel.app/selbsttest">
+<meta name="theme-color" content="#14122b">
 <meta property="og:title" content="Does my supplement work for me? Self-tests for 8 supplements – Kolbi"><meta property="og:description" content="Step-by-step self-tests: find your normal, test one supplement at a time, compare honestly. No promises – just your own data.">
-<meta property="og:image" content="/img/og-en.png"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image">
+<meta property="og:image" content="https://kolbi-smoky.vercel.app/img/og-en.png"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/img/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/img/kolbi.png">
 <link rel="preload" href="/fonts/Nunito-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>@font-face{font-family:Nunito;src:url(/fonts/Nunito-latin.woff2) format("woff2");font-weight:200 1000;font-display:swap}
@@ -165,10 +165,15 @@ document.documentElement.classList.add("js");
     say.textContent = lines[i++ % lines.length]; say.classList.add("pop"); setTimeout(() => say.classList.remove("pop"), 300)
     if (navigator.vibrate) navigator.vibrate(8)
   })
-  // Kanal-Link (/reddit, /tiktok …): Herkunft an die Beta-Knöpfe hängen
-  const ch = location.pathname.replace(/^\/(en\/)?|\/$/g, "")
-  if (/^[a-z]{1,20}$/.test(ch) && !["impressum", "datenschutz", "nutzungsbedingungen", "en", "imprint", "privacy", "terms"].includes(ch))
-    document.querySelectorAll("a[data-cta]").forEach(a => { if (!/[?&]src=/.test(a.href)) a.href += (a.href.includes("?") ? "&" : "?") + "src=" + ch })
+  // Herkunft (src) an alle Beta-Knöpfe hängen, die noch keine haben – immer genau ein gültiges src (a–z, ≤ 20):
+  // Kanal-Link /reddit → reddit · /rechner → rechner · /selbsttest/magnesium → magnesium ·
+  // /selbsttest/omega-3 → selbsttest · /en/self-test → selftest · Startseite (/, /en) → home
+  const ok = s => /^[a-z]{1,20}$/.test(s)
+  const seg = location.pathname.toLowerCase().replace(/\.html$/, "").split("/").filter(Boolean)
+  if (seg[0] === "en") seg.shift()
+  const last = seg[seg.length - 1] || "", first = (seg[0] || "").replace(/[^a-z]/g, "").slice(0, 20)
+  const ch = !seg.length ? "home" : ok(last) ? last : ok(first) ? first : "web"
+  document.querySelectorAll("a[data-cta]").forEach(a => { if (!/[?&]src=/.test(a.href)) a.href += (a.href.includes("?") ? "&" : "?") + "src=" + ch })
   const io = "IntersectionObserver" in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target) } }), { threshold: .15 }) : null
   document.querySelectorAll(".reveal").forEach((el, k) => { el.style.transitionDelay = `${(k % 4) * 70}ms`; io ? io.observe(el) : el.classList.add("in") })
 })()

@@ -3,10 +3,10 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Does L-Theanine work for me? How to test it yourself – Kolbi</title><meta name="description" content="A simple self-test for L-Theanine: track your normal, take only L-Theanine, rate 2 things each evening, compare honestly. No promises – just your own data.">
 <meta name="robots" content="noindex, nofollow">
-
-<link rel="alternate" hreflang="en" href="/en/self-test/l-theanine"><link rel="alternate" hreflang="de" href="/selbsttest/l-theanin"><script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"How long should I test L-Theanine?","acceptedAnswer":{"@type":"Answer","text":"3–5 days. With something like this, many people notice within a few days whether anything changes – or not."}},{"@type":"Question","name":"What should I pay attention to with L-Theanine?","acceptedAnswer":{"@type":"Answer","text":"Many people watch calm, focus. Rate the same things every evening – before (your normal) and during the test."}},{"@type":"Question","name":"How do I know L-Theanine makes no difference for me?","acceptedAnswer":{"@type":"Answer","text":"If your averages during the test are barely different from your normal (less than about half a star on a 5-star scale) and your disruptors were similar, it probably makes no noticeable difference for you right now."}}]}</script><meta name="theme-color" content="#14122b">
+<link rel="alternate" hreflang="de" href="https://kolbi-smoky.vercel.app/selbsttest/l-theanin"><link rel="alternate" hreflang="en" href="https://kolbi-smoky.vercel.app/en/self-test/l-theanine"><link rel="alternate" hreflang="x-default" href="https://kolbi-smoky.vercel.app/selbsttest/l-theanin">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"How long should I test L-Theanine?","acceptedAnswer":{"@type":"Answer","text":"3–5 days. With something like this, many people notice within a few days whether anything changes – or not."}},{"@type":"Question","name":"What should I pay attention to with L-Theanine?","acceptedAnswer":{"@type":"Answer","text":"Many people watch calm, focus. Rate the same things every evening – before (your normal) and during the test."}},{"@type":"Question","name":"How do I know L-Theanine makes no difference for me?","acceptedAnswer":{"@type":"Answer","text":"If your averages during the test are barely different from your normal (less than about half a star on a 5-star scale) and your disruptors were similar, it probably makes no noticeable difference for you right now."}}]}</script><meta name="theme-color" content="#14122b">
 <meta property="og:title" content="Does L-Theanine work for me? How to test it yourself – Kolbi"><meta property="og:description" content="A simple self-test for L-Theanine: track your normal, take only L-Theanine, rate 2 things each evening, compare honestly. No promises – just your own data.">
-<meta property="og:image" content="/img/og-en.png"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image">
+<meta property="og:image" content="https://kolbi-smoky.vercel.app/img/og-en.png"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/img/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/img/kolbi.png">
 <link rel="preload" href="/fonts/Nunito-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>@font-face{font-family:Nunito;src:url(/fonts/Nunito-latin.woff2) format("woff2");font-weight:200 1000;font-display:swap}
@@ -182,10 +182,15 @@ document.documentElement.classList.add("js");
     say.textContent = lines[i++ % lines.length]; say.classList.add("pop"); setTimeout(() => say.classList.remove("pop"), 300)
     if (navigator.vibrate) navigator.vibrate(8)
   })
-  // Kanal-Link (/reddit, /tiktok …): Herkunft an die Beta-Knöpfe hängen
-  const ch = location.pathname.replace(/^\/(en\/)?|\/$/g, "")
-  if (/^[a-z]{1,20}$/.test(ch) && !["impressum", "datenschutz", "nutzungsbedingungen", "en", "imprint", "privacy", "terms"].includes(ch))
-    document.querySelectorAll("a[data-cta]").forEach(a => { if (!/[?&]src=/.test(a.href)) a.href += (a.href.includes("?") ? "&" : "?") + "src=" + ch })
+  // Herkunft (src) an alle Beta-Knöpfe hängen, die noch keine haben – immer genau ein gültiges src (a–z, ≤ 20):
+  // Kanal-Link /reddit → reddit · /rechner → rechner · /selbsttest/magnesium → magnesium ·
+  // /selbsttest/omega-3 → selbsttest · /en/self-test → selftest · Startseite (/, /en) → home
+  const ok = s => /^[a-z]{1,20}$/.test(s)
+  const seg = location.pathname.toLowerCase().replace(/\.html$/, "").split("/").filter(Boolean)
+  if (seg[0] === "en") seg.shift()
+  const last = seg[seg.length - 1] || "", first = (seg[0] || "").replace(/[^a-z]/g, "").slice(0, 20)
+  const ch = !seg.length ? "home" : ok(last) ? last : ok(first) ? first : "web"
+  document.querySelectorAll("a[data-cta]").forEach(a => { if (!/[?&]src=/.test(a.href)) a.href += (a.href.includes("?") ? "&" : "?") + "src=" + ch })
   const io = "IntersectionObserver" in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target) } }), { threshold: .15 }) : null
   document.querySelectorAll(".reveal").forEach((el, k) => { el.style.transitionDelay = `${(k % 4) * 70}ms`; io ? io.observe(el) : el.classList.add("in") })
 })()
