@@ -1,11 +1,27 @@
 // ── Wachstum: Lab Pro (Beta = alles frei), Freunde einladen, Bewertungs-Moment, Feedback ──
-import { addDays, streak, type LabState } from "./supplementLab"
+import { addDays, streak, todayIso, type LabState } from "./supplementLab"
 import { track } from "./labStats"
-import { t, euro } from "./labI18n"
+import { t, euro, LOCALE, isEn } from "./labI18n"
 
-/** Solange true, ist alles freigeschaltet und jeder Nutzer wird „Gründer“ (Pro bleibt dauerhaft). */
-export const BETA = true
-export const PRO_PRICE = euro(1.99)
+/** Beta-Ende: Wer bis einschließlich zu diesem Tag startet, wird „Gründer“ – Pro bleibt für immer gratis. */
+export const BETA_END = "2026-11-30"
+/** Erst wenn man wirklich bezahlen kann (App Store / Web), wird für Nicht-Gründer etwas gesperrt. */
+export const PAYMENTS_READY = false
+/** Solange true, ist alles für alle freigeschaltet. */
+export const BETA = !PAYMENTS_READY
+/** Preise Lab Pro (Entscheidung 1. Okt 2026) */
+export const PRICES = { monthly: 2.99, yearly: 19.99, lifetime: 39.99 }
+export const PRICE_LABEL = {
+  monthly: t("{p}/Monat", { p: euro(PRICES.monthly, true) }),
+  yearly: t("{p}/Jahr", { p: euro(PRICES.yearly, true) }),
+  lifetime: t("{p} einmalig", { p: euro(PRICES.lifetime, true) }),
+}
+export const betaOpen = (today: string) => today <= BETA_END
+export function betaDaysLeft(today: string): number {
+  return Math.max(0, Math.round((Date.parse(`${BETA_END}T12:00:00`) - Date.parse(`${today}T12:00:00`)) / 86400000))
+}
+/** „30. Nov.“ bzw. „Nov 30“ */
+export const betaEndLabel = () => new Date(`${BETA_END}T12:00:00`).toLocaleDateString(LOCALE, { day: "numeric", month: "short" })
 export const SITE_URL = "https://kolbi-smoky.vercel.app"
 const FEEDBACK_URL = "https://mkdfohmshuuiroeruyyz.supabase.co/functions/v1/lab-feedback"
 export const APP_VERSION = "0.9-beta"
@@ -23,14 +39,17 @@ export function isPro(s: LabState): boolean { return BETA || !!s.pro?.founder ||
 
 /** In der Beta einmalig den Gründer-Status vergeben (bleibt auch nach der Beta erhalten). */
 export function claimFounder(p: LabState, today: string): LabState {
-  if (BETA && !p.pro?.founder) p.pro = { ...p.pro, founder: today }
+  if (betaOpen(today) && !p.pro?.founder) p.pro = { ...p.pro, founder: p.startDate && p.startDate <= today ? p.startDate : today }
   return p
 }
 
 // ── Freunde einladen ──────────────────────────────────────────────────────────
 export async function inviteFriends(): Promise<"shared" | "copied" | "cancelled" | "failed"> {
-  const url = `${SITE_URL}/?ref=invite`
-  const text = t("Ich teste gerade mit Kolbi, welche Supplements bei mir wirklich was bringen 🧪 Probier's aus:")
+  const url = `${SITE_URL}${isEn ? "/en" : ""}/invite` // eigener Kanal-Link → Einladungen in der Statistik sichtbar
+  const today = todayIso()
+  const text = betaOpen(today)
+    ? t("Ich teste gerade mit Kolbi, welche Supplements bei mir wirklich was bringen 🧪 Wer bis {date} startet, bekommt Pro für immer gratis:", { date: betaEndLabel() })
+    : t("Ich teste gerade mit Kolbi, welche Supplements bei mir wirklich was bringen 🧪 Probier's aus:")
   try {
     if (navigator.share) { await navigator.share({ title: "Kolbi · Supplement Lab", text, url }); track("invite"); return "shared" }
   } catch (e) { if ((e as Error)?.name === "AbortError") return "cancelled" }

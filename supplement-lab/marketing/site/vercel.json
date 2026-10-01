@@ -2,6 +2,10 @@
   "cleanUrls": true,
   "rewrites": [
     {
+      "source": "/invite",
+      "destination": "/index.html"
+    },
+    {
       "source": "/reddit",
       "destination": "/index.html"
     },
@@ -64,6 +68,10 @@
     {
       "source": "/qr",
       "destination": "/index.html"
+    },
+    {
+      "source": "/en/invite",
+      "destination": "/en.html"
     },
     {
       "source": "/en/reddit",

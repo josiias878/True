@@ -271,4 +271,8 @@ export const EN_C: Record<string, string> = {
   "Das ist auch ein Ergebnis: Du sparst Geld und Pillen. Füge neue Supplements hinzu oder teste „Vielleicht“-Kandidaten nochmal.": "That's a result too: you save money and pills. Add new supplements or retest your “Maybe” picks.",
   "🧪 Experiment wählen": "🧪 Pick an experiment",
   "➕ Supplement hinzufügen": "➕ Add supplement",
+  "{p}/Monat": "{p}/month",
+  "{p}/Jahr": "{p}/year",
+  "{p} einmalig": "{p} one-time",
+  "Ich teste gerade mit Kolbi, welche Supplements bei mir wirklich was bringen 🧪 Wer bis {date} startet, bekommt Pro für immer gratis:": "I'm testing which supplements actually do something for me with Kolbi 🧪 Start by {date} and get Pro free forever:",
 }

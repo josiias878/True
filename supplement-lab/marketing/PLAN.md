@@ -86,11 +86,14 @@ von dir brauche.
 
 ## Geschäftsmodell
 
-- **Beta: alles gratis** („Gründer-Pro“ für alle Beta-Tester, als Dankeschön → Bewertungen)
+- **Beta bis 30. Nov: alles gratis** („Gründer-Pro“ für immer für alle, die bis dahin starten)
 - Danach **Freemium**: Basis gratis (Reset, 1 Test, Check-ins, Kolbi) · **Lab Pro einmalig 1,99 €**
   (unbegrenzte Tests, Muster-Detektor, Kosten, Wochenrückblick, Community-Details, Experimente, Export)
-- **Vorschlag Claude (1. Okt, ersetzt „4,99 € einmalig“):** Lab Pro als **Abo 2,99 €/Monat · 19,99 €/Jahr**,
-  Beta-Ende **30. Nov** (alle bis dahin: Gründer-Pro gratis, dauerhaft) – wartet auf OK des Inhabers
+- ✅ **Entschieden (1. Okt, Inhaber: „mach den Preis so, wie du es für richtig hältst“):**
+  Lab Pro **2,99 €/Monat · 19,99 €/Jahr · 39,99 € einmalig (Lifetime)**. **Beta-Ende 30. Nov 2026**: Wer bis dahin
+  startet, ist Gründer → Pro für immer gratis. Gesperrt wird erst, wenn Bezahlen wirklich geht (`PAYMENTS_READY`
+  in `lib/labGrow.ts`). Gratis bleibt: Reset, Testen, Check-ins, Erinnerungen, Kolbi, Ergebnis je Test.
+  Pro: Muster-Detektor, Kosten & Sparen, alle Experimente, Kalender-Abo, Wochen-Story teilen, Community-Vergleich.
 
 ## Phasen
 
@@ -138,3 +141,6 @@ von dir brauche.
 - 2026-10-01 · Experiment-Ziel gesetzt: **1.500 € netto/Monat bis Okt 2027** (≈ 2.500 € Umsatz: Abo + Partnerlinks,
   ~15.000 aktive Nutzer). Öffentliche Preisangaben („einmalig 1,99 €“) neutralisiert, bis das Preismodell entschieden ist.
   Wöchentlicher Sprint jeden Montag 08:47 (Routine).
+- 2026-10-01 · **Preis entschieden:** 2,99 €/Monat · 19,99 €/Jahr · 39,99 € Lifetime, Beta-Ende 30. Nov. In App
+  (Pro-Karte mit Preisen, „Gründer-Pro für immer – sonst 19,99 €/Jahr“, Einladen mit Frist) und Landingpage umgesetzt.
+  Neuer Kanal-Link `/invite` für Weiterempfehlungen.

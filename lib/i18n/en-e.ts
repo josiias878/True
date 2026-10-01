@@ -194,4 +194,11 @@ export const EN_E: Record<string, string> = {
   "Hinweis schließen": "Close hint",
   "Teilen-Symbol": "Share icon",
   "Bald verfügbar": "Coming soon",
+  "Für dich für immer gratis – sonst {price}.": "Free for you, forever – otherwise {price}.",
+  "Gerade noch frei – bald ab {price}": "Still free right now – soon from {price}",
+  "ab {price}": "from {price}",
+  "Lab Pro: {m} · {y} · {l}": "Lab Pro: {m} · {y} · {l}",
+  "Beta: alles kostenlos. Wer bis {date} startet, behält Pro für immer.": "Beta: everything's free. Start by {date} and keep Pro forever.",
+  "Noch {n} Tage Gründer-Pro für sie": "{n} days left: Founder Pro for them",
+  "Noch 1 Tag Gründer-Pro für sie": "1 day left: Founder Pro for them",
 }

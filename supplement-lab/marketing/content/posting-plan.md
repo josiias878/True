@@ -70,7 +70,7 @@ Cover/Thumbnail: jeweils `videos/<name>-cover.jpg`.
 
 - „Welches Magnesium ist das beste?“ → *„Das kann ich dir nicht pauschal sagen – genau dafür gibt's Kolbi: teste es bei dir und vergleich mit deinem Normal 🧪“*
 - „Wirkt Ashwagandha?“ → *„Bei manchen ja, bei manchen nicht – Kolbi hilft dir rauszufinden, wie es BEI DIR ist. Bei Medikamenten oder Beschwerden bitte vorher ärztlich abklären 💚“*
-- „Kostet das was?“ → *„In der Beta komplett kostenlos, ohne Konto. Wer jetzt dabei ist, behält Pro dauerhaft gratis 🏅“*
+- „Kostet das was?“ → *„In der Beta komplett kostenlos, ohne Konto. Wer bis 30. November startet, behält Pro für immer gratis 🏅 (danach 2,99 €/Monat)“*
 - „iPhone?“ → *„Link in Bio in Safari öffnen → Teilen → Zum Home-Bildschirm. Store-App kommt 🙌“*
 - Kritik/Fehler → bedanken und auf „💬 Feedback“ im Kolbi-Tab verweisen.
 

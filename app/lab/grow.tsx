@@ -1,8 +1,8 @@
 "use client"
 // ── Wachstum: Lab-Pro-Karte, Freunde einladen, Bewertungs-Moment, Feedback ─────
 import React, { useState } from "react"
-import type { LabState } from "@/lib/supplementLab"
-import { BETA, PRO_FEATURES, inviteFriends, isPro, nativeReview, sendFeedback } from "@/lib/labGrow"
+import { todayIso, type LabState } from "@/lib/supplementLab"
+import { BETA, PRICE_LABEL, PRO_FEATURES, betaDaysLeft, betaEndLabel, betaOpen, inviteFriends, isPro, nativeReview, sendFeedback } from "@/lib/labGrow"
 import { Btn, Sheet, haptic } from "./ui"
 import { Mascot } from "./mascot"
 import { track } from "@/lib/labStats"
@@ -22,7 +22,7 @@ export function ProCard({ s }: { s: LabState }) {
         <span style={{ flex: 1 }}>
           <span style={{ display: "block", fontWeight: 900, fontSize: "1rem" }}>{founder ? t("Gründer-Pro aktiv") : pro ? t("Lab Pro aktiv") : "Lab Pro"}</span>
           <span style={{ display: "block", fontSize: "0.76rem", opacity: 0.92 }}>
-            {founder ? t("Danke, dass du in der Beta dabei bist – Pro bleibt für dich gratis.") : pro ? t("Alles freigeschaltet") : t("Bald verfügbar")}
+            {founder ? t("Für dich für immer gratis – sonst {price}.", { price: PRICE_LABEL.yearly }) : pro ? t("Gerade noch frei – bald ab {price}", { price: PRICE_LABEL.monthly }) : t("ab {price}", { price: PRICE_LABEL.monthly })}
           </span>
         </span>
         <span style={{ fontWeight: 900, transform: open ? "rotate(90deg)" : "none", transition: "transform .3s" }}>›</span>
@@ -39,7 +39,10 @@ export function ProCard({ s }: { s: LabState }) {
               <div style={{ fontSize: "0.68rem", opacity: 0.9, lineHeight: 1.35 }}>{f.text}</div>
             </div>
           ))}
-          {BETA && <div style={{ gridColumn: "1 / -1", fontSize: "0.7rem", opacity: 0.9, textAlign: "center", marginTop: 2 }}>{t("Beta: alles kostenlos. Später bleibt der Kern gratis – wer jetzt dabei ist, behält Pro dauerhaft.")}</div>}
+          <div style={{ gridColumn: "1 / -1", fontSize: "0.7rem", opacity: 0.92, textAlign: "center", marginTop: 2, lineHeight: 1.45 }}>
+            {t("Lab Pro: {m} · {y} · {l}", { m: PRICE_LABEL.monthly, y: PRICE_LABEL.yearly, l: PRICE_LABEL.lifetime })}<br />
+            {BETA && t("Beta: alles kostenlos. Wer bis {date} startet, behält Pro für immer.", { date: betaEndLabel() })}
+          </div>
         </div>
       )}
     </div>
@@ -60,7 +63,7 @@ export function InviteRow({ onFlash, onFeedback }: { onFlash: (m: string) => voi
     <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
       <button className="lab-press" onClick={invite} style={box}>
         <span style={{ fontSize: "1.5rem" }}>💌</span>
-        <span><span style={{ display: "block", fontWeight: 900, fontSize: "0.86rem" }}>{t("Freunde einladen")}</span><span style={{ display: "block", fontSize: "0.7rem", color: "var(--text-dim)" }}>{t("Zusammen testen")}</span></span>
+        <span><span style={{ display: "block", fontWeight: 900, fontSize: "0.86rem" }}>{t("Freunde einladen")}</span><span style={{ display: "block", fontSize: "0.7rem", color: "var(--text-dim)" }}>{(() => { const d = betaDaysLeft(todayIso()); return !betaOpen(todayIso()) ? t("Zusammen testen") : d === 1 ? t("Noch 1 Tag Gründer-Pro für sie") : t("Noch {n} Tage Gründer-Pro für sie", { n: d }) })()}</span></span>
       </button>
       <button className="lab-press" onClick={() => { haptic(); onFeedback() }} style={box}>
         <span style={{ fontSize: "1.5rem" }}>💬</span>

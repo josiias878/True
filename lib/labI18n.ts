@@ -59,9 +59,9 @@ export const canSwitchLang = () => typeof window !== "undefined" && !!(window as
 /** Zahl mit fester Nachkommastelle im richtigen Dezimaltrennzeichen: 3,6 bzw. 3.6 */
 export const dec = (n: number, digits = 1) => { const s = n.toFixed(digits); return isEn ? s : s.replace(".", ",") }
 /** Euro-Betrag: „16,90 €“ bzw. „€16.90“ */
-export const euro = (v: number) => {
-  const num = v < 10 ? v.toFixed(2) : Math.round(v).toLocaleString(LOCALE)
-  return isEn ? `€${num}` : `${v < 10 ? num.replace(".", ",") : num} €`
+export const euro = (v: number, exact = false) => {
+  const num = v < 10 || (exact && !Number.isInteger(v)) ? v.toFixed(2) : Math.round(v).toLocaleString(LOCALE)
+  return isEn ? `€${num}` : `${num.includes(".") && /\.\d\d$/.test(num) ? num.replace(/\.(\d\d)$/, ",$1") : num} €`
 }
 /** Uhrzeit-Anzeige: „08:30 Uhr“ bzw. „8:30 AM“ wäre verwirrend neben Eingabefeldern → „08:30“ */
 export const clock = (hhmm: string) => (isEn ? hhmm : `${hhmm} Uhr`)
