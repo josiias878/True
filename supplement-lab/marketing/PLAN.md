@@ -8,8 +8,15 @@
 | Bereich | Stand |
 |---|---|
 | App (PWA) | live: supplement-lab-six.vercel.app – Feature-komplett für Beta |
+| Landingpage | live: kolbi-smoky.vercel.app (noindex, bis Impressum-Daten da sind) |
+| Store-Auftritt | Texte, Keywords, Screenshots DE/EN, Feature-Grafik fertig (`store/`) |
+| In-App-Wachstum | Lab Pro (Beta frei, Gründer), Einladen, Bewertungs-Moment, anonymes Feedback |
+| Content | 5 Kolbi-Videos + 1 Karussell + 2-Wochen-Plan (`content/`) |
 | Native App (iOS/Android) | Capacitor-Projekt vorhanden, noch nicht im Store |
-| Phase | **1 · Startklar** |
+| Phase | **1 · Startklar** → wartet auf Inhaber-To-dos (Konten, Impressum) |
+
+**Nächste Schritte (Claude):** nach den ersten Posts Zahlen auswerten, Gewinner-Video variieren;
+Feedback aus `lab_feedback` einarbeiten; Store-Build vorbereiten, sobald der Apple-Account da ist.
 
 ## Entscheidungen (vom Inhaber)
 
@@ -53,7 +60,8 @@
 - [ ] Apple Developer Program (99 €/Jahr) – auf eigenen Namen
 - [ ] Google Play Console (25 $ einmalig) – optional, später
 - [ ] Marken-Recherche „Kolbi“ (DPMA/EUIPO, kostenlos)
-- [ ] TikTok + Instagram Konto „@kolbi.lab“ (o. ä.) anlegen – Claude liefert Posts fertig
+- [ ] TikTok + Instagram Konto „@kolbi.lab“ (o. ä.) anlegen – Anleitung + fertige Posts in `content/posting-plan.md`
+- [ ] Vercel → Projekt **kolbi** → Analytics → *Enable* (zählt Besuche der Landingpage, kostenlos)
 - [ ] Rechtstexte einmal von einer Fachperson prüfen lassen (Entwürfe liegen in `marketing/legal/`)
 
 ## Log
@@ -68,3 +76,5 @@
 - 2026-10-01 · In-App: Lab Pro (Beta = alles frei, Gründer-Status dauerhaft), Freunde einladen (Link zur
   Landingpage), Bewertungs-Moment nach Erfolgserlebnis, anonymes Feedback (Supabase `lab_feedback`,
   ohne Geräte-ID, Löschung nach 12 Monaten). Fix: ✕ in der Wochen-Story war vom Inhalt verdeckt.
+- 2026-10-01 · Content-Kit: 5 Videos (`content/videos/`, 1080×1920, H.264, stumm für Trend-Sounds), Karussell,
+  Posting-Plan mit Captions, Hashtags, Antwort-Vorlagen. Generatoren: `tools/videos.mjs`, `tools/carousel.mjs`
