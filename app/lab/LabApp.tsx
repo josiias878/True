@@ -692,7 +692,7 @@ export default function LabApp() {
         }} />}
       {helpOpen && <HelpSheet msgs={msgs} onAction={runAction} onClose={() => setHelpOpen(false)} />}
       {settingsOpen && <SettingsSheet s={s} onClose={() => setSettingsOpen(false)} update={update}
-        adv={adv} autoAdv={autoAdv} onAdvanced={setAdvanced}
+        adv={adv} autoAdv={autoAdv || !!s.pro?.purchased} onAdvanced={setAdvanced}
         onEnableReminders={enableReminders} pushSt={pushSt}
         onToggleHealth={toggleHealth}
         onImport={next => { saveState(next); setS(next); setSettingsOpen(false); setFlash(t("✓ Daten importiert")) }}

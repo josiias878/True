@@ -149,3 +149,4 @@ von dir brauche.
   eine unerwartete Antwort lieferte.
 - 2026-10-01 · RevenueCat-Anschluss fertig (nur Schlüssel fehlen), Pressemappe /presse + /en/press.
 - 2026-10-01 · Wachstums-Motor (`GROWTH.md`) · Owned SEO live: Kosten-Rechner DE/EN + 8 Selbsttest-Seiten DE/EN (je eigene `src`, z. B. `testmagnesium`) – indexierbar sobald Impressum-Daten da sind
+- 2026-10-01 · **Team-Sprint 1** (CEO-Modell, `TEAM.md`): UI – Fortgeschrittenes erst bei Bedarf · Growth – Baseline-Tracker-PDF DE/EN + `/vorlage` + 6 Pinterest-Pins · QA – 3 Prüfrunden, 2 mittlere + 10 kleine Befunde gefunden und behoben (u. a. Profil bei Gleichstand, Testtage im Normal, Rechner bei 2 Häkchen, Sprachpaare/hreflang) → deployt
