@@ -113,7 +113,7 @@ ${alt ? `<link rel="alternate" hreflang="de" href="/"><link rel="alternate" href
 ${body}
 <footer class="foot"><div class="wrap">
 <div class="foot-brand">${kolbi("sleepy-nightcap")}<span><b>Kolbi · Supplement Lab</b><br>${l.tagline}</span></div>
-<nav><a href="${l.guide.href}">${l.guide.label}</a><a href="${l.lang === "en" ? "/en/press" : "/presse"}">${l.lang === "en" ? "Press" : "Presse"}</a>${l.legal.map(([, label, href]) => `<a href="/${href}">${label}</a>`).join("")}<a href="${l.other.href}">${l.other.hint}</a></nav>
+<nav><a href="${l.lang === "en" ? "/en/calculator" : "/rechner"}">${l.lang === "en" ? "Cost calculator" : "Kosten-Rechner"}</a><a href="${l.guide.href}">${l.guide.label}</a><a href="${l.lang === "en" ? "/en/press" : "/presse"}">${l.lang === "en" ? "Press" : "Presse"}</a>${l.legal.map(([, label, href]) => `<a href="/${href}">${label}</a>`).join("")}<a href="${l.other.href}">${l.other.hint}</a></nav>
 <p class="fine">${l.fine}</p></div></footer>
 <script>window.KOLBI_LINES=${JSON.stringify(l.lines)};${JS}</script>
 </body></html>`
@@ -204,6 +204,58 @@ for (const l of Object.values(L)) {
     <div class="card founder" style="margin-top:36px">${kolbi("party-alive")}<div><h2>${l.tagline}</h2><a class="btn" href="${APP}?lang=${l.lang}" data-cta="guide">${g.cta}</a></div></div></main>` }))
 }
 
+// ── Kosten-Rechner (Werkzeug: teilbar, verlinkbar, ohne Gesundheitsversprechen) ──
+const CALC_ITEMS = [["🌙", "Magnesium", "Magnesium", 10], ["🌞", "Vitamin D3 + K2", "Vitamin D3 + K2", 6], ["🐟", "Omega-3", "Omega-3", 15], ["🏋️", "Kreatin", "Creatine", 12], ["🛡️", "Zink", "Zinc", 5], ["🌈", "Multivitamin", "Multivitamin", 12], ["🌿", "Ashwagandha", "Ashwagandha", 15], ["🍵", "L-Theanin", "L-Theanine", 15], ["🔋", "Vitamin B12", "Vitamin B12", 6], ["🦠", "Probiotika", "Probiotics", 20], ["✨", "Kollagen", "Collagen", 30], ["🥛", "Whey Protein", "Whey protein", 35], ["❤️", "Coenzym Q10", "Coenzyme Q10", 20], ["🍄", "Lion's Mane", "Lion's Mane", 25]]
+const CALC = {
+  de: { path: "/rechner", title: "Supplement-Kosten-Rechner: Was kostet dein Schrank im Jahr?", h: "Was kostet dein Supplement-Schrank?", lead: "Hak an, was du nimmst – Preise sind grobe Schätzwerte pro Monat, du kannst sie anpassen.",
+    month: "im Monat", year: "im Jahr", what: "Und wenn 2 davon bei dir keinen spürbaren Unterschied machen?", save: "Dann zahlst du dafür {a} bis {b} im Jahr – ohne es zu merken.",
+    none: "Hak mindestens ein Supplement an.", cta: "Finde mit Kolbi heraus, welche – kostenlos", share: "📤 Ergebnis teilen", shareText: "Mein Supplement-Schrank kostet {y} im Jahr 😳 Was kostet deiner?", note: "Schätzwerte für typische Monatsmengen. Kolbi sagt dir nicht, was „wirkt“ – sondern hilft dir, es bei dir selbst zu testen.", cur: (v) => `${Math.round(v).toLocaleString("de-DE")} €` },
+  en: { path: "/en/calculator", title: "Supplement cost calculator: what does your shelf cost per year?", h: "What does your supplement shelf cost?", lead: "Tick what you take – prices are rough monthly estimates, you can adjust them.",
+    month: "per month", year: "per year", what: "And if 2 of them make no noticeable difference for you?", save: "Then you're paying {a} to {b} a year for them – without noticing.",
+    none: "Tick at least one supplement.", cta: "Find out which with Kolbi – free", share: "📤 Share result", shareText: "My supplement shelf costs {y} a year 😳 What does yours cost?", note: "Estimates for typical monthly amounts. Kolbi doesn't tell you what \"works\" – it helps you test it on yourself.", cur: (v) => `€${Math.round(v).toLocaleString("en-US")}` },
+}
+for (const [lang, C] of Object.entries(CALC)) {
+  const l = L[lang]
+  const rows = CALC_ITEMS.map(([e, de, en, pr], i) => `<label class="calc-row"><input type="checkbox" data-i="${i}"${i < 3 ? " checked" : ""}><span class="ce">${e}</span><span class="cn">${lang === "en" ? en : de}</span><input type="number" min="0" step="1" value="${pr}" data-p="${i}" aria-label="€"><span class="cu">€</span></label>`).join("")
+  const curFn = C.cur.toString()
+  fs.mkdirSync(`${OUT}${C.path.slice(0, C.path.lastIndexOf("/")) || ""}`, { recursive: true })
+  fs.writeFileSync(`${OUT}${C.path}.html`, page(l, { title: `${C.title} – Kolbi`, desc: C.lead, path: "calc", body: `<main class="wrap doc">
+<style>.calc-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:var(--card);border:1px solid var(--line);margin:6px 0;cursor:pointer}
+.calc-row input[type=checkbox]{width:20px;height:20px;accent-color:#2ECC8A}.ce{font-size:1.3rem}.cn{flex:1;font-weight:800}
+.calc-row input[type=number]{width:64px;padding:6px 8px;border-radius:10px;border:1px solid var(--line);background:#0e0c20;color:var(--text);font:inherit;text-align:right}
+.calc-bar{position:sticky;bottom:12px;z-index:5;margin-top:14px;padding:10px 18px;border-radius:999px;background:linear-gradient(135deg,rgba(144,133,233,.97),rgba(232,123,164,.97));box-shadow:0 14px 40px rgba(0,0,0,.45);color:#fff;font-weight:800}
+.calc-bar b{font-size:1.35rem;font-weight:900}
+.calc-total{margin-top:12px;padding:18px 20px;border-radius:24px;background:linear-gradient(135deg,rgba(144,133,233,.95),rgba(232,123,164,.95))}
+.calc-total b{font-size:2.2rem;font-weight:900}.calc-total p{color:#fff;margin:4px 0}.calc-total .btn{white-space:normal;text-align:center;max-width:100%}</style>
+<h1>${C.h}</h1><p>${C.lead}</p>
+<div id="rows">${rows}</div>
+<div class="calc-bar" id="bar"></div>
+<div class="calc-total" id="tot"></div>
+<p class="fine" style="margin-top:14px">${C.note}</p>
+<script>(() => {
+  const cur = ${curFn}, T = ${JSON.stringify({ month: C.month, year: C.year, what: C.what, save: C.save, none: C.none, cta: C.cta, share: C.share, shareText: C.shareText })}
+  const app = ${JSON.stringify(APP)} + "?lang=${l.lang}&src=calc"
+  const calc = () => {
+    const sel = [...document.querySelectorAll("[data-i]")].filter(c => c.checked).map(c => +document.querySelector('[data-p="' + c.dataset.i + '"]').value || 0)
+    const el = document.getElementById("tot")
+    const bar = document.getElementById("bar")
+    if (!sel.length) { el.innerHTML = "<p>" + T.none + "</p>"; bar.textContent = T.none; return }
+    const m = sel.reduce((a, b) => a + b, 0), y = m * 12, s = [...sel].sort((a, b) => a - b)
+    const lo = (s[0] + (s[1] || 0)) * 12, hi = (s[s.length - 1] + (s.length > 1 ? s[s.length - 2] : 0)) * 12
+    bar.innerHTML = "<b>" + cur(y) + "</b> " + T.year + " · " + cur(m) + " " + T.month
+    el.innerHTML = "<p><b>" + cur(y) + "</b> " + T.year + " · " + cur(m) + " " + T.month + "</p>"
+      + (sel.length >= 2 ? "<p style='margin-top:10px;font-weight:800'>" + T.what + "</p><p>" + T.save.replace("{a}", cur(lo)).replace("{b}", cur(hi)) + "</p>" : "")
+      + "<div style='display:flex;flex-wrap:wrap;gap:8px;margin-top:12px'><a class='btn' href='" + app + "' data-cta='calc' style='background:#fff;color:#14122b'>" + T.cta + "</a><button class='btn ghost' id='sh' style='border:0;cursor:pointer;font-family:inherit'>" + T.share + "</button></div>"
+    document.getElementById("sh").onclick = async () => {
+      const text = T.shareText.replace("{y}", cur(y)), url = location.origin + location.pathname
+      try { if (navigator.share) { await navigator.share({ text, url }); return } } catch (e) { return }
+      try { await navigator.clipboard.writeText(text + " " + url); document.getElementById("sh").textContent = "✓" } catch {}
+    }
+  }
+  document.getElementById("rows").addEventListener("input", calc); calc()
+})()</script></main>` }))
+}
+
 // ── Pressemappe ─────────────────────────────────────────────────────────────
 fs.mkdirSync(`${OUT}/press`, { recursive: true })
 for (const [src, dst] of [["brand/kolbi-happy.svg", "kolbi.svg"], ["brand/png/kolbi-happy-glow.png", "kolbi.png"], ["brand/avatar.png", "kolbi-avatar.png"], ["brand/banner.png", "kolbi-banner.png"], ["store/feature-graphic.png", "kolbi-feature-de.png"], ["launch/producthunt/thumbnail.gif", "kolbi-animated.gif"]])
@@ -237,7 +289,7 @@ for (const [lang, P] of Object.entries(PRESS)) {
 
 // ── Sitemap ─────────────────────────────────────────────────────────────────
 const SITE = "https://kolbi-smoky.vercel.app"
-const urls = ["/", "/en", L.de.guide.href, L.en.guide.href, "/presse", "/en/press", "/impressum", "/datenschutz", "/nutzungsbedingungen", "/en/imprint", "/en/privacy", "/en/terms"]
+const urls = ["/", "/en", L.de.guide.href, L.en.guide.href, "/presse", "/en/press", "/rechner", "/en/calculator", "/impressum", "/datenschutz", "/nutzungsbedingungen", "/en/imprint", "/en/privacy", "/en/terms"]
 fs.writeFileSync(`${OUT}/sitemap.xml`, `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(u => `  <url><loc>${SITE}${u === "/" ? "" : u}</loc></url>`).join("\n")}\n</urlset>\n`)
 
 // ── Bilder: Screenshots als WebP, OG-Bild, Favicon ───────────────────────────
