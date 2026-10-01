@@ -14,6 +14,13 @@ fs.rmSync(OUT, { recursive: true, force: true })
 fs.mkdirSync(`${OUT}/img`, { recursive: true }); fs.mkdirSync(`${OUT}/fonts`, { recursive: true })
 fs.copyFileSync("brand/fonts/Nunito-latin.woff2", `${OUT}/fonts/Nunito-latin.woff2`)
 fs.copyFileSync("brand/png/kolbi-happy-glow.png", `${OUT}/img/kolbi.png`)
+// Druck-Vorlage (Lead-Magnet): Quelle content/tracker/ (erzeugt von tools/tracker.mjs) → site/downloads/
+const TRACKER = { de: "supplement-selbsttest-vorlage", en: "supplement-self-test-tracker" }
+fs.mkdirSync(`${OUT}/downloads`, { recursive: true })
+for (const n of Object.values(TRACKER)) for (const ext of [".pdf", "-p1.webp", "-p2.webp"]) {
+  const f = `content/tracker/${n}${ext}`
+  if (fs.existsSync(f)) fs.copyFileSync(f, `${OUT}/downloads/${n}${ext}`); else console.log(`⚠️ ${f} fehlt – erst node tools/tracker.mjs`)
+}
 
 const legalMd = Object.fromEntries(["impressum", "datenschutz", "nutzungsbedingungen"].map(n => [n, fs.readFileSync(`legal/${n}.md`, "utf8")]))
 const PLACEHOLDER = /\[(Vorname Nachname|Straße Hausnummer|PLZ Ort|E-Mail-Adresse)\]/
@@ -113,7 +120,7 @@ ${head}<meta name="theme-color" content="#14122b">
 ${body}
 <footer class="foot"><div class="wrap">
 <div class="foot-brand">${kolbi("sleepy-nightcap")}<span><b>Kolbi · Supplement Lab</b><br>${l.tagline}</span></div>
-<nav><a href="${l.lang === "en" ? "/en/self-test" : "/selbsttest"}">${l.lang === "en" ? "Self-tests" : "Selbsttests"}</a><a href="${l.lang === "en" ? "/en/calculator" : "/rechner"}">${l.lang === "en" ? "Cost calculator" : "Kosten-Rechner"}</a><a href="${l.guide.href}">${l.guide.label}</a><a href="${l.lang === "en" ? "/en/press" : "/presse"}">${l.lang === "en" ? "Press" : "Presse"}</a>${l.legal.map(([, label, href]) => `<a href="/${href}">${label}</a>`).join("")}<a href="${l.other.href}">${l.other.hint}</a></nav>
+<nav><a href="${l.lang === "en" ? "/en/self-test" : "/selbsttest"}">${l.lang === "en" ? "Self-tests" : "Selbsttests"}</a><a href="${l.lang === "en" ? "/en/calculator" : "/rechner"}">${l.lang === "en" ? "Cost calculator" : "Kosten-Rechner"}</a><a href="${l.lang === "en" ? "/en/template" : "/vorlage"}">${l.lang === "en" ? "Printable tracker" : "Vorlage zum Ausdrucken"}</a><a href="${l.guide.href}">${l.guide.label}</a><a href="${l.lang === "en" ? "/en/press" : "/presse"}">${l.lang === "en" ? "Press" : "Presse"}</a>${l.legal.map(([, label, href]) => `<a href="/${href}">${label}</a>`).join("")}<a href="${l.other.href}">${l.other.hint}</a></nav>
 <p class="fine">${l.fine}</p></div></footer>
 <script>window.KOLBI_LINES=${JSON.stringify(l.lines)};${JS}</script>
 </body></html>`
@@ -201,6 +208,7 @@ for (const l of Object.values(L)) {
   const title = src.split("\n")[0].replace(/^# /, "")
   fs.mkdirSync(`${OUT}${g.href.slice(0, g.href.lastIndexOf("/"))}`, { recursive: true })
   fs.writeFileSync(`${OUT}${g.href}.html`, page(l, { title: `${title} – Kolbi`, desc: g.desc, path: "guide", body: `<main class="wrap doc guide">${md(src)}
+    <p style="margin-top:22px"><a href="${l.lang === "en" ? "/en/template" : "/vorlage"}">${l.lang === "en" ? "📄 Prefer paper? Free printable tracker (PDF) →" : "📄 Lieber auf Papier? Gratis-Vorlage zum Ausdrucken (PDF) →"}</a></p>
     <div class="card founder" style="margin-top:36px">${kolbi("party-alive")}<div><h2>${l.tagline}</h2><a class="btn" href="${APP}?lang=${l.lang}" data-cta="guide">${g.cta}</a></div></div></main>` }))
 }
 
@@ -275,7 +283,8 @@ for (const lang of ["de", "en"]) {
       body: `<main class="wrap doc guide">${p.html}
 <div class="card founder" style="margin-top:32px">${kolbi("party-alive")}<div><h2>${en ? `Kolbi runs this ${p.name} test with you` : `Kolbi macht diesen ${p.name}-Test mit dir`}</h2><p>${en ? "Normal, test phase, evening check-in, honest comparison – with reminders. Free in the beta, no account." : "Normal, Testphase, Abend-Check-in, ehrlicher Vergleich – mit Erinnerungen. In der Beta kostenlos, ohne Konto."}</p><a class="btn" href="${APP}?lang=${lang}&src=${src}" data-cta="${src}">${en ? "Start the test for free" : "Test kostenlos starten"}</a></div></div>
 <h2>${en ? "More self-tests" : "Weitere Selbsttests"}</h2><div class="tchips">${more}</div>
-<p style="margin-top:18px"><a href="${en ? "/en/calculator" : "/rechner"}">${en ? "💸 What does your supplement shelf cost per year? →" : "💸 Was kostet dein Supplement-Schrank im Jahr? →"}</a></p></main>` }))
+<p style="margin-top:18px"><a href="${en ? "/en/template" : "/vorlage"}">${en ? `📄 Prefer paper? Free printable tracker for your ${p.name} test →` : `📄 Lieber auf Papier? Gratis-Vorlage für deinen ${p.name}-Test →`}</a></p>
+<p style="margin-top:8px"><a href="${en ? "/en/calculator" : "/rechner"}">${en ? "💸 What does your supplement shelf cost per year? →" : "💸 Was kostet dein Supplement-Schrank im Jahr? →"}</a></p></main>` }))
   }
   // Übersicht
   const hubT = en ? "Does my supplement work for me? Self-tests for 8 supplements" : "Wirkt mein Supplement bei mir? Selbsttests für 8 Supplements"
@@ -284,7 +293,52 @@ for (const lang of ["de", "en"]) {
     body: `<main class="wrap doc"><p class="kicker">🧪 ${en ? "Self-tests" : "Selbsttests"}</p><h1>${en ? "Does it work for <span class=\"grad\">you</span>?" : "Wirkt es bei <span class=\"grad\">dir</span>?"}</h1>
 <p class="lead">${en ? "Pick a supplement – each guide shows what people pay attention to, how long to test and how to compare honestly." : "Such dir ein Supplement aus – jede Anleitung zeigt, worauf Leute achten, wie lange du testest und wie du ehrlich vergleichst."}</p>
 <div class="tgrid">${pages.map(({ it, p }) => `<a class="tcard" href="${base}/${p.slug}"><span>${it.emoji}</span><b>${p.name}</b><small>${en ? "Self-test →" : "Selbsttest →"}</small></a>`).join("")}</div>
-<p style="margin-top:22px"><a href="${l.guide.href}">${l.guide.label} →</a></p></main>` }))
+<p style="margin-top:22px"><a href="${l.guide.href}">${l.guide.label} →</a></p>
+<p style="margin-top:8px"><a href="${en ? "/en/template" : "/vorlage"}">${en ? "📄 Free printable tracker (PDF) →" : "📄 Gratis-Vorlage zum Ausdrucken (PDF) →"}</a></p></main>` }))
+}
+
+// ── Druck-Vorlage: Download-Seiten (Lead-Magnet, Motor 1) ─────────────────────
+const TPL = {
+  de: { path: "/vorlage", src: "vorlage", other: "/en/template", title: "Supplements selbst testen: Vorlage zum Ausdrucken (PDF)",
+    desc: "Gratis-Vorlage (A4-PDF) für deinen Supplement-Selbsttest: 7 Tage dein Normal festhalten, eins nach dem anderen testen, abends bewerten, ehrlich vergleichen.",
+    kicker: "📄 Gratis-Vorlage · A4 · PDF", h: 'Supplements selbst testen – <span class="grad">auf Papier</span>',
+    lead: "Halte 7 Abende dein Normal fest, teste dann ein Supplement nach dem anderen und vergleiche am Ende ehrlich mit deinem Durchschnitt. Zwei A4-Seiten, kostenlos, ohne Anmeldung – ausdrucken, abends eine Minute ankreuzen.",
+    alt: ["Vorschau Seite 1: Dein Normal – 7 Tage", "Vorschau Seite 2: Test – bis zu 14 Tage mit Vergleich"],
+    dl: "⬇️ PDF herunterladen", dlNote: "A4 · 2 Seiten · druckerfreundlich (weißer Hintergrund)",
+    inH: "Was drin ist", items: ["<b>Seite 1 · Dein Normal:</b> 7 Tage × Schlaf, Energie, Fokus, Stimmung, Ruhe + ein eigener Bereich – je 1 bis 5 ankreuzen, Störfaktoren notieren.", "<b>Seite 2 · Test:</b> bis zu 14 Tage für genau ein Supplement, gleiche Bereiche, Durchschnitt-Zeile.", "<b>So vergleichst du:</b> Ø Normal gegen Ø Test, Faustregel für kleine Unterschiede, Gegenprobe – dann behalten, vielleicht oder raus."],
+    appH: "Kein Bock auf Papier? Kolbi macht das automatisch.", appP: "Erinnert dich abends, notiert Störfaktoren, rechnet die Durchschnitte und vergleicht mit deinem Normal. In der Beta kostenlos, ohne Konto – deine Daten bleiben auf deinem Handy.", appBtn: "Kolbi kostenlos starten",
+    more: ["/selbsttest", "🧪 Selbsttests für 8 Supplements →"], calc: ["/rechner", "💸 Was kostet dein Supplement-Schrank im Jahr? →"], lang: "🇬🇧 English version" },
+  en: { path: "/en/template", src: "template", other: "/vorlage", title: "Supplement self-test tracker: free printable template (PDF)",
+    desc: "Free printable A4 tracker for testing supplements on yourself: record your normal for 7 days, test one at a time, rate every evening, compare honestly.",
+    kicker: "📄 Free template · A4 · PDF", h: 'Test your supplements – <span class="grad">on paper</span>',
+    lead: "Record your normal for 7 evenings, then test one supplement at a time and compare honestly with your average at the end. Two A4 pages, free, no sign-up – print it and tick a few boxes each evening.",
+    alt: ["Preview page 1: your normal – 7 days", "Preview page 2: test – up to 14 days with comparison"],
+    dl: "⬇️ Download PDF", dlNote: "A4 · 2 pages · printer-friendly (white background)",
+    inH: "What's inside", items: ["<b>Page 1 · Your normal:</b> 7 days × sleep, energy, focus, mood, calm + one area of your own – tick 1 to 5, note disruptors.", "<b>Page 2 · Test:</b> up to 14 days for exactly one supplement, same areas, average row.", "<b>How to compare:</b> normal average vs. test average, a rule of thumb for small differences, a double-check – then keep, maybe or drop."],
+    appH: "Not into paper? Kolbi does this automatically.", appP: "Reminds you every evening, tracks disruptors, works out the averages and compares with your normal. Free during the beta, no account – your data stays on your phone.", appBtn: "Start Kolbi for free",
+    more: ["/en/self-test", "🧪 Self-tests for 8 supplements →"], calc: ["/en/calculator", "💸 What does your supplement shelf cost per year? →"], lang: "🇩🇪 Deutsche Version" },
+}
+for (const [lang, P] of Object.entries(TPL)) {
+  const l = L[lang], f = TRACKER[lang]
+  fs.mkdirSync(`${OUT}${P.path.slice(0, P.path.lastIndexOf("/")) || ""}`, { recursive: true })
+  fs.writeFileSync(`${OUT}${P.path}.html`, page({ ...l, other: { ...l.other, href: P.other } }, { title: `${P.title} – Kolbi`, desc: P.desc, path: "template",
+    head: `<link rel="alternate" hreflang="${lang}" href="${P.path}"><link rel="alternate" hreflang="${lang === "de" ? "en" : "de"}" href="${P.other}">`,
+    body: `<main class="wrap doc">
+<style>.tpl-prev{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:22px 0 18px}
+.tpl-prev a{display:block;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 18px 40px rgba(0,0,0,.4);transition:transform .25s}
+.tpl-prev a:hover{transform:translateY(-3px)}.tpl-prev img{display:block;width:100%;height:auto}
+.tpl-dl{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin:6px 0 4px}.tpl-dl .btn{white-space:normal;text-align:center}
+.tpl-dl small{color:var(--dim)}.tpl-list{padding-left:20px}.tpl-list li{margin:8px 0}</style>
+<p class="kicker">${P.kicker}</p><h1>${P.h}</h1>
+<p class="lead">${P.lead}</p>
+<div class="tpl-dl"><a class="btn big" href="/downloads/${f}.pdf" download>${P.dl}</a><small>${P.dlNote}</small></div>
+<div class="tpl-prev">${[1, 2].map(n => `<a href="/downloads/${f}.pdf"><img src="/downloads/${f}-p${n}.webp" width="800" height="1131" alt="${P.alt[n - 1]}"${n > 1 ? ' loading="lazy"' : ""}></a>`).join("")}</div>
+<h2>${P.inH}</h2><ul class="tpl-list">${P.items.map(x => `<li>${x}</li>`).join("")}</ul>
+<div class="card founder" style="margin-top:32px">${kolbi("party-alive")}<div><h2>${P.appH}</h2><p>${P.appP}</p><a class="btn" href="${APP}?lang=${lang}&src=${P.src}" data-cta="${P.src}">${P.appBtn}</a></div></div>
+<p style="margin-top:22px"><a href="${P.more[0]}">${P.more[1]}</a></p>
+<p style="margin-top:8px"><a href="${P.calc[0]}">${P.calc[1]}</a></p>
+<p style="margin-top:8px"><a href="${l.guide.href}">${l.guide.label} →</a></p>
+<p style="margin-top:8px"><a href="${P.other}" hreflang="${lang === "de" ? "en" : "de"}">${P.lang}</a></p></main>` }))
 }
 
 // ── Pressemappe ─────────────────────────────────────────────────────────────
@@ -320,7 +374,7 @@ for (const [lang, P] of Object.entries(PRESS)) {
 
 // ── Sitemap ─────────────────────────────────────────────────────────────────
 const SITE = "https://kolbi-smoky.vercel.app"
-const urls = ["/", "/en", L.de.guide.href, L.en.guide.href, "/presse", "/en/press", "/rechner", "/en/calculator", "/selbsttest", "/en/self-test", ...TESTS.flatMap(it => [`/selbsttest/${it.de.slug}`, `/en/self-test/${it.en.slug}`]), "/impressum", "/datenschutz", "/nutzungsbedingungen", "/en/imprint", "/en/privacy", "/en/terms"]
+const urls = ["/", "/en", L.de.guide.href, L.en.guide.href, "/presse", "/en/press", "/rechner", "/en/calculator", "/vorlage", "/en/template", "/selbsttest", "/en/self-test", ...TESTS.flatMap(it => [`/selbsttest/${it.de.slug}`, `/en/self-test/${it.en.slug}`]), "/impressum", "/datenschutz", "/nutzungsbedingungen", "/en/imprint", "/en/privacy", "/en/terms"]
 fs.writeFileSync(`${OUT}/sitemap.xml`, `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(u => `  <url><loc>${SITE}${u === "/" ? "" : u}</loc></url>`).join("\n")}\n</urlset>\n`)
 
 // ── Bilder: Screenshots als WebP, OG-Bild, Favicon ───────────────────────────

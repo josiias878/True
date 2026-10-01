@@ -12,7 +12,7 @@ document.documentElement.classList.add("js");
   // Kanal-Link (/reddit, /tiktok …): Herkunft an die Beta-Knöpfe hängen
   const ch = location.pathname.replace(/^\/(en\/)?|\/$/g, "")
   if (/^[a-z]{1,20}$/.test(ch) && !["impressum", "datenschutz", "nutzungsbedingungen", "en", "imprint", "privacy", "terms"].includes(ch))
-    document.querySelectorAll("a[data-cta]").forEach(a => { a.href += (a.href.includes("?") ? "&" : "?") + "src=" + ch })
+    document.querySelectorAll("a[data-cta]").forEach(a => { if (!/[?&]src=/.test(a.href)) a.href += (a.href.includes("?") ? "&" : "?") + "src=" + ch })
   const io = "IntersectionObserver" in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target) } }), { threshold: .15 }) : null
   document.querySelectorAll(".reveal").forEach((el, k) => { el.style.transitionDelay = `${(k % 4) * 70}ms`; io ? io.observe(el) : el.classList.add("in") })
 })()
