@@ -89,29 +89,40 @@ löschen es spätestens nach 12 Monaten. Rechtsgrundlage: Art. 6 Abs. 1 lit. a D
 durch Abschicken). Da wir dich nicht identifizieren können, können wir einzelne Einträge nachträglich
 nicht dir zuordnen.
 
-## 8. Apple Health / Google Health Connect (nur App, optional)
+## 8. Anonyme Nutzungsstatistik (App, abschaltbar)
+
+Damit wir sehen, ob die App hilft und welche Wege zu ihr führen, zählt die App einzelne Ereignisse,
+z. B. „Einrichtung abgeschlossen“, „erster Check-in“, „7. Check-in“, „Wochenrückblick geöffnet“. Übertragen
+werden nur: das Ereignis, die App-Sprache und – falls du über einen Link wie `…/reddit` gekommen bist – der
+Kanalname. Bei Supabase (Frankfurt) wird daraus nur ein **Tageszähler** erhöht (z. B. „1. Okt · erster
+Check-in · Deutsch · reddit: 12“). Es gibt **keine Geräte-ID, keine Speicherung von IP-Adressen in der
+Statistik, keine Inhalte und keine Gesundheitswerte** – einzelne Personen sind nicht erkennbar.
+Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an der Verbesserung der App). Du kannst
+die Statistik jederzeit in den Einstellungen unter „📊 Anonyme Statistik“ abschalten.
+
+## 9. Apple Health / Google Health Connect (nur App, optional)
 
 In der Store-App kannst du erlauben, Schlafdauer und Herzfrequenzvariabilität aus Apple Health bzw.
 Health Connect zu **lesen**. Diese Werte werden nur lokal ausgewertet und **niemals** übertragen.
 
-## 9. Kauf-Links
+## 10. Kauf-Links
 
 Bei manchen Supplements zeigen wir einen Link zur Suche bei Amazon. Erst wenn du darauf tippst,
 verlässt du die App; ab dann gilt die Datenschutzerklärung von Amazon. Sind diese Links als
 „Anzeige“ markiert, erhalten wir bei einem Kauf ggf. eine Provision – für dich ändert sich der
 Preis nicht.
 
-## 10. In-App-Käufe (Store-App)
+## 11. In-App-Käufe (Store-App)
 
 Käufe (z. B. „Lab Pro“) werden vollständig über Apple bzw. Google abgewickelt. Wir erhalten keine
 Zahlungsdaten.
 
-## 11. Speicherdauer
+## 12. Speicherdauer
 
 Lokale Daten: bis du sie löschst. Server-Daten: siehe die jeweiligen Abschnitte; sie werden gelöscht,
 sobald du die Funktion ausschaltest bzw. widerrufst.
 
-## 12. Deine Rechte
+## 13. Deine Rechte
 
 Du hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung,
 Datenübertragbarkeit und Widerspruch sowie das Recht, eine Einwilligung jederzeit mit Wirkung für
@@ -120,6 +131,6 @@ Lösch-Funktionen in der App oder schreib uns unter [E-Mail-Adresse].
 Du kannst dich außerdem bei einer Datenschutz-Aufsichtsbehörde beschweren, z. B. bei der Behörde
 deines Bundeslandes.
 
-## 13. Keine Weitergabe, kein Tracking
+## 14. Keine Weitergabe, kein Tracking
 
 Wir verkaufen keine Daten, nutzen keine Werbe-Tracker und keine Cookies zu Werbezwecken.

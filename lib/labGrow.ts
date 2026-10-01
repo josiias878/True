@@ -1,5 +1,6 @@
 // ── Wachstum: Lab Pro (Beta = alles frei), Freunde einladen, Bewertungs-Moment, Feedback ──
 import { addDays, streak, type LabState } from "./supplementLab"
+import { track } from "./labStats"
 import { t, euro } from "./labI18n"
 
 /** Solange true, ist alles freigeschaltet und jeder Nutzer wird „Gründer“ (Pro bleibt dauerhaft). */
@@ -31,9 +32,9 @@ export async function inviteFriends(): Promise<"shared" | "copied" | "cancelled"
   const url = `${SITE_URL}/?ref=invite`
   const text = t("Ich teste gerade mit Kolbi, welche Supplements bei mir wirklich was bringen 🧪 Probier's aus:")
   try {
-    if (navigator.share) { await navigator.share({ title: "Kolbi · Supplement Lab", text, url }); return "shared" }
+    if (navigator.share) { await navigator.share({ title: "Kolbi · Supplement Lab", text, url }); track("invite"); return "shared" }
   } catch (e) { if ((e as Error)?.name === "AbortError") return "cancelled" }
-  try { await navigator.clipboard.writeText(`${text} ${url}`); return "copied" } catch { return "failed" }
+  try { await navigator.clipboard.writeText(`${text} ${url}`); track("invite"); return "copied" } catch { return "failed" }
 }
 
 // ── Bewertungs-Moment ─────────────────────────────────────────────────────────
@@ -63,6 +64,7 @@ export async function nativeReview(): Promise<boolean> {
 export async function sendFeedback(mood: "love" | "ok" | "meh", text: string, where: string): Promise<boolean> {
   try {
     const res = await fetch(FEEDBACK_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mood, text, where, v: APP_VERSION }) })
+    if (res.ok) track("feedback")
     return res.ok
   } catch { return false }
 }

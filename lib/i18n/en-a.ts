@@ -309,4 +309,7 @@ export const EN_A: Record<string, string> = {
   "Demo-Daten ansehen (deine Daten werden gesichert)": "View demo data (your data is backed up)",
   "Wirklich alles löschen?": "Really delete everything?",
   "Experiment zurücksetzen": "Reset experiment",
+  "📊 Anonyme Statistik": "📊 Anonymous stats",
+  "Statistik an/aus": "Stats on/off",
+  "Hilft Kolbi besser zu werden: zählt nur, dass etwas passiert (z. B. „erster Check-in“) – ohne Geräte-ID, ohne Inhalte, ohne Gesundheitswerte.": "Helps Kolbi get better: only counts that something happened (e.g. “first check-in”) – no device ID, no content, no health values.",
 }

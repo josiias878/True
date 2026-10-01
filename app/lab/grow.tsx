@@ -5,6 +5,7 @@ import type { LabState } from "@/lib/supplementLab"
 import { BETA, PRO_FEATURES, PRO_PRICE, inviteFriends, isPro, nativeReview, sendFeedback } from "@/lib/labGrow"
 import { Btn, Sheet, haptic } from "./ui"
 import { Mascot } from "./mascot"
+import { track } from "@/lib/labStats"
 import { t } from "@/lib/labI18n"
 
 const GRAD = "linear-gradient(135deg, #9085e9, #e87ba4)"
@@ -85,7 +86,7 @@ export function ReviewSheet({ start = "ask", onAnswer, onClose, onFlash }: {
   const [busy, setBusy] = useState(false)
 
   const pick = async (m: Mood) => {
-    haptic(); setMood(m); onAnswer(m)
+    haptic(); setMood(m); onAnswer(m); track(`review_${m}`)
     if (m === "love") { if (await nativeReview()) { onClose(); return } setStep("love") }
     else setStep("feedback")
   }

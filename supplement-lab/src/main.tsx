@@ -30,9 +30,11 @@ async function boot() {
     // Sobald eine neue Version die Kontrolle übernimmt, die Seite neu laden —
     // sonst bleibt eine schon offene Installation (z. B. vom Home-Bildschirm)
     // auf dem alten Stand hängen, bis man sie manuell schließt und neu öffnet.
+    // Beim allerersten Besuch gibt es noch keinen alten Stand → kein Neuladen (sonst flackert die Seite einmal)
+    const hadController = !!navigator.serviceWorker.controller
     let reloading = false
     navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (reloading) return
+      if (reloading || !hadController) return
       reloading = true
       window.location.reload()
     })

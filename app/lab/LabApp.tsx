@@ -27,6 +27,7 @@ import { ShopButton, ShoppingCard, StockCard, StockSheet } from "./stock"
 import { KolbiPage } from "./kolbi"
 import { ReviewSheet } from "./grow"
 import { claimFounder, markReviewAsked, shouldAskReview } from "@/lib/labGrow"
+import { configureStats, srcFromUrl, track, trackCheckin, trackOnce } from "@/lib/labStats"
 import { RoadPath } from "./path"
 import { ShareButton, makeResultCard } from "./share"
 import { CommunityCard, CommunityConsent } from "./community"
@@ -275,6 +276,7 @@ export default function LabApp() {
   communityRef.current = s.community
   const afterVerdict = useCallback((id: string) => {
     setReviewCheck(true)
+    track("verdict")
     if (communityRef.current === true) setPendingShare(id)
     else if (communityRef.current === undefined) setAskCommunity(id)
   }, [])
@@ -291,7 +293,7 @@ export default function LabApp() {
     const at = c.at ?? s.checkins[c.date]?.at ?? (c.date === todayIso() ? nowTime() : undefined)
     update(p => { p.checkins[c.date] = { ...c, at }; return p },
       isNew ? { amount: 20, label: t("Check-in") } : refined ? { amount: 10, label: t("Genauer bewertet") } : undefined)
-    if (isNew) setConfetti(true)
+    if (isNew) { setConfetti(true); trackCheckin(Object.keys(s.checkins).length + 1) }
   }, [s.checkins, update])
 
   // Kalender-Download zuerst (braucht die direkte Nutzer-Geste, v. a. auf iOS), dann Berechtigung anfragen
@@ -299,6 +301,7 @@ export default function LabApp() {
     const next = { ...s, reminders: { ...s.reminders, enabled: true, checkin: s.reminders.checkin || defaultCheckinTime(s.settings) } }
     if (!s.reminders.enabled) update(p => { p.reminders = next.reminders; return p })
     const ok = await enablePush(next).catch(() => false)
+    if (ok) track("push_on")
     const st = await pushState().catch(() => "unsupported" as PushState)
     setPushSt(st)
     setFlash(ok ? t("🔔 Push-Erinnerungen sind an") : st === "denied" ? t("⚠️ Benachrichtigungen sind blockiert (Einstellungen → Mitteilungen)") : t("⚠️ Push hat nicht geklappt"))
@@ -337,6 +340,11 @@ export default function LabApp() {
 
   setDayBoundary(s.settings) // Lab-Tag beginnt kurz vor deiner Aufstehzeit
   const today = todayIso()
+
+  // Anonyme Statistik: Einstellung + Herkunftskanal; erste Ansicht des Onboardings; Wochenrückblick geöffnet
+  useEffect(() => { configureStats(!!s.statsOff, s.src ?? srcFromUrl()) }, [s.statsOff, s.src])
+  useEffect(() => { if (!s.startDate) trackOnce("onboarding_view") }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (recapEnd) track("recap") }, [recapEnd])
 
   // Beta: jeder wird Gründer (Lab Pro bleibt dauerhaft) – einmalig, still im Hintergrund
   useEffect(() => { if (!s.pro?.founder && s.startDate) update(p => claimFounder(p, today)) }, [s.pro?.founder, s.startDate, today, update])
@@ -460,10 +468,12 @@ export default function LabApp() {
       <div className="lab" style={{ minHeight: "100dvh", background: "var(--background)", color: "var(--text)" }}>
         <style>{LAB_CSS}</style>
         <Onboarding
-          onDemo={() => { const d = demoState(); saveState(d); setS(d); setTab("heute") }}
+          onDemo={() => { track("demo"); const d = demoState(); saveState(d); setS(d); setTab("heute") }}
           onStart={({ state, wantsCalendar }) => {
             const next = hydrate({ ...emptyState(), ...state })
             next.badges = computeBadges(next)
+            next.src = srcFromUrl()
+            track(typeof matchMedia !== "undefined" && matchMedia("(display-mode: standalone)").matches ? "onboarded_pwa" : "onboarded")
             saveState(next); setS(next); setTab("heute"); setConfetti(true)
             if (wantsCalendar) {
               if (pushAvailable()) enablePush(next).then(() => pushState()).then(setPushSt).catch(() => {})
@@ -567,6 +577,7 @@ export default function LabApp() {
         const e = expOpen
         setExpOpen(null)
         update(p => startExperiment(p, e, away), { amount: 20, label: t("Experiment gestartet") })
+        track("experiment")
         setConfetti(true)
         setFlash(t("{emoji} Experiment „{title}“ gestartet – Kolbi plant alles", { emoji: e.emoji, title: e.title }))
         goTab("heute")
@@ -2071,6 +2082,18 @@ function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnable
         <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", lineHeight: 1.45 }}>{t("Testergebnisse anonym teilen (Supplement, Dauer, ±★, Urteil, Nebenwirkungen – keine Namen, kein Konto). Dafür siehst du bei jedem Supplement, was andere erlebt haben.")}</div>
         <button onClick={async () => { await removeMyResults(); update(p => { p.community = false; return p }); alert(t("Deine geteilten Ergebnisse wurden gelöscht.")) }} style={{ marginTop: 8, background: "none", border: "none", color: "var(--text-dim)", fontSize: "0.76rem", fontWeight: 700, cursor: "pointer", padding: 0 }}>{t("Meine geteilten Ergebnisse löschen")}</button>
       </Card>
+
+      {canSwitchLang() && (
+        <Card style={{ marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <Label>{t("📊 Anonyme Statistik")}</Label>
+            <button className="lab-press" aria-label={t("Statistik an/aus")} onClick={() => update(p => { p.statsOff = !p.statsOff; return p })} style={{
+              width: 52, height: 30, borderRadius: 999, border: "none", position: "relative", background: !s.statsOff ? "var(--accent)" : "var(--surface-2)", transition: "background .25s",
+            }}><span style={{ position: "absolute", top: 3, left: !s.statsOff ? 25 : 3, width: 24, height: 24, borderRadius: 999, background: "#fff", transition: "left .3s cubic-bezier(.34,1.56,.64,1)", boxShadow: "0 1px 4px rgba(0,0,0,.25)" }} /></button>
+          </div>
+          <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", lineHeight: 1.45 }}>{t("Hilft Kolbi besser zu werden: zählt nur, dass etwas passiert (z. B. „erster Check-in“) – ohne Geräte-ID, ohne Inhalte, ohne Gesundheitswerte.")}</div>
+        </Card>
+      )}
 
       {/* Apple Health / Health Connect — nur in der Store-App verfügbar */}
       {hasHealthProvider() && (

@@ -157,6 +157,7 @@ Community- und Kolbi-Tab sind absichtlich **nicht** dabei (dort stünden Beispie
 | Feedback-Text (freiwillig, ohne Kennung) | Ja, nur beim Abschicken | Nein | App-Funktion / Produktverbesserung |
 | Geräte-ID (zufällig, für Löschen der eigenen Beiträge / Push) | Ja | Nein | App-Funktion |
 | Nutzungsdaten (anonyme Aufrufzählung, Vercel Analytics, nur Web) | Ja | Nein | Analyse |
+| Produktinteraktion (anonyme Tageszähler, z. B. „erster Check-in“, abschaltbar) | Ja | Nein | Analyse |
 | Tracking über Apps hinweg | **Nein** | – | – |
 
 ## Prüfer-Hinweis (App Review Notes)

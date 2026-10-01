@@ -54,6 +54,14 @@ Echte Push-Nachrichten, auch wenn die App geschlossen ist (iPhone ab iOS 16.4, n
   Erfolg (behalten oder 7 Tage Serie), max. 3× mit 30 Tagen Abstand. In der Store-App ruft 😍 das
   native Bewertungsfenster (Plugin `InAppReview`), im Web „Weiterempfehlen“.
 
+## Anonyme Statistik / Funnel (gleiches Supabase-Projekt)
+
+- `lib/labStats.ts` → Edge Function `lab-stats` → Tabelle `lab_stats` (nur Tageszähler je Ereignis, Sprache,
+  Herkunftskanal; keine Geräte-ID). Abschaltbar in den Einstellungen („📊 Anonyme Statistik“).
+- Herkunftskanal: Landingpage-Links `/reddit`, `/en/hn` … hängen `?src=<kanal>` an die App-Links; die App merkt
+  sich den Kanal beim Einrichten.
+- Auswerten: `select * from lab_funnel;` (besucht → eingerichtet → erster Check-in → 7 Check-ins … je Kanal)
+
 ## Wie oft wird die App geöffnet? (Vercel Web Analytics)
 
 Da es keine Accounts gibt, ist die einzige Möglichkeit zu sehen, ob die App überhaupt genutzt

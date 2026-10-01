@@ -6,6 +6,7 @@ import { createRoot } from "react-dom/client"
 import { DIMS, addDays, daySum, streak, suppColor, testResult, type Dim, type LabState } from "@/lib/supplementLab"
 import { Mascot } from "./mascot"
 import { haptic } from "./ui"
+import { track } from "@/lib/labStats"
 import { t, dec } from "@/lib/labI18n"
 
 const W = 1080, H = 1920
@@ -132,11 +133,12 @@ export async function makeWeekCard(s: LabState, end: string): Promise<Blob | nul
 export async function shareImage(blob: Blob, name: string, text: string): Promise<"shared" | "downloaded" | "cancelled"> {
   const file = new File([blob], name, { type: "image/png" })
   try {
-    if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], text }); return "shared" }
+    if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], text }); track("share_card"); return "shared" }
   } catch (e) { if ((e as Error)?.name === "AbortError") return "cancelled" }
   const url = URL.createObjectURL(blob)
   const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove()
   setTimeout(() => URL.revokeObjectURL(url), 4000)
+  track("share_card")
   return "downloaded"
 }
 

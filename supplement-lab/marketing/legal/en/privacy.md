@@ -89,28 +89,38 @@ personal health data. We use the feedback only to improve the app and delete it 
 the latest. Legal basis: Art. 6(1)(a) GDPR (consent by sending). Because we cannot identify you, we
 cannot link individual entries to you afterwards.
 
-## 8. Apple Health / Google Health Connect (app only, optional)
+## 8. Anonymous usage stats (app, can be turned off)
+
+So we can see whether the app helps and which paths lead people to it, the app counts single events, e.g.
+"setup completed", "first check-in", "7th check-in", "weekly recap opened". Only the event, the app language
+and – if you came through a link like `…/reddit` – the channel name are sent. At Supabase (Frankfurt) this
+only increments a **daily counter** (e.g. "Oct 1 · first check-in · English · reddit: 12"). There is **no
+device ID, no storage of IP addresses in the stats, no content and no health values** – individual people
+cannot be identified. Legal basis: Art. 6(1)(f) GDPR (legitimate interest in improving the app). You can turn
+the stats off at any time in Settings under "📊 Anonymous stats".
+
+## 9. Apple Health / Google Health Connect (app only, optional)
 
 In the store app, you can allow sleep duration and heart rate variability to be **read** from Apple
 Health or Health Connect. These values are only analysed locally and are **never** transferred.
 
-## 9. Shopping links
+## 10. Shopping links
 
 For some supplements, we show a link to a search on Amazon. Only when you tap it do you leave the
 app; from then on, Amazon’s privacy policy applies. If these links are marked as “Ad”, we may
 receive a commission if you make a purchase – the price does not change for you.
 
-## 10. In-app purchases (store app)
+## 11. In-app purchases (store app)
 
 Purchases (e.g. “Lab Pro”) are handled entirely by Apple or Google. We do not receive any payment
 data.
 
-## 11. Storage period
+## 12. Storage period
 
 Local data: until you delete it. Server data: see the respective sections; it is deleted as soon as
 you switch off the feature or withdraw your consent.
 
-## 12. Your rights
+## 13. Your rights
 
 You have the right of access, rectification, erasure, restriction of processing, data portability
 and objection, as well as the right to withdraw consent at any time with effect for the future.
@@ -119,6 +129,6 @@ write to us at [E-Mail-Adresse].
 You can also lodge a complaint with a data protection supervisory authority, e.g. the authority of
 your federal state.
 
-## 13. No sharing, no tracking
+## 14. No sharing, no tracking
 
 We don’t sell any data, and we don’t use advertising trackers or cookies for advertising purposes.
