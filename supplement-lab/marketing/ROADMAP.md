@@ -4,14 +4,17 @@ Ziel: 1.500 € netto/Monat bis Okt 2027 (siehe PLAN.md). Grundsatz: **erst bewe
 Jeder Montags-Sprint nimmt die obersten offenen Punkte der aktuellen Phase.
 
 ## Ehrlicher Stand
+- ✅ Owned SEO: Kosten-Rechner + 8 Selbsttest-Seiten DE/EN (indexierbar sobald Impressum steht)
 - ✅ Starkes Fundament: App DE/EN, Kolbi, Pro/Bezahlung vorbereitet, Content, Landingpage, Store-Paket
 - ❌ Nicht bewiesen: keine echten Nutzer, keine Zahlungsbereitschaft, Bedienung nur automatisch getestet
 - ⚠️ Größtes Risiko: **Nutzen kommt spät** (erstes Ergebnis nach ~2 Wochen) + **zu viele Funktionen**
 
 ## Phase 0 · Okt–Nov 2026 · Beweisen
-- [ ] Schneller Nutzen: Aha-Moment nach 3 Check-ins („So sieht dein Normal aus“), kürzerer Reset
-- [ ] Onboarding 7 → 4 Schritte; Fortgeschrittenes (Vorrat, Kalender, Timing) erst bei Bedarf einblenden
-- [ ] Einheitliche Marke „Kolbi“ in der App (Kopfzeile, App-Name) + Marken-Steckbrief (Ton, Werte, No-Gos)
+- [x] Schneller Nutzen: „Dein Profil“ ab dem 1. Abend, Aussagen nach 3 Check-ins
+- [x] Onboarding 7 → 4 Schritte (Ziele · Supplements · Dein Tag · Plan mit Reset + Erinnerung) + Supplements von der Website vorausgewählt
+- [ ] Fortgeschrittenes (Vorrat, Kalender, Timing) erst bei Bedarf einblenden
+- [x] Einheitliche Marke „Kolbi“ in der App (Kopfzeile, App-Name, Teilen-Karten)
+- [ ] Marken-Steckbrief (Ton, Werte, No-Gos)
 - [ ] Kolbi bittet nach 3 Tagen um 2-Minuten-Feedback / Gespräch (5 Interviews)
 - [ ] 30–50 Beta-Nutzer; Kennzahlen: 2. Check-in ≥ 50 %, 7 Check-ins ≥ 25 %
 

@@ -243,4 +243,5 @@ export const EN_E: Record<string, string> = {
   "{d} schwankt bei dir stark – genau da hilft ein sauberer Vergleich.": "Your {d} varies a lot – that's exactly where a clean comparison helps.",
   "An Tagen mit „{tag}“ warst du ⌀ {v}★ schlechter drauf.": "On days with “{tag}” you felt {v}★ worse on average.",
   "An Tagen mit „{tag}“ warst du ⌀ {v}★ besser drauf.": "On days with “{tag}” you felt {v}★ better on average.",
+  "Und wann trainierst du meistens?": "And when do you usually train?",
 }

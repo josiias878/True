@@ -197,7 +197,7 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
   const [settings, setSettings] = useState<Settings>({ wake: "07:00", bed: "23:00", training: null, washoutDays: 1 })
   const [trainingSet, setTrainingSet] = useState(false)
   const [baseline, setBaseline] = useState(5)
-  const [remind, setRemind] = useState<boolean | null>(null)
+  const [remind, setRemind] = useState<boolean>(true)
 
   const toggleSupp = (lib: LibSupp) => setSupps(prev => prev.some(s => s.lib === lib.id) ? prev.filter(s => s.lib !== lib.id) : [...prev, makeSupp(lib, lib.name, prev)])
   const addCustom = (name: string) => setSupps(prev => [...prev, makeSupp(null, name, prev)])
@@ -227,7 +227,7 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
     if (remind && "Notification" in window && Notification.permission === "default") Notification.requestPermission().catch(() => {})
   }
 
-  const STEPS = 7
+  const STEPS = 4
   const next = () => setStep(s => s + 1)
 
   // Kolbi + Sprechblase oben auf jeder Seite
@@ -342,48 +342,15 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
               ))}
             </div>
           )}
+          <div style={{ fontWeight: 900, fontSize: "1.05rem", margin: "18px 0 10px" }}>{t("Und wann trainierst du meistens?")}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6 }}>
+            {TRAININGS.map(tr => tile(trainingSet && settings.training === tr.time, () => { setSettings(s => ({ ...s, training: tr.time })); setTrainingSet(true) }, tr.emoji, tr.label))}
+          </div>
           {footer(<Btn full onClick={next}>{t("Weiter")}</Btn>)}
         </div>
       )}
 
       {step === 4 && (
-        <div className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          {kolbi("happy", <>{t("Manche Supplements wirken am besten")} <b>{t("vor dem Training")}</b>{t(". Deshalb frage ich.")}</>)}
-          {question(t("Wann trainierst du meistens?"))}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
-            {TRAININGS.map(tr => tile(trainingSet && settings.training === tr.time, () => { setSettings(s => ({ ...s, training: tr.time })); setTrainingSet(true); setTimeout(next, 250) }, tr.emoji, tr.label))}
-          </div>
-          {footer(<Btn full variant="ghost" onClick={next}>{t("Überspringen")}</Btn>)}
-        </div>
-      )}
-
-      {step === 5 && (
-        <div className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          {kolbi("think", <>{t("Zuerst nimmst du")} <b>{t("ein paar Tage gar nichts")}</b>{t(". So weiß ich, wie du dich ohne Supplements fühlst.")}{rx.length > 0 && <> {t("Ausnahme:")} <b>{rx.map(x => x.name).join(", ")}</b> {t("ist ärztlich verordnet und läuft einfach weiter.")}</>}</>)}
-          {question(t("Wie lange willst du pausieren?"))}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
-            {RESET_OPTIONS.map(o => tile(baseline === o.days, () => setBaseline(o.days), o.days === 3 ? "⚡" : o.days === 5 ? "⭐" : "🎯", o.label, o.sub))}
-          </div>
-          {supps.some(x => x.lib === "koffein") && (
-            <div style={{ marginTop: 14, fontSize: "0.82rem", color: "var(--text-dim)", lineHeight: 1.45 }}>{t("☕ Ohne Kaffee sind Kopfschmerzen in den ersten Tagen normal. Wenn du Kaffee nicht testen willst, entferne ihn einfach aus deiner Liste.")}</div>
-          )}
-          {footer(<Btn full onClick={next}>{t("Weiter")}</Btn>)}
-        </div>
-      )}
-
-      {step === 6 && (
-        <div className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          {kolbi("happy", <>{t("Ich melde mich")} <b>{t("zur Einnahme-Zeit")}</b> {t("und")} <b>{t("abends um {time}", { time: clock(defaultCheckinTime(settings)) })}</b> {t("für den Check-in. Aus der Nachricht heraus reicht ein Tipp.")}</>)}
-          {question(t("Soll ich dich erinnern?"))}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
-            {tile(remind === true, () => { setRemind(true); setTimeout(next, 250) }, "🔔", t("Ja, gerne"), t("empfohlen"))}
-            {tile(remind === false, () => { setRemind(false); setTimeout(next, 250) }, "🔕", t("Nein, danke"))}
-          </div>
-          {remind && !hasNativeReminders() && <div style={{ marginTop: 12, fontSize: "0.78rem", color: "var(--text-dim)" }}>{t("📅 Beim Start trage ich die Termine in deinen Kalender ein, damit es auch klappt, wenn die App zu ist.")}</div>}
-        </div>
-      )}
-
-      {step === 7 && (
         <div className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           {kolbi("party", <>{t("Alles klar,")} <b>{t("ich hab deinen Plan")}</b>{t(". Ab jetzt sage ich dir jeden Tag, was dran ist.")}</>)}
           {question(t("Wann legst du los?"))}
@@ -399,6 +366,30 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
               </div>
             ))}
           </div>
+          <div style={{ fontSize: "0.8rem", fontWeight: 800, color: "var(--text-dim)", marginBottom: 6 }}>{t("Wie lange willst du pausieren?")}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6, marginBottom: 10 }}>
+            {RESET_OPTIONS.map(o => (
+              <button key={o.days} className="lab-press" onClick={() => setBaseline(o.days)} style={{
+                padding: "8px 4px", borderRadius: 14, color: "var(--text)", fontSize: "0.8rem", fontWeight: 800, lineHeight: 1.25,
+                border: baseline === o.days ? "2px solid var(--accent)" : "1px solid var(--border)", background: baseline === o.days ? "var(--accent-dim)" : "var(--surface)",
+              }}>{o.label}<br /><span style={{ fontSize: "0.68rem", fontWeight: 700, color: "var(--text-dim)" }}>{o.sub}</span></button>
+            ))}
+          </div>
+          {rx.length > 0 && <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", lineHeight: 1.45, marginBottom: 10 }}>💊 {t("Ausnahme:")} <b>{rx.map(x => x.name).join(", ")}</b> {t("ist ärztlich verordnet und läuft einfach weiter.")}</div>}
+          {supps.some(x => x.lib === "koffein") && (
+            <div style={{ marginBottom: 10, fontSize: "0.78rem", color: "var(--text-dim)", lineHeight: 1.45 }}>{t("☕ Ohne Kaffee sind Kopfschmerzen in den ersten Tagen normal. Wenn du Kaffee nicht testen willst, entferne ihn einfach aus deiner Liste.")}</div>
+          )}
+          <button className="lab-press" onClick={() => setRemind(r => !r)} aria-pressed={!!remind} style={{
+            display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 16, marginBottom: 12,
+            border: remind ? "2px solid var(--accent)" : "1px solid var(--border)", background: remind ? "var(--accent-dim)" : "var(--surface)", color: "var(--text)",
+          }}>
+            <span style={{ fontSize: "1.4rem" }}>{remind ? "🔔" : "🔕"}</span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: "block", fontWeight: 800, fontSize: "0.9rem" }}>{t("Soll ich dich erinnern?")}</span>
+              <span style={{ display: "block", fontSize: "0.74rem", color: "var(--text-dim)", lineHeight: 1.4 }}>{t("Ich melde mich")} {t("zur Einnahme-Zeit")} {t("und")} {t("abends um {time}", { time: clock(defaultCheckinTime(settings)) })}{remind && !hasNativeReminders() ? ` · ${t("📅 Beim Start trage ich die Termine in deinen Kalender ein, damit es auch klappt, wenn die App zu ist.")}` : ""}</span>
+            </span>
+            <span style={{ fontWeight: 900, fontSize: "0.8rem", color: remind ? "var(--accent)" : "var(--text-dim)" }}>{remind ? t("An") : t("Aus")}</span>
+          </button>
           {special.length > 0 && (
             <div style={{ fontSize: "0.78rem", lineHeight: 1.5, padding: "10px 12px", borderRadius: 14, background: "var(--danger-dim)", marginBottom: 10 }}>
               {STORE_MODE
