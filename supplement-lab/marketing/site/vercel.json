@@ -64,6 +64,70 @@
     {
       "source": "/qr",
       "destination": "/index.html"
+    },
+    {
+      "source": "/en/reddit",
+      "destination": "/en.html"
+    },
+    {
+      "source": "/en/tiktok",
+      "destination": "/en.html"
+    },
+    {
+      "source": "/en/insta",
+      "destination": "/en.html"
+    },
+    {
+      "source": "/en/youtube",
+      "destination": "/en.html"
+    },
+    {
+      "source": "/en/producthunt",
+      "destination": "/en.html"
+    },
+    {
+      "source": "/en/hn",
+      "destination": "/en.html"
+    },
+    {
+      "source": "/en/facebook",
+      "destination": "/en.html"
+    },
+    {
+      "source": "/en/linkedin",
+      "destination": "/en.html"
+    },
+    {
+      "source": "/en/x",
+      "destination": "/en.html"
+    },
+    {
+      "source": "/en/threads",
+      "destination": "/en.html"
+    },
+    {
+      "source": "/en/discord",
+      "destination": "/en.html"
+    },
+    {
+      "source": "/en/betalist",
+      "destination": "/en.html"
+    },
+    {
+      "source": "/en/indiehackers",
+      "destination": "/en.html"
+    },
+    {
+      "source": "/en/pinterest",
+      "destination": "/en.html"
+    },
+    {
+      "source": "/en/forum",
+      "destination": "/en.html"
+    },
+    {
+      "source": "/en/qr",
+      "destination": "/en.html"
     }
   ],
   "headers": [

@@ -35,7 +35,7 @@ self.addEventListener("push", e => {
     await self.registration.showNotification(n.title || "Supplement Lab", {
       body: n.body || "", icon: "./icon-192.png", badge: "./icon-192.png", tag: n.tag || n.id || "lab",
       data: { url: n.url || "./", taken: n.taken },
-      ...(n.taken ? { actions: [{ action: "lab-taken", title: "✓ Genommen" }] } : {}),
+      ...(n.taken ? { actions: [{ action: "lab-taken", title: n.takenLabel || (/^de/i.test(self.navigator.language || "de") ? "✓ Genommen" : "✓ Taken") }] } : {}),
     })
   })())
 })

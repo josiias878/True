@@ -19,6 +19,9 @@ a{color:#9ad0ff}
 
 .nav{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:12px max(20px,calc(50% - 520px));
   background:rgba(16,14,36,.6);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);border-bottom:1px solid var(--line)}
+.nav-r{display:flex;align-items:center;gap:10px}
+.lang{color:var(--dim);font-weight:900;font-size:.85rem;text-decoration:none;padding:7px 11px;border-radius:999px;border:1px solid var(--line)}
+.lang:hover{color:var(--text)}
 .brand{display:flex;align-items:center;gap:8px;color:var(--text);text-decoration:none;font-weight:900;font-size:1.2rem}
 .brand .kolbi{width:34px;height:34px}
 
