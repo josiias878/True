@@ -10,6 +10,7 @@ const CORS = {
 const EVENTS = new Set([
   "onboarding_view", "demo", "onboarded", "onboarded_pwa", "first_checkin", "checkin", "checkins_3", "checkins_7", "checkins_14", "checkins_30",
   "verdict", "experiment", "push_on", "invite", "share_card", "recap", "review_love", "review_ok", "review_meh", "feedback",
+  "paywall_view", "purchase", "restore",
 ])
 const SRC = /^[a-z]{1,20}$/
 

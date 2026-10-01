@@ -25,8 +25,8 @@ import { factsFor, partnerTips, recentSides, sideCauses } from "@/lib/labKnowled
 import { openShop, refillStock, shoppingList, stockInfo } from "@/lib/labStock"
 import { ShopButton, ShoppingCard, StockCard, StockSheet } from "./stock"
 import { KolbiPage } from "./kolbi"
-import { ReviewSheet } from "./grow"
-import { claimFounder, markReviewAsked, shouldAskReview } from "@/lib/labGrow"
+import { PaywallSheet, ProGate, ReviewSheet } from "./grow"
+import { claimFounder, markPurchased, markReviewAsked, shouldAskReview, type ProFeature } from "@/lib/labGrow"
 import { configureStats, srcFromUrl, track, trackCheckin, trackOnce } from "@/lib/labStats"
 import { RoadPath } from "./path"
 import { ShareButton, makeResultCard } from "./share"
@@ -190,6 +190,9 @@ export default function LabApp() {
   const [unlockedFor, setUnlockedFor] = useState<string | null>(null)
   const [stockFor, setStockFor] = useState<string | null>(null)
   const [reviewOpen, setReviewOpen] = useState<false | "ask" | "feedback">(false)
+  const [paywall, setPaywall] = useState<false | { from?: ProFeature }>(() => {
+    try { return new URLSearchParams(location.search).get("paywall") ? {} : false } catch { return false }
+  })
   const [reviewCheck, setReviewCheck] = useState(false) // nach Erfolgserlebnis prüfen, ob Kolbi nach einer Bewertung fragt
   const [askCommunity, setAskCommunity] = useState<string | null | false>(false) // false = zu · null = allgemein · id = nach Urteil
   const [pendingShare, setPendingShare] = useState<string | null>(null)
@@ -345,6 +348,13 @@ export default function LabApp() {
   useEffect(() => { configureStats(!!s.statsOff, s.src ?? srcFromUrl()) }, [s.statsOff, s.src])
   useEffect(() => { if (!s.startDate) trackOnce("onboarding_view") }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (recapEnd) track("recap") }, [recapEnd])
+  // Pro-Seite: kann von überall geöffnet werden (openPaywall in lib/labGrow.ts)
+  useEffect(() => {
+    const on = (e: Event) => setPaywall({ from: (e as CustomEvent<ProFeature | undefined>).detail })
+    window.addEventListener("lab-paywall", on)
+    return () => window.removeEventListener("lab-paywall", on)
+  }, [])
+  useEffect(() => { if (paywall) track("paywall_view") }, [paywall])
 
   // Beta: jeder wird Gründer (Lab Pro bleibt dauerhaft) – einmalig, still im Hintergrund
   useEffect(() => { if (!s.pro?.founder && s.startDate) update(p => claimFounder(p, today)) }, [s.pro?.founder, s.startDate, today, update])
@@ -571,6 +581,8 @@ export default function LabApp() {
       {askCommunity !== false && !round && !newBadge && <CommunityConsent s={s} suppId={askCommunity}
         onYes={() => { const id = askCommunity; setAskCommunity(false); update(p => { p.community = true; return p }, { amount: 10, label: t("Community") }); if (id && s.verdicts[id]) setPendingShare(id) }}
         onNo={() => { setAskCommunity(false); update(p => { p.community = false; return p }) }} />}
+      {paywall && <PaywallSheet s={s} from={paywall.from} onFlash={setFlash} onClose={() => setPaywall(false)}
+        onPurchased={plan => { update(p => markPurchased(p, plan, today)); setPaywall(false); setConfetti(true); track(plan === "restored" ? "restore" : "purchase") }} />}
       {reviewOpen && !round && !newBadge && !recapEnd && askCommunity === false && <ReviewSheet start={reviewOpen} onFlash={setFlash}
         onAnswer={m => update(p => markReviewAsked(p, today, m))} onClose={() => setReviewOpen(false)} />}
       {expOpen && <ExperimentSheet s={s} e={expOpen} onClose={() => setExpOpen(null)} onStart={away => {
@@ -996,10 +1008,10 @@ function MineView({ s, today, view, setView, update, onSupp, onAction, onVerdict
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <Segmented value={view} onChange={setView} options={[{ id: "liste", label: t("💊 Meine") }, { id: "exp", label: t("🧪 Experimente") }, { id: "stack", label: t("🏆 Stack") }]} />
-      {view === "exp" ? <ExperimentsView s={s} onPick={onExperiment} />
+      {view === "exp" ? <ProGate s={s} feature="experiments"><ExperimentsView s={s} onPick={onExperiment} /></ProGate>
       : view === "stack" ? <StackView s={s} update={update} onVerdict={onVerdict} onStartStack={onStartStack} /> : <>
         <ShoppingCard s={s} away={shop.away} low={shop.low} onOpen={onSupp} onArrived={id => onAction({ kind: "arrived", suppId: id }, "shop")} />
-        <CostCard s={s} today={today} onStock={id => onAction({ kind: "stock", suppId: id }, "cost")} />
+        <ProGate s={s} feature="costs"><CostCard s={s} today={today} onStock={id => onAction({ kind: "stock", suppId: id }, "cost")} /></ProGate>
         <Card className="lab-rise" style={{ padding: "14px 14px 8px" }}>
           {s.supps.length === 0 && <div style={{ color: "var(--text-dim)", fontSize: "0.9rem", padding: 8 }}>{t("Noch keine Supplements.")}</div>}
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -1016,7 +1028,7 @@ function MineView({ s, today, view, setView, update, onSupp, onAction, onVerdict
           </div>
         </Card>
         <Btn variant="soft" full onClick={() => onAction({ kind: "pickNext" }, "list")}>{t("+ Supplement hinzufügen")}</Btn>
-        <InteractionCard s={s} today={today} onFix={fix} />
+        <ProGate s={s} feature="timing"><InteractionCard s={s} today={today} onFix={fix} /></ProGate>
       </>}
     </div>
   )
@@ -1032,7 +1044,7 @@ function ResultsView({ s, wins, today, view, setView, onVerdict, onCheckin, onPh
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <Segmented value={view} onChange={setView} options={[{ id: "auswertung", label: t("📊 Auswertung") }, { id: "verlauf", label: t("🧭 Verlauf") }]} />
       {view === "verlauf" ? <JourneyView s={s} wins={wins} today={today} onPhase={onPhase} goTab={goTab} /> : <>
-        <PatternStrip s={s} />
+        <ProGate s={s} feature="patterns"><PatternStrip s={s} /></ProGate>
         {Object.keys(s.checkins).length >= 3 && (
           <button onClick={onRecap} className="lab-press" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 20, border: "none", color: "#fff", textAlign: "left",
             background: "linear-gradient(135deg, #9085e9 0%, #3987e5 60%, #2ECC8A 100%)" }}>
@@ -1175,7 +1187,7 @@ function SuppSheet({ s, id, today, onClose, update, onAction, onVerdict, onStock
         )
       })()}
 
-      {lib && <CommunityCard s={s} suppId={id} onJoin={onJoin} />}
+      {lib && <ProGate s={s} feature="community"><CommunityCard s={s} suppId={id} onJoin={onJoin} /></ProGate>}
 
       {lib && (
         <Card style={{ marginBottom: 12 }}>
@@ -2070,7 +2082,7 @@ function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnable
         )}
       </Card>
 
-      <CalendarCard s={s} />
+      <ProGate s={s} feature="calendar" gap={12}><CalendarCard s={s} /></ProGate>
 
       <Card style={{ marginBottom: 12 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>

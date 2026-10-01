@@ -1,14 +1,14 @@
 // ── Wachstum: Lab Pro (Beta = alles frei), Freunde einladen, Bewertungs-Moment, Feedback ──
 import { addDays, streak, todayIso, type LabState } from "./supplementLab"
 import { track } from "./labStats"
+import { paymentsReady, type Plan } from "./labBilling"
 import { t, euro, LOCALE, isEn } from "./labI18n"
 
 /** Beta-Ende: Wer bis einschließlich zu diesem Tag startet, wird „Gründer“ – Pro bleibt für immer gratis. */
 export const BETA_END = "2026-11-30"
-/** Erst wenn man wirklich bezahlen kann (App Store / Web), wird für Nicht-Gründer etwas gesperrt. */
-export const PAYMENTS_READY = false
-/** Solange true, ist alles für alle freigeschaltet. */
-export const BETA = !PAYMENTS_READY
+/** Erst wenn man wirklich bezahlen kann (Bezahl-Anbieter angeschlossen, lib/labBilling.ts), wird für
+ *  Nicht-Gründer etwas gesperrt – vorher ist alles für alle frei. */
+export const freeForAll = () => !paymentsReady()
 /** Preise Lab Pro (Entscheidung 1. Okt 2026) */
 export const PRICES = { monthly: 2.99, yearly: 19.99, lifetime: 39.99 }
 export const PRICE_LABEL = {
@@ -26,16 +26,26 @@ export const SITE_URL = "https://kolbi-smoky.vercel.app"
 const FEEDBACK_URL = "https://mkdfohmshuuiroeruyyz.supabase.co/functions/v1/lab-feedback"
 export const APP_VERSION = "0.9-beta"
 
-export const PRO_FEATURES = [
-  { emoji: "🔎", title: t("Muster-Detektor"), text: t("Was deinen Schlaf & deine Energie beeinflusst") },
-  { emoji: "💸", title: t("Kosten & Sparen"), text: t("Was dein Stack kostet – und was du sparst") },
-  { emoji: "🧭", title: t("Alle Experimente"), text: t("Schlaf, Fokus, Ruhe, Training und mehr") },
-  { emoji: "📅", title: t("Kalender-Abo"), text: t("Ergebnisse automatisch im Kalender") },
-  { emoji: "📊", title: t("Wochen-Story teilen"), text: t("Deine Woche als schönes Bild") },
-  { emoji: "👥", title: t("Community-Vergleich"), text: t("Was andere mit demselben Supplement erlebt haben") },
+export type ProFeature = "patterns" | "costs" | "experiments" | "timing" | "calendar" | "community"
+export const PRO_FEATURES: { id: ProFeature; emoji: string; title: string; text: string }[] = [
+  { id: "patterns", emoji: "🔎", title: t("Muster-Detektor"), text: t("Was deinen Schlaf & deine Energie beeinflusst") },
+  { id: "costs", emoji: "💸", title: t("Kosten & Sparen"), text: t("Was dein Stack kostet – und was du sparst") },
+  { id: "experiments", emoji: "🧭", title: t("Alle Experimente"), text: t("Schlaf, Fokus, Ruhe, Training und mehr") },
+  { id: "timing", emoji: "⏱️", title: t("Timing-Check"), text: t("Was mit Abstand, was zusammen – auf einen Blick") },
+  { id: "calendar", emoji: "📅", title: t("Kalender-Abo"), text: t("Ergebnisse automatisch im Kalender") },
+  { id: "community", emoji: "👥", title: t("Community-Vergleich"), text: t("Was andere mit demselben Supplement erlebt haben") },
 ]
 
-export function isPro(s: LabState): boolean { return BETA || !!s.pro?.founder || !!s.pro?.purchased }
+/** Pro-Seite von überall öffnen (LabApp hört auf das Ereignis) */
+export const openPaywall = (from?: ProFeature) => { try { window.dispatchEvent(new CustomEvent("lab-paywall", { detail: from })) } catch {} }
+
+export function isPro(s: LabState): boolean { return freeForAll() || !!s.pro?.founder || !!s.pro?.purchased }
+
+/** Nach erfolgreichem Kauf/Wiederherstellen lokal merken (Quelle der Wahrheit bleibt der Store) */
+export function markPurchased(p: LabState, plan: Plan | "restored", today: string): LabState {
+  p.pro = { ...p.pro, purchased: p.pro?.purchased ?? today, plan }
+  return p
+}
 
 /** In der Beta einmalig den Gründer-Status vergeben (bleibt auch nach der Beta erhalten). */
 export function claimFounder(p: LabState, today: string): LabState {

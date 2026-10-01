@@ -7,6 +7,7 @@ const URL_ = "https://mkdfohmshuuiroeruyyz.supabase.co/functions/v1/lab-stats"
 export type StatEvent =
   | "onboarding_view" | "demo" | "onboarded" | "onboarded_pwa" | "first_checkin" | "checkin" | "checkins_3" | "checkins_7" | "checkins_14" | "checkins_30"
   | "verdict" | "experiment" | "push_on" | "invite" | "share_card" | "recap" | "review_love" | "review_ok" | "review_meh" | "feedback"
+  | "paywall_view" | "purchase" | "restore"
 
 let cfg = { off: false, src: "" }
 /** Von der App bei jeder Änderung gesetzt (Einstellung „Statistik“ + Herkunftskanal aus dem Start-Link). */

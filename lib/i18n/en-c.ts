@@ -275,4 +275,6 @@ export const EN_C: Record<string, string> = {
   "{p}/Jahr": "{p}/year",
   "{p} einmalig": "{p} one-time",
   "Ich teste gerade mit Kolbi, welche Supplements bei mir wirklich was bringen 🧪 Wer bis {date} startet, bekommt Pro für immer gratis:": "I'm testing which supplements actually do something for me with Kolbi 🧪 Start by {date} and get Pro free forever:",
+  "Timing-Check": "Timing check",
+  "Was mit Abstand, was zusammen – auf einen Blick": "What to take apart, what together – at a glance",
 }

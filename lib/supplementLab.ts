@@ -819,7 +819,7 @@ export interface LabState {
   community?: boolean // anonym Testergebnisse teilen? (undefined = noch nicht gefragt)
   queue?: string[]     // Test-Reihenfolge aus einem Experiment (Supplement-IDs)
   experiment?: string  // zuletzt gestartetes Experiment
-  pro?: { founder?: string; purchased?: string } // Lab Pro: Gründer (Beta) oder gekauft
+  pro?: { founder?: string; purchased?: string; plan?: "monthly" | "yearly" | "lifetime" | "restored" } // Lab Pro: Gründer (Beta) oder gekauft
   review?: { asked: string[]; answer?: "love" | "ok" | "meh" } // Bewertungs-Moment
   src?: string        // Herkunftskanal beim Start (?src=reddit) – nur für die anonyme Statistik
   statsOff?: boolean  // anonyme Nutzungsstatistik abgeschaltet
