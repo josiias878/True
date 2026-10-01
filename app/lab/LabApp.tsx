@@ -38,6 +38,8 @@ import { startExperiment, type Experiment } from "@/lib/labExperiments"
 import { removeMyResults, shareResult } from "@/lib/labCommunity"
 import { calendarNames, calendarOn, calendarUrls, disableCalendar, enableCalendar, setCalendarNames, syncCalendar } from "@/lib/labCalendar"
 import { CostCard, InteractionCard, PatternStrip, RecapTeaser, WeekRecap, recapAvailable, recapWeekEnd } from "./insights"
+import { interactionChecks } from "@/lib/labInteractions"
+import { findPatterns } from "@/lib/labPatterns"
 import { pathStops, type Stop } from "@/lib/labPath"
 import { t, dec, clock, isEn, LANG, setLang, canSwitchLang } from "@/lib/labI18n"
 
@@ -160,6 +162,18 @@ function loadDismissed(): string[] {
   try { return JSON.parse(localStorage.getItem(DISMISS_KEY()) ?? "[]") } catch { return [] }
 }
 
+// Fortgeschrittenes (Kosten, Timing-Check, Experimente, Muster, Kalender-Abo, Community) erst bei Bedarf:
+// automatisch nach dem Reset und in der Demo, vorher nur wenn selbst eingeschaltet (pro Gerät gemerkt).
+// Wer dafür schon Daten hat (Vorrat, Kalender-Abo, Community-Wahl), sieht seine Karten sowieso.
+const ADV_KEY = "lab-advanced"
+function loadAdvanced() {
+  try { return localStorage.getItem(ADV_KEY) === "1" } catch { return false }
+}
+function resetOver(s: LabState, wins: PhaseWindow[], today: string) {
+  const first = wins[0]
+  return !!s.demo || !first || first.kind !== "baseline" || today > first.end
+}
+
 /** Tickt jede halbe Minute — für Countdown und Coach-Uhrzeiten. */
 function useNow(ms = 30_000) {
   const [now, setNow] = useState(() => new Date())
@@ -184,6 +198,11 @@ export default function LabApp() {
   const [helpOpen, setHelpOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [dismissed, setDismissed] = useState<string[]>(loadDismissed)
+  const [advOptIn, setAdvOptIn] = useState(loadAdvanced)
+  const setAdvanced = useCallback((on: boolean) => {
+    setAdvOptIn(on)
+    try { if (on) localStorage.setItem(ADV_KEY, "1"); else localStorage.removeItem(ADV_KEY) } catch {}
+  }, [])
   const [toast, setToast] = useState<{ amount: number; label: string; k: number } | null>(null)
   const [flash, setFlash] = useState<string | null>(init.flash)
   const [newBadge, setNewBadge] = useState<string | null>(null)
@@ -509,6 +528,8 @@ export default function LabApp() {
   }
 
   const wins = phaseWindows(s)
+  const autoAdv = resetOver(s, wins, today)
+  const adv = advOptIn || autoAdv
   const lvl = levelFor(s.xp)
   const st = streak(s)
 
@@ -545,8 +566,9 @@ export default function LabApp() {
             pending={pending} onRound={() => setRound(pending)} checkinLocked={checkinLocked} pushOff={pushSt === "off"} onPush={turnOnPush}
             onUnlock={() => { setUnlockedFor(today); setRound(roundSteps(s, today, now, false)) }} />}
           {tab === "meine" && <MineView s={s} today={today} view={mineView} setView={setMineView} update={update} onSupp={setSuppSheet}
-            onAction={runAction} onVerdict={setVerdictFor} onStartStack={() => runAction({ kind: "startStack" }, "stack")} onExperiment={setExpOpen} />}
-          {tab === "ergebnisse" && <ResultsView s={s} wins={wins} today={today} view={resView} setView={setResView}
+            onAction={runAction} onVerdict={setVerdictFor} onStartStack={() => runAction({ kind: "startStack" }, "stack")} onExperiment={setExpOpen}
+            adv={adv} onMore={() => { setAdvanced(true); setFlash(t("🧰 Alle Funktionen sind an – ausschalten in den Einstellungen")) }} />}
+          {tab === "ergebnisse" && <ResultsView s={s} wins={wins} today={today} view={resView} setView={setResView} adv={adv}
             onVerdict={setVerdictFor} onCheckin={setCheckinDate} onPhase={setPhaseSheet} goTab={goTab} onRecap={() => setRecapEnd(recapWeekEnd(now, today))} />}
           {tab === "kolbi" && <KolbiPage s={s} mood={msgs[0]?.mood ?? "happy"} fill={dayProgress(s, today)} msgs={kolbiTips} onAction={runAction}
             murky={(() => { const y = addDays(today, -1); return !!wins[0] && y >= wins[0].start && !s.checkins[y] && !s.checkins[today] })()}
@@ -631,7 +653,7 @@ export default function LabApp() {
         setVerdictFor(null)
       }} />}
       <PhaseSheet s={s} w={phaseSheet} today={today} onClose={() => setPhaseSheet(null)} update={update} onVerdict={id => { setPhaseSheet(null); setVerdictFor(id) }} />
-      {suppSheet && <SuppSheet s={s} id={suppSheet} today={today} onClose={() => setSuppSheet(null)} update={update} onAction={a => { setSuppSheet(null); runAction(a, "supp") }} onVerdict={id => { setSuppSheet(null); setVerdictFor(id) }} onStock={id => setStockFor(id)} onJoin={() => setAskCommunity(s.verdicts[suppSheet] ? suppSheet : null)} />}
+      {suppSheet && <SuppSheet s={s} id={suppSheet} today={today} adv={adv} onClose={() => setSuppSheet(null)} update={update} onAction={a => { setSuppSheet(null); runAction(a, "supp") }} onVerdict={id => { setSuppSheet(null); setVerdictFor(id) }} onStock={id => setStockFor(id)} onJoin={() => setAskCommunity(s.verdicts[suppSheet] ? suppSheet : null)} />}
       {stockFor && <StockSheet s={s} suppId={stockFor} onClose={() => setStockFor(null)} onSave={(stock, dose) => {
         const first = !s.supps.find(x => x.id === stockFor)?.stock
         update(p => { p.supps = p.supps.map(x => x.id === stockFor ? { ...x, stock, dose } : x); return p }, first ? { amount: 10, label: t("Vorrat eingetragen") } : undefined)
@@ -660,10 +682,11 @@ export default function LabApp() {
         }} />}
       {helpOpen && <HelpSheet msgs={msgs} onAction={runAction} onClose={() => setHelpOpen(false)} />}
       {settingsOpen && <SettingsSheet s={s} onClose={() => setSettingsOpen(false)} update={update}
+        adv={adv} autoAdv={autoAdv} onAdvanced={setAdvanced}
         onEnableReminders={enableReminders} pushSt={pushSt}
         onToggleHealth={toggleHealth}
         onImport={next => { saveState(next); setS(next); setSettingsOpen(false); setFlash(t("✓ Daten importiert")) }}
-        onReset={() => { const e = s.demo ? restoreBackup() : emptyState(); saveState(e); setS(e); setSettingsOpen(false) }}
+        onReset={() => { const e = s.demo ? restoreBackup() : emptyState(); saveState(e); setS(e); setSettingsOpen(false); if (!s.demo) setAdvanced(false) }}
         onDemo={() => { backup(s); const d = demoState(); saveState(d); setS(d); setSettingsOpen(false) }} />}
 
       {newBadge && !round && !recapEnd && (() => {
@@ -980,16 +1003,19 @@ function Dashboard({ s, wins, today, now, msgs, onAction, onQuick, onTake, onPha
 
 // ── Meine: Supplements, Einkaufsliste, Stack ───────────────────────────────────
 
-function MineView({ s, today, view, setView, update, onSupp, onAction, onVerdict, onStartStack, onExperiment }: {
+function MineView({ s, today, view, setView, update, onSupp, onAction, onVerdict, onStartStack, onExperiment, adv, onMore }: {
   s: LabState; today: string; view: "liste" | "stack" | "exp"; setView: (v: "liste" | "stack" | "exp") => void; update: Update
   onSupp: (id: string) => void; onAction: (a: CoachAction, id: string) => void; onVerdict: (id: string) => void; onStartStack: () => void
-  onExperiment: (e: Experiment) => void
+  onExperiment: (e: Experiment) => void; adv: boolean; onMore: () => void
 }) {
   const fix = (suppId: string, time: string) => onAction({ kind: "setTime", suppId, time, tipId: `fix:${suppId}:${time}` }, "inter")
   const shop = shoppingList(s, today)
   const order: SuppStatusKey[] = ["testing", "observing", "verdict", "kept", "constant", "waiting", "maybe", "away", "paused", "dropped"]
   const supps = [...s.supps].sort((a, b) => order.indexOf(suppStatus(s, a.id, today).key) - order.indexOf(suppStatus(s, b.id, today).key))
   const nextId = nextCandidates(s)[0]?.id
+  // Im Reset nur, was gebraucht wird: Kosten erst mit Vorrat, Timing-Check nur bei echtem Konflikt
+  const showCost = adv || s.supps.some(x => x.stock)
+  const showTiming = adv || interactionChecks(s, today).some(p => !p.ok && p.rule.kind === "trennen")
   const groups: { label: string; keys: SuppStatusKey[] }[] = [
     { label: t("Fest im Stack"), keys: ["constant"] },
     { label: t("Im Test"), keys: ["testing", "waiting", "observing", "verdict", "kept", "maybe"] },
@@ -1021,11 +1047,11 @@ function MineView({ s, today, view, setView, update, onSupp, onAction, onVerdict
   }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <Segmented value={view} onChange={setView} options={[{ id: "liste", label: t("💊 Meine") }, { id: "exp", label: t("🧪 Experimente") }, { id: "stack", label: t("🏆 Stack") }]} />
+      <Segmented value={view} onChange={setView} options={[{ id: "liste" as const, label: t("💊 Meine") }, ...(adv || view === "exp" ? [{ id: "exp" as const, label: t("🧪 Experimente") }] : []), { id: "stack" as const, label: t("🏆 Stack") }]} />
       {view === "exp" ? <ProGate s={s} feature="experiments"><ExperimentsView s={s} onPick={onExperiment} /></ProGate>
       : view === "stack" ? <StackView s={s} update={update} onVerdict={onVerdict} onStartStack={onStartStack} /> : <>
         <ShoppingCard s={s} away={shop.away} low={shop.low} onOpen={onSupp} onArrived={id => onAction({ kind: "arrived", suppId: id }, "shop")} />
-        <ProGate s={s} feature="costs"><CostCard s={s} today={today} onStock={id => onAction({ kind: "stock", suppId: id }, "cost")} /></ProGate>
+        {showCost && <ProGate s={s} feature="costs"><CostCard s={s} today={today} onStock={id => onAction({ kind: "stock", suppId: id }, "cost")} /></ProGate>}
         <Card className="lab-rise" style={{ padding: "14px 14px 8px" }}>
           {s.supps.length === 0 && <div style={{ color: "var(--text-dim)", fontSize: "0.9rem", padding: 8 }}>{t("Noch keine Supplements.")}</div>}
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -1042,7 +1068,8 @@ function MineView({ s, today, view, setView, update, onSupp, onAction, onVerdict
           </div>
         </Card>
         <Btn variant="soft" full onClick={() => onAction({ kind: "pickNext" }, "list")}>{t("+ Supplement hinzufügen")}</Btn>
-        <ProGate s={s} feature="timing"><InteractionCard s={s} today={today} onFix={fix} /></ProGate>
+        {showTiming && <ProGate s={s} feature="timing"><InteractionCard s={s} today={today} onFix={fix} /></ProGate>}
+        {!adv && <button onClick={onMore} style={{ alignSelf: "center", background: "none", border: "none", color: "var(--text-dim)", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer", padding: "4px 8px" }}>{t("Mehr Funktionen anzeigen ›")}</button>}
       </>}
     </div>
   )
@@ -1050,15 +1077,17 @@ function MineView({ s, today, view, setView, update, onSupp, onAction, onVerdict
 
 // ── Ergebnisse: Auswertung & Verlauf ───────────────────────────────────────────
 
-function ResultsView({ s, wins, today, view, setView, onVerdict, onCheckin, onPhase, goTab, onRecap }: {
-  s: LabState; wins: PhaseWindow[]; today: string; view: "auswertung" | "verlauf"; setView: (v: "auswertung" | "verlauf") => void
+function ResultsView({ s, wins, today, view, setView, adv, onVerdict, onCheckin, onPhase, goTab, onRecap }: {
+  s: LabState; wins: PhaseWindow[]; today: string; view: "auswertung" | "verlauf"; setView: (v: "auswertung" | "verlauf") => void; adv: boolean
   onVerdict: (id: string) => void; onCheckin: (d: string) => void; onPhase: (w: PhaseWindow) => void; goTab: (t: string) => void; onRecap: () => void
 }) {
+  // Muster-Suche erst nach dem Reset – oder sobald Kolbi wirklich etwas gefunden hat
+  const found = useMemo(() => findPatterns(s).length > 0, [s])
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <Segmented value={view} onChange={setView} options={[{ id: "auswertung", label: t("📊 Auswertung") }, { id: "verlauf", label: t("🧭 Verlauf") }]} />
       {view === "verlauf" ? <JourneyView s={s} wins={wins} today={today} onPhase={onPhase} goTab={goTab} /> : <>
-        <ProGate s={s} feature="patterns"><PatternStrip s={s} /></ProGate>
+        {(adv || found) && <ProGate s={s} feature="patterns"><PatternStrip s={s} /></ProGate>}
         {Object.keys(s.checkins).length >= 3 && (
           <button onClick={onRecap} className="lab-press" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 20, border: "none", color: "#fff", textAlign: "left",
             background: "linear-gradient(135deg, #9085e9 0%, #3987e5 60%, #2ECC8A 100%)" }}>
@@ -1081,8 +1110,8 @@ function ResultsView({ s, wins, today, view, setView, onVerdict, onCheckin, onPh
 
 // ── Detail-Blatt eines Supplements ─────────────────────────────────────────────
 
-function SuppSheet({ s, id, today, onClose, update, onAction, onVerdict, onStock, onJoin }: {
-  s: LabState; id: string; today: string; onClose: () => void; update: Update; onAction: (a: CoachAction) => void; onVerdict: (id: string) => void
+function SuppSheet({ s, id, today, adv, onClose, update, onAction, onVerdict, onStock, onJoin }: {
+  s: LabState; id: string; today: string; adv: boolean; onClose: () => void; update: Update; onAction: (a: CoachAction) => void; onVerdict: (id: string) => void
   onStock: (id: string) => void; onJoin: () => void
 }) {
   const x = s.supps.find(q => q.id === id)
@@ -1144,7 +1173,7 @@ function SuppSheet({ s, id, today, onClose, update, onAction, onVerdict, onStock
         {st.key === "constant" && !lib?.rx && <Btn variant="soft" full onClick={() => { update(p => { p.supps = p.supps.map(q => q.id === id ? { ...q, mode: "test", keepTesting: true } : q); return p }); onClose() }}>{t("🔬 Doch einzeln testen")}</Btn>}
       </div>
 
-      {!x.away && !lib?.rx && lib?.category !== "Peptide" && (
+      {!x.away && !lib?.rx && lib?.category !== "Peptide" && (adv || x.stock) && (
         <div style={{ marginBottom: 12 }}>
           <StockCard s={s} x={x} onEdit={() => onStock(id)}
             onRefill={() => update(p => { p.supps = p.supps.map(q => q.id === id ? { ...q, stock: refillStock(p, q, today) } : q); return p }, { amount: 5, label: t("Vorrat aufgefüllt") })}
@@ -1201,7 +1230,7 @@ function SuppSheet({ s, id, today, onClose, update, onAction, onVerdict, onStock
         )
       })()}
 
-      {lib && <ProGate s={s} feature="community"><CommunityCard s={s} suppId={id} onJoin={onJoin} /></ProGate>}
+      {lib && (adv || s.community === true) && <ProGate s={s} feature="community"><CommunityCard s={s} suppId={id} onJoin={onJoin} /></ProGate>}
 
       {lib && (
         <Card style={{ marginBottom: 12 }}>
@@ -2025,9 +2054,10 @@ function CalendarCard({ s }: { s: LabState }) {
   )
 }
 
-function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnableReminders, onToggleHealth, pushSt }: {
+function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnableReminders, onToggleHealth, pushSt, adv, autoAdv, onAdvanced }: {
   s: LabState; onClose: () => void; update: Update; onReset: () => void; onDemo: () => void
   onImport: (s: LabState) => void; onEnableReminders: (withCalendar: boolean) => void; onToggleHealth: () => void; pushSt: PushState
+  adv: boolean; autoAdv: boolean; onAdvanced: (on: boolean) => void
 }) {
   const [confirm, setConfirm] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
@@ -2096,9 +2126,22 @@ function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnable
         )}
       </Card>
 
-      <ProGate s={s} feature="calendar" gap={12}><CalendarCard s={s} /></ProGate>
+      {/* Fortgeschrittenes: blendet sich nach dem Reset von selbst ein – hier schon vorher */}
+      {!autoAdv && (
+        <Card style={{ marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <Label>{t("🧰 Alle Funktionen")}</Label>
+            <button className="lab-press" aria-label={t("Alle Funktionen an/aus")} aria-pressed={adv} onClick={() => onAdvanced(!adv)} style={{
+              width: 52, height: 30, borderRadius: 999, border: "none", position: "relative", background: adv ? "var(--accent)" : "var(--surface-2)", transition: "background .25s",
+            }}><span style={{ position: "absolute", top: 3, left: adv ? 25 : 3, width: 24, height: 24, borderRadius: 999, background: "#fff", transition: "left .3s cubic-bezier(.34,1.56,.64,1)", boxShadow: "0 1px 4px rgba(0,0,0,.25)" }} /></button>
+          </div>
+          <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", lineHeight: 1.45 }}>{t("Vorrat & Kosten, Timing-Check, Experimente, Muster, Kalender-Abo und Community. Ich blende sie nach deinem Reset von selbst ein – oder hier schon jetzt.")}</div>
+        </Card>
+      )}
 
-      <Card style={{ marginBottom: 12 }}>
+      {(adv || calendarOn()) && <ProGate s={s} feature="calendar" gap={12}><CalendarCard s={s} /></ProGate>}
+
+      {(adv || s.community !== undefined) && <Card style={{ marginBottom: 12 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
           <Label>🌍 Community</Label>
           <button className="lab-press" aria-label={t("Community an/aus")} onClick={() => update(p => { p.community = !p.community; return p })} style={{
@@ -2107,7 +2150,7 @@ function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnable
         </div>
         <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", lineHeight: 1.45 }}>{t("Testergebnisse anonym teilen (Supplement, Dauer, ±★, Urteil, Nebenwirkungen – keine Namen, kein Konto). Dafür siehst du bei jedem Supplement, was andere erlebt haben.")}</div>
         <button onClick={async () => { await removeMyResults(); update(p => { p.community = false; return p }); alert(t("Deine geteilten Ergebnisse wurden gelöscht.")) }} style={{ marginTop: 8, background: "none", border: "none", color: "var(--text-dim)", fontSize: "0.76rem", fontWeight: 700, cursor: "pointer", padding: 0 }}>{t("Meine geteilten Ergebnisse löschen")}</button>
-      </Card>
+      </Card>}
 
       {canSwitchLang() && (
         <Card style={{ marginBottom: 12 }}>

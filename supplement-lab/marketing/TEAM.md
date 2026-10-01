@@ -33,9 +33,11 @@ Getrennte Dateibereiche = Agenten können **parallel** arbeiten, ohne sich zu ü
 
 1. **CEO** formuliert den Auftrag: Ziel (welche Trichter-Stufe), Grenzen, Abnahme-Kriterium.
 2. **Fachrolle** baut + prüft selbst, berichtet: Dateien · Test · Risiken · Übergaben.
-3. **QA** prüft unabhängig (Prüfliste in `.claude/agents/kolbi-qa.md`). Befund → zurück an die Fachrolle.
-4. **CEO** liest den Diff, integriert, committet (mit Trailern), pusht auf `claude/supplement-tracking-app-hwna5s`,
-   deployt (Vercel-Projekte `supplement-lab` und `kolbi`), trägt es in `PLAN.md` → Log ein.
+3. **CEO** liest den Diff, committet (mit Trailern) und pusht auf `claude/supplement-tracking-app-hwna5s` –
+   **Push = sichern**, Nutzer sehen davon nichts (live geht nur, was deployt wird).
+4. **QA** prüft unabhängig (Prüfliste in `.claude/agents/kolbi-qa.md`). Befund → zurück an die Fachrolle.
+5. **CEO** deployt erst nach QA-Freigabe (**Deploy = ausliefern**; Vercel-Projekte `supplement-lab` und `kolbi`)
+   und trägt es in `PLAN.md` → Log ein.
 
 ## Wochenrhythmus (Montags-Sprint)
 

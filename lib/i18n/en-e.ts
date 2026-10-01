@@ -249,4 +249,9 @@ export const EN_E: Record<string, string> = {
   "🤔 Geht so": "🤔 Kind of",
   "👎 Nein": "👎 No",
   "Danke! 💚 Magst du mir in einem Satz sagen, was fehlt? ›": "Thanks! 💚 Want to tell me in one sentence what's missing? ›",
+  "🧰 Alle Funktionen sind an – ausschalten in den Einstellungen": "🧰 All features are on – turn off in Settings",
+  "Mehr Funktionen anzeigen ›": "Show more features ›",
+  "🧰 Alle Funktionen": "🧰 All features",
+  "Alle Funktionen an/aus": "All features on/off",
+  "Vorrat & Kosten, Timing-Check, Experimente, Muster, Kalender-Abo und Community. Ich blende sie nach deinem Reset von selbst ein – oder hier schon jetzt.": "Supply & costs, timing check, experiments, patterns, calendar sync and community. I'll show them on my own after your reset – or right now from here.",
 }
