@@ -94,13 +94,13 @@ const L = {
 // ── Gemeinsames Gerüst ───────────────────────────────────────────────────────
 const CSS = fs.readFileSync(new URL("./site.css", import.meta.url), "utf8")
 const JS = fs.readFileSync(new URL("./site.js", import.meta.url), "utf8")
-const page = (l, { title, desc, body, path = "", alt }) => `<!doctype html>
+const page = (l, { title, desc, body, path = "", alt, head = "" }) => `<!doctype html>
 <html lang="${l.lang}"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${title}</title><meta name="description" content="${desc}">
 ${DRAFT ? '<meta name="robots" content="noindex, nofollow">' : ""}
 ${alt ? `<link rel="alternate" hreflang="de" href="/"><link rel="alternate" hreflang="en" href="/en">` : ""}
-<meta name="theme-color" content="#14122b">
+${head}<meta name="theme-color" content="#14122b">
 <meta property="og:title" content="${title}"><meta property="og:description" content="${desc}">
 <meta property="og:image" content="/img/og${l.lang === "en" ? "-en" : ""}.png"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/img/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/img/kolbi.png">
@@ -113,7 +113,7 @@ ${alt ? `<link rel="alternate" hreflang="de" href="/"><link rel="alternate" href
 ${body}
 <footer class="foot"><div class="wrap">
 <div class="foot-brand">${kolbi("sleepy-nightcap")}<span><b>Kolbi · Supplement Lab</b><br>${l.tagline}</span></div>
-<nav><a href="${l.lang === "en" ? "/en/calculator" : "/rechner"}">${l.lang === "en" ? "Cost calculator" : "Kosten-Rechner"}</a><a href="${l.guide.href}">${l.guide.label}</a><a href="${l.lang === "en" ? "/en/press" : "/presse"}">${l.lang === "en" ? "Press" : "Presse"}</a>${l.legal.map(([, label, href]) => `<a href="/${href}">${label}</a>`).join("")}<a href="${l.other.href}">${l.other.hint}</a></nav>
+<nav><a href="${l.lang === "en" ? "/en/self-test" : "/selbsttest"}">${l.lang === "en" ? "Self-tests" : "Selbsttests"}</a><a href="${l.lang === "en" ? "/en/calculator" : "/rechner"}">${l.lang === "en" ? "Cost calculator" : "Kosten-Rechner"}</a><a href="${l.guide.href}">${l.guide.label}</a><a href="${l.lang === "en" ? "/en/press" : "/presse"}">${l.lang === "en" ? "Press" : "Presse"}</a>${l.legal.map(([, label, href]) => `<a href="/${href}">${label}</a>`).join("")}<a href="${l.other.href}">${l.other.hint}</a></nav>
 <p class="fine">${l.fine}</p></div></footer>
 <script>window.KOLBI_LINES=${JSON.stringify(l.lines)};${JS}</script>
 </body></html>`
@@ -256,6 +256,35 @@ for (const [lang, C] of Object.entries(CALC)) {
 })()</script></main>` }))
 }
 
+// ── Selbsttest-Seiten je Supplement (SEO: „Wirkt X bei mir?“) ─────────────────
+const { TESTS, testPage } = await import("../content/guides/supplement-tests.mjs")
+const TEST_BASE = { de: "/selbsttest", en: "/en/self-test" }
+for (const lang of ["de", "en"]) {
+  const l = L[lang], en = lang === "en", base = TEST_BASE[lang], other = en ? "de" : "en"
+  fs.mkdirSync(`${OUT}${base}`, { recursive: true })
+  const pages = TESTS.map(it => ({ it, p: testPage(it, lang), o: testPage(it, other) }))
+  for (const { it, p, o } of pages) {
+    const href = `${base}/${p.slug}`, ohref = `${TEST_BASE[other]}/${o.slug}`
+    const ld = { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: p.faq.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) }
+    const more = pages.filter(x => x.it !== it).map(x => `<a class="tchip" href="${base}/${x.p.slug}">${x.it.emoji} ${x.p.name}</a>`).join("")
+    const src = "test" + it.id.replace(/[^a-z]/g, "")
+    fs.writeFileSync(`${OUT}${href}.html`, page({ ...l, other: { ...l.other, href: ohref } }, { title: `${p.title} – Kolbi`, desc: p.desc, path: "test",
+      head: `<link rel="alternate" hreflang="${lang}" href="${href}"><link rel="alternate" hreflang="${other}" href="${ohref}"><script type="application/ld+json">${JSON.stringify(ld)}</script>`,
+      body: `<main class="wrap doc guide">${p.html}
+<div class="card founder" style="margin-top:32px">${kolbi("party-alive")}<div><h2>${en ? `Kolbi runs this ${p.name} test with you` : `Kolbi macht diesen ${p.name}-Test mit dir`}</h2><p>${en ? "Normal, test phase, evening check-in, honest comparison – with reminders. Free in the beta, no account." : "Normal, Testphase, Abend-Check-in, ehrlicher Vergleich – mit Erinnerungen. In der Beta kostenlos, ohne Konto."}</p><a class="btn" href="${APP}?lang=${lang}&src=${src}" data-cta="${src}">${en ? "Start the test for free" : "Test kostenlos starten"}</a></div></div>
+<h2>${en ? "More self-tests" : "Weitere Selbsttests"}</h2><div class="tchips">${more}</div>
+<p style="margin-top:18px"><a href="${en ? "/en/calculator" : "/rechner"}">${en ? "💸 What does your supplement shelf cost per year? →" : "💸 Was kostet dein Supplement-Schrank im Jahr? →"}</a></p></main>` }))
+  }
+  // Übersicht
+  const hubT = en ? "Does my supplement work for me? Self-tests for 8 supplements" : "Wirkt mein Supplement bei mir? Selbsttests für 8 Supplements"
+  fs.writeFileSync(`${OUT}${base}.html`, page({ ...l, other: { ...l.other, href: TEST_BASE[other] } }, { title: `${hubT} – Kolbi`, desc: en ? "Step-by-step self-tests: find your normal, test one supplement at a time, compare honestly. No promises – just your own data." : "Schritt-für-Schritt-Selbsttests: dein Normal festhalten, eins nach dem anderen testen, ehrlich vergleichen. Keine Versprechen – nur deine eigenen Daten.", path: "test",
+    head: `<link rel="alternate" hreflang="${lang}" href="${base}"><link rel="alternate" hreflang="${other}" href="${TEST_BASE[other]}">`,
+    body: `<main class="wrap doc"><p class="kicker">🧪 ${en ? "Self-tests" : "Selbsttests"}</p><h1>${en ? "Does it work for <span class=\"grad\">you</span>?" : "Wirkt es bei <span class=\"grad\">dir</span>?"}</h1>
+<p class="lead">${en ? "Pick a supplement – each guide shows what people pay attention to, how long to test and how to compare honestly." : "Such dir ein Supplement aus – jede Anleitung zeigt, worauf Leute achten, wie lange du testest und wie du ehrlich vergleichst."}</p>
+<div class="tgrid">${pages.map(({ it, p }) => `<a class="tcard" href="${base}/${p.slug}"><span>${it.emoji}</span><b>${p.name}</b><small>${en ? "Self-test →" : "Selbsttest →"}</small></a>`).join("")}</div>
+<p style="margin-top:22px"><a href="${l.guide.href}">${l.guide.label} →</a></p></main>` }))
+}
+
 // ── Pressemappe ─────────────────────────────────────────────────────────────
 fs.mkdirSync(`${OUT}/press`, { recursive: true })
 for (const [src, dst] of [["brand/kolbi-happy.svg", "kolbi.svg"], ["brand/png/kolbi-happy-glow.png", "kolbi.png"], ["brand/avatar.png", "kolbi-avatar.png"], ["brand/banner.png", "kolbi-banner.png"], ["store/feature-graphic.png", "kolbi-feature-de.png"], ["launch/producthunt/thumbnail.gif", "kolbi-animated.gif"]])
@@ -289,7 +318,7 @@ for (const [lang, P] of Object.entries(PRESS)) {
 
 // ── Sitemap ─────────────────────────────────────────────────────────────────
 const SITE = "https://kolbi-smoky.vercel.app"
-const urls = ["/", "/en", L.de.guide.href, L.en.guide.href, "/presse", "/en/press", "/rechner", "/en/calculator", "/impressum", "/datenschutz", "/nutzungsbedingungen", "/en/imprint", "/en/privacy", "/en/terms"]
+const urls = ["/", "/en", L.de.guide.href, L.en.guide.href, "/presse", "/en/press", "/rechner", "/en/calculator", "/selbsttest", "/en/self-test", ...TESTS.flatMap(it => [`/selbsttest/${it.de.slug}`, `/en/self-test/${it.en.slug}`]), "/impressum", "/datenschutz", "/nutzungsbedingungen", "/en/imprint", "/en/privacy", "/en/terms"]
 fs.writeFileSync(`${OUT}/sitemap.xml`, `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(u => `  <url><loc>${SITE}${u === "/" ? "" : u}</loc></url>`).join("\n")}\n</urlset>\n`)
 
 // ── Bilder: Screenshots als WebP, OG-Bild, Favicon ───────────────────────────

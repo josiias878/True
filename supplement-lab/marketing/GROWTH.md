@@ -24,7 +24,7 @@ Reichweite. Eine App, die 10 % statt 25 % zur Gewohnheit macht, braucht 2,5× so
 
 | # | Motor | Wer macht's | Blockiert durch | Wirkt ab |
 |---|---|---|---|---|
-| 1 | **Eigene Werkzeuge + Ratgeber (SEO)** – Kosten-Rechner, „Wirkt X bei mir? Selbsttest“-Seiten je Supplement (DE+EN), Druck-Vorlage „Baseline-Tracker“ | ich, komplett | **Impressum-Daten** (bis dahin `noindex`) | 2–4 Monate nach Indexierung, dann dauerhaft gratis |
+| 1 | **Eigene Werkzeuge + Ratgeber (SEO)** – ✅ Kosten-Rechner (`/rechner`), ✅ 8 Selbsttest-Seiten „Wirkt X bei mir?“ DE+EN mit FAQ-Daten (`/selbsttest`, `/en/self-test`), ⏭️ Druck-Vorlage „Baseline-Tracker“ | ich, komplett | **Impressum-Daten** (bis dahin `noindex`) | 2–4 Monate nach Indexierung, dann dauerhaft gratis |
 | 2 | **Eingebautes Weitersagen** – Wochen-Story + Ergebnis-Karte tragen Kolbi + Link, Einladen mit Gründer-Frist, Rechner-Ergebnis teilen | ich, komplett (fertig) | – | sobald Nutzer da sind |
 | 3 | **Kurzvideos (TikTok/Reels/Shorts)** – 19 Videos DE/EN + 30-Tage-Kalender liegen bereit | ich (über Higgsfield-TikTok-Verbindung) + du (1× verbinden) | **Konto + Verbindung** | Woche 1; Hauptkanal für Volumen |
 | 4 | **Communities** – Reddit, Foren, Discord, FB-Gruppen: Hilfe zuerst, Link selten | du postest meine Texte (PLAYBOOK) | Reddit-Konto, 2–4 Wochen aufwärmen | Nov |

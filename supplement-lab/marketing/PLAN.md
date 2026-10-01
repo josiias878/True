@@ -148,3 +148,4 @@ von dir brauche.
   7 neue Videos DE/EN (06–12) + 30-Tage-Kalender DE/EN. **Fix:** Onboarding stürzte ab, wenn die Community-Statistik
   eine unerwartete Antwort lieferte.
 - 2026-10-01 · RevenueCat-Anschluss fertig (nur Schlüssel fehlen), Pressemappe /presse + /en/press.
+- 2026-10-01 · Wachstums-Motor (`GROWTH.md`) · Owned SEO live: Kosten-Rechner DE/EN + 8 Selbsttest-Seiten DE/EN (je eigene `src`, z. B. `testmagnesium`) – indexierbar sobald Impressum-Daten da sind
