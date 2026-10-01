@@ -26,6 +26,7 @@ import { openShop, refillStock, shoppingList, stockInfo } from "@/lib/labStock"
 import { ShopButton, ShoppingCard, StockCard, StockSheet } from "./stock"
 import { KolbiPage } from "./kolbi"
 import { FounderWelcome, PaywallSheet, ProGate, ReviewSheet } from "./grow"
+import { ProfileCard } from "./profile"
 import { SITE_URL, betaOpen, claimFounder, markPurchased, markReviewAsked, shouldAskReview, type ProFeature } from "@/lib/labGrow"
 import { checkEntitlement } from "@/lib/labBilling"
 import { configureStats, srcFromUrl, track, trackCheckin, trackOnce } from "@/lib/labStats"
@@ -522,7 +523,7 @@ export default function LabApp() {
         <div style={{ maxWidth: 640, margin: "0 auto", padding: "10px 16px", display: "flex", alignItems: "center", gap: 8 }}>
           {!STORE_MODE && <Link href="/home" aria-label={t("Zurück zu TRUE")} style={{ color: "var(--text-dim)", textDecoration: "none", fontSize: "1.1rem", padding: "4px 6px 4px 0" }}>←</Link>}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 900, fontSize: "1.1rem", letterSpacing: "-.01em", lineHeight: 1.1 }}>Supplement Lab {s.demo && <span style={{ fontSize: "0.62rem", background: "var(--warning-dim)", color: "var(--warning)", padding: "2px 6px", borderRadius: 6, verticalAlign: "middle" }}>{t("BEISPIEL")}</span>}</div>
+            <div style={{ fontWeight: 900, fontSize: "1.1rem", letterSpacing: "-.01em", lineHeight: 1.1 }}>{canSwitchLang() ? "Kolbi" : "Supplement Lab"} {s.demo && <span style={{ fontSize: "0.62rem", background: "var(--warning-dim)", color: "var(--warning)", padding: "2px 6px", borderRadius: 6, verticalAlign: "middle" }}>{t("BEISPIEL")}</span>}</div>
             <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-dim)", marginTop: 2 }}>{lvl.emoji} {lvl.name}</div>
           </div>
           <div title={t("{n} Tage am Stück eingecheckt", { n: st })} className="lab-glass" style={{
@@ -942,6 +943,7 @@ function Dashboard({ s, wins, today, now, msgs, onAction, onQuick, onTake, onPha
         lockedUntil={!checked && checkinLocked ? s.reminders.checkin : null} notStarted={notStarted} startIn={notStarted ? remaining : null}
         dropKey={dropKey} onRound={onRound} onKolbi={() => goTab("kolbi")} onUnlock={onUnlock} onCheckin={() => onCheckin(today)} />
 
+      {first?.kind === "baseline" && !notStarted && today <= addDays(first.end, 3) && <ProfileCard s={s} first={first} today={today} onCheckin={() => checked ? onCheckin(today) : onRound()} />}
       {recap.ready && <RecapTeaser end={recap.end} onOpen={() => onAction({ kind: "recap" }, "recap")} />}
       {top && <KolbiSays msg={top} more={tips.length - 1} onAction={onAction} onMore={() => goTab("kolbi")} />}
 
@@ -1787,7 +1789,7 @@ function StackView({ s, update, onVerdict, onStartStack }: { s: LabState; update
   }
 
   const copy = async () => {
-    const lines = [t("Mein Supplement-Stack (TRUE Supplement Lab)"), ""]
+    const lines = [canSwitchLang() ? t("Mein Supplement-Stack (Kolbi)") : t("Mein Supplement-Stack (TRUE Supplement Lab)"), ""]
     SLOTS.forEach(slot => {
       const items = plan.placements.filter(p => p.slot === slot.id)
       if (!items.length) return

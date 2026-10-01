@@ -7,7 +7,8 @@ import { DIMS, addDays, daySum, streak, suppColor, testResult, type Dim, type La
 import { Mascot } from "./mascot"
 import { haptic } from "./ui"
 import { track } from "@/lib/labStats"
-import { t, dec } from "@/lib/labI18n"
+import { t, dec, canSwitchLang } from "@/lib/labI18n"
+import { SITE_URL } from "@/lib/labGrow"
 
 const W = 1080, H = 1920
 const fmt1 = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : "±"}${dec(Math.abs(n), 1)}`
@@ -60,7 +61,7 @@ async function footer(g: CanvasRenderingContext2D, mood: "party" | "happy" | "th
   if (k) g.drawImage(k, 70, H - 330, 230, 230)
   g.fillStyle = "rgba(255,255,255,.16)"; g.beginPath(); g.roundRect(330, H - 300, 680, 150, 40); g.fill()
   g.fillStyle = "#fff"; g.textAlign = "left"; g.font = font(40, 800); g.fillText(line, 370, H - 248, 610)
-  g.font = font(34, 700); g.globalAlpha = 0.85; g.fillText("🧪 Supplement Lab", 370, H - 196); g.globalAlpha = 1; g.textAlign = "center"
+  g.font = font(34, 700); g.globalAlpha = 0.85; g.fillText(canSwitchLang() ? `🧪 Kolbi · ${SITE_URL.replace(/^https?:\/\//, "")}` : "🧪 Supplement Lab", 370, H - 196, 620); g.globalAlpha = 1; g.textAlign = "center"
 }
 
 /** Ergebnis eines Tests als Story-Karte. */
