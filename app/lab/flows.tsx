@@ -183,7 +183,7 @@ function prefillSupps(): MySupp[] {
     for (const raw of ids) {
       const key = raw.toLowerCase().replace(/[^a-z]/g, "")
       const lib = key ? LIBRARY.find(l => l.id.replace(/[^a-z]/g, "") === key) : undefined
-      if (lib && lib.category !== "Peptide" && !out.some(x => x.lib === lib.id)) out.push(makeSupp(lib, lib.name, out))
+      if (lib && lib.category !== "Peptide" && !lib.rx && !out.some(x => x.lib === lib.id)) out.push(makeSupp(lib, lib.name, out))
     }
     return out.slice(0, 12)
   } catch { return [] }

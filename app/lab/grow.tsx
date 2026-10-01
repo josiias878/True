@@ -85,11 +85,11 @@ const FACES: { m: Mood; e: string; l: string }[] = [{ m: "love", e: "😍", l: t
  * Bewertungs-Moment nach einem Erfolgserlebnis (oder Feedback direkt, mit start="feedback").
  * 😍 → Store-Bewertung (native) bzw. Weitersagen · 🙂/😕 → was besser werden soll (anonym an Kolbi).
  */
-export function ReviewSheet({ start = "ask", onAnswer, onClose, onFlash }: {
-  start?: "ask" | "feedback"; onAnswer: (m: Mood) => void; onClose: () => void; onFlash: (m: string) => void
+export function ReviewSheet({ start = "ask", where, initialMood, onAnswer, onClose, onFlash }: {
+  start?: "ask" | "feedback"; where?: string; initialMood?: Mood; onAnswer: (m: Mood) => void; onClose: () => void; onFlash: (m: string) => void
 }) {
   const [step, setStep] = useState<"ask" | "love" | "feedback" | "thanks">(start)
-  const [mood, setMood] = useState<Mood>(start === "feedback" ? "ok" : "love")
+  const [mood, setMood] = useState<Mood>(initialMood ?? (start === "feedback" ? "ok" : "love"))
   const [text, setText] = useState("")
   const [busy, setBusy] = useState(false)
 
@@ -100,7 +100,7 @@ export function ReviewSheet({ start = "ask", onAnswer, onClose, onFlash }: {
   }
   const send = async () => {
     setBusy(true)
-    const ok = await sendFeedback(mood, text, start === "feedback" ? "kolbi" : "review")
+    const ok = await sendFeedback(mood, text, where ?? (start === "feedback" ? "kolbi" : "review"))
     setBusy(false)
     if (ok) setStep("thanks"); else onFlash(t("⚠️ Senden hat nicht geklappt – versuch's später nochmal"))
   }

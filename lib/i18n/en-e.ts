@@ -240,6 +240,7 @@ export const EN_E: Record<string, string> = {
   "Noch {n} Abende, dann sage ich dir, was mir an dir auffällt.": "{n} more evenings, then I'll tell you what I notice about you.",
   "Am stärksten: {d} (⌀ {v}★)": "Strongest: {d} (avg {v}★)",
   "Am meisten Luft nach oben: {d} (⌀ {v}★) – darauf achte ich bei deinen Tests besonders.": "Most room to grow: {d} (avg {v}★) – I'll pay extra attention to it in your tests.",
+  "Bisher sind deine Bereiche ziemlich ausgeglichen – ich schaue weiter genau hin.": "So far your areas are pretty balanced – I'll keep a close eye on them.",
   "{d} schwankt bei dir stark – genau da hilft ein sauberer Vergleich.": "Your {d} varies a lot – that's exactly where a clean comparison helps.",
   "An Tagen mit „{tag}“ warst du ⌀ {v}★ schlechter drauf.": "On days with “{tag}” you felt {v}★ worse on average.",
   "An Tagen mit „{tag}“ warst du ⌀ {v}★ besser drauf.": "On days with “{tag}” you felt {v}★ better on average.",

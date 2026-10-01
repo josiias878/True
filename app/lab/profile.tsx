@@ -1,7 +1,7 @@
 "use client"
 // ── „Dein Profil“: macht die Reset-Tage sofort wertvoll ─────────────────────────
 // Ab dem 1. Check-in eigene Werte je Bereich, ab 3 Check-ins erste Aussagen – nur aus den eigenen Daten.
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { activeDims, daySum, tagLabel, type LabState, type PhaseWindow } from "@/lib/supplementLab"
 import { t, dec } from "@/lib/labI18n"
 import { Mascot } from "./mascot"
@@ -14,33 +14,40 @@ const sd = (xs: number[]) => { const m = avg(xs); return Math.sqrt(avg(xs.map(x 
 const PULSE_KEY = "lab-pulse-profile"
 const pulseDone = () => { try { return !!localStorage.getItem(PULSE_KEY) } catch { return true } }
 
-export function profileOf(s: LabState, upTo: string) {
-  const days = Object.values(s.checkins).filter(c => c.date <= upTo).sort((a, b) => a.date.localeCompare(b.date))
+export function profileOf(s: LabState, upTo: string, from = "") {
+  const days = Object.values(s.checkins).filter(c => c.date >= from && c.date <= upTo).sort((a, b) => a.date.localeCompare(b.date))
   const dims = activeDims(s).map(d => {
     const vals = days.map(c => c.scores[d.id]).filter((v): v is number => typeof v === "number")
     return { ...d, n: vals.length, avg: vals.length ? avg(vals) : null, sd: vals.length >= 3 ? sd(vals) : 0 }
   }).filter(d => d.avg != null) as (ReturnType<typeof activeDims>[number] & { n: number; avg: number; sd: number })[]
-  // Störfaktor mit dem größten Unterschied im Gesamtgefühl (mind. 1 Tag mit, 2 ohne)
+  // Störfaktor mit dem größten Unterschied im Gesamtgefühl (mind. 2 Tage mit, 2 ohne)
   const tags = [...new Set(days.flatMap(c => c.tags))]
   let tag: { tag: string; delta: number } | null = null
   for (const tg of tags) {
     const w = days.filter(c => c.tags.includes(tg)).map(daySum), wo = days.filter(c => !c.tags.includes(tg)).map(daySum)
-    if (w.length >= 1 && wo.length >= 2) { const d = avg(w) - avg(wo); if (Math.abs(d) >= 0.5 && (!tag || Math.abs(d) > Math.abs(tag.delta))) tag = { tag: tg, delta: d } }
+    if (w.length >= 2 && wo.length >= 2) { const d = avg(w) - avg(wo); if (Math.abs(d) >= 0.5 && (!tag || Math.abs(d) > Math.abs(tag.delta))) tag = { tag: tg, delta: d } }
   }
   return { n: days.length, dims, tag }
 }
 
 export function ProfileCard({ s, first, today, onCheckin }: { s: LabState; first: PhaseWindow; today: string; onCheckin: () => void }) {
-  const p = profileOf(s, today)
+  // Nur Reset-Tage zählen – die Karte bleibt bis first.end+3 sichtbar, Testtage gehören nicht ins Normal
+  const p = profileOf(s, today < first.end ? today : first.end, first.start)
   const goal = first.days
   const done = p.n >= goal
   const sorted = [...p.dims].sort((a, b) => b.avg - a.avg)
   const best = sorted[0], low = sorted[sorted.length - 1]
+  // Stärkste/schwächste Bereiche nur benennen, wenn sie sich wirklich unterscheiden (Quick-Check-in setzt oft alle gleich)
+  const ranked = p.n >= 3 && sorted.length > 1 && best.avg - low.avg >= 0.3
   const shaky = [...p.dims].filter(d => d.n >= 3 && d.sd >= 1).sort((a, b) => b.sd - a.sd)[0]
   const [pulse, setPulse] = useState<"ask" | "thanks" | "done">(() => pulseDone() ? "done" : "ask")
+  const [mood, setMood] = useState<"love" | "ok" | "meh">("ok")
+  // Danke-Knopf erst nach kurzer Pause scharf – sonst öffnet ein Doppel-Tipp sofort das Feedback-Fenster
+  const [armed, setArmed] = useState(false)
+  useEffect(() => { if (pulse !== "thanks") return; const id = setTimeout(() => setArmed(true), 400); return () => clearTimeout(id) }, [pulse])
   const answer = (m: "love" | "ok" | "meh") => {
     try { localStorage.setItem(PULSE_KEY, m) } catch {}
-    setPulse("thanks"); void sendFeedback(m, "", "profile")
+    setMood(m); setPulse("thanks"); void sendFeedback(m, "", "profile")
   }
   return (
     <div className="lab-card lab-rise" style={{ padding: 16 }}>
@@ -71,7 +78,7 @@ export function ProfileCard({ s, first, today, onCheckin }: { s: LabState; first
               <span style={{ width: 92, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.emoji} {d.label}</span>
               <span style={{ flex: 1, height: 10, borderRadius: 5, background: "var(--surface-2)", overflow: "hidden" }}>
                 <span style={{ display: "block", height: "100%", width: `${(d.avg / 5) * 100}%`, borderRadius: 5, transition: "width .8s",
-                  background: p.n >= 3 && d === best ? "#1baf7a" : p.n >= 3 && d === low && sorted.length > 1 ? "#eda100" : "color-mix(in srgb, var(--accent) 70%, transparent)" }} />
+                  background: ranked && d === best ? "#1baf7a" : ranked && d === low ? "#eda100" : "color-mix(in srgb, var(--accent) 70%, transparent)" }} />
               </span>
               <span style={{ width: 34, textAlign: "right", fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>{dec(d.avg)}</span>
             </div>
@@ -83,8 +90,10 @@ export function ProfileCard({ s, first, today, onCheckin }: { s: LabState; first
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 12 }}>
-            {best && <Insight emoji="💚" text={t("Am stärksten: {d} (⌀ {v}★)", { d: best.label, v: dec(best.avg) })} />}
-            {low && low !== best && <Insight emoji="🎯" text={t("Am meisten Luft nach oben: {d} (⌀ {v}★) – darauf achte ich bei deinen Tests besonders.", { d: low.label, v: dec(low.avg) })} />}
+            {ranked ? <>
+              <Insight emoji="💚" text={t("Am stärksten: {d} (⌀ {v}★)", { d: best.label, v: dec(best.avg) })} />
+              <Insight emoji="🎯" text={t("Am meisten Luft nach oben: {d} (⌀ {v}★) – darauf achte ich bei deinen Tests besonders.", { d: low.label, v: dec(low.avg) })} />
+            </> : sorted.length > 1 && <Insight emoji="⚖️" text={t("Bisher sind deine Bereiche ziemlich ausgeglichen – ich schaue weiter genau hin.")} />}
             {shaky && <Insight emoji="🎢" text={t("{d} schwankt bei dir stark – genau da hilft ein sauberer Vergleich.", { d: shaky.label })} />}
             {p.tag && <Insight emoji="🔎" text={p.tag.delta < 0
               ? t("An Tagen mit „{tag}“ warst du ⌀ {v}★ schlechter drauf.", { tag: tagLabel(p.tag.tag), v: dec(Math.abs(p.tag.delta)) })
@@ -98,7 +107,7 @@ export function ProfileCard({ s, first, today, onCheckin }: { s: LabState; first
               </div>
             )}
             {pulse === "thanks" && (
-              <button className="lab-press lab-pop" onClick={() => { setPulse("done"); window.dispatchEvent(new CustomEvent("lab-feedback")) }} style={{ border: "none", background: "none", color: "var(--accent)", fontWeight: 800, fontSize: "0.78rem", textAlign: "left", padding: "4px 2px" }}>
+              <button className="lab-press lab-pop" onClick={() => { if (!armed) return; setPulse("done"); window.dispatchEvent(new CustomEvent("lab-feedback", { detail: { where: "profile", mood } })) }} style={{ border: "none", background: "none", color: "var(--accent)", fontWeight: 800, fontSize: "0.78rem", textAlign: "left", padding: "4px 2px" }}>
                 {t("Danke! 💚 Magst du mir in einem Satz sagen, was fehlt? ›")}
               </button>
             )}

@@ -211,7 +211,17 @@ export default function LabApp() {
   const [unlockedFor, setUnlockedFor] = useState<string | null>(null)
   const [stockFor, setStockFor] = useState<string | null>(null)
   const [reviewOpen, setReviewOpen] = useState<false | "ask" | "feedback">(false)
-  useEffect(() => { const h = () => setReviewOpen("feedback"); window.addEventListener("lab-feedback", h); return () => window.removeEventListener("lab-feedback", h) }, [])
+  // Feedback von anderswo (z. B. Profil-Puls): detail {where, mood} → richtig zugeordnet senden
+  const [reviewCtx, setReviewCtx] = useState<{ where?: string; mood?: "love" | "ok" | "meh" }>({})
+  useEffect(() => {
+    const h = (e: Event) => {
+      const d = (e as CustomEvent<{ where?: unknown; mood?: unknown } | undefined>).detail
+      const where = typeof d?.where === "string" && /^[a-z-]{2,20}$/.test(d.where) ? d.where : undefined
+      const mood = d?.mood === "love" || d?.mood === "ok" || d?.mood === "meh" ? d.mood : undefined
+      setReviewCtx({ where, mood }); setReviewOpen("feedback")
+    }
+    window.addEventListener("lab-feedback", h); return () => window.removeEventListener("lab-feedback", h)
+  }, [])
   const [founderHello, setFounderHello] = useState(false)
   const [paywall, setPaywall] = useState<false | { from?: ProFeature }>(() => {
     try { return new URLSearchParams(location.search).get("paywall") ? {} : false } catch { return false }
@@ -572,7 +582,7 @@ export default function LabApp() {
             onVerdict={setVerdictFor} onCheckin={setCheckinDate} onPhase={setPhaseSheet} goTab={goTab} onRecap={() => setRecapEnd(recapWeekEnd(now, today))} />}
           {tab === "kolbi" && <KolbiPage s={s} mood={msgs[0]?.mood ?? "happy"} fill={dayProgress(s, today)} msgs={kolbiTips} onAction={runAction}
             murky={(() => { const y = addDays(today, -1); return !!wins[0] && y >= wins[0].start && !s.checkins[y] && !s.checkins[today] })()}
-            onFlash={setFlash} onFeedback={() => setReviewOpen("feedback")} />}
+            onFlash={setFlash} onFeedback={() => { setReviewCtx({}); setReviewOpen("feedback") }} />}
         </div>
       </main>
 
@@ -618,8 +628,8 @@ export default function LabApp() {
       {founderHello && !newBadge && <FounderWelcome onFlash={setFlash} onClose={() => setFounderHello(false)} />}
       {paywall && <PaywallSheet s={s} from={paywall.from} onFlash={setFlash} onClose={() => setPaywall(false)}
         onPurchased={plan => { update(p => markPurchased(p, plan, today)); setPaywall(false); setConfetti(true); track(plan === "restored" ? "restore" : "purchase") }} />}
-      {reviewOpen && !round && !newBadge && !recapEnd && askCommunity === false && <ReviewSheet start={reviewOpen} onFlash={setFlash}
-        onAnswer={m => update(p => markReviewAsked(p, today, m))} onClose={() => setReviewOpen(false)} />}
+      {reviewOpen && !round && !newBadge && !recapEnd && askCommunity === false && <ReviewSheet start={reviewOpen} where={reviewCtx.where} initialMood={reviewCtx.mood} onFlash={setFlash}
+        onAnswer={m => update(p => markReviewAsked(p, today, m))} onClose={() => { setReviewOpen(false); setReviewCtx({}) }} />}
       {expOpen && <ExperimentSheet s={s} e={expOpen} onClose={() => setExpOpen(null)} onStart={away => {
         const e = expOpen
         setExpOpen(null)
