@@ -36,9 +36,9 @@ Kolbi schaut in deine Daten und zeigt dir Muster, die dir sonst nicht auffallen 
 Einnahmen werden nach Tageszeit gebündelt. Kolbi merkt sich, wann du wirklich einnimmst, und
 passt die Erinnerungen an. Vergessen? Am nächsten Morgen kannst du nachtragen.
 
-💸 SPAR DIR, WAS NICHTS BRINGT
+💸 SPAR DIR, WAS DIR NICHTS BRINGT
 Trag den Preis ein und sieh, was dein Stack pro Monat kostet – und wie viel du sparst, wenn
-etwas rausfliegt. Kolbi sagt dir außerdem, bevor eine Dose leer ist.
+du etwas weglässt. Kolbi sagt dir außerdem, bevor eine Dose leer ist.
 
 🧭 FERTIGE EXPERIMENTE
 Schlaf, Fokus, Ruhe, Training, Basis oder Bauch: Wähle ein Thema, Kolbi plant Reihenfolge und Dauer.
@@ -135,13 +135,20 @@ ready-made experiments and your weekly recap.
 | 1 | Finde raus, was bei DIR wirkt | Find out what works for YOU | `01-1-heute.png` |
 | 2 | 1 Minute am Abend | 1 minute each evening | `02-3b-checkin.png` |
 | 3 | Kolbi entdeckt deine Muster | Kolbi spots your patterns | `03-4-muster.png` |
-| 4 | Spar dir, was nichts bringt | Stop paying for what doesn't work | `04-5-kosten.png` |
+| 4 | Spar dir, was dir nichts bringt | Skip what doesn't work for you | `04-5-kosten.png` |
 | 5 | Fertige Experimente | Ready-made experiments | `05-7-experimente.png` |
 | 6 | Deine Woche als Story | Your week as a story | `06-9-story.png` |
+| 7 | Kolbi, dein Lab-Coach | Kolbi, your lab coach | `07-8-kolbi.png` |
 
-Neu erzeugen: `node tools/raw-shots.mjs <rohordner>` (Vorschau-Server auf :4173), dann
-`node tools/compose.mjs <rohordner> store/screenshots-de de` bzw. `… en`.
-Community- und Kolbi-Tab sind absichtlich **nicht** dabei (dort stünden Beispielzahlen).
+Alle Bilder mit Demo-Zahlen tragen sichtbar **„Beispiel-Daten“ / “Example data“** (nur Bild 5 „Experimente“ hat keine).
+Community-Zahlen werden nicht gezeigt (die Übersicht wird beim Aufnehmen absichtlich nicht beantwortet).
+
+Neu erzeugen (Stand 2. Okt 2026):
+1. `cd supplement-lab && npx vite build && npx vite preview --port 4175` (eigener Server, danach beenden)
+2. `node marketing/tools/raw-shots.mjs http://localhost:4175/ <roh-de> dark de` und `… <roh-en> dark en`
+3. im Ordner `marketing`: `node tools/compose.mjs <roh-de> store/screenshots-de de` bzw. `<roh-en> store/screenshots-en en`
+   (meldet „⚠️ Text zu breit“, falls eine Zeile nicht passt)
+4. Product-Hunt-Galerie: `node tools/ph-assets.mjs <roh-en> --gallery-only`
 
 > ✅ Die App ist zweisprachig (Deutsch/Englisch, automatisch nach Gerätesprache, umschaltbar in den Einstellungen).
 > Englische Screenshots zeigen die englische Oberfläche.

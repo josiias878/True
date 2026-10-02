@@ -1,12 +1,13 @@
 // Product-Hunt-Paket: animiertes Logo (240×240 GIF) + Galerie (1270×760) aus englischen App-Screenshots.
-// Aufruf (im Ordner marketing): FFMPEG=… node tools/ph-assets.mjs <raw-en-ordner>
+// Aufruf (im Ordner marketing): FFMPEG=… node tools/ph-assets.mjs <raw-en-ordner> [--gallery-only]
+// Rohbilder: tools/raw-shots.mjs (… dark en). Demo-Zahlen im Telefon → Etikett „Example data“.
 import { createRequire } from "module"
 import fs from "fs"
 import { execFileSync } from "child_process"
 const require = createRequire(import.meta.url)
 const { chromium } = require(execFileSync("npm", ["root", "-g"]).toString().trim() + "/playwright")
 const FFMPEG = process.env.FFMPEG || "ffmpeg"
-const RAW = process.argv[2]
+const RAW = process.argv[2], GALLERY_ONLY = process.argv.includes("--gallery-only")
 const OUT = "launch/producthunt"; fs.mkdirSync(OUT, { recursive: true })
 const TMP = (process.env.TMPDIR_FRAMES || "/tmp/kolbi-frames") + "/ph"; fs.rmSync(TMP, { recursive: true, force: true }); fs.mkdirSync(TMP, { recursive: true })
 const FONT = fs.readFileSync("brand/fonts/Nunito-latin.woff2").toString("base64")
@@ -15,6 +16,7 @@ const BG = "radial-gradient(60% 80% at 15% 20%,#9085e9 0%,transparent 60%),radia
 const b = await chromium.launch()
 
 // 1) Animiertes Logo: Kolbi hüpft und blinzelt (2 s Schleife, 25 fps)
+if (!GALLERY_ONLY) {
 const p = await b.newPage({ viewport: { width: 240, height: 240 } })
 await p.setContent(`<html><body style="margin:0;width:240px;height:240px;background:${BG};display:flex;align-items:center;justify-content:center;overflow:hidden">
 <style>.lab-blink{transform-box:fill-box;transform-origin:center;animation:bl 2s infinite}@keyframes bl{0%,80%,100%{transform:scaleY(1)}86%{transform:scaleY(.08)}92%{transform:scaleY(1)}}
@@ -28,12 +30,13 @@ for (let f = 0; f < 50; f++) {
 execFileSync(FFMPEG, ["-y", "-loglevel", "error", "-framerate", "25", "-i", `${TMP}/%03d.png`, "-vf", "split[a][b];[a]palettegen=max_colors=128[p];[b][p]paletteuse=dither=bayer", "-loop", "0", `${OUT}/thumbnail.gif`])
 fs.copyFileSync(`${TMP}/000.png`, `${OUT}/thumbnail.png`)
 console.log("✓ thumbnail.gif", (fs.statSync(`${OUT}/thumbnail.gif`).size / 1e3).toFixed(0), "kB")
+}
 
 // 2) Galerie 1270×760: Telefon + Überschrift
 const G = [
   ["1-heute", "Find out which supplements actually work for YOU", "Kolbi plans your experiment: reset, then one supplement at a time.", "happy-alive"],
   ["3b-checkin", "One minute each evening", "Rate sleep, energy, calm and focus – Kolbi compares with your normal.", "think-alive"],
-  ["4-muster", "Patterns you'd never notice", "Kolbi spots what affects your ratings – from your own data.", "party-alive"],
+  ["4-muster", "Patterns you'd never notice", "Kolbi looks for patterns in your ratings – in your own data.", "party-alive"],
   ["5-kosten", "Stop paying for what doesn't work for you", "See what your stack costs and what you save when something gets dropped.", "happy-shades"],
 ]
 const g = await b.newPage({ viewport: { width: 1270, height: 760 } })
@@ -47,7 +50,8 @@ for (const [i, [shot, h, sub, k]] of G.entries()) {
   <div style="font-size:28px;font-weight:700;opacity:.88;line-height:1.35">${sub}</div>
   <div style="font-size:22px;font-weight:900;opacity:.7;margin-top:6px">🧪 Kolbi · free · no account · data stays on your device</div>
 </div>
-<div style="width:330px;height:715px;flex-shrink:0;border-radius:52px;background:#0b0b14;padding:12px;box-shadow:0 40px 90px rgba(0,0,0,.5),inset 0 0 0 2px rgba(255,255,255,.12);margin-top:110px">
+<div style="position:relative;width:330px;height:715px;flex-shrink:0;border-radius:52px;background:#0b0b14;padding:12px;box-shadow:0 40px 90px rgba(0,0,0,.5),inset 0 0 0 2px rgba(255,255,255,.12);margin-top:110px">
+  <div style="position:absolute;top:-46px;left:50%;transform:translateX(-50%);padding:4px 14px;border-radius:999px;font-size:17px;font-weight:800;white-space:nowrap;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25)">Example data</div>
   <img src="data:image/png;base64,${img}" style="width:100%;height:100%;object-fit:cover;object-position:top;border-radius:42px"></div>
 </body></html>`)
   await g.evaluate(() => document.fonts.ready)

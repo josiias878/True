@@ -1,6 +1,7 @@
 // Landingpage + Rechtsseiten als statische Dateien nach marketing/site/.
 // Aufruf (im Ordner marketing): node tools/build-site.mjs
-// Solange im Impressum Platzhalter stehen, ist die Seite auf „noindex“ (nicht in Google).
+// Solange in einem Rechtstext (DE oder EN) Platzhalter stehen, ist die Seite auf „noindex“ (nicht in Google).
+// Go-Live: OWNER (unten) ausfüllen, neu bauen – Schritte in launch/GO-LIVE.md.
 import { createRequire } from "module"
 import fs from "fs"
 const require = createRequire(import.meta.url)
@@ -29,9 +30,20 @@ for (const n of Object.values(TRACKER)) for (const ext of [".pdf", "-p1.webp", "
   if (fs.existsSync(f)) fs.copyFileSync(f, `${OUT}/downloads/${n}${ext}`); else console.log(`⚠️ ${f} fehlt – erst node tools/tracker.mjs`)
 }
 
-const legalMd = Object.fromEntries(["impressum", "datenschutz", "nutzungsbedingungen"].map(n => [n, fs.readFileSync(`legal/${n}.md`, "utf8")]))
+/** Impressum-Daten des Inhabers – EINE Stelle für alle Rechtsseiten (DE + EN) und die Pressemappe.
+ *  Erst wenn alle vier ausgefüllt sind, werden die [Platzhalter] beim Bauen ersetzt → Seite indexierbar.
+ *  Leer oder unvollständig = Entwurf (noindex), Ausgabe unverändert. */
+const OWNER = { "Vorname Nachname": "", "Straße Hausnummer": "", "PLZ Ort": "", "E-Mail-Adresse": "" }
+const OWNER_OK = Object.values(OWNER).every(v => v.trim())
+if (!OWNER_OK && Object.values(OWNER).some(v => v.trim())) console.log("⚠️ OWNER unvollständig – bleibt Entwurf (noindex)")
 const PLACEHOLDER = /\[(Vorname Nachname|Straße Hausnummer|PLZ Ort|E-Mail-Adresse)\]/
-const DRAFT = Object.values(legalMd).some(t => PLACEHOLDER.test(t))
+/** Platzhalter ersetzen + Ausfüll-Hinweise entfernen (nur wenn OWNER komplett). */
+const fill = t => !OWNER_OK ? t : t
+  .replace(new RegExp(PLACEHOLDER.source, "g"), (_, k) => OWNER[k].trim())
+  .replace(/ (Platzhalter ausfüllen|Fill in the placeholders|Platzhalter in \[eckigen Klammern\]|Placeholders in \[square brackets\])\./g, "")
+const legalMd = Object.fromEntries(["impressum", "datenschutz", "nutzungsbedingungen"].map(n => [n, fill(fs.readFileSync(`legal/${n}.md`, "utf8"))]))
+const legalEn = Object.fromEntries(["imprint", "privacy", "terms"].filter(n => fs.existsSync(`legal/en/${n}.md`)).map(n => [n, fill(fs.readFileSync(`legal/en/${n}.md`, "utf8"))]))
+const DRAFT = [...Object.values(legalMd), ...Object.values(legalEn)].some(t => PLACEHOLDER.test(t))
 
 /** Kolbi inline – jede Einbettung bekommt eigene IDs, sonst kollidieren Verläufe/Clips. */
 let kid = 0
@@ -80,9 +92,9 @@ const L = {
     legalTitles: { impressum: "Impressum", datenschutz: "Datenschutzerklärung", nutzungsbedingungen: "Nutzungsbedingungen" },
     fine: "Kolbi ist ein Tagebuch- und Experimentier-Werkzeug, kein Medizinprodukt. Keine Diagnose, keine Heilversprechen – die Ergebnisse sind deine persönliche Einschätzung. Bei Beschwerden, Schwangerschaft oder Medikamenten sprich vorher mit Ärztin, Arzt oder Apotheke.",
     shotsDir: "store/screenshots-de",
-    shots: [["01-1-heute", "Heute: Kolbi führt dich durch den Tag"], ["02-3b-checkin", "Abend-Check-in in einer Minute"], ["03-4-muster", "Muster in deinen Daten"], ["04-5-kosten", "Was dein Stack kostet"], ["05-7-experimente", "Fertige Experimente"], ["06-9-story", "Deine Woche als Story"]],
+    shots: [["01-1-heute", "Heute: Kolbi führt dich durch den Tag"], ["02-3b-checkin", "Abend-Check-in in einer Minute"], ["03-4-muster", "Muster in deinen Daten"], ["04-5-kosten", "Was dein Stack kostet"], ["05-7-experimente", "Fertige Experimente"], ["06-9-story", "Deine Woche als Story"], ["07-8-kolbi", "Kolbi, dein Lab-Coach"]],
     steps: [["think-alive", "1", "Reset", "Ein paar Tage ohne Neues. Kolbi lernt dein Normal kennen: Schlaf, Energie, Ruhe, Fokus."], ["happy-alive", "2", "Testen", "Ein Supplement nach dem anderen. Jeden Abend eine Minute Check-in – ein paar Taps."], ["party-alive", "3", "Aufdecken", "Kolbi vergleicht mit deinem Normal. Du entscheidest: Behalten, Vielleicht oder raus."]],
-    features: [["🔎", "Muster-Detektor", "Schläfst du nach Alkohol schlechter? Bist du montags anders drauf? Kolbi schaut in deinen Daten nach."], ["⏰", "Erinnert, ohne zu nerven", "Gebündelt nach Tageszeit – und Kolbi merkt sich, wann du wirklich einnimmst."], ["💸", "Kosten & Sparen", "Sieh, was dein Stack im Monat kostet und was du sparst, wenn etwas rausfliegt."], ["🧭", "Fertige Experimente", "Schlaf, Fokus, Ruhe, Training: Thema wählen, Kolbi plant den Rest."], ["⏱️", "Timing-Check", "Was lieber mit Abstand, was zusammen? Auf einer Tageslinie erklärt."], ["📦", "Vorrat im Blick", "Kolbi sagt dir Bescheid, bevor eine Dose leer ist."], ["📊", "Wochen-Story", "Jeden Sonntag dein Rückblick – zum Durchtippen und Teilen."], ["📅", "Kalender-Abo", "Testende und Ergebnisse automatisch in deinem Kalender."]],
+    features: [["🔎", "Muster-Detektor", "Schläfst du nach Alkohol schlechter? Bist du montags anders drauf? Kolbi schaut in deinen Daten nach."], ["⏰", "Erinnert, ohne zu nerven", "Gebündelt nach Tageszeit – und Kolbi merkt sich, wann du wirklich einnimmst."], ["💸", "Kosten & Sparen", "Sieh, was dein Stack im Monat kostet und was du sparst, wenn du etwas weglässt."], ["🧭", "Fertige Experimente", "Schlaf, Fokus, Ruhe, Training: Thema wählen, Kolbi plant den Rest."], ["⏱️", "Timing-Check", "Was lieber mit Abstand, was zusammen? Auf einer Tageslinie erklärt."], ["📦", "Vorrat im Blick", "Kolbi sagt dir Bescheid, bevor eine Dose leer ist."], ["📊", "Wochen-Story", "Jeden Sonntag dein Rückblick – zum Durchtippen und Teilen."], ["📅", "Kalender-Abo", "Testende und Ergebnisse automatisch in deinem Kalender."]],
     faq: [["Ist das medizinische Beratung?", "Nein. Kolbi hilft dir, deine eigenen Beobachtungen strukturiert festzuhalten und zu vergleichen. Die App stellt keine Diagnosen und sagt nicht, dass ein Supplement „wirkt“ – sie zeigt dir, wie <em>du</em> dich mit und ohne gefühlt hast. Bei Beschwerden oder Medikamenten bitte vorher ärztlich beraten lassen."], ["Was kostet Kolbi?", "In der Beta ist alles kostenlos. Danach bleibt der Kern gratis; Lab Pro kostet 2,99 €/Monat, 19,99 €/Jahr oder 39,99 € einmalig. Wer bis zum 30. November startet, bekommt Pro als Dankeschön für immer gratis."], ["Wo landen meine Daten?", "Auf deinem Gerät. Es gibt kein Konto. Nur wenn du es einschaltest, werden Push-Erinnerungen (mit neutralem Text) oder ein anonymes Test-Ergebnis für die Community übertragen – Details in der <a href=\"/datenschutz\">Datenschutzerklärung</a>."], ["Wie installiere ich die App?", "iPhone: Link in Safari öffnen → Teilen-Symbol → „Zum Home-Bildschirm“. Android: im Chrome-Menü „App installieren“. Die Store-Versionen sind in Arbeit."], ["Wie lange dauert ein Test?", "Meist 5–10 Tage pro Supplement, dazu ein paar Tage Reset am Anfang. Kolbi plant die Reihenfolge und sagt dir, wann das Ergebnis da ist."]],
     t: { chip: "🧪 Beta · Gründer-Pro gratis bis 30. Nov", h1: 'Finde raus, was bei <span class="grad">DIR</span> wirkt.', lead: "Kolbi testet deine Supplements eins nach dem anderen, vergleicht mit deinem Normal und zeigt dir, was du behalten kannst – und was du dir sparen kannst.", start: "Jetzt kostenlos starten", how: "So geht's ↓", trust: ["🔒 Kein Konto", "📱 Daten bleiben auf deinem Gerät", "⏱️ 1 Minute am Tag"], hi: "Hi, ich bin Kolbi! 👋", poke: "Kolbi anstupsen", stepsH: "So einfach geht's", shotsH: "Ein Blick in die App", shotsSub: "Bunt, klar, ohne Zahlensalat – Kolbi zeigt dir nur, was gerade zählt.", featH: "Was Kolbi für dich macht", dataH: "Deine Daten gehören dir.", dataP: "Kein Konto, keine Anmeldung, kein Verkauf von Daten. Alles bleibt auf deinem Handy. Teilen ist immer freiwillig – und jederzeit löschbar.", founderH: "Gründer-Beta bis 30. November", founderP: "Jetzt ist alles gratis. Wer bis zum <b>30. November</b> startet, behält <b>Lab Pro für immer kostenlos</b> – als Dankeschön. Danach kostet Pro 2,99 €/Monat oder 19,99 €/Jahr.", faqH: "Häufige Fragen", finalH: "Schluss mit Raten.", finalP: "Starte heute dein erstes Experiment – Kolbi führt dich Schritt für Schritt.", finalBtn: "Kostenlos starten" },
     lines: ["Hihi, das kitzelt! 😄", "Ich teste mit dir. 🧪", "Erst Reset, dann Test!", "Behalten oder raus? Ich zeig's dir.", "Hi, ich bin Kolbi! 👋"],
@@ -96,7 +108,7 @@ const L = {
     legalTitles: { imprint: "Legal notice", privacy: "Privacy Policy", terms: "Terms of Use" },
     fine: "Kolbi is a journaling and self-experiment tool, not a medical device. No diagnosis, no health claims – results are your personal rating. If you have health issues, are pregnant or take medication, talk to your doctor or pharmacist first.",
     shotsDir: "store/screenshots-en",
-    shots: [["01-1-heute", "Today: Kolbi guides you through your day"], ["02-3b-checkin", "One-minute evening check-in"], ["03-4-muster", "Patterns in your data"], ["04-5-kosten", "What your stack costs"], ["05-7-experimente", "Ready-made experiments"], ["06-9-story", "Your week as a story"]],
+    shots: [["01-1-heute", "Today: Kolbi guides you through your day"], ["02-3b-checkin", "One-minute evening check-in"], ["03-4-muster", "Patterns in your data"], ["04-5-kosten", "What your stack costs"], ["05-7-experimente", "Ready-made experiments"], ["06-9-story", "Your week as a story"], ["07-8-kolbi", "Kolbi, your lab coach"]],
     steps: [["think-alive", "1", "Reset", "A few days without anything new. Kolbi learns your normal: sleep, energy, calm, focus."], ["happy-alive", "2", "Test", "One supplement at a time. A one-minute check-in every evening – just a few taps."], ["party-alive", "3", "Reveal", "Kolbi compares with your normal. You decide: keep, maybe or drop."]],
     features: [["🔎", "Pattern detector", "Do you sleep worse after drinking? Feel different on Mondays? Kolbi looks for it in your data."], ["⏰", "Reminders that don't nag", "Bundled by time of day – and Kolbi learns when you actually take them."], ["💸", "Cost & savings", "See what your stack costs per month and what you save when something gets dropped."], ["🧭", "Ready-made experiments", "Sleep, focus, calm, training: pick a topic, Kolbi plans the rest."], ["⏱️", "Timing check", "What's better apart, what together? Explained on a simple day line."], ["📦", "Stock at a glance", "Kolbi lets you know before a bottle runs out."], ["📊", "Weekly recap", "Every Sunday your week as a story – tap through and share."], ["📅", "Calendar feed", "Test ends and results show up in your calendar automatically."]],
     faq: [["Is this medical advice?", "No. Kolbi helps you record and compare your own observations in a structured way. The app doesn't diagnose and doesn't say a supplement \"works\" – it shows how <em>you</em> felt with and without it. If you have health issues or take medication, please ask a doctor first."], ["What does Kolbi cost?", "Everything is free during the beta. After that the core stays free; Lab Pro costs €2.99/month, €19.99/year or €39.99 one-time. Start by November 30 and you get Pro free forever, as a thank-you."], ["Where does my data go?", "It stays on your device. There's no account. Only if you turn it on, push reminders (with neutral text) or an anonymous test result for the community are sent – details in the <a href=\"/en/privacy\">privacy policy</a>."], ["How do I install the app?", "iPhone: open the link in Safari → Share → \"Add to Home Screen\". Android: Chrome menu → \"Install app\". Store versions are on the way."], ["How long does a test take?", "Usually 5–10 days per supplement, plus a few reset days at the start. Kolbi plans the order and tells you when your result is ready."]],
@@ -213,7 +225,7 @@ for (const [i, n] of ["imprint", "privacy", "terms"].entries()) {
   const f = `legal/en/${n}.md`
   if (!fs.existsSync(f)) { console.log(`⚠️ ${f} fehlt – englische Rechtsseite übersprungen`); continue }
   const title = L.en.legalTitles[n]
-  fs.writeFileSync(`${OUT}/en/${n}.html`, page(L.en, { title: `${title} – Kolbi`, desc: `${title} of Kolbi · Supplement Lab`, path: n, alt: legalAlt(i), body: `<main class="wrap doc">${md(fs.readFileSync(f, "utf8"))}</main>` }))
+  fs.writeFileSync(`${OUT}/en/${n}.html`, page(L.en, { title: `${title} – Kolbi`, desc: `${title} of Kolbi · Supplement Lab`, path: n, alt: legalAlt(i), body: `<main class="wrap doc">${md(legalEn[n])}</main>` }))
 }
 
 // ── Ratgeber ────────────────────────────────────────────────────────────────
@@ -392,7 +404,7 @@ for (const [lang, P] of Object.entries(PRESS)) {
 <h2>${P.longH}</h2><p>${P.long}</p>
 <h2>${P.dlH}</h2><div style="display:flex;flex-wrap:wrap;gap:10px;margin:10px 0">${shots}</div>
 <ul>${files.map(([f, n]) => `<li><a href="/press/${f}" download>${n}</a></li>`).join("")}</ul>
-<p><mark>${P.contact}</mark></p></main>` }))
+${DRAFT ? `<p><mark>${P.contact}</mark></p>` : `<p>${esc(fill(P.contact))}</p>`}</main>` }))
 }
 
 // ── Sitemap ─────────────────────────────────────────────────────────────────

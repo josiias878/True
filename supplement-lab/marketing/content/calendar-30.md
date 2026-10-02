@@ -217,7 +217,7 @@ Krankheiten, Beispielzahlen = „Beispiel“. In **[eckigen Klammern]** = echte 
 ### Tag 22 · Mo 26.10. · Repost · neuer Hook (10) ⏳
 - **Plattform:** TikTok · Reels · Shorts
 - **Datei:** `videos/10-behalten-oder-raus.mp4`
-- **Hook (Overlay):** „So entscheidest du, welche Dose rausfliegt ✂️“
+- **Hook (Overlay):** „So entscheidest du, welche Dose du weglassen kannst ✂️“
 - **Caption:**
   > Behalten 💚 oder raus ✂️ – nach jedem Test vergleicht Kolbi mit deinem Normal, du entscheidest. (Werte im Video = Beispiel.) ⏳ Noch 35 Tage Gründer-Pro für immer gratis. Link in Bio
 - **Hashtags:** #supplements #geldsparen #ausmisten #biohacking #nahrungsergänzung #selbstexperiment
@@ -309,7 +309,7 @@ Krankheiten, Beispielzahlen = „Beispiel“. In **[eckigen Klammern]** = echte 
 | 07 Tag 1 vs. 14 | Tag 1 vs. Tag 14 | 14 Abende. Je 1 Minute. 🔥 | Was 14 Check-ins dir zeigen können |
 | 08 Baseline | Was ist eine Baseline? 🤔 | Ohne diesen Schritt ist jeder Selbsttest geraten | Kennst du dein Normal? |
 | 09 POV Schrank | POV: Dein Supplement-Schrank 🫙 | Welches davon merkst du wirklich? 👀 | Wie viele Dosen stehen bei dir? 👇 |
-| 10 Behalten oder raus | Behalten oder raus? 🤔 | So entscheidest du, welche Dose rausfliegt ✂️ | Supplement-Ausmisten, aber mit Daten |
+| 10 Behalten oder raus | Behalten oder raus? 🤔 | So entscheidest du, welche Dose du weglassen kannst ✂️ | Supplement-Ausmisten, aber mit Daten |
 | 11 1 Minute | 1 Minute am Abend. 🌙 | Dein Abend-Check-in in unter 60 Sekunden ⏱️ | Der faulste Weg, Supplements zu testen 😴 |
 | 12 Gründer-Beta | ⏳ Nur bis 30. November | Noch [X] Tage: Pro für immer gratis 🏅 | Gründer:in werden? Nur bis 30.11. |
 

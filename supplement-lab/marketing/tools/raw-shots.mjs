@@ -1,5 +1,7 @@
 // Rohe App-Screenshots (iPhone 6,7"/6,9": 430×932 @3x) mit realistischen Beispieldaten.
 // Aufruf: node raw-shots.mjs <url> <outdir> [dark|light] [de|en]
+// Vorschau: im Ordner supplement-lab `npx vite build && npx vite preview --port 4175` → URL http://localhost:4175/
+// Community-Zahlen werden NICHT vorgetäuscht: die Übersicht (?all=1) schlägt fehl → kein Zähler, keine 👥-Quoten.
 import { createRequire } from "module"
 import fs from "fs"
 const require = createRequire(import.meta.url)
@@ -47,7 +49,7 @@ const browser = await chromium.launch()
 const ctx = await browser.newContext({ viewport: { width: 430, height: 932 }, deviceScaleFactor: 3, colorScheme: SCHEME, locale: LANGX === "en" ? "en-US" : "de-DE" })
 const page = await ctx.newPage()
 await page.clock.install({ time: base })
-await page.route("**/functions/v1/**", r => r.fulfill({ json: { lib: "magnesium", n: 214, min: 5, keepPct: 61, maybePct: 22, avg: 0.38, quantiles: [-0.5, 0.0, 0.4, 0.8, 1.2], dims: { schlaf: 0.7, ruhe: 0.4, energie: 0.1 }, sides: {}, avgDays: 6, total: 1873, libs: { magnesium: { n: 214, keepPct: 61 } } } }))
+await page.route("**/functions/v1/**", r => r.request().url().includes("all=1") ? r.abort() : r.fulfill({ json: { lib: "magnesium", n: 214, min: 5, keepPct: 61, maybePct: 22, avg: 0.38, quantiles: [-0.5, 0.0, 0.4, 0.8, 1.2], dims: { schlaf: 0.7, ruhe: 0.4, energie: 0.1 }, sides: {}, avgDays: 6, total: 1873, libs: { magnesium: { n: 214, keepPct: 61 } } } }))
 await page.addInitScript(([s, sch, lx]) => { if (!sessionStorage.getItem("seeded")) { localStorage.setItem("true-supplement-lab-v1", s); localStorage.setItem("true-lab-tab", "heute"); localStorage.setItem("lab-theme", sch); localStorage.setItem("lab-lang", lx); sessionStorage.setItem("seeded", "1") } }, [JSON.stringify(state), SCHEME, LANGX])
 await page.goto(URL_, { waitUntil: "networkidle" }); await page.clock.runFor(1500)
 const real = ms => new Promise(r => setTimeout(r, ms))
@@ -56,6 +58,10 @@ const shot = async name => { await real(1300); await page.screenshot({ path: `${
 await nice(); await page.mouse.move(80, 200)
 await shot("1-heute")
 await page.evaluate(() => window.scrollTo(0, 620)); await shot("2-weg"); await page.evaluate(() => window.scrollTo(0, 0))
+// Kolbi-Tab (Kopf + Tipps), dann Wissens-Album + Kacheln – vor der Tagesrunde, damit die Tipps zu den Beispieldaten passen
+await page.getByRole("button", { name: "Kolbi", exact: true }).click({ force: true }); await page.clock.runFor(900); await shot("8-kolbi")
+await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)); await shot("8b-kacheln") // Wissens-Album + Kacheln (Seitenende)
+await page.evaluate(() => window.scrollTo(0, 0)); await page.getByRole("button", { name: /^(Heute|Today)$/ }).click({ force: true }); await page.clock.runFor(900)
 // Tagesrunde: Einnahme-Schritt, dann Check-in-Tabelle (halb ausgefüllt)
 await page.getByRole("button", { name: /Los geht's|aufdecken|Let's go|Reveal result/ }).first().click(); await page.clock.runFor(1600)
 await shot("3-runde")
@@ -68,16 +74,10 @@ await page.getByRole("button", { name: /Runde schließen|Close round/ }).click()
 await page.getByRole("button", { name: /^(Ergebnisse|Results)$/ }).click({ force: true }); await page.clock.runFor(900); await nice(); await shot("4-muster")
 // Meine (Kosten)
 await page.getByRole("button", { name: /^(Meine|Supps)$/ }).click({ force: true }); await page.clock.runFor(900); await nice(); await shot("5-kosten")
-await page.locator("button", { hasText: "Magnesium" }).first().click(); await page.clock.runFor(900)
-await page.getByText(/Was andere erlebt haben|What others/).first().evaluate(el => el.scrollIntoView({ block: "start" })); await page.evaluate(() => { const sc = [...document.querySelectorAll("div")].find(d => d.style.maxHeight === "92dvh"); sc?.scrollBy(0, -40) })
-await shot("6-community")
-await page.keyboard.press("Escape"); await page.clock.runFor(500)
 await page.getByRole("button", { name: /🧪 Experimente|🧪 Experiments/ }).click(); await page.clock.runFor(900); await shot("7-experimente")
-// Kolbi
-await page.getByRole("button", { name: "Kolbi", exact: true }).click({ force: true }); await page.clock.runFor(900); await shot("8-kolbi")
 // Wochenrückblick
 await page.getByRole("button", { name: /^(Ergebnisse|Results)$/ }).click({ force: true }); await page.clock.runFor(700)
 await page.getByRole("button", { name: /Wochenrückblick ansehen|See weekly recap/ }).click(); await page.clock.runFor(800)
-await page.mouse.click(380, 500); await page.clock.runFor(300); await page.mouse.click(380, 500); await page.clock.runFor(300)
+await page.mouse.click(380, 500); await page.clock.runFor(300) // → Folie „Drangeblieben“
 await shot("9-story")
 await browser.close()
