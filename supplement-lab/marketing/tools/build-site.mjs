@@ -9,6 +9,11 @@ const { chromium } = require(require("child_process").execSync("npm root -g").to
 const APP = "https://supplement-lab-six.vercel.app"
 /** Öffentliche Adresse der Website – für hreflang, og:image und Sitemap (müssen absolut sein). */
 const SITE = "https://kolbi-smoky.vercel.app"
+/** Google Search Console (URL-Präfix-Property, HTML-Tag-Verifizierung): nur der content-Wert aus
+ *  <meta name="google-site-verification" content="…">. Leer = kein Tag (Ausgabe byte-gleich). Siehe launch/GO-LIVE.md. */
+const GSC_VERIFY = ""
+if (GSC_VERIFY && !/^[A-Za-z0-9_-]{10,100}$/.test(GSC_VERIFY)) throw new Error("GSC_VERIFY: nur den content-Wert eintragen (Buchstaben, Ziffern, _ und -)")
+const GSC_META = GSC_VERIFY ? `<meta name="google-site-verification" content="${GSC_VERIFY}">` : ""
 /** Kanal-Links: gleiche Startseite unter eigenem Pfad → Vercel Analytics zeigt Besuche je Kanal (ohne Cookies). */
 export const CHANNELS = ["invite", "reddit", "tiktok", "insta", "youtube", "producthunt", "hn", "facebook", "linkedin", "x", "threads", "discord", "betalist", "indiehackers", "pinterest", "forum", "qr"]
 const OUT = "site"
@@ -113,7 +118,7 @@ const page = (l0, { title, desc, body, path = "", alt, head = "" }) => {
 <title>${title}</title><meta name="description" content="${desc}">
 ${DRAFT ? '<meta name="robots" content="noindex, nofollow">' : ""}
 ${alt ? `<link rel="alternate" hreflang="de" href="${abs(alt.de)}"><link rel="alternate" hreflang="en" href="${abs(alt.en)}"><link rel="alternate" hreflang="x-default" href="${abs(alt.de)}">` : ""}
-${head}<meta name="theme-color" content="#14122b">
+${GSC_META}${head}<meta name="theme-color" content="#14122b">
 <meta property="og:title" content="${title}"><meta property="og:description" content="${desc}">
 <meta property="og:image" content="${SITE}/img/og${l.lang === "en" ? "-en" : ""}.png"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/img/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/img/kolbi.png">
