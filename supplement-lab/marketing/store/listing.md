@@ -26,7 +26,7 @@ es selbst herauszufinden – mit deinem eigenen kleinen Experiment.
 • Ein paar Tage Reset: Kolbi lernt dein Normal kennen.
 • Dann ein Supplement nach dem anderen – so siehst du, was welchen Unterschied macht.
 • Jeden Abend 1 Minute Check-in: Schlaf, Energie, Ruhe, Fokus – mit ein paar Taps.
-• Am Ende deckst du dein Ergebnis auf: Behalten, Vielleicht oder Fliegt raus.
+• Am Ende deckst du dein Ergebnis auf: Behalten, Vielleicht oder Raus.
 
 🔎 KOLBI ENTDECKT MUSTER
 Schläfst du an Tagen mit Kaffee am Nachmittag schlechter? Fühlst du dich am Wochenende anders?
@@ -97,7 +97,7 @@ entries and shows you patterns you'd otherwise miss.
 Intakes are bundled by time of day. Kolbi learns when you actually take them and adapts. Forgot
 your check-in? Catch up the next morning.
 
-💸 STOP PAYING FOR WHAT DOESN'T WORK
+💸 STOP PAYING FOR WHAT DOESN'T WORK FOR YOU
 Add prices and see what your stack costs per month – and what you save when something gets
 dropped. Kolbi also tells you before a bottle runs out.
 

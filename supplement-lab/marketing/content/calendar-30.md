@@ -65,7 +65,7 @@ Krankheiten, Beispielzahlen = „Beispiel“. In **[eckigen Klammern]** = echte 
 ### Tag 5 · Fr 09.10. · Karussell
 - **Plattform:** Instagram (Karussell) + TikTok (Fotomodus) · *kein Shorts*
 - **Datei:** `carousel-1/1.png` … `5.png`
-- **Hook:** „Wirken deine Supplements wirklich?“ (Slide 1)
+- **Hook:** „Wirken deine Supplements bei DIR?“ (Slide 1)
 - **Caption:**
   > Wie findest du raus, ob deine Supplements BEI DIR einen Unterschied machen? 🤔 Wisch durch – Kolbi zeigt dir die Methode: Reset → Testen → Aufdecken. Speichern, falls du später starten willst 📌 Link in Bio
 - **Hashtags:** #supplements #nahrungsergänzung #selbstexperiment #biohacking #routine #speichern

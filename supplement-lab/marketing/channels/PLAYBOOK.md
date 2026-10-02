@@ -40,7 +40,7 @@ time. Not medical advice.“* Profilbild: `../brand/avatar.png`.
 **Aufwärmen (Woche 1–3), 10 Min. pro Tag:** in r/QuantifiedSelf, r/Biohackers, r/FitnessDE, r/sleep echte
 Fragen beantworten (Tracking, Routinen, wie man Dinge sauber ausprobiert). **Ohne Link.** Hilfreiche Muster-Antwort:
 
-> Tip that helped me: change only one thing at a time and rate your day every evening for a week before
+> A simple approach: change only one thing at a time and rate your day every evening for a week before
 > you start, so you know your normal. Otherwise you can't tell what did what.
 
 ### r/FitnessDE (Deutsch) – erst Modmail, dann Post
@@ -51,11 +51,11 @@ Fragen beantworten (Tracking, Routinen, wie man Dinge sauber ausprobiert). **Ohn
 > keine Werbung, keine Daten auf Servern. Darf ich sie einmal vorstellen und um Feedback bitten? Wenn nicht,
 > völlig okay. Danke!
 
-**Post** (Flair z. B. „Ernährung“). Titel: *Ich wusste nie, ob meine Supplements was bringen – also teste ich sie jetzt einzeln (kostenlose App, Feedback gesucht)*
+**Post** (Flair z. B. „Ernährung“). Titel: *Supplements einzeln statt alle gleichzeitig testen – ich hab dafür eine kostenlose App gebaut (Feedback gesucht)*
 > Kennt ihr das: Kreatin, Magnesium, Vitamin D, Ashwagandha … alles gleichzeitig angefangen und danach
 > keine Ahnung, was was gemacht hat?
 >
-> Ich hab mir deshalb eine kleine App gebaut, die das sauber macht:
+> Dafür hab ich eine kleine App gebaut, die das sauber macht:
 > - ein paar Tage **Reset**, damit man sein Normal kennt
 > - dann **ein Supplement nach dem anderen**
 > - abends **1 Minute Check-in** (Schlaf, Energie, Ruhe, Fokus)
@@ -71,7 +71,7 @@ Fragen beantworten (Tracking, Routinen, wie man Dinge sauber ausprobiert). **Ohn
 ### r/QuantifiedSelf (EN) – Feedback-Post *(englisch – Link `/en/…`)*
 
 Titel: *I built a tiny n-of-1 tool to test supplements one at a time – looking for feedback on the method*
-> I kept stacking supplements without knowing what any of them did, so I built a small app around a simple protocol:
+> Many people start several supplements at once and can't tell afterwards what made a difference. So I built a small app around a simple protocol:
 >
 > 1. **Baseline:** a few days of 1-minute evening ratings (sleep, energy, calm, focus)
 > 2. **One change at a time:** each supplement gets its own test window, with optional washout days
@@ -88,9 +88,9 @@ Titel: *I built a tiny n-of-1 tool to test supplements one at a time – looking
 
 ### r/SideProject (EN) *(englisch – Link `/en/…`)*
 
-Titel: *Kolbi – a cute lab flask that helps you find out which supplements actually do something for you*
+Titel: *Kolbi – a cute lab flask that helps you test which supplements make a difference for you*
 > **What:** free web app (installable PWA) for structured self-experiments with supplements.
-> **Why:** I was spending [your amount] €/month on supplements with zero idea what worked.
+> **Why:** [your real reason in one sentence – only if true, otherwise: "Most people start several supplements at once and never know which one made a difference."]
 > **How:** baseline days → one supplement at a time → 1-min evening check-in → compare with your own normal.
 > **Stack/decisions:** React + Vite, local-first (no backend for your data), optional push via Supabase,
 > mascot drawn in SVG and animated in CSS.
@@ -122,16 +122,16 @@ Titel: *[Beta] Kolbi – test your supplements one at a time (free, no account)*
 - **Beschreibung (≤ 260):** `Kolbi is a free, local-first app for personal supplement experiments: a few baseline days, then one supplement at a time with a 1-minute evening check-in. It compares each test with your own normal so you can keep, maybe or drop. No account.`
 - **Galerie:** englische Store-Screenshots (`../store/screenshots-en/`) + Video `../content/videos-en/02-so-gehts.mp4`
 - **Erster Kommentar (Maker):**
-> Hey PH 👋 I built Kolbi because my supplement shelf was costing me [your amount] €/month and I couldn't tell what any
-> of it did. Kolbi turns that into a simple personal experiment: baseline → one change at a time → compare.
+> Hey PH 👋 I built Kolbi because supplement shelves get expensive and it's hard to tell what any single one changes
+> for you. Kolbi turns that into a simple personal experiment: baseline → one change at a time → compare.
 > It's not a study and makes no health claims, just your own data, structured. Everything stays on your device.
 > I'd love to hear: what would you test first?
 
 **Show HN**
 - **Titel:** `Show HN: Kolbi – local-first n-of-1 experiments for your supplements`
 - **Text:**
-> I wanted a dead-simple way to run single-subject experiments on my own supplements: baseline days, one
-> change at a time, a 1-minute evening rating, then compare against my own baseline. Kolbi is a PWA (React +
+> I wanted a dead-simple way to run single-subject experiments on supplements: baseline days, one
+> change at a time, a 1-minute evening rating, then compare against your own baseline. Kolbi is a PWA (React +
 > Vite) that keeps all data in localStorage, with no account. Optional features (push reminders, calendar feed,
 > anonymous aggregate stats with k≥5) run on small Supabase edge functions that never see your entries.
 > Happy to talk about the protocol's limits (no blinding, confounders, regression to the mean) and the design.
@@ -173,7 +173,7 @@ Text für alle:
 Betreff: *Kostenloses Tool für Hörer: Supplements im Selbstversuch testen*
 > Hallo liebes Team der Biohacking-Praxis,
 >
-> ich höre eure Folgen gern und habe eine kleine, kostenlose App gebaut, die zu eurem Praxis-Ansatz passt:
+> [optional, nur wenn wahr: ein Satz, warum du ihren Podcast kennst] Ich habe eine kleine, kostenlose App gebaut, die zu eurem Praxis-Ansatz passt:
 > **Kolbi** hilft, Supplements strukturiert im Selbstversuch zu testen (Baseline, dann eins nach dem anderen,
 > abends 1 Minute bewerten, Vergleich mit dem eigenen Normal). Ohne Konto, die Daten bleiben auf dem Gerät,
 > keine Wirkversprechen.
@@ -208,7 +208,7 @@ Nur hilfreich antworten, **kein Link im Beitrag**. Link nur in Profil oder Signa
 | Kanal | Was | Link |
 |---|---|---|
 | YouTube Shorts | gleiche Videos wie TikTok, Banner `../brand/banner.png` | `/youtube` |
-| Threads / X | Video + 1 Satz, „Build in Public“-Updates (z. B. „Woche 2: 31 Tester, das häufigste Feedback war …“) | `/threads`, `/x` |
+| Threads / X | Video + 1 Satz, „Build in Public“-Updates (z. B. „Woche 2: [echte Zahl] Tester, das häufigste Feedback war …“ – nur echte Zahlen) | `/threads`, `/x` |
 | Pinterest | Karussell-Slides als Pins („Supplements selbst testen in 3 Schritten“) | `/pinterest` |
 | Discord (EN) | Biohacker Lounge, Biohackers HQ: nur im #self-promo-Kanal, Text wie r/alphaandbetausers | `/en/discord` |
 | Flyer/QR | z. B. Aushang im Gym (QR-Code kann ich erzeugen) | `/qr` |

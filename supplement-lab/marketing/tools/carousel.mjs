@@ -1,4 +1,4 @@
-// Instagram-Karussell (1080×1350): „Wirken deine Supplements wirklich?“ – 5 Slides
+// Instagram-Karussell (1080×1350): „Wirken deine Supplements bei DIR?“ – 5 Slides (Ton: brand/BRAND.md)
 // Aufruf (im Ordner marketing): node tools/carousel.mjs  → content/carousel-1/*.png
 import { createRequire } from "module"
 import fs from "fs"
@@ -19,13 +19,13 @@ p{font-size:42px;font-weight:700;opacity:.88;line-height:1.35}.g{background:line
 .row b{font-size:50px;font-weight:900;display:block}.row span{font-size:34px;opacity:.85}
 .swipe{font-size:34px;font-weight:900;opacity:.75}`
 const slides = [
-  `<div class="s">${k("think-alive", 420)}<h1>Wirken deine<br>Supplements<br><span class="g">wirklich?</span></h1><div class="swipe">Wisch → Kolbi zeigt's dir</div></div>`,
+  `<div class="s">${k("think-alive", 420)}<h1>Wirken deine<br>Supplements<br>bei <span class="g">DIR?</span></h1><div class="swipe">Wisch → Kolbi zeigt's dir</div></div>`,
   `<div class="s">${k("alert", 300)}<h2>Das Problem</h2><p>Du startest mehrere Sachen gleichzeitig,<br>fühlst dich „irgendwie anders“ –<br>und weißt nicht, <b>was</b> davon es war.</p></div>`,
   `<div class="s"><h2>Kolbis Methode</h2>
     <div class="row">${k("think", 150)}<div><b>1 · Reset</b><span>Ein paar Tage: dein Normal</span></div></div>
     <div class="row">${k("happy", 150)}<div><b>2 · Testen</b><span>Eins nach dem anderen, abends 1 Min.</span></div></div>
     <div class="row">${k("party", 150)}<div><b>3 · Aufdecken</b><span>Behalten, vielleicht oder raus</span></div></div></div>`,
-  `<div class="s" style="flex-direction:row;gap:40px;padding:70px 60px"><img src="${shot("03-4-muster")}" style="height:1180px;border-radius:40px;box-shadow:0 30px 80px rgba(0,0,0,.4)"><div style="text-align:left;display:flex;flex-direction:column;gap:24px"><h2 style="font-size:64px">Und<br>dazu:</h2><p style="font-size:38px">🔎 Muster<br>💸 Kosten<br>📦 Vorrat<br>⏰ Erinnerungen<br>📊 Wochen-Story</p></div></div>`,
+  `<div class="s" style="flex-direction:row;gap:40px;padding:70px 60px"><img src="${shot("de-03-4-muster")}" style="height:1180px;border-radius:40px;box-shadow:0 30px 80px rgba(0,0,0,.4)"><div style="text-align:left;display:flex;flex-direction:column;gap:24px"><h2 style="font-size:64px">Und<br>dazu:</h2><p style="font-size:38px">🔎 Muster<br>💸 Kosten<br>📦 Vorrat<br>⏰ Erinnerungen<br>📊 Wochen-Story</p></div></div>`,
   `<div class="s">${k("party-alive", 380)}<h1>Finde raus, was<br>bei <span class="g">DIR</span> wirkt.</h1><p>Kostenlos in der Beta · ohne Konto<br>Daten bleiben auf deinem Handy</p><div class="swipe">🔗 Link in Bio</div></div>`,
 ]
 const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1080, height: 1350 } })

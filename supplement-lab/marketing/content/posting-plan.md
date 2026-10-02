@@ -65,7 +65,7 @@ englisch mit `VLANG=en`):
 > #supplements #selbstversuch #routine #biohacking #lifehack #appempfehlung
 
 **C · Alles gleichzeitig**
-> Ehrlich: Wer hat schon mal 5 Sachen gleichzeitig angefangen? 🙋 Danach weiß niemand mehr, was was gemacht hat. Eins nach dem anderen – dann siehst du's.
+> Ehrlich: Wer hat schon mal 5 Sachen gleichzeitig angefangen? 🙋 Danach weiß niemand mehr, woher ein Unterschied kommt. Eins nach dem anderen – dann siehst du's.
 > #supplements #pov #relatable #biohacking #selbstexperiment #routine
 
 **D · Was kostet dein Schrank**
@@ -73,11 +73,11 @@ englisch mit `VLANG=en`):
 > #supplements #geldsparen #sparen #biohacking #nahrungsergänzung #finanztipps
 
 **E · Muster**
-> Kolbi hat was entdeckt 🔎 An manchen Tagen schläfst du schlechter – aber warum? Kolbi vergleicht deine Check-ins und zeigt dir Muster, die dir selbst nie auffallen würden. (Beispiel mit erfundenen Werten.)
+> Kolbi hat was entdeckt 🔎 An manchen Tagen schläfst du schlechter – aber warum? Kolbi vergleicht deine Check-ins und zeigt dir Muster, die man sonst leicht übersieht. (Beispiel mit erfundenen Werten.)
 > #schlaf #supplements #selbstoptimierung #biohacking #tracking #appempfehlung
 
 **K · Karussell**
-> Wirken deine Supplements wirklich? 🤔 Wisch durch – Kolbi zeigt dir, wie du es selbst rausfindest. Speichern, falls du später starten willst 📌
+> Wirken deine Supplements bei DIR? 🤔 Wisch durch – Kolbi zeigt dir, wie du es selbst rausfindest. Speichern, falls du später starten willst 📌
 > #supplements #nahrungsergänzung #selbstexperiment #biohacking #gesundheit
 
 ## Regeln (wichtig – Health-Claims, siehe `../legal/health-claims-check.md`)
@@ -90,7 +90,7 @@ englisch mit `VLANG=en`):
 ## Antworten auf Kommentare (Vorlagen)
 
 - „Welches Magnesium ist das beste?“ → *„Das kann ich dir nicht pauschal sagen – genau dafür gibt's Kolbi: teste es bei dir und vergleich mit deinem Normal 🧪“*
-- „Wirkt Ashwagandha?“ → *„Bei manchen ja, bei manchen nicht – Kolbi hilft dir rauszufinden, wie es BEI DIR ist. Bei Medikamenten oder Beschwerden bitte vorher ärztlich abklären 💚“*
+- „Wirkt Ashwagandha?“ → *„Das kann dir niemand pauschal versprechen – Kolbi hilft dir rauszufinden, wie es BEI DIR ist. Bei Medikamenten oder Beschwerden bitte vorher ärztlich abklären 💚“*
 - „Kostet das was?“ → *„In der Beta komplett kostenlos, ohne Konto. Wer bis 30. November startet, behält Pro für immer gratis 🏅 (danach 2,99 €/Monat)“*
 - „iPhone?“ → *„Link in Bio in Safari öffnen → Teilen → Zum Home-Bildschirm. Store-App kommt 🙌“*
 - Kritik/Fehler → bedanken und auf „💬 Feedback“ im Kolbi-Tab verweisen.
