@@ -13,13 +13,14 @@ sind die Vorlage/Referenz.
 | `en.lproj/InfoPlist.strings` | Englische Texte für System-Dialoge | `ios/App/App/en.lproj/` ✅ |
 
 Bereits gesetzt in `ios/App/App/Info.plist`: `CFBundleDisplayName` = Kolbi, `CFBundleDevelopmentRegion` = en,
-`CFBundleLocalizations` (de, en), `ITSAppUsesNonExemptEncryption` = false, `NSHealthShareUsageDescription`
-(nötig, weil das Health-Plugin HealthKit einbindet – sonst lehnt Apple den Upload ab). Version 1.0.0,
+`CFBundleLocalizations` (de, en), `ITSAppUsesNonExemptEncryption` = false. Version 1.0.0,
 Build-Nummer setzt GitHub Actions. Nur iPhone (`TARGETED_DEVICE_FAMILY = 1` → keine iPad-Screenshots nötig).
 
-**Noch offen:** Capability *HealthKit* ist **nicht** aktiv (Entscheidung „Apple Health in Version 1?“,
-STORE.md Frage 5). Ohne sie schlägt die Health-Abfrage auf dem iPhone fehl → vor dem Einreichen
-entweder HealthKit aktivieren (Datei `App.entitlements` + Capability, Claude) oder Health in der App ausblenden.
+**Store-Version 1.0 ohne Apple Health:** Das Health-Plugin wird nicht ins iOS-Projekt eingebunden
+(`capacitor.config.ts` → `includePlugins`) → kein HealthKit im Binary, darum auch **kein**
+`NSHealthShareUsageDescription` in `ios/App/App` (die Health-Zeilen in den Vorlagen hier bleiben für später).
+Health einschalten: `packages/capacitor-supp-health/README.md` (HealthKit-Capability + `App.entitlements`,
+Info.plist-Text, Strings aus diesen Vorlagen zurück nach `ios/App/App/*.lproj/`).
 
 Die Abschnitte unten beschreiben die Handgriffe in Xcode, falls das Projekt einmal neu erzeugt werden muss.
 

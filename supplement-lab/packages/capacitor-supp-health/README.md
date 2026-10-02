@@ -4,6 +4,19 @@ Eigenes, sehr kleines Capacitor-Plugin, nur für Supplement Lab. Liest **ausschl
 Werte**: Schlafdauer und Herzratenvariabilität (HRV) — aus Apple Health (iOS) bzw. Google
 Health Connect (Android). Bewusst kein Training, keine Schritte, keine Workouts.
 
+> **Store-Version 1.0: ausgeschaltet.** Das Plugin bleibt als npm-Abhängigkeit (damit der Web-Build
+> auflöst), wird aber von `npx cap sync` **nicht** in die nativen Projekte eingebunden
+> (`capacitor.config.ts` → `includePlugins`), und `src/health.ts` registriert keinen Provider.
+> So linkt die iOS-App kein HealthKit und die Android-App keine Health-Connect-Bibliothek.
+> **Wieder einschalten:** `NEXT_PUBLIC_LAB_HEALTH=1` beim `vite build` **und** `cap sync` setzen
+> (in beiden Workflows als `env`), im Android-Workflow die Manifest-Prüfung lässt Health dann zu;
+> zusätzlich die Schritte unten (HealthKit-Capability, Info.plist, Android-Manifest) und die
+> lokalisierten Texte in `ios/App/App/{de,en}.lproj/InfoPlist.strings` wieder ergänzen:
+> de: „Kolbi liest nur deine Schlafdauer und HRV aus Apple Health, um sie neben deinen Check-ins
+> anzuzeigen. Die Werte bleiben auf deinem Gerät und werden nie hochgeladen.“ ·
+> en: “Kolbi only reads your sleep duration and HRV from Apple Health to show them next to your
+> check-ins. The data stays on your device and is never uploaded.”
+
 ⚠️ **Dieser Code ist neu und ungetestet** (Swift/Kotlin lassen sich hier nicht kompilieren —
 keine Xcode-/Android-Studio-Umgebung verfügbar). Wenn beim Bauen Fehler auftauchen, schick sie
 einfach zurück, dann fixe ich sie.

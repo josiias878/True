@@ -83,6 +83,19 @@ jobs:
           npx vite build
           npx cap sync ios
 
+      - name: Store-1.0-Prüfung (kein HealthKit, Plugin-Liste)
+        # 1.0 startet ohne Apple Health: das Health-Plugin darf nicht im Swift-Package stehen (sonst wird
+        # HealthKit gelinkt → Rückfragen im App-Review). Wieder an nur mit NEXT_PUBLIC_LAB_HEALTH=1.
+        run: |
+          {
+            echo "## iOS-Plugins (CapApp-SPM)"
+            grep -o 'package: "[A-Za-z_-]*"' ios/App/CapApp-SPM/Package.swift | sort -u | sed 's/package: /- /'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "${NEXT_PUBLIC_LAB_HEALTH:-}" != "1" ] && grep -qE 'CapacitorSuppHealth|HealthKit' ios/App/CapApp-SPM/Package.swift ios/App/App.xcodeproj/project.pbxproj ios/App/App/Info.plist; then
+            echo "::error title=HealthKit::Health-Plugin/HealthKit ist im iOS-Projekt eingebunden, Store-Version 1.0 startet ohne Apple Health (capacitor.config.ts → includePlugins)."
+            exit 1
+          fi
+
       - name: Kompilieren für den Simulator (ohne Signierung)
         working-directory: supplement-lab/ios/App
         run: |

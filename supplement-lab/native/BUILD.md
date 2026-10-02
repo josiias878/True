@@ -115,3 +115,17 @@ Ohne diese Schlüssel baut alles trotzdem – Lab Pro bleibt dann gratis.
   (Prüfung + TestFlight) dauert ca. 30–50 macOS-Minuten.
 - **Lokal bauen** (optional, mit Android Studio / Xcode): `cd supplement-lab && npx vite build && npx cap sync`,
   dann `npx cap open android` bzw. `npx cap open ios`.
+
+---
+
+## E. Berechtigungen & Store-1.0-Prüfungen (automatisch)
+
+- **Android:** Nach dem AAB-Build listet `native/check-manifest.py` alle Berechtigungen und `<queries>` aus
+  dem gemergten Manifest (App + alle Bibliotheken) – zu sehen im Lauf unter **Summary**. Der Lauf **bricht ab**
+  bei `android.permission.health.*` / Health-Connect-Abfragen (1.0 ohne Health), `USE_EXACT_ALARM`,
+  `SCHEDULE_EXACT_ALARM` und `AD_ID` (die letzten beiden sind im App-Manifest per `tools:node="remove"`
+  entfernt: Erinnerungen laufen ungenau, Kolbi nutzt keine Werbe-ID).
+- **iOS:** Der Simulator-Job schreibt die eingebundenen Plugins in die Summary und bricht ab, wenn HealthKit
+  bzw. das Health-Plugin im Projekt steckt.
+- **Health später einschalten:** `NEXT_PUBLIC_LAB_HEALTH=1` als `env` in beiden Workflows (gilt für
+  `vite build`, `cap sync` und die Prüfungen), dann `packages/capacitor-supp-health/README.md` abarbeiten.

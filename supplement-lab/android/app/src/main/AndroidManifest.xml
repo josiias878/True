@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -35,4 +36,14 @@
     <!-- Erinnerungen (lokale Benachrichtigungen): ab Android 13 fragt die App einmal nach Erlaubnis.
          Kommt auch über @capacitor/local-notifications, hier zur Klarheit ausdrücklich. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Bewusst ENTFERNT (Merge-Regel, die Bibliotheken bringen sie sonst mit):
+         · SCHEDULE_EXACT_ALARM (@capacitor/local-notifications): Erinnerungen laufen ungenau
+           (isExactNotification: false in src/native.ts) – exakte Wecker braucht Kolbi nicht, und Play
+           fragt bei exakten Alarmen nach dem Zweck.
+         · AD_ID (RevenueCat → play-services-ads-identifier): Kolbi nutzt keine Werbe-ID
+           (Datenschutz: keine Geräte-IDs). Ohne die Berechtigung liefert Android nur Nullen.
+         Der Android-Workflow prüft das gemergte Manifest und bricht ab, falls sie wieder auftauchen. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" />
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
 </manifest>

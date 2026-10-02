@@ -83,11 +83,18 @@ export function markReviewAsked(p: LabState, today: string, answer?: "love" | "o
   return p
 }
 
-/** In der Store-App: natives Bewertungs-Fenster (Capacitor-Plugin, sobald eingebaut). Im Web: false. */
+/**
+ * In der Store-App: natives Bewertungs-Fenster (App Store / Google Play). Die Store-App registriert es
+ * beim Start (supplement-lab/src/native.ts → @capacitor-community/in-app-review); im Web gibt es
+ * keins → false (dann zeigt grow.tsx den eigenen „Danke“-Schritt mit Store-Link).
+ * true heißt nur „Anfrage an das System gestellt“ – ob Apple/Google das Fenster wirklich zeigen
+ * (Kontingent), verraten beide Systeme bewusst nicht.
+ */
+let reviewRequester: (() => Promise<void>) | null = null
+export function setNativeReview(fn: (() => Promise<void>) | null) { reviewRequester = fn }
 export async function nativeReview(): Promise<boolean> {
-  const plugin = (globalThis as { Capacitor?: { Plugins?: Record<string, { requestReview?: () => Promise<void> }> } }).Capacitor?.Plugins?.InAppReview
-  if (!plugin?.requestReview) return false
-  try { await plugin.requestReview(); return true } catch { return false }
+  if (!reviewRequester) return false
+  try { await reviewRequester(); return true } catch { return false }
 }
 
 export async function sendFeedback(mood: "love" | "ok" | "meh", text: string, where: string): Promise<boolean> {

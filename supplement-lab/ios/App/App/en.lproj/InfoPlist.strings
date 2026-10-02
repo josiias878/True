@@ -2,6 +2,3 @@
 
 /* Name below the app icon */
 "CFBundleDisplayName" = "Kolbi";
-
-/* Only needed if the Apple Health plugin (capacitor-supp-health) is enabled */
-"NSHealthShareUsageDescription" = "Kolbi only reads your sleep duration and HRV from Apple Health to show them next to your check-ins. The data stays on your device and is never uploaded.";

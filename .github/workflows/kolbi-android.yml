@@ -87,6 +87,13 @@ jobs:
           chmod +x gradlew
           ./gradlew --no-daemon --stacktrace bundleRelease
 
+      - name: Berechtigungen prüfen (gemergtes Manifest → Job-Zusammenfassung)
+        # Listet alle uses-permission + <queries> aus App UND Bibliotheken (sichtbar oben im Lauf unter
+        # „Summary“). Bricht ab bei Health-Connect-Berechtigungen (1.0 ohne Health), USE_EXACT_ALARM /
+        # SCHEDULE_EXACT_ALARM (Play-Deklaration) oder AD_ID (keine Werbe-ID). Health erst wieder mit
+        # env NEXT_PUBLIC_LAB_HEALTH=1 (dann auch beim Vite-Build und cap sync setzen).
+        run: python3 native/check-manifest.py
+
       - name: Signatur prüfen
         if: env.HAS_UPLOAD_KEY == 'true'
         working-directory: supplement-lab/android

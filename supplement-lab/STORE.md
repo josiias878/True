@@ -58,7 +58,8 @@ Alle Detail-Anleitungen:
 - [x] Apple-Datenschutz-Manifest + Info.plist-Anleitung + Dialog-Texte DE/EN (`native/ios/`)
 - [x] Prüfer-Notizen, App-Datenschutz-Antworten (Apple) und Datensicherheit (Google) (`marketing/store/review-notes.md`)
 - [x] Abo-Einrichtung Schritt für Schritt inkl. Texte & Zeichenzahlen (`marketing/store/subscriptions.md`)
-- [ ] ⚠️ Apple Health / Health Connect: Plugin existiert, ist aber **ungetestet** (siehe Frage 5)
+- [x] Apple Health / Health Connect für 1.0 **nativ ausgeschlossen** (kein HealthKit, keine Health-Connect-Bibliothek;
+      `capacitor.config.ts` → `includePlugins`, Workflows prüfen das). Plugin bleibt ungetestet für später (Frage 5)
 
 ---
 
@@ -160,7 +161,7 @@ Alle Detail-Anleitungen:
 - [ ] Paywall: Testwochen-Satz + vollständiger Rechtstext (`subscriptions.md` Teil D); **alle** Preise in der
       Store-App aus dem Store, nicht fest „€“ (z. B. auch auf der Pro-Karte im Kolbi-Tab)
 - [ ] Links **Datenschutz · Nutzungsbedingungen · Impressum** in die Einstellungen (Apple-Pflicht)
-- [ ] Bewertungs-Plugin `InAppReview` installieren (Code ruft es schon auf, Paket fehlt noch)
+- [x] Bewertungs-Plugin `@capacitor-community/in-app-review` eingebaut (`src/native.ts` → `lib/labGrow.ts` nativeReview)
 - [ ] Rechtstexte anpassen: Nutzungsbedingungen „Käufe“ (steht noch „einmaliger Kauf ohne Abo“) und
       Datenschutz Abschnitt 11 (RevenueCat als Dienstleister nennen)
 - [ ] Android: Upload-Schlüssel erzeugen (**du**, Befehl in `native/BUILD.md`; Backup bei dir!), AAB per GitHub Actions bauen, in den geschlossenen Test laden

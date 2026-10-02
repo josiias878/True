@@ -29,8 +29,6 @@
 	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
-	<key>NSHealthShareUsageDescription</key>
-	<string>Kolbi only reads your sleep duration and HRV from Apple Health to show them next to your check-ins. The data stays on your device and is never uploaded.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
