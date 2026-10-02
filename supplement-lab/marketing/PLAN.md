@@ -103,6 +103,7 @@ von dir brauche.
 ## Was der Inhaber tun muss (offen)
 
 > **Aktueller Arbeitsauftrag mit Schritten, Einstellungen und Rückfragen:** https://claude.ai/artifact/BNn95W6ULttXsrgPmPxNq6
+> **Kolbi Board (Live-Zahlen + CEO-Berichte):** https://claude.ai/artifact/FkKZis7KaEZPXbvnQfzKbw – Montags-Bericht per ArtifactData in Sammlung `reports` (Dokument-ID = Datum).
 > (Status schickt der Inhaber per „Status kopieren“ in den Chat. Die Liste unten ist das Archiv.)
 
 - [ ] Impressum-Daten: vollständiger Name, ladungsfähige Anschrift, E-Mail (Pflicht für Website & Store)
