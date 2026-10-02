@@ -102,6 +102,9 @@ von dir brauche.
 
 ## Was der Inhaber tun muss (offen)
 
+> **Aktueller Arbeitsauftrag mit Schritten, Einstellungen und Rückfragen:** https://claude.ai/artifact/BNn95W6ULttXsrgPmPxNq6
+> (Status schickt der Inhaber per „Status kopieren“ in den Chat. Die Liste unten ist das Archiv.)
+
 - [ ] Impressum-Daten: vollständiger Name, ladungsfähige Anschrift, E-Mail (Pflicht für Website & Store)
 - [ ] Apple Developer Program (99 €/Jahr) – auf eigenen Namen
 - [ ] Google Play Console (25 $ einmalig) – optional, später
