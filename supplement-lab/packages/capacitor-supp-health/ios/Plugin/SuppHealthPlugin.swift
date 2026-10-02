@@ -33,7 +33,8 @@ public class SuppHealthPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve(["available": HKHealthStore.isHealthDataAvailable()])
     }
 
-    @objc func requestPermissions(_ call: CAPPluginCall) {
+    // Überschreibt die Standard-Methode von CAPPlugin (ohne "override" kompiliert Swift nicht).
+    @objc override public func requestPermissions(_ call: CAPPluginCall) {
         guard HKHealthStore.isHealthDataAvailable(), let sleep = sleepType, let hrv = hrvType else {
             call.resolve(["granted": false])
             return
@@ -49,7 +50,8 @@ public class SuppHealthPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func getSleep(_ call: CAPPluginCall) {
         guard let sleep = sleepType else { call.resolve(["days": []]); return }
-        guard let (start, end) = parseRange(call) else { return }
+        guard let range = parseRange(call) else { return }
+        let (start, end) = range
         let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
         let query = HKSampleQuery(sampleType: sleep, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
             guard let samples = samples as? [HKCategorySample], error == nil else {
@@ -57,12 +59,17 @@ public class SuppHealthPlugin: CAPPlugin, CAPBridgedPlugin {
                 return
             }
             // Nur "geschlafen" zählen, nicht "im Bett, aber wach"
-            let asleepValues: Set<Int> = [
-                HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue,
-                HKCategoryValueSleepAnalysis.asleepCore.rawValue,
-                HKCategoryValueSleepAnalysis.asleepDeep.rawValue,
-                HKCategoryValueSleepAnalysis.asleepREM.rawValue,
-            ]
+            // asleepUnspecified/Core/Deep/REM gibt es erst ab iOS 16 (Mindestversion der App: iOS 15).
+            // Rohwert 1 = "asleep" (bis iOS 15) bzw. "asleepUnspecified" (ab iOS 16).
+            var asleepValues: Set<Int> = [1]
+            if #available(iOS 16.0, *) {
+                asleepValues.formUnion([
+                    HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue,
+                    HKCategoryValueSleepAnalysis.asleepCore.rawValue,
+                    HKCategoryValueSleepAnalysis.asleepDeep.rawValue,
+                    HKCategoryValueSleepAnalysis.asleepREM.rawValue,
+                ])
+            }
             let df = DateFormatter()
             df.dateFormat = "yyyy-MM-dd"
             df.timeZone = TimeZone.current
@@ -82,7 +89,8 @@ public class SuppHealthPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func getHrv(_ call: CAPPluginCall) {
         guard let hrv = hrvType else { call.resolve(["days": []]); return }
-        guard let (start, end) = parseRange(call) else { return }
+        guard let range = parseRange(call) else { return }
+        let (start, end) = range
         let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
         let query = HKSampleQuery(sampleType: hrv, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
             guard let samples = samples as? [HKQuantitySample], error == nil else {

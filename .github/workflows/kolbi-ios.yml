@@ -1,0 +1,223 @@
+# Kolbi · iOS-Build (App Store / TestFlight) – ohne eigenen Mac, komplett in GitHub Actions.
+#
+# Job 1 „Simulator-Build“: kompiliert die App ohne Signierung (Prüfung, ob alles baut).
+# Job 2 „TestFlight“:      nur wenn die App-Store-Connect-Secrets gesetzt sind → signiertes Archiv
+#                          (automatische Signierung über den API-Schlüssel) + Upload zu TestFlight.
+#
+# macOS-Minuten sind teuer (zählen 10× gegenüber Linux) → läuft nur manuell (Actions → Kolbi iOS →
+# „Run workflow“) oder wenn sich iOS-Dateien ändern. Für einen neuen TestFlight-Build nach reinen
+# Web-Änderungen (lib/, app/lab/) den Workflow manuell starten.
+# Anleitung und Secrets: supplement-lab/native/BUILD.md
+
+name: Kolbi iOS
+
+on:
+  push:
+    branches: [claude/supplement-tracking-app-hwna5s]
+    paths:
+      - "supplement-lab/ios/**"
+      - "supplement-lab/capacitor.config.ts"
+      - "supplement-lab/packages/capacitor-supp-health/ios/**"
+      - "supplement-lab/packages/capacitor-supp-health/Package.swift"
+      - ".github/workflows/kolbi-ios.yml"
+  workflow_dispatch:
+    inputs:
+      testflight:
+        description: "Nach erfolgreichem Build zu TestFlight hochladen (wenn Secrets gesetzt)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# Kein Abbrechen laufender Läufe: ein halber TestFlight-Upload hilft niemandem.
+concurrency:
+  group: kolbi-ios-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # Apple verlangt für Uploads das aktuelle SDK (seit April 2026: Xcode 26). Es wird die neueste
+  # installierte Xcode-Version dieser Hauptversion gewählt.
+  XCODE_MAJOR: "26"
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────────────────────
+  simulator:
+    name: Simulator-Build (ohne Signierung)
+    runs-on: macos-15
+    timeout-minutes: 45
+    outputs:
+      # Für Job 2 – Secrets sind in job-weiten "if:" nicht erlaubt, deshalb hier als Ausgabe.
+      has_asc: ${{ steps.secrets.outputs.has_asc }}
+    defaults:
+      run:
+        working-directory: supplement-lab
+    steps:
+      - name: App-Store-Connect-Secrets vorhanden?
+        id: secrets
+        working-directory: .
+        env:
+          HAS_ASC: ${{ secrets.APP_STORE_CONNECT_KEY_ID != '' && secrets.APP_STORE_CONNECT_ISSUER_ID != '' && secrets.APP_STORE_CONNECT_KEY_P8 != '' && secrets.APPLE_TEAM_ID != '' }}
+        run: echo "has_asc=$HAS_ASC" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+
+      - name: Xcode wählen
+        working-directory: .
+        run: |
+          XC=$(ls -d /Applications/Xcode_${XCODE_MAJOR}*.app 2>/dev/null | grep -viE 'beta|release_candidate' | sort -V | tail -1 || true)
+          if [ -n "$XC" ]; then sudo xcode-select -s "$XC/Contents/Developer"; else echo "::warning::Kein Xcode ${XCODE_MAJOR} gefunden – nutze Standard-Xcode"; fi
+          xcodebuild -version
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: supplement-lab/package-lock.json
+
+      - name: Abhängigkeiten installieren
+        run: npm ci --no-audit --no-fund
+
+      - name: Web-App bauen + Capacitor sync
+        run: |
+          npx vite build
+          npx cap sync ios
+
+      - name: Kompilieren für den Simulator (ohne Signierung)
+        working-directory: supplement-lab/ios/App
+        run: |
+          xcodebuild \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+  # ─────────────────────────────────────────────────────────────────────────────────────────────
+  testflight:
+    name: Archiv signieren + TestFlight
+    needs: simulator
+    # Nur mit allen 4 Secrets; bei manuellem Start kann der Upload abgewählt werden.
+    if: needs.simulator.outputs.has_asc == 'true' && (github.event_name != 'workflow_dispatch' || inputs.testflight)
+    runs-on: macos-15
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: supplement-lab
+    env:
+      ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      # Build-Nummer (CFBundleVersion) = Laufnummer → bei jedem Upload höher (Apple-Pflicht).
+      # Die Versionsnummer (1.0.0) steht als MARKETING_VERSION im Xcode-Projekt.
+      BUILD_NUMBER: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Xcode wählen
+        working-directory: .
+        run: |
+          XC=$(ls -d /Applications/Xcode_${XCODE_MAJOR}*.app 2>/dev/null | grep -viE 'beta|release_candidate' | sort -V | tail -1 || true)
+          if [ -n "$XC" ]; then sudo xcode-select -s "$XC/Contents/Developer"; else echo "::warning::Kein Xcode ${XCODE_MAJOR} gefunden – nutze Standard-Xcode"; fi
+          xcodebuild -version
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: supplement-lab/package-lock.json
+
+      - name: Abhängigkeiten installieren
+        run: npm ci --no-audit --no-fund
+
+      - name: Web-App bauen + Capacitor sync
+        env:
+          # Öffentlicher RevenueCat-Schlüssel (appl_…), optional. Ohne Schlüssel bleibt Lab Pro gratis.
+          VITE_RC_IOS_KEY: ${{ secrets.VITE_RC_IOS_KEY }}
+        run: |
+          npx vite build
+          npx cap sync ios
+
+      - name: API-Schlüssel (.p8) und temporären Schlüsselbund anlegen
+        working-directory: .
+        env:
+          ASC_KEY_P8: ${{ secrets.APP_STORE_CONNECT_KEY_P8 }}
+        run: |
+          # .p8 nur in den temporären Runner-Ordner – wird am Ende gelöscht, nie ins Repo/Log.
+          # Akzeptiert den Datei-Inhalt (-----BEGIN PRIVATE KEY-----…) oder denselben Inhalt base64-kodiert.
+          P8="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          if printf '%s' "$ASC_KEY_P8" | grep -q "BEGIN PRIVATE KEY"; then
+            printf '%s\n' "$ASC_KEY_P8" > "$P8"
+          else
+            printf '%s' "$ASC_KEY_P8" | base64 --decode > "$P8"
+          fi
+          echo "ASC_KEY_PATH=$P8" >> "$GITHUB_ENV"
+
+          # Eigener Schlüsselbund: Xcode legt dort die Signier-Zertifikate ab, die es über den
+          # API-Schlüssel erzeugt/lädt. Passwort ist zufällig und nur für diesen Lauf.
+          KC="$RUNNER_TEMP/kolbi-signing.keychain-db"
+          KC_PW=$(uuidgen)
+          security create-keychain -p "$KC_PW" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$KC_PW" "$KC"
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+          security default-keychain -s "$KC"
+          echo "KOLBI_KEYCHAIN=$KC" >> "$GITHUB_ENV"
+
+      - name: Archiv bauen (automatische Signierung)
+        working-directory: supplement-lab/ios/App
+        run: |
+          xcodebuild \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/Kolbi.xcarchive" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+            archive
+
+      - name: Exportieren + zu TestFlight hochladen
+        working-directory: .
+        run: |
+          # destination=upload → xcodebuild lädt direkt zu App Store Connect hoch (danach ~10–30 Min.
+          # „Wird verarbeitet“, dann erscheint der Build in TestFlight).
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>${APPLE_TEAM_ID}</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict>
+          </plist>
+          EOF
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Kolbi.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+          echo "### Build ${BUILD_NUMBER} an TestFlight übergeben" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Aufräumen (Schlüssel + Schlüsselbund löschen)
+        if: always()
+        working-directory: .
+        run: |
+          rm -f "$RUNNER_TEMP"/AuthKey_*.p8
+          if [ -n "${KOLBI_KEYCHAIN:-}" ]; then security delete-keychain "$KOLBI_KEYCHAIN" || true; fi

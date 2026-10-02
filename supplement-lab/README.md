@@ -81,34 +81,22 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-## Auf dem iPhone testen (MacBook + Xcode)
+## Store-Builds (iOS + Android)
 
-Voraussetzungen: Xcode (aktuell). Falls `npx cap add ios` nach CocoaPods fragt: `brew install cocoapods`.
+Die nativen Projekte `ios/` (Swift Package Manager, kein CocoaPods) und `android/` sind eingecheckt,
+App-ID `app.kolbi`. Gebaut wird in **GitHub Actions** – ohne eigenen Mac → [`native/BUILD.md`](native/BUILD.md).
+
+Lokal (optional, mit Xcode bzw. Android Studio):
 
 ```bash
 cd supplement-lab
 npm install
-npm run build
-npx cap add ios          # nur beim ersten Mal — legt den Ordner ios/ an
-npm run assets           # App-Icons & Splash aus assets/ erzeugen
-npx cap sync ios
-npx cap open ios         # öffnet Xcode
+npm run ios              # vite build + cap sync ios + öffnet Xcode
+npm run android          # vite build + cap sync android + öffnet Android Studio
+npm run assets           # nur wenn sich assets/ (Icon, Splash) ändert
 ```
 
-In Xcode:
-1. Links das Projekt **App** anklicken → *Signing & Capabilities* → dein **Team** (Apple Developer Account) wählen.
-2. Oben dein iPhone als Ziel wählen (per Kabel verbunden, auf dem iPhone *Entwicklermodus* aktivieren).
-3. ▶︎ drücken — die App landet auf dem iPhone.
-
-Nach Code-Änderungen: `npm run ios` (baut, synchronisiert und öffnet Xcode).
-
-## Android
-
-```bash
-npx cap add android      # nur beim ersten Mal
-npm run assets
-npm run android          # öffnet Android Studio
-```
+In Xcode für ein echtes iPhone: Projekt **App** → *Signing & Capabilities* → **Team** wählen → iPhone als Ziel → ▶︎.
 
 ## Apple Health / Google Health Connect (optional)
 

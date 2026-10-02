@@ -9,3 +9,19 @@ android/.gradle/
 android/app/build/
 android/build/
 android/local.properties
+ios/App/output/
+ios/App/App/public/
+ios/App/CapApp-SPM/.build/
+android/.idea/
+android/app/release/
+android/capacitor-cordova-android-plugins/
+# Signier-Schlüssel und Store-Zugänge NIE einchecken (liegen nur in GitHub-Secrets)
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+*.xcarchive
+*.ipa
+*.aab
+*.apk

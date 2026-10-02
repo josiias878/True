@@ -21,10 +21,12 @@ Plugin statt einer Fremdabhängigkeit.
    <key>NSHealthShareUsageDescription</key>
    <string>Supplement Lab liest deinen Schlaf und deine HRV, um zu zeigen, wie sich deine Supplements auf Erholung und Stress auswirken. Alles bleibt auf deinem Gerät.</string>
    ```
-3. `npx cap sync ios` — das Plugin wird automatisch als lokales Pod eingebunden (steht schon
-   in `package.json` als `file:`-Abhängigkeit).
+3. `npx cap sync ios` — das Plugin wird automatisch als lokales Swift Package eingebunden
+   (`Package.swift` hier im Ordner; die `.podspec` bleibt für CocoaPods-Projekte).
 
 ## Setup Android (nach `npx cap add android`)
+
+Die App braucht `minSdkVersion = 26` (Health Connect), steht in `android/variables.gradle`.
 
 In `android/app/src/main/AndroidManifest.xml` ergänzen:
 

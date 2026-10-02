@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "ios": "vite build && npx cap sync ios && npx cap open ios",
     "android": "vite build && npx cap sync android && npx cap open android",
-    "assets": "npx @capacitor/assets generate --iconBackgroundColor '#0f0f1a' --splashBackgroundColor '#0f0f1a'"
+    "assets": "npx @capacitor/assets generate --ios --android --iconBackgroundColor '#0f0f1a' --splashBackgroundColor '#0f0f1a'"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",

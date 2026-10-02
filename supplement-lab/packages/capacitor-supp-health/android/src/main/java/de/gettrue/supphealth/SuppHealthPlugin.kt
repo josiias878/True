@@ -71,7 +71,7 @@ class SuppHealthPlugin : Plugin() {
     }
 
     @PluginMethod
-    fun requestPermissions(call: PluginCall) {
+    override fun requestPermissions(call: PluginCall) {
         val hc = client
         val launcher = permLauncher
         if (hc == null || launcher == null) {

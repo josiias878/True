@@ -11,13 +11,18 @@
     "android/build.gradle",
     "src/",
     "ios/Plugin",
-    "CapacitorSuppHealth.podspec"
+    "CapacitorSuppHealth.podspec",
+    "Package.swift"
   ],
   "author": "",
   "license": "UNLICENSED",
   "capacitor": {
-    "ios": { "src": "ios" },
-    "android": { "src": "android" }
+    "ios": {
+      "src": "ios"
+    },
+    "android": {
+      "src": "android"
+    }
   },
   "peerDependencies": {
     "@capacitor/core": ">=8.0.0"

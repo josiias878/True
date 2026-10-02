@@ -1,0 +1,125 @@
+# Kolbi · Android-Build (Google Play)
+#
+# Baut aus supplement-lab/ ein Android App Bundle (.aab) für Google Play.
+#  - Mit Upload-Schlüssel (4 Secrets ANDROID_*): signiertes AAB → in der Play Console hochladen.
+#  - Ohne Secrets: unsigniertes AAB + Debug-APK, nur als Build-Prüfung (nicht hochladbar).
+# Anleitung und Secrets: supplement-lab/native/BUILD.md
+
+name: Kolbi Android
+
+on:
+  push:
+    branches: [claude/supplement-tracking-app-hwna5s]
+    paths:
+      - "supplement-lab/**"
+      - "lib/**"
+      - "app/lab/**"
+      - "components/Confetti.tsx"
+      - ".github/workflows/kolbi-android.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kolbi-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: AAB bauen
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: supplement-lab
+    env:
+      # Secrets dürfen nicht direkt in "if:" stehen → hier einmal prüfen, unten env.HAS_UPLOAD_KEY nutzen.
+      HAS_UPLOAD_KEY: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22 # @capacitor/cli 8 verlangt Node >= 22
+          cache: npm
+          cache-dependency-path: supplement-lab/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21 # Capacitor 8 / Android Gradle Plugin 8.13 → JDK 21
+          cache: gradle
+          cache-dependency-path: |
+            supplement-lab/android/*.gradle*
+            supplement-lab/android/app/*.gradle*
+            supplement-lab/android/gradle/wrapper/gradle-wrapper.properties
+
+      - name: Abhängigkeiten installieren
+        run: npm ci --no-audit --no-fund
+
+      - name: Web-App bauen (Vite)
+        env:
+          # Öffentlicher RevenueCat-Schlüssel (goog_…), optional. Ohne Schlüssel bleibt Lab Pro gratis.
+          VITE_RC_ANDROID_KEY: ${{ secrets.VITE_RC_ANDROID_KEY }}
+        run: npx vite build
+
+      - name: Capacitor sync (Web-App + Plugins ins Android-Projekt)
+        run: npx cap sync android
+
+      - name: Upload-Schlüssel bereitstellen
+        if: env.HAS_UPLOAD_KEY == 'true'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/kolbi-upload.jks"
+          echo "KOLBI_KEYSTORE_FILE=$RUNNER_TEMP/kolbi-upload.jks" >> "$GITHUB_ENV"
+
+      - name: Release-AAB bauen (Gradle bundleRelease)
+        working-directory: supplement-lab/android
+        env:
+          # Build-Nummer (versionCode) = Laufnummer dieses Workflows → steigt bei jedem Lauf.
+          KOLBI_VERSION_CODE: ${{ github.run_number }}
+          KOLBI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KOLBI_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KOLBI_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace bundleRelease
+
+      - name: Signatur prüfen
+        if: env.HAS_UPLOAD_KEY == 'true'
+        working-directory: supplement-lab/android
+        # jarsigner meldet auch bei unsignierten Dateien Exit 0 → Ausgabe prüfen
+        run: jarsigner -verify app/build/outputs/bundle/release/app-release.aab | tee "$RUNNER_TEMP/verify.txt" && grep -q "jar verified" "$RUNNER_TEMP/verify.txt"
+
+      - name: Debug-APK bauen (nur ohne Upload-Schlüssel, zum Ausprobieren auf dem Handy)
+        if: env.HAS_UPLOAD_KEY != 'true'
+        working-directory: supplement-lab/android
+        env:
+          KOLBI_VERSION_CODE: ${{ github.run_number }}
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Schlüssel-Datei löschen
+        if: always()
+        run: rm -f "$RUNNER_TEMP/kolbi-upload.jks"
+
+      - name: Artefakt hochladen (signiertes AAB)
+        if: env.HAS_UPLOAD_KEY == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kolbi-android-${{ github.run_number }}-signed
+          path: supplement-lab/android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Artefakt hochladen (unsigniert – nur Build-Prüfung)
+        if: env.HAS_UPLOAD_KEY != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kolbi-android-${{ github.run_number }}-unsigned
+          path: |
+            supplement-lab/android/app/build/outputs/bundle/release/app-release.aab
+            supplement-lab/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7

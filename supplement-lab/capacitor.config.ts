@@ -1,17 +1,11 @@
 import type { CapacitorConfig } from "@capacitor/cli"
 
 const config: CapacitorConfig = {
-  // ⚠️ BUNDLE-ID VOR DEM ERSTEN UPLOAD FINAL FESTLEGEN — danach in App Store Connect und
-  // Google Play NIE MEHR änderbar (eine neue ID = eine komplett neue App ohne Bewertungen/Käufer).
-  //
-  // Vorschlag: "app.kolbi.supplementlab"
-  //   – passt zur Marke „Kolbi“ statt zu TRUE/get-true.de,
-  //   – funktioniert auch ohne eigene Domain (die ID ist nur ein eindeutiger Name, keine Web-Adresse),
-  //   – dieselbe ID für iOS (Bundle ID) und Android (Package Name) verwenden.
-  // Erst ändern, wenn der Eigentümer zugestimmt hat, und BEVOR `npx cap add ios/android` läuft
-  // (sonst muss die ID zusätzlich in Xcode und android/app/build.gradle angepasst werden).
-  // Der aktuelle Wert bleibt bis zur Entscheidung stehen:
-  appId: "de.gettrue.supplementlab",
+  // App-ID (iOS Bundle ID + Android Package Name), vom Inhaber entschieden am 2. Okt 2026: "app.kolbi".
+  // ⚠️ Nach dem ersten Upload in App Store Connect / Google Play NIE MEHR änderbar (eine neue ID =
+  // eine komplett neue App ohne Bewertungen/Käufer). Steht zusätzlich fest in ios/App/App.xcodeproj
+  // (PRODUCT_BUNDLE_IDENTIFIER) und android/app/build.gradle (namespace/applicationId).
+  appId: "app.kolbi",
   // Name unter dem App-Icon auf dem Home-Bildschirm (kurz halten, max. ~12 Zeichen sichtbar).
   // Der lange Store-Name („Kolbi: Supplement-Check“ / „Kolbi: Supplement Lab“) wird nur im Store gesetzt.
   appName: "Kolbi",

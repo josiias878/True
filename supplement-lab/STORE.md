@@ -10,11 +10,14 @@ Stand dieser Liste: 1. Oktober 2026.
 | Lab Pro | **2,99 €/Monat · 19,99 €/Jahr (7 Tage gratis) · 39,99 € einmalig** |
 | Produkt-IDs | `kolbi_pro_monthly`, `kolbi_pro_yearly` (Abo-Gruppe „Kolbi Pro“), `kolbi_pro_lifetime` |
 | Bezahlung | RevenueCat, ein Entitlement `pro` (iOS + Android, später Web über Stripe) |
+| **App-ID** (iOS Bundle ID = Android Package Name) | **`app.kolbi`** – entschieden am 2. Okt 2026, danach nie mehr änderbar |
+| Builds | **GitHub Actions** (kein eigener Mac nötig) → [`native/BUILD.md`](native/BUILD.md) |
 
 Alle Detail-Anleitungen:
 - Abos & Preise eintippen → [`marketing/store/subscriptions.md`](marketing/store/subscriptions.md)
 - Prüfer-Notizen, App-Datenschutz (Apple) & Datensicherheit (Google) → [`marketing/store/review-notes.md`](marketing/store/review-notes.md)
 - iOS-Dateien (Datenschutz-Manifest, Info.plist) → [`native/ios/README.md`](native/ios/README.md)
+- Builds über GitHub Actions + Secrets (Upload-Schlüssel, App-Store-Connect-API) → [`native/BUILD.md`](native/BUILD.md)
 
 ---
 
@@ -22,7 +25,7 @@ Alle Detail-Anleitungen:
 
 | Bis wann | Wer | Was |
 |---|---|---|
-| **Fr 9. Okt** | Du | Offene Fragen unten beantworten (v. a. Bundle-ID, Privatperson/Firma, Adresse) |
+| **Fr 9. Okt** | Du | Offene Fragen unten beantworten (v. a. Privatperson/Firma, Adresse) – Bundle-ID ✅ `app.kolbi` |
 | **Fr 9. Okt** | Du | **Google Play Console** anlegen (Identitätsprüfung dauert ein paar Tage) |
 | **Fr 23. Okt** | Claude | Erster Android-Build (noch ohne Bezahlen) in den **geschlossenen Test** |
 | **Mo 26. Okt** | Du | **12 Tester** im geschlossenen Test – müssen **14 Tage am Stück** dabeibleiben (Google-Pflicht für neue Privatkonten) |
@@ -63,8 +66,8 @@ Alle Detail-Anleitungen:
 
 ### 1. Entscheidungen (bis 9. Okt)
 
-- [ ] **Bundle-ID** festlegen. Vorschlag: `app.kolbi.supplementlab` (steht als Kommentar in
-      `capacitor.config.ts`). Danach **nie mehr änderbar**.
+- [x] **Bundle-ID** festgelegt: **`app.kolbi`** (iOS + Android, 2. Okt 2026, `capacitor.config.ts`).
+      Danach **nie mehr änderbar**.
 - [ ] **Name im Store frei?** In App Store Connect wird das beim Anlegen geprüft (Schritt 4). Plan B
       bereithalten, z. B. „Kolbi – Supplement-Check“.
 - [ ] **Als Privatperson oder Firma?** Privatperson geht schneller (keine D-U-N-S-Nummer), dann steht
@@ -89,6 +92,7 @@ Alle Detail-Anleitungen:
 8. **Richtlinien → App-Inhalte**: alle Formulare ausfüllen (Antworten stehen in `review-notes.md` Abschnitt 3:
    Datensicherheit, Datenschutz-URL, Werbung, Gesundheits-Apps, Zielgruppe 18+, Altersfreigabe).
 9. Abos + Lifetime anlegen → `subscriptions.md` Teil B (geht erst, wenn ein Build mit Bezahlen oben ist).
+10. **Upload-Schlüssel** für die Builds erzeugen und als GitHub-Secrets eintragen → [`native/BUILD.md`](native/BUILD.md) Teil A.
 
 ### 3. Apple Developer Program (99 €/Jahr) – spätestens 10. Nov
 
@@ -108,8 +112,8 @@ Alle Detail-Anleitungen:
    Testkäufe.
 4. **DSA-Händlerstatus** (Geschäftlich → Digital Services Act): „Ich bin Händler“ + Adresse/Telefon/E-Mail.
 5. **Apps → (+) Neue App**: Plattform iOS · Name „Kolbi: Supplement Lab“ · Primärsprache **Englisch (USA)** ·
-   Bundle-ID (vorher unter developer.apple.com → *Identifiers* registrieren oder von Claude/Xcode anlegen
-   lassen) · SKU `kolbi-ios`.
+   Bundle-ID **`app.kolbi`** (wird beim ersten GitHub-Actions-Build automatisch registriert; sonst unter
+   developer.apple.com → *Identifiers* selbst anlegen) · SKU `kolbi-ios`.
 6. **Lokalisierung Deutsch** hinzufügen → Name „Kolbi: Supplement-Check“, Texte aus `listing.md`.
 7. **Abo-Gruppe „Kolbi Pro“ + 2 Abos + Lifetime** → exakt nach `subscriptions.md` Teil A
    (Referenznamen, IDs, Preise 2,99 / 19,99 / 39,99 €, US $2.99 / $19.99 / $39.99, 7 Tage gratis beim Jahresabo,
@@ -118,14 +122,17 @@ Alle Detail-Anleitungen:
 9. **Altersfreigabe-Fragebogen**: überall „Nein“, nur „Medizinische Informationen / Behandlungsinfos“ = **selten**.
 10. **Nutzer und Zugriff → Integrationen → In-App-Kauf** → Schlüssel erzeugen → `.p8`-Datei laden
     (nur einmal möglich, sicher aufheben) – kommt in RevenueCat (Schritt 5).
+11. **Nutzer und Zugriff → Integrationen → App Store Connect API** → Team-Schlüssel für die automatischen
+    Builds anlegen und als GitHub-Secrets eintragen → [`native/BUILD.md`](native/BUILD.md) Teil B.
+    (Das ist ein **anderer** Schlüssel als der In-App-Kauf-Schlüssel aus Schritt 10.)
 
 ### 5. RevenueCat (kostenlos bis 2.500 $ Umsatz/Monat)
 
 1. **app.revenuecat.com** → Konto anlegen → Projekt **„Kolbi“**.
-2. **+ App → App Store**: Bundle-ID, die `.p8`-Datei aus Schritt 4.10 + *Key ID* + *Issuer ID* hochladen.
+2. **+ App → App Store**: Bundle-ID `app.kolbi`, die `.p8`-Datei aus Schritt 4.10 + *Key ID* + *Issuer ID* hochladen.
    RevenueCat zeigt eine **Server-Notification-URL** → in App Store Connect unter *App → App-Informationen →
    App Store-Server-Benachrichtigungen* (Produktion **und** Sandbox) einfügen.
-3. **+ App → Play Store**: Package-Name + Dienstkonto-Datei (JSON). Das ist fummelig – Claude führt dich
+3. **+ App → Play Store**: Package-Name `app.kolbi` + Dienstkonto-Datei (JSON). Das ist fummelig – Claude führt dich
    Klick für Klick durch.
 4. Entitlement `pro`, Produkte, Offering `default` → `subscriptions.md` Teil C.
 5. **An Claude geben – nur diese zwei Schlüssel** (*Project settings → API keys*):
@@ -145,7 +152,8 @@ Alle Detail-Anleitungen:
 
 ## 🤖 Claudes Aufgaben (sobald die Konten da sind)
 
-- [ ] Bundle-ID setzen, `npx cap add ios` / `android`, Dateien aus `native/ios/` einbauen
+- [x] Bundle-ID `app.kolbi` gesetzt, `npx cap add ios` / `android`, Dateien aus `native/ios/` eingebaut, Icons/Splash
+- [x] Build-Workflows GitHub Actions: `kolbi-android.yml` (AAB) und `kolbi-ios.yml` (Simulator-Prüfung + TestFlight) → `native/BUILD.md`
 - [ ] `@revenuecat/purchases-capacitor` einbauen, Adapter `src/billing.ts` → `setBillingProvider(...)`
 - [ ] **Paywall für Prüfer:** Gründer sehen heute keine Tarife und keinen „Wiederherstellen“-Knopf – der
       Apple-Prüfer (Ende Nov.) würde aber Gründer. Prüfer muss Tarife sehen und testen können
@@ -155,9 +163,9 @@ Alle Detail-Anleitungen:
 - [ ] Bewertungs-Plugin `InAppReview` installieren (Code ruft es schon auf, Paket fehlt noch)
 - [ ] Rechtstexte anpassen: Nutzungsbedingungen „Käufe“ (steht noch „einmaliger Kauf ohne Abo“) und
       Datenschutz Abschnitt 11 (RevenueCat als Dienstleister nennen)
-- [ ] Android: Upload-Schlüssel erzeugen (Backup an dich!), AAB bauen, in den geschlossenen Test laden
-- [ ] iOS: Build + Upload zu **TestFlight** – entweder über deinen Mac (Claude gibt dir 3 Befehle + Klicks in
-      Xcode) oder automatisch über GitHub Actions (dafür einen *App Store Connect API Key* anlegen)
+- [ ] Android: Upload-Schlüssel erzeugen (**du**, Befehl in `native/BUILD.md`; Backup bei dir!), AAB per GitHub Actions bauen, in den geschlossenen Test laden
+- [ ] iOS: Build + Upload zu **TestFlight** automatisch über GitHub Actions (dafür legst du einen
+      *App Store Connect API Key* an → `native/BUILD.md`)
 - [ ] Datenschutz-Bericht in Xcode prüfen, Paywall-Screenshots für die Produkt-Prüfung
 - [ ] Beim Einreichen helfen (Metadaten, Notizen, Produkte an Version 1.0 hängen)
 
@@ -195,7 +203,7 @@ Ohne Small Business Program wären es 30 % Gebühr (z. B. Jahresabo nur ≈ 11,7
 
 ## ❓ Offene Fragen an dich
 
-1. **Bundle-ID** `app.kolbi.supplementlab` okay? (Für iOS und Android gleich.)
+1. ~~**Bundle-ID**~~ ✅ entschieden: `app.kolbi` (iOS und Android).
 2. **Konto als Privatperson oder Firma?** Welcher Name soll als Anbieter im Store stehen?
 3. **Welche Adresse/Telefonnummer** darf öffentlich im Store stehen (EU-Händlerpflicht)?
 4. **Domain & Support:** Bleibt es bei `kolbi-smoky.vercel.app` oder kommt eine eigene Domain? Welche
@@ -208,7 +216,7 @@ Ohne Small Business Program wären es 30 % Gebühr (z. B. Jahresabo nur ≈ 11,7
 8. **Name „Lab Pro“ vs. „Kolbi Pro“:** In der App heißt es „Lab Pro“, die Abo-Gruppe „Kolbi Pro“.
    Vorschlag: für Nutzer überall „Lab Pro“ (so stehen die Produktnamen in `subscriptions.md`).
 9. **7 Tage gratis** beim Jahresabo okay?
-10. **iOS-Build:** über deinen MacBook (du klickst, Claude sagt was) oder automatisch in der Cloud?
+10. ~~**iOS-Build**~~ ✅ entschieden: automatisch in der Cloud (GitHub Actions, `native/BUILD.md`).
 11. **Wer sind die 12 Google-Tester?** (Beta-Nutzer mit Android-Handy und Google-Konto.)
 
 ---

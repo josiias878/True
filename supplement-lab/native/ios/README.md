@@ -1,11 +1,29 @@
 # iOS-Dateien für den App Store
 
-Diese Dateien gehören in das Xcode-Projekt. Der Ordner `ios/` existiert erst, nachdem einmal
-`npx cap add ios` gelaufen ist (siehe [`../../README.md`](../../README.md) → „Auf dem iPhone testen“).
-Bis dahin liegen sie hier bereit. Claude erledigt das gern für dich – du musst nur Xcode öffnen.
+**Stand 2. Okt 2026: eingebaut.** Das Xcode-Projekt `ios/` existiert (Capacitor 8, Swift Package Manager –
+kein CocoaPods), Bundle-ID **`app.kolbi`**. Die Dateien unten liegen jetzt im App-Target unter
+`ios/App/App/` (Datenschutz-Manifest, `de.lproj`/`en.lproj`, Info.plist-Einträge) und werden über
+GitHub Actions gebaut → [`../BUILD.md`](../BUILD.md). **Ab jetzt nur noch dort ändern**; die Kopien hier
+sind die Vorlage/Referenz.
 
-| Datei | Wofür |
-|---|---|
+| Datei | Wofür | Im Projekt |
+|---|---|---|
+| `PrivacyInfo.xcprivacy` | Apples „Datenschutz-Manifest“: welche Daten die App erhebt, kein Tracking | `ios/App/App/PrivacyInfo.xcprivacy` ✅ |
+| `de.lproj/InfoPlist.strings` | Deutsche Texte für System-Dialoge (z. B. Apple-Health-Abfrage) | `ios/App/App/de.lproj/` ✅ |
+| `en.lproj/InfoPlist.strings` | Englische Texte für System-Dialoge | `ios/App/App/en.lproj/` ✅ |
+
+Bereits gesetzt in `ios/App/App/Info.plist`: `CFBundleDisplayName` = Kolbi, `CFBundleDevelopmentRegion` = en,
+`CFBundleLocalizations` (de, en), `ITSAppUsesNonExemptEncryption` = false, `NSHealthShareUsageDescription`
+(nötig, weil das Health-Plugin HealthKit einbindet – sonst lehnt Apple den Upload ab). Version 1.0.0,
+Build-Nummer setzt GitHub Actions. Nur iPhone (`TARGETED_DEVICE_FAMILY = 1` → keine iPad-Screenshots nötig).
+
+**Noch offen:** Capability *HealthKit* ist **nicht** aktiv (Entscheidung „Apple Health in Version 1?“,
+STORE.md Frage 5). Ohne sie schlägt die Health-Abfrage auf dem iPhone fehl → vor dem Einreichen
+entweder HealthKit aktivieren (Datei `App.entitlements` + Capability, Claude) oder Health in der App ausblenden.
+
+Die Abschnitte unten beschreiben die Handgriffe in Xcode, falls das Projekt einmal neu erzeugt werden muss.
+
+---|---|
 | `PrivacyInfo.xcprivacy` | Apples „Datenschutz-Manifest“: welche Daten die App erhebt, kein Tracking |
 | `de.lproj/InfoPlist.strings` | Deutsche Texte für System-Dialoge (z. B. Apple-Health-Abfrage) |
 | `en.lproj/InfoPlist.strings` | Englische Texte für System-Dialoge |
@@ -78,7 +96,7 @@ Vor dem letzten `</dict>` einfügen:
 `capacitor-supp-health` eingebaut ist **und** die Capability *HealthKit* aktiviert wurde
 (*Signing & Capabilities → + Capability → HealthKit*). Ohne diesen Text stürzt die App beim
 Health-Dialog ab – mit HealthKit, aber ohne Text, lehnt Apple die App ab. Wenn wir Apple Health für
-Version 1 weglassen: Capability **und** Text weglassen. Einen `NSHealthUpdateUsageDescription`-Text
+Version 1 weglassen: nur die Capability weglassen – den Text behalten, solange das Plugin eingebunden ist (s. u.). Einen `NSHealthUpdateUsageDescription`-Text
 brauchen wir nicht – die App liest nur, sie schreibt nichts in Apple Health.
 
 Benachrichtigungen (lokale Erinnerungen) brauchen **keinen** Info.plist-Eintrag.
@@ -98,16 +116,17 @@ Damit der Apple-Health-Dialog auf Deutsch **und** Englisch erscheint:
 
 Ergebnis: `ios/App/App/de.lproj/InfoPlist.strings` und `ios/App/App/en.lproj/InfoPlist.strings`.
 
-Ist Apple Health in Version 1 **nicht** dabei, in beiden Dateien die Zeile mit
-`NSHealthShareUsageDescription` löschen (sie schadet zwar nicht, wirkt beim Review aber unaufgeräumt).
+Den Text `NSHealthShareUsageDescription` **drinlassen**, solange das Plugin `capacitor-supp-health` im
+Projekt ist – Apple prüft beim Upload, ob Code HealthKit nutzt, und lehnt Builds ohne Zweck-Text ab
+(ITMS-90683). Erst wenn das Plugin ganz entfernt wird, darf auch der Text weg.
 
 ---
 
 ## 4. Kurz-Check vor dem Upload
 
-- [ ] `PrivacyInfo.xcprivacy` im Target **App**
-- [ ] Info.plist: `CFBundleDisplayName`, `CFBundleLocalizations`, `ITSAppUsesNonExemptEncryption`
+- [x] `PrivacyInfo.xcprivacy` im Target **App**
+- [x] Info.plist: `CFBundleDisplayName`, `CFBundleLocalizations`, `ITSAppUsesNonExemptEncryption`
 - [ ] Health an? → Capability *HealthKit* + `NSHealthShareUsageDescription` + beide `InfoPlist.strings`
-- [ ] Health aus? → keine Capability, kein Text
+- [ ] Health aus? → keine Capability; Text bleibt (Plugin ist eingebunden)
 - [ ] *Signing & Capabilities*: Team gewählt, **In-App Purchase** als Capability hinzugefügt (für Lab Pro)
-- [ ] Bundle-ID = endgültige ID aus `capacitor.config.ts`
+- [x] Bundle-ID = `app.kolbi` (`capacitor.config.ts`, Xcode-Projekt)
