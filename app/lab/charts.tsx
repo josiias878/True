@@ -190,42 +190,6 @@ export function DeltaBars({ delta, avg, base, dims }: { delta: Scores; avg: Scor
   )
 }
 
-// ── Stimmungs-Kalender: jeder Tag ein Gesicht ──────────────────────────────────
-
-export function MoodCalendar({ s, onPick }: { s: LabState; onPick?: (date: string) => void }) {
-  const wins = phaseWindows(s)
-  if (!s.startDate || !wins.length) return null
-  const today = todayIso()
-  const lastEnd = wins[wins.length - 1].end
-  const calEnd = lastEnd < addDays(today, 6) ? lastEnd : addDays(today, 6) // offene Phasen (Stack) nicht endlos zeigen
-  const n = diffDays(s.startDate, calEnd > today ? calEnd : today) + 1
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
-      {Array.from({ length: n }, (_, i) => {
-        const date = addDays(s.startDate!, i)
-        const c = s.checkins[date]
-        const w = wins.find(x => date >= x.start && date <= x.end)
-        const col = w?.kind === "test" ? suppColor(s.supps.find(q => q.id === w.suppId)) : w?.kind === "baseline" ? "var(--text-dim)" : "var(--border)"
-        const future = date > today
-        const avg = c ? daySum(c) : null
-        return (
-          <button key={date} onClick={() => !future && onPick?.(date)} title={`${fmtDate(date)} · ${w ? phaseName(s, w.kind, w.suppId) : ""}${avg ? ` · ${t("Ø {v}", { v: fmt(avg) })}` : ""}`}
-            className={!future ? "lab-press" : undefined}
-            style={{
-              aspectRatio: "1", borderRadius: 12, border: date === today ? "2px solid var(--accent)" : "1px solid var(--border)",
-              background: w?.kind === "test" ? `color-mix(in srgb, ${col} 14%, var(--surface))` : "var(--surface)",
-              opacity: future ? 0.4 : 1, position: "relative", display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "1.15rem", padding: 0, color: "var(--text-dim)",
-            }}>
-            <span style={{ position: "absolute", top: 3, left: 6, right: 6, height: 3, borderRadius: 2, background: col, opacity: w?.kind === "washout" ? 0.4 : 0.9 }} />
-            {avg != null ? FACES[Math.round(avg) - 1] : <span style={{ fontSize: "0.7rem", fontWeight: 700 }}>{i + 1}</span>}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 // ── Nutzen ↔ Nebenwirkungen: Waage + Pro/Contra ────────────────────────────────
 
 export function ProCon({ s, suppId }: { s: LabState; suppId: string }) {

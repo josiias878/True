@@ -12,8 +12,8 @@ import { t, isEn, euro } from "@/lib/labI18n"
 const GRAD = "linear-gradient(135deg, #9085e9, #e87ba4)"
 
 /** Lab Pro: in der Beta als „Gründer-Pro“ freigeschaltet – zeigt, was drin ist. */
-export function ProCard({ s }: { s: LabState }) {
-  const [open, setOpen] = useState(false)
+export function ProCard({ s, startOpen = false }: { s: LabState; startOpen?: boolean }) {
+  const [open, setOpen] = useState(startOpen)
   // In der Store-App kommen die Preise aus dem Store (Währung/Land), sonst unsere Standardpreise
   const [store, setStore] = useState<Partial<Record<Plan, string>>>({})
   React.useEffect(() => { storePrices().then(setStore) }, [])
@@ -55,20 +55,27 @@ export function ProCard({ s }: { s: LabState }) {
 }
 
 /** Freunde einladen + Feedback – zwei kleine Knöpfe nebeneinander. */
+export async function inviteWithFlash(onFlash: (m: string) => void) {
+  haptic()
+  const r = await inviteFriends()
+  if (r === "copied") onFlash(t("🔗 Link kopiert – schick ihn weiter!"))
+  else if (r === "shared") onFlash(t("💌 Danke fürs Weitersagen!"))
+  else if (r === "failed") onFlash(t("⚠️ Teilen hat nicht geklappt"))
+}
+/** Untertitel für „Freunde einladen“ (Gründer-Pro-Frist während der Beta). */
+export function inviteSub() {
+  const d = betaDaysLeft(todayIso())
+  return !betaOpen(todayIso()) ? t("Zusammen testen") : d === 1 ? t("Noch 1 Tag Gründer-Pro für sie") : t("Noch {n} Tage Gründer-Pro für sie", { n: d })
+}
+
 export function InviteRow({ onFlash, onFeedback }: { onFlash: (m: string) => void; onFeedback: () => void }) {
-  const invite = async () => {
-    haptic()
-    const r = await inviteFriends()
-    if (r === "copied") onFlash(t("🔗 Link kopiert – schick ihn weiter!"))
-    else if (r === "shared") onFlash(t("💌 Danke fürs Weitersagen!"))
-    else if (r === "failed") onFlash(t("⚠️ Teilen hat nicht geklappt"))
-  }
+  const invite = () => inviteWithFlash(onFlash)
   const box: React.CSSProperties = { flex: 1, display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 20, border: "1px solid var(--glass-line)", background: "var(--surface)", textAlign: "left", color: "var(--text)" }
   return (
     <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
       <button className="lab-press" onClick={invite} style={box}>
         <span style={{ fontSize: "1.5rem" }}>💌</span>
-        <span><span style={{ display: "block", fontWeight: 900, fontSize: "0.86rem" }}>{t("Freunde einladen")}</span><span style={{ display: "block", fontSize: "0.7rem", color: "var(--text-dim)" }}>{(() => { const d = betaDaysLeft(todayIso()); return !betaOpen(todayIso()) ? t("Zusammen testen") : d === 1 ? t("Noch 1 Tag Gründer-Pro für sie") : t("Noch {n} Tage Gründer-Pro für sie", { n: d }) })()}</span></span>
+        <span><span style={{ display: "block", fontWeight: 900, fontSize: "0.86rem" }}>{t("Freunde einladen")}</span><span style={{ display: "block", fontSize: "0.7rem", color: "var(--text-dim)" }}>{inviteSub()}</span></span>
       </button>
       <button className="lab-press" onClick={() => { haptic(); onFeedback() }} style={box}>
         <span style={{ fontSize: "1.5rem" }}>💬</span>

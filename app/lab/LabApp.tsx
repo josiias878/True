@@ -17,7 +17,7 @@ import { fetchHealthSince, hasHealthProvider, healthCompare, mergeHealthDay, req
 import { coach, type CoachAction, type CoachMsg } from "@/lib/labCoach"
 import { LAB_CSS, Btn, Capsule, Card, FaceRow, Icon, IconBtn, Label, Segmented, Sheet, SideChips, Stars, Stepper, XpToast, haptic } from "./ui"
 import { CheckInSheet, Onboarding, SuppPicker } from "./flows"
-import { DeltaBars, DimLineChart, MoodCalendar, MoodCurve, ProCon } from "./charts"
+import { DeltaBars, DimLineChart, MoodCurve, ProCon } from "./charts"
 import { CoachBubble, HelpSheet, KolbiTip, MASCOT_NAME, Mascot } from "./mascot"
 import { InstallHint } from "./install"
 import { DailyRound, dayProgress, roundSteps, type RoundStep } from "./round"
@@ -948,6 +948,9 @@ function Dashboard({ s, wins, today, now, msgs, onAction, onQuick, onTake, onPha
   const shop = shoppingList(s, today)
   const road = pathStops(s, today, now, checkinLocked)
   const recap = recapAvailable(s, now, today)
+  // Kleiner Dauer-Einstieg in den Rückblick: ab 3 Check-ins, wenn die Woche Daten hat und kein neuer (großer Teaser) wartet
+  const recapWeek = Array.from({ length: 7 }, (_, k) => addDays(recap.end, -k)).filter(d => s.checkins[d]).length
+  const recapChip = !recap.ready && Object.keys(s.checkins).length >= 3 && recapWeek > 0
   const [dropKey, setDropKey] = useState<string | null>(null)
   const onStop = (st: Stop) => {
     switch (st.kind) {
@@ -980,6 +983,18 @@ function Dashboard({ s, wins, today, now, msgs, onAction, onQuick, onTake, onPha
       {first?.kind === "baseline" && !notStarted && today <= addDays(first.end, 3) && <ProfileCard s={s} first={first} today={today} onCheckin={() => checked ? onCheckin(today) : onRound()} />}
       {recap.ready && <RecapTeaser end={recap.end} onOpen={() => onAction({ kind: "recap" }, "recap")} />}
       {top && <KolbiSays msg={top} more={tips.length - 1} onAction={onAction} onMore={() => goTab("kolbi")} />}
+      {recapChip && (
+        <button onClick={() => onAction({ kind: "recap" }, "recap")} className="lab-press lab-rise" style={{
+          display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 14px 9px 9px", borderRadius: 999, textAlign: "left",
+          border: "1px solid var(--glass-line)", background: "var(--surface)", color: "var(--text)",
+        }}>
+          <span aria-hidden style={{ width: 30, height: 30, borderRadius: 999, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.95rem", background: "linear-gradient(135deg, #9085e9, #3987e5 60%, #2ECC8A)" }}>📊</span>
+          <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "0.88rem" }}>
+            <b>{t("Wochenrückblick")}</b> <span style={{ color: "var(--text-dim)" }}>· {fmtDate(addDays(recap.end, -6)).replace(/^\w+\.?,\s*/, "")} – {fmtDate(recap.end).replace(/^\w+\.?,\s*/, "")}</span>
+          </span>
+          <span style={{ color: "var(--text-dim)" }}>›</span>
+        </button>
+      )}
 
       {road.stops.length > 0 && (
         <div className="lab-card lab-rise" style={{ padding: "16px 12px 12px" }}>
@@ -1600,6 +1615,40 @@ function PhaseSheet({ s, w, today, onClose, update, onVerdict }: {
 // DATEN
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/** Kompakte Liste der letzten 14 Tage: antippen → Check-in nachtragen oder ändern. */
+function PastDaysSheet({ s, days, today, onClose, onPick }: { s: LabState; days: string[]; today: string; onClose: () => void; onPick: (d: string) => void }) {
+  return (
+    <Sheet open onClose={onClose} title={t("✏️ Tag bearbeiten")}>
+      <div style={{ color: "var(--text-dim)", fontSize: "0.85rem", marginBottom: 10 }}>{t("Tippe auf einen Tag, um den Check-in nachzutragen oder zu ändern.")}</div>
+      <div className="lab-card" style={{ padding: 4 }}>
+        {days.map((d, i) => {
+          const c = s.checkins[d]
+          const w = phaseAt(s, d)
+          const avg = c ? daySum(c) : null
+          return (
+            <button key={d} onClick={() => onPick(d)} className="lab-press" style={{
+              display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "10px 12px", background: "none", border: "none", color: "var(--text)", textAlign: "left",
+              borderTop: i ? "1px solid color-mix(in srgb, var(--border) 60%, transparent)" : "none",
+            }}>
+              <span style={{ width: 34, height: 34, borderRadius: 11, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: avg != null ? "1.25rem" : "0.9rem", background: avg != null ? "var(--surface-2)" : "transparent", border: avg != null ? "none" : "1.5px dashed var(--border)", color: "var(--text-dim)" }}>
+                {avg != null ? FACES[Math.round(avg) - 1] : "+"}
+              </span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", fontWeight: 800, fontSize: "0.9rem" }}>{d === today ? t("Heute") : fmtDate(d)}</span>
+                {w && <span style={{ display: "block", fontSize: "0.72rem", color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{phaseTitle(s, w)}</span>}
+              </span>
+              <span style={{ fontSize: "0.8rem", fontWeight: 800, whiteSpace: "nowrap", color: avg != null ? "var(--text)" : d === today ? "var(--text-dim)" : "var(--warning)" }}>
+                {avg != null ? <>{fmt(avg)}<span style={{ color: "#f5b400" }}> ★</span></> : d === today ? t("noch offen") : t("fehlt")}
+              </span>
+              <span style={{ color: "var(--text-dim)" }}>›</span>
+            </button>
+          )
+        })}
+      </div>
+    </Sheet>
+  )
+}
+
 function DataView({ s, wins, onVerdict, onCheckin }: { s: LabState; wins: PhaseWindow[]; onVerdict: (id: string) => void; onCheckin: (d: string) => void }) {
   const [dim, setDim] = useState<Dim | "gesamt">("gesamt")
   const nCheck = Object.keys(s.checkins).length
@@ -1612,6 +1661,10 @@ function DataView({ s, wins, onVerdict, onCheckin }: { s: LabState; wins: PhaseW
   const baseAvg = base ? checkinsIn(s, base).map(daySum) : []
   const last7 = Object.values(s.checkins).filter(c => c.date > addDays(todayIso(), -7)).map(daySum)
   const mean = (a: number[]) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null
+  // Vergangene Tage nachtragen/bearbeiten (ersetzt den Stimmungs-Kalender)
+  const [pastOpen, setPastOpen] = useState(false)
+  const pastDays = Array.from({ length: 14 }, (_, k) => addDays(todayIso(), -k)).filter(d => !s.startDate || d >= s.startDate)
+  const pastMissing = pastDays.filter(d => d !== todayIso() && !s.checkins[d]).length
 
   if (!nCheck) {
     return (
@@ -1659,6 +1712,12 @@ function DataView({ s, wins, onVerdict, onCheckin }: { s: LabState; wins: PhaseW
           ))}
         </div>
         <DimLineChart s={s} dim={dim} />
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 10, padding: "0 4px", fontSize: "0.72rem", color: "var(--text-dim)" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 12, height: 4, borderRadius: 2, background: "var(--text-dim)" }} />{t("Reset")}</span>
+          {s.supps.filter(x => wins.some(w => w.suppId === x.id && w.kind === "test")).map(x => (
+            <span key={x.id} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 12, height: 4, borderRadius: 2, background: suppColor(x) }} />{x.name}</span>
+          ))}
+        </div>
       </Card>
 
       {ranking.length > 0 && (
@@ -1688,20 +1747,16 @@ function DataView({ s, wins, onVerdict, onCheckin }: { s: LabState; wins: PhaseW
               )
             })}
           </div>
-          <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginTop: 12 }}>{t("★ = Tagesdurchschnitt im Test · +/− = Netto-Wirkung (Nutzen minus Nebenwirkungen) · ⚠️ = Nebenwirkungen. Tippen für Details.")}</div>
+          <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginTop: 12 }}>{t("★ = Tagesdurchschnitt im Test · +/− = Netto-Ergebnis (Nutzen minus Nebenwirkungen) · ⚠️ = Nebenwirkungen. Tippen für Details.")}</div>
         </Card>
       )}
 
-      <Card>
-        <Label style={{ marginBottom: 12 }}>{t("Stimmungs-Kalender · tippen zum Bearbeiten")}</Label>
-        <MoodCalendar s={s} onPick={onCheckin} />
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 12, fontSize: "0.72rem", color: "var(--text-dim)" }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 12, height: 4, borderRadius: 2, background: "var(--text-dim)" }} />{t("Reset")}</span>
-          {s.supps.filter(x => wins.some(w => w.suppId === x.id && w.kind === "test")).map(x => (
-            <span key={x.id} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 12, height: 4, borderRadius: 2, background: suppColor(x) }} />{x.name}</span>
-          ))}
-        </div>
+      <Card style={{ padding: 4 }}>
+        <Row emoji="✏️" title={t("Vergangenen Tag bearbeiten")}
+          sub={pastMissing ? (pastMissing === 1 ? t("Letzte 14 Tage · 1 Tag fehlt") : t("Letzte 14 Tage · {n} Tage fehlen", { n: pastMissing })) : t("Letzte 14 Tage · alles eingetragen")}
+          onClick={() => setPastOpen(true)} />
       </Card>
+      {pastOpen && <PastDaysSheet s={s} days={pastDays} today={todayIso()} onClose={() => setPastOpen(false)} onPick={d => { setPastOpen(false); onCheckin(d) }} />}
 
       {tested.map(w => {
         const r = testResult(s, w.suppId!)

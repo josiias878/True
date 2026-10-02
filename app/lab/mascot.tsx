@@ -189,13 +189,13 @@ export function FloatingMascot({ mood, badge, onClick }: { mood: Mood; badge: nu
 }
 
 const GUIDE: { q: string; a: string }[] = [
-  { q: t("Wie funktioniert das Lab?"), a: t("1) Reset: ein paar Tage gar nichts nehmen, so lerne ich dein Normal kennen. 2) Einzeln testen: immer nur ein Supplement für ein paar Tage, dazwischen kurze Pausen. 3) Stack: alles, was gewirkt hat, nimmst du am Ende zusammen, und ich passe auf, ob die Wirkung anhält.") },
+  { q: t("Wie funktioniert das Lab?"), a: t("1) Reset: ein paar Tage gar nichts nehmen, so lerne ich dein Normal kennen. 2) Einzeln testen: immer nur ein Supplement für ein paar Tage, dazwischen kurze Pausen. 3) Stack: alles, was du behalten hast, nimmst du am Ende zusammen, und ich passe auf, ob dein Ergebnis hält.") },
   { q: t("Was muss ich jeden Tag tun?"), a: t("Nur zwei Dinge: Einnahme abhaken (ein Tipp, die Uhrzeit speichere ich automatisch) und abends ein Gesicht antippen: Wie war dein Tag? Mehr nicht.") },
   { q: t("Was ist „Feintuning“?"), a: t("Optional kannst du einzelne Bereiche mit Sternen bewerten, z. B. Schlaf oder Energie. Unter jedem Bereich steht, was gemeint ist. Der Tagesdurchschnitt wird automatisch berechnet.") },
   { q: t("Warum Nebenwirkungen eintragen?"), a: t("Damit ich Nutzen gegen Nachteile abwägen kann. Tipp einmal für „leicht“, zweimal für „stark“. Bei starken Nebenwirkungen schlage ich dir vor, den Test abzubrechen.") },
   { q: t("Woher weißt du, ob etwas wirkt?"), a: t("Ich vergleiche deine Werte im Test mit deinen Reset-Tagen, gewichte nach deinen Zielen und ziehe Nebenwirkungen ab. Am Ende eines Tests bekommst du einen Vorschlag: behalten, vielleicht oder raus. Du bestätigst mit einem Tipp.") },
   { q: t("Was ist der Countdown oben?"), a: t("Er zeigt, wie lange die aktuelle Phase noch läuft, also wann der nächste Schritt kommt.") },
-  { q: t("Was passiert im Stack?"), a: t("Du nimmst alle behaltenen Supplements zusammen. Lässt die Wirkung nach, schlage ich vor, eins für 3 Tage wegzulassen. So findest du raus, ob es wirklich noch hilft oder ob andere Dinge (Schlaf, Stress) schuld sind.") },
+  { q: t("Was passiert im Stack?"), a: t("Du nimmst alle behaltenen Supplements zusammen. Sinken deine Werte, schlage ich vor, eins für 3 Tage wegzulassen. So findest du raus, ob es bei dir noch einen Unterschied macht oder ob andere Dinge (Schlaf, Stress) dahinterstecken.") },
   { q: t("Kann ich die Reihenfolge ändern?"), a: t("Ja. Wenn ein Test ansteht, tippe auf „Anderes wählen“ oder direkt auf ein Supplement in deiner Liste.") },
   { q: t("Wo sind meine Daten?"), a: t("Nur auf deinem Gerät. Unter ⚙️ kannst du ein Backup erstellen und auf ein anderes Gerät übertragen.") },
 ]

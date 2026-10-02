@@ -301,13 +301,13 @@ for (const lang of ["de", "en"]) {
     fs.writeFileSync(`${OUT}${href}.html`, page(l, { title: `${p.title} – Kolbi`, desc: p.desc, path: "test", alt: { [lang]: href, [other]: ohref },
       head: `<script type="application/ld+json">${JSON.stringify(ld)}</script>`,
       body: `<main class="wrap doc guide">${p.html}
-<div class="card founder" style="margin-top:32px">${kolbi("party-alive")}<div><h2>${en ? `Kolbi runs this ${p.name} test with you` : `Kolbi macht diesen ${p.name}-Test mit dir`}</h2><p>${en ? "Normal, test phase, evening check-in, honest comparison – with reminders. Free in the beta, no account." : "Normal, Testphase, Abend-Check-in, ehrlicher Vergleich – mit Erinnerungen. In der Beta kostenlos, ohne Konto."}</p><a class="btn" href="${APP}?lang=${lang}&src=${src}" data-cta="${src}">${en ? "Start the test for free" : "Test kostenlos starten"}</a></div></div>
+<div class="card founder" style="margin-top:32px">${kolbi("party-alive")}<div><h2>${p.cta?.h ?? (en ? `Kolbi runs this ${p.name} test with you` : `Kolbi macht diesen ${p.name}-Test mit dir`)}</h2><p>${p.cta?.p ?? (en ? "Normal, test phase, evening check-in, honest comparison – with reminders. Free in the beta, no account." : "Normal, Testphase, Abend-Check-in, ehrlicher Vergleich – mit Erinnerungen. In der Beta kostenlos, ohne Konto.")}</p><a class="btn" href="${APP}?lang=${lang}&src=${src}" data-cta="${src}">${p.cta?.btn ?? (en ? "Start the test for free" : "Test kostenlos starten")}</a></div></div>
 <h2>${en ? "More self-tests" : "Weitere Selbsttests"}</h2><div class="tchips">${more}</div>
 <p style="margin-top:18px"><a href="${en ? "/en/template" : "/vorlage"}">${en ? `📄 Prefer paper? Free printable tracker for your ${p.name} test →` : `📄 Lieber auf Papier? Gratis-Vorlage für deinen ${p.name}-Test →`}</a></p>
 <p style="margin-top:8px"><a href="${en ? "/en/calculator" : "/rechner"}">${en ? "💸 What does your supplement shelf cost per year? →" : "💸 Was kostet dein Supplement-Schrank im Jahr? →"}</a></p></main>` }))
   }
   // Übersicht
-  const hubT = en ? "Does my supplement work for me? Self-tests for 8 supplements" : "Wirkt mein Supplement bei mir? Selbsttests für 8 Supplements"
+  const hubT = en ? `Does my supplement work for me? Self-tests for ${TESTS.length} supplements` : `Wirkt mein Supplement bei mir? Selbsttests für ${TESTS.length} Supplements`
   fs.writeFileSync(`${OUT}${base}.html`, page(l, { title: `${hubT} – Kolbi`, desc: en ? "Step-by-step self-tests: find your normal, test one supplement at a time, compare honestly. No promises – just your own data." : "Schritt-für-Schritt-Selbsttests: dein Normal festhalten, eins nach dem anderen testen, ehrlich vergleichen. Keine Versprechen – nur deine eigenen Daten.", path: "test", alt: TEST_BASE,
     body: `<main class="wrap doc"><p class="kicker">🧪 ${en ? "Self-tests" : "Selbsttests"}</p><h1>${en ? "Does it work for <span class=\"grad\">you</span>?" : "Wirkt es bei <span class=\"grad\">dir</span>?"}</h1>
 <p class="lead">${en ? "Pick a supplement – each guide shows what people pay attention to, how long to test and how to compare honestly." : "Such dir ein Supplement aus – jede Anleitung zeigt, worauf Leute achten, wie lange du testest und wie du ehrlich vergleichst."}</p>
@@ -326,7 +326,7 @@ const TPL = {
     dl: "⬇️ PDF herunterladen", dlNote: "A4 · 2 Seiten · druckerfreundlich (weißer Hintergrund)",
     inH: "Was drin ist", items: ["<b>Seite 1 · Dein Normal:</b> 7 Tage × Schlaf, Energie, Fokus, Stimmung, Ruhe + ein eigener Bereich – je 1 bis 5 ankreuzen, Störfaktoren notieren.", "<b>Seite 2 · Test:</b> bis zu 14 Tage für genau ein Supplement, gleiche Bereiche, Durchschnitt-Zeile.", "<b>So vergleichst du:</b> Ø Normal gegen Ø Test, Faustregel für kleine Unterschiede, Gegenprobe – dann behalten, vielleicht oder raus."],
     appH: "Kein Bock auf Papier? Kolbi macht das automatisch.", appP: "Erinnert dich abends, notiert Störfaktoren, rechnet die Durchschnitte und vergleicht mit deinem Normal. In der Beta kostenlos, ohne Konto – deine Daten bleiben auf deinem Handy.", appBtn: "Kolbi kostenlos starten",
-    more: ["/selbsttest", "🧪 Selbsttests für 8 Supplements →"], calc: ["/rechner", "💸 Was kostet dein Supplement-Schrank im Jahr? →"], lang: "🇬🇧 English version" },
+    more: ["/selbsttest", `🧪 Selbsttests für ${TESTS.length} Supplements →`], calc: ["/rechner", "💸 Was kostet dein Supplement-Schrank im Jahr? →"], lang: "🇬🇧 English version" },
   en: { path: "/en/template", src: "template", other: "/vorlage", title: "Supplement self-test tracker: free printable template (PDF)",
     desc: "Free printable A4 tracker for testing supplements on yourself: record your normal for 7 days, test one at a time, rate every evening, compare honestly.",
     kicker: "📄 Free template · A4 · PDF", h: 'Test your supplements – <span class="grad">on paper</span>',
@@ -335,7 +335,7 @@ const TPL = {
     dl: "⬇️ Download PDF", dlNote: "A4 · 2 pages · printer-friendly (white background)",
     inH: "What's inside", items: ["<b>Page 1 · Your normal:</b> 7 days × sleep, energy, focus, mood, calm + one area of your own – tick 1 to 5, note disruptors.", "<b>Page 2 · Test:</b> up to 14 days for exactly one supplement, same areas, average row.", "<b>How to compare:</b> normal average vs. test average, a rule of thumb for small differences, a double-check – then keep, maybe or drop."],
     appH: "Not into paper? Kolbi does this automatically.", appP: "Reminds you every evening, tracks disruptors, works out the averages and compares with your normal. Free during the beta, no account – your data stays on your phone.", appBtn: "Start Kolbi for free",
-    more: ["/en/self-test", "🧪 Self-tests for 8 supplements →"], calc: ["/en/calculator", "💸 What does your supplement shelf cost per year? →"], lang: "🇩🇪 Deutsche Version" },
+    more: ["/en/self-test", `🧪 Self-tests for ${TESTS.length} supplements →`], calc: ["/en/calculator", "💸 What does your supplement shelf cost per year? →"], lang: "🇩🇪 Deutsche Version" },
 }
 for (const [lang, P] of Object.entries(TPL)) {
   const l = L[lang], f = TRACKER[lang]
