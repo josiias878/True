@@ -41,7 +41,7 @@ Trag den Preis ein und sieh, was dein Stack pro Monat kostet – und wie viel du
 du etwas weglässt. Kolbi sagt dir außerdem, bevor eine Dose leer ist.
 
 🧭 FERTIGE EXPERIMENTE
-Schlaf, Fokus, Ruhe, Training, Basis oder Bauch: Wähle ein Thema, Kolbi plant Reihenfolge und Dauer.
+Schlaf, Fokus, Stress & Ruhe, Training, Basis-Stack oder Verdauung: Wähle ein Thema, Kolbi plant Reihenfolge und Dauer.
 
 ⏱️ TIMING-CHECK
 Was nimmt man besser mit Abstand, was zusammen? Kolbi zeigt es dir auf einer Tageslinie.
@@ -98,11 +98,11 @@ Intakes are bundled by time of day. Kolbi learns when you actually take them and
 your check-in? Catch up the next morning.
 
 💸 STOP PAYING FOR WHAT DOESN'T WORK FOR YOU
-Add prices and see what your stack costs per month – and what you save when something gets
-dropped. Kolbi also tells you before a bottle runs out.
+Add prices and see what your stack costs per month – and what you save when you leave
+something out. Kolbi also tells you before a bottle runs out.
 
 🧭 READY-MADE EXPERIMENTS
-Sleep, focus, calm, training, basics or gut: pick a topic, Kolbi plans the order and duration.
+Sleep, focus, stress & calm, workout, basics stack or digestion: pick a topic, Kolbi plans the order and duration.
 
 ⏱️ TIMING CHECK
 What should be taken apart, what together? Kolbi shows it on a simple day line.
@@ -140,7 +140,7 @@ ready-made experiments and your weekly recap.
 | 6 | Deine Woche als Story | Your week as a story | `06-9-story.png` |
 | 7 | Kolbi, dein Lab-Coach | Kolbi, your lab coach | `07-8-kolbi.png` |
 
-Alle Bilder mit Demo-Zahlen tragen sichtbar **„Beispiel-Daten“ / “Example data“** (nur Bild 5 „Experimente“ hat keine).
+Alle 7 Bilder zeigen Demo-Zahlen (auch Bild 5 „Experimente“: Serie 🔥 24, Stufe) und tragen deshalb sichtbar **„Beispiel-Daten“ / “Example data“**.
 Community-Zahlen werden nicht gezeigt (die Übersicht wird beim Aufnehmen absichtlich nicht beantwortet).
 
 Neu erzeugen (Stand 2. Okt 2026):

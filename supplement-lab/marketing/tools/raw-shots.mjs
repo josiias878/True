@@ -1,4 +1,4 @@
-// Rohe App-Screenshots (iPhone 6,7"/6,9": 430×932 @3x) mit realistischen Beispieldaten.
+// Rohe App-Screenshots (iPhone 6,7"/6,9": 430×911 @3x = Bildfläche unter der Statusleiste) mit realistischen Beispieldaten.
 // Aufruf: node raw-shots.mjs <url> <outdir> [dark|light] [de|en]
 // Vorschau: im Ordner supplement-lab `npx vite build && npx vite preview --port 4175` → URL http://localhost:4175/
 // Community-Zahlen werden NICHT vorgetäuscht: die Übersicht (?all=1) schlägt fehl → kein Zähler, keine 👥-Quoten.
@@ -46,7 +46,9 @@ const state = {
   learned: ["magnesium:0", "magnesium:1", "kreatin:0", "general:1", "general:2", "theanin:0", "vitd:0"], community: true, recapSeen: "2026-09-27",
 }
 const browser = await chromium.launch()
-const ctx = await browser.newContext({ viewport: { width: 430, height: 932 }, deviceScaleFactor: 3, colorScheme: SCHEME, locale: LANGX === "en" ? "en-US" : "de-DE" })
+// Höhe 911 statt 932: genau die Bildfläche im Telefonrahmen von compose.mjs (310 × 657 unter der Statusleiste) –
+// sonst schneidet der Rahmen unten Navigationsleiste und Story-Hinweis („Tippen für weiter …“) an.
+const ctx = await browser.newContext({ viewport: { width: 430, height: 911 }, deviceScaleFactor: 3, colorScheme: SCHEME, locale: LANGX === "en" ? "en-US" : "de-DE" })
 const page = await ctx.newPage()
 await page.clock.install({ time: base })
 await page.route("**/functions/v1/**", r => r.request().url().includes("all=1") ? r.abort() : r.fulfill({ json: { lib: "magnesium", n: 214, min: 5, keepPct: 61, maybePct: 22, avg: 0.38, quantiles: [-0.5, 0.0, 0.4, 0.8, 1.2], dims: { schlaf: 0.7, ruhe: 0.4, energie: 0.1 }, sides: {}, avgDays: 6, total: 1873, libs: { magnesium: { n: 214, keepPct: 61 } } } }))

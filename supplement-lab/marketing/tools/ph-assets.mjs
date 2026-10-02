@@ -37,7 +37,7 @@ const G = [
   ["1-heute", "Find out which supplements actually work for YOU", "Kolbi plans your experiment: reset, then one supplement at a time.", "happy-alive"],
   ["3b-checkin", "One minute each evening", "Rate sleep, energy, calm and focus – Kolbi compares with your normal.", "think-alive"],
   ["4-muster", "Patterns you'd never notice", "Kolbi looks for patterns in your ratings – in your own data.", "party-alive"],
-  ["5-kosten", "Stop paying for what doesn't work for you", "See what your stack costs and what you save when something gets dropped.", "happy-shades"],
+  ["5-kosten", "Stop paying for what doesn't work for you", "See what your stack costs and what you save when you leave something out.", "happy-shades"],
 ]
 const g = await b.newPage({ viewport: { width: 1270, height: 760 } })
 for (const [i, [shot, h, sub, k]] of G.entries()) {
