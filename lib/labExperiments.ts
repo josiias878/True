@@ -18,7 +18,7 @@ export interface Experiment {
 
 export const EXPERIMENTS: Experiment[] = [
   { id: "schlaf", emoji: "😴", title: t("Besser schlafen"), question: t("Was hilft MIR beim Einschlafen und Durchschlafen?"), goals: ["schlaf"],
-    colors: ["#6c5ce7", "#3987e5"], weeks: t("ca. 3 Wochen"), note: t("Drei bewährte Kandidaten nacheinander – am Ende weißt du, welcher bei dir wirkt."),
+    colors: ["#6c5ce7", "#3987e5"], weeks: t("ca. 3 Wochen"), note: t("Drei beliebte Kandidaten nacheinander – am Ende weißt du, ob und welcher bei dir wirkt."),
     supps: [{ lib: "magnesium", mode: "test" }, { lib: "glycin", mode: "test" }, { lib: "theanin", mode: "test" }] },
   { id: "fokus", emoji: "🧠", title: t("Klarer Kopf"), question: t("Was gibt mir Fokus ohne Nervosität?"), goals: ["fokus", "energie"],
     colors: ["#3987e5", "#1baf9a"], weeks: t("ca. 3 Wochen"), note: t("Vom sanften Theanin bis Citicolin – Koffein bleibt wie gewohnt."),
