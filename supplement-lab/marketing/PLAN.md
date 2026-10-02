@@ -21,6 +21,8 @@ Feedback aus `lab_feedback` einarbeiten; Store-Build vorbereiten, sobald der App
 
 ## Entscheidungen (vom Inhaber)
 
+- ✅ 2. Okt 2026: **App-ID `app.kolbi`** (iOS + Android, endgültig). Store-Builds über **GitHub Actions** (kein eigener Mac; wie bei der App „Iron“). Apple-Entwicklerkonto wird ohnehin für Iron gebraucht – ein Konto für beide Apps.
+
 - Herausgeber: **auf den Namen des Inhabers** (nicht über die bestehende Firma „Iron“)
 - Budget: **0 €** zum Start. Bei Bedarf fragt Claude konkret nach 50–100 € (mit Begründung)
 - **Kein Gesicht** – aller Content mit Kolbi (Maskottchen)
