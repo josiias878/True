@@ -1519,7 +1519,7 @@ export function demoState(): LabState {
     s.tookAt[date] = Object.fromEntries(s.took[date].map(id => [id, fromMin(slotMinutes(slotFor(id, s), s.settings) + Math.round((rnd() - 0.3) * 60))]))
   }
   s.verdicts = {
-    magnesium: { decision: "keep", note: t("Schlafe tiefer, wache ruhiger auf."), date: addDays(start, 8) },
+    magnesium: { decision: "keep", note: t("Beispiel: Schlaf-Sterne im Test höher als im Reset."), date: addDays(start, 8) },
     theanin: { decision: "maybe", note: t("Ruhiger mit Kaffee, aber kein Wow."), date: addDays(start, 12) },
   }
   s.xp = 20 * total + 180

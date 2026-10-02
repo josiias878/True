@@ -400,7 +400,7 @@ export const EN_B: Record<string, string> = {
   "{h} Std {m} Min": "{h}h {m}m",
   "{m} Min": "{m} min",
   "Beim Stack-Check weggelassen, ohne dass etwas gefehlt hat": "Left out during the stack check, and nothing was missing",
-  "Schlafe tiefer, wache ruhiger auf.": "Sleeping deeper, waking up calmer.",
+  "Beispiel: Schlaf-Sterne im Test höher als im Reset.": "Example: sleep stars higher in the test than in the reset.",
   "Ruhiger mit Kaffee, aber kein Wow.": "Calmer with coffee, but no wow.",
   "Zink braucht Kupfer im Blick": "Zinc needs an eye on copper",
   "Zink bremst auf Dauer die Kupfer-Aufnahme. Wer über Monate höher dosiert, kann in einen Kupfermangel rutschen (Müdigkeit, Blutarmut). Viele nehmen deshalb ein Zink-Präparat mit etwas Kupfer – im Zweifel Blutwerte checken.": "Over time, zinc slows down copper absorption. If you take higher doses for months, you can slip into a copper deficiency (tiredness, anemia). That's why many people take a zinc product with a little copper – if in doubt, check your blood work.",
