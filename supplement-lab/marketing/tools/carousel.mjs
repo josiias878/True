@@ -25,7 +25,7 @@ const slides = [
     <div class="row">${k("think", 150)}<div><b>1 · Reset</b><span>Ein paar Tage: dein Normal</span></div></div>
     <div class="row">${k("happy", 150)}<div><b>2 · Testen</b><span>Eins nach dem anderen, abends 1 Min.</span></div></div>
     <div class="row">${k("party", 150)}<div><b>3 · Aufdecken</b><span>Behalten, vielleicht oder raus</span></div></div></div>`,
-  `<div class="s" style="flex-direction:row;gap:40px;padding:70px 60px"><img src="${shot("de-03-4-muster")}" style="height:1180px;border-radius:40px;box-shadow:0 30px 80px rgba(0,0,0,.4)"><div style="text-align:left;display:flex;flex-direction:column;gap:24px"><h2 style="font-size:64px">Und<br>dazu:</h2><p style="font-size:38px">🔎 Muster<br>💸 Kosten<br>📦 Vorrat<br>⏰ Erinnerungen<br>📊 Wochen-Story</p></div></div>`,
+  `<div class="s" style="flex-direction:row;gap:40px;padding:70px 60px"><img src="${shot("de-03-4-muster")}" style="height:1180px;border-radius:40px;box-shadow:0 30px 80px rgba(0,0,0,.4)"><div style="text-align:left;display:flex;flex-direction:column;gap:24px"><h2 style="font-size:64px">Und<br>dazu:</h2><p style="font-size:38px">🔎 Muster<br>💸 Kosten<br>📦 Vorrat<br>⏰ Erinnerungen<br>📊 Wochen-Story</p><p style="font-size:26px;opacity:.7">Bild: Beispiel-Daten</p></div></div>`,
   `<div class="s">${k("party-alive", 380)}<h1>Finde raus, was<br>bei <span class="g">DIR</span> wirkt.</h1><p>Kostenlos in der Beta · ohne Konto<br>Daten bleiben auf deinem Handy</p><div class="swipe">🔗 Link in Bio</div></div>`,
 ]
 const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1080, height: 1350 } })
