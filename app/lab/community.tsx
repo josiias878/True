@@ -141,7 +141,7 @@ export function CommunityConsent({ s, suppId, onYes, onNo }: { s: LabState; supp
         <div className="lab-float" style={{ display: "inline-block" }}><Mascot mood="happy" size={96} /></div>
         <div style={{ fontSize: "1.35rem", fontWeight: 900, marginTop: 6 }}>{t("🌍 Hilf anderen – anonym")}</div>
         <div style={{ fontSize: "0.88rem", color: "var(--text-dim)", marginTop: 6, lineHeight: 1.45 }}>
-          {t("Dein Testergebnis fließt in „Was andere erlebt haben“ ein. So sieht jeder, wie ein Supplement bei echten Menschen wirkt – nicht nur in der Werbung.")}
+          {t("Dein Testergebnis fließt in „Was andere erlebt haben“ ein. So sieht jeder, was echte Menschen mit einem Supplement erleben – nicht nur in der Werbung.")}
         </div>
       </div>
       <div style={{ marginTop: 16, fontSize: "0.72rem", fontWeight: 900, letterSpacing: ".08em", color: "var(--text-dim)" }}>{t("DAS WÜRDE GETEILT")}</div>

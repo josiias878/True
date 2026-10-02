@@ -1260,7 +1260,7 @@ function SuppSheet({ s, id, today, adv, onClose, update, onAction, onVerdict, on
       {lib && (
         <Card style={{ marginBottom: 12 }}>
           <div style={{ fontSize: "0.86rem", lineHeight: 1.55 }}>
-            <div><b>{t("Was es kann:")}</b> {lib.effect}</div>
+            <div><b>{t("Wofür genutzt:")}</b> {lib.effect}</div>
             <div style={{ marginTop: 6 }}><b>{t("Wirkt:")}</b> {ONSET_INFO[lib.onset].emoji} {ONSET_INFO[lib.onset].label}</div>
             {LIB_SIDES[lib.id]?.length ? <div style={{ marginTop: 6 }}><b>{t("Mögliche Nebenwirkungen:")}</b> {LIB_SIDES[lib.id].map(sid => SIDE_BY_ID[sid]?.label).join(", ")}</div> : null}
             {lib.caution && <div style={{ marginTop: 6, color: "var(--warning)" }}>⚠️ {lib.caution}</div>}
@@ -1574,7 +1574,7 @@ function PhaseSheet({ s, w, today, onClose, update, onVerdict }: {
       {lib && w.kind === "test" && (
         <Card style={{ marginBottom: 12 }}>
           <div style={{ fontSize: "0.88rem", lineHeight: 1.55 }}>
-            <div><b>{t("Wirkung:")}</b> {lib.effect}</div>
+            <div><b>{t("Kurz erklärt:")}</b> {lib.effect}</div>
             <div style={{ marginTop: 6 }}><b>{t("Dosis:")}</b> {supp?.dose || lib.dose}{lib.route ? ` · ${ROUTE_INFO[lib.route].emoji} ${ROUTE_INFO[lib.route].label}` : ""}</div>
             <div style={{ marginTop: 6 }}><b>{t("Einnahme:")}</b> {lib.timing}</div>
             {LIB_SIDES[lib.id]?.length ? <div style={{ marginTop: 6 }}><b>{t("Mögliche Nebenwirkungen:")}</b> {LIB_SIDES[lib.id].map(id => `${SIDE_BY_ID[id]?.emoji} ${SIDE_BY_ID[id]?.label}`).join(" · ")}</div> : null}
@@ -1722,7 +1722,7 @@ function DataView({ s, wins, onVerdict, onCheckin }: { s: LabState; wins: PhaseW
 
       {ranking.length > 0 && (
         <Card>
-          <Label style={{ marginBottom: 12 }}>{t("🏅 Bestenliste · Wirkung vs. Reset")}</Label>
+          <Label style={{ marginBottom: 12 }}>{t("🏅 Bestenliste · Ergebnis vs. Reset")}</Label>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {ranking.map(({ w, r }, i) => {
               const supp = s.supps.find(x => x.id === w.suppId)
@@ -1831,7 +1831,7 @@ function VerdictSheet({ s, suppId, onClose, onSave }: { s: LabState; suppId: str
       ) : (
         <Card style={{ marginBottom: 12, background: "var(--surface-2)", border: "none", boxShadow: "none", fontSize: "0.88rem", lineHeight: 1.5 }}>
           {lib?.onset === "langsam"
-            ? t("🐢 {name} wirkt eher über Wochen. Entscheide nach Bauchgefühl, Blutwerten oder ärztlichem Rat.", { name: String(supp?.name) })
+            ? t("🐢 Bei {name} merkt man, wenn überhaupt, eher nach Wochen etwas. Entscheide nach Bauchgefühl, Blutwerten oder ärztlichem Rat.", { name: String(supp?.name) })
             : t("Keine Testdaten für dieses Supplement. Du kannst trotzdem nach Bauchgefühl entscheiden.")}
         </Card>
       )}
@@ -1921,7 +1921,7 @@ function StackView({ s, update, onVerdict, onStartStack }: { s: LabState; update
           <Mascot mood="party" size={48} />
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 900 }}>{t("Bereit für deinen Stack?")}</div>
-            <div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>{t("Alle behaltenen zusammen nehmen. Ich passe auf, ob die Wirkung anhält.")}</div>
+            <div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>{t("Alle behaltenen zusammen nehmen. Ich passe auf, ob deine Werte stabil bleiben.")}</div>
           </div>
           <Btn onClick={onStartStack} style={{ padding: "10px 12px", fontSize: "0.82rem", whiteSpace: "nowrap" }}>{t("Starten")}</Btn>
         </Card>

@@ -282,7 +282,7 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
             {t("Ich finde mit dir heraus, welche Supplements bei dir wirklich wirken. Du tippst nur, ich plane und werte aus.")}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
-            {[["🧘", t("Ein paar Tage nichts nehmen"), t("So lerne ich dein Normal kennen.")], ["🔬", t("Dann eins nach dem anderen testen"), t("Immer nur ein Supplement für ein paar Tage.")], ["🏆", t("Am Ende: dein Stack"), t("Was wirkt, bleibt. Ich passe auf, dass es so bleibt.")]].map(([e, ti, d]) => (
+            {[["🧘", t("Ein paar Tage nichts nehmen"), t("So lerne ich dein Normal kennen.")], ["🔬", t("Dann eins nach dem anderen testen"), t("Immer nur ein Supplement für ein paar Tage.")], ["🏆", t("Am Ende: dein Stack"), t("Was du behältst, nimmst du zusammen – ich behalte es im Blick.")]].map(([e, ti, d]) => (
               <div key={ti} style={{ display: "flex", gap: 12, alignItems: "center", padding: "10px 12px", borderRadius: 16, background: "var(--surface)", border: "1px solid var(--border)" }}>
                 <span style={{ fontSize: "1.5rem" }}>{e}</span>
                 <div><div style={{ fontWeight: 800, fontSize: "0.92rem" }}>{ti}</div><div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>{d}</div></div>
@@ -358,7 +358,7 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
             {[
               ["🧘", t("{n} Tage Reset", { n: baseline }), t("nichts nehmen, jeden Abend 1 Tipp")],
               ["🔬", testOrder.length === 1 ? t("Dann 1 Test, einzeln") : t("Dann {n} Tests, einzeln", { n: testOrder.length }), testOrder.slice(0, 4).map(x => x.name).join(" → ") + (testOrder.length > 4 ? " …" : "")],
-              ["🏆", t("Dein Stack"), t("alles, was wirkt, zusammen")],
+              ["🏆", t("Dein Stack"), t("alles Behaltene zusammen")],
             ].map(([e, ti, d]) => (
               <div key={ti} style={{ display: "flex", gap: 12, alignItems: "center", padding: "12px 14px", borderRadius: 16, background: "var(--surface)", border: "1px solid var(--border)" }}>
                 <span style={{ fontSize: "1.5rem" }}>{e}</span>
