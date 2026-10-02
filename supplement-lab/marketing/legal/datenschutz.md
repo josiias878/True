@@ -14,8 +14,7 @@ E-Mail: [E-Mail-Adresse]
 ## 2. Grundsatz: Deine Einträge bleiben auf deinem Gerät
 
 Supplement Lab funktioniert ohne Konto und ohne Anmeldung. Alles, was du einträgst – Supplements, Einnahmen,
-Check-ins, Bewertungen, Nebenwirkungen, Notizen, Vorrat, Preise, Ziele – wird **ausschließlich lokal auf deinem
-Gerät** gespeichert (Browser-Speicher bzw. App-Speicher). Wir haben keinen Zugriff darauf. Wenn du die App
+Check-ins, Bewertungen, Nebenwirkungen, Notizen, Vorrat, Preise, Ziele – wird **ausschließlich lokal auf deinem Gerät** gespeichert (Browser-Speicher bzw. App-Speicher). Wir haben keinen Zugriff darauf. Wenn du die App
 löschst oder in den Einstellungen „Zurücksetzen“ wählst, sind die Daten weg. Ein Backup kannst du selbst als
 Datei sichern oder teilen; wohin die Datei geht, entscheidest du.
 

@@ -194,7 +194,7 @@ const BUY: Record<string, { q: string; alt?: string }> = {
   jod:         { q: "Jod" },
   flohsamen:   { q: "Flohsamenschalen gemahlen" },
   multivitamin:{ q: "Multivitamin" },
-  nac:         { q: "NAC" },
+  nac:         { q: "NAC N-Acetylcystein" },
   taurin:      { q: "Taurin Pulver", alt: t("Als Pulver sehr günstig und geschmacksneutral.") },
 }
 

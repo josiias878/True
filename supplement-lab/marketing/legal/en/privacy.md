@@ -65,8 +65,7 @@ event, the app language and – if you came through a link like `…/reddit` –
 remembers it locally on your device, as well as your setting for whether the stats are off.
 
 At Supabase (Frankfurt, section 11) this only increments a **daily counter** (e.g. “Oct 1 · first check-in ·
-English · reddit: 12”). Only the day, event, language, channel and count are stored – **no device ID, no IP address,
-no content and no health values**; individual people cannot be identified in the stats.
+English · reddit: 12”). Only the day, event, language, channel and count are stored – **no device ID, no IP address, no content and no health values**; individual people cannot be identified in the stats.
 
 The stats are **switched on by default**. You can turn them off at any time in Settings under “📊 Anonymous stats”;
 after that, the app sends no more events. Legal basis: Art. 6(1)(f) GDPR (legitimate interest in improving the app);
@@ -164,8 +163,7 @@ are encrypted via HTTPS.
 
 Before launch, we test the store apps in a closed test via **Google Play** or **TestFlight** (Apple). If you take
 part, Google or Apple process your data as a tester – e.g. your Google account or membership in the tester group, the
-email address of a TestFlight invitation, and installation and crash data – **under their own terms and privacy
-policies**. In their developer consoles we only see what the platform shows us (e.g. number of testers, crash
+email address of a TestFlight invitation, and installation and crash data – **under their own terms and privacy policies**. In their developer consoles we only see what the platform shows us (e.g. number of testers, crash
 reports, feedback sent via the store channel, and for TestFlight possibly the name and email address of invited
 testers). You can send feedback on the test version via the Google Play or TestFlight feedback channel or by email;
 we use it only to improve the app and delete it as soon as it is no longer needed for that. Inside the app, the same
