@@ -4,7 +4,7 @@ Ziel: 1.500 € netto/Monat bis Okt 2027 (siehe PLAN.md). Grundsatz: **erst bewe
 Jeder Montags-Sprint nimmt die obersten offenen Punkte der aktuellen Phase.
 
 ## Ehrlicher Stand
-- ✅ Owned SEO: Kosten-Rechner + 8 Selbsttest-Seiten DE/EN (indexierbar sobald Impressum steht)
+- ✅ Owned SEO: Kosten-Rechner + 14 Selbsttest-Seiten DE/EN + Druckvorlage (indexierbar sobald Impressum steht)
 - ✅ Starkes Fundament: App DE/EN, Kolbi, Pro/Bezahlung vorbereitet, Content, Landingpage, Store-Paket
 - ❌ Nicht bewiesen: keine echten Nutzer, keine Zahlungsbereitschaft, Bedienung nur automatisch getestet
 - ⚠️ Größtes Risiko: **Nutzen kommt spät** (erstes Ergebnis nach ~2 Wochen) + **zu viele Funktionen**
