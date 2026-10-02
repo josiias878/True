@@ -8,6 +8,7 @@ import type { CoachAction, CoachMsg, Mood } from "@/lib/labCoach"
 import { Label, Sheet, haptic } from "./ui"
 import { Guide, MASCOT_NAME, Mascot, TipsList } from "./mascot"
 import { ProCard, inviteSub, inviteWithFlash } from "./grow"
+import { AndroidTesterCard } from "./testers"
 import { t } from "@/lib/labI18n"
 
 const JOBS = [
@@ -141,6 +142,8 @@ export function KolbiPage({ s, mood, fill, murky, msgs, onAction, onFlash, onFee
         <Tile emoji="💬" title="Feedback" sub={t("Sag mir, was fehlt")} onClick={() => { haptic(); onFeedback() }} arrow={false} />
       </div>
 
+      <AndroidTesterCard />
+
       <CommunityStat />
 
       {panel === "mir" && (
@@ -194,7 +197,7 @@ export function KolbiPage({ s, mood, fill, murky, msgs, onAction, onFlash, onFee
       )}
       {panel === "pro" && (
         <Sheet open onClose={close} title="⭐ Lab Pro">
-          <ProCard s={s} startOpen />
+          <ProCard s={s} startOpen onPlans={close} />
         </Sheet>
       )}
     </div>

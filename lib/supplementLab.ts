@@ -912,8 +912,19 @@ export function makeSupp(lib: LibSupp | null, name: string, existing: MySupp[], 
   let color = 0
   while (used.has(color) && color < SUPP_COLORS.length) color++
   if (color >= SUPP_COLORS.length) color = existing.length % SUPP_COLORS.length
-  if (lib) return { id: lib.id, name: lib.name, emoji: lib.emoji, dose: dose || lib.dose, lib: lib.id, color, mode: defaultMode(lib) }
+  // Store-Modus: die übliche Bibliotheks-Menge NICHT als „deine Dosis“ vorbelegen (sonst stünde sie in Erinnerungen
+  // und Tagesrunde wie eine persönliche Empfehlung). Eigene Angaben (dose, z. B. aus „Liste einfügen“) bleiben.
+  if (lib) return { id: lib.id, name: lib.name, emoji: lib.emoji, dose: dose || (STORE_MODE ? "" : lib.dose), lib: lib.id, color, mode: defaultMode(lib) }
   return { id: `custom-${Date.now().toString(36)}-${existing.length}`, name, emoji: "💊", dose, color, mode: "test" }
+}
+
+/**
+ * Bibliotheks-Dosis zum Anzeigen. Store-Modus: Mengen als „übliche Packungsangabe“ gekennzeichnet –
+ * Information, keine persönliche Empfehlung. Texte ohne Zahl („laut Protokoll“, „nach Blutbild“) bleiben.
+ */
+export function libDoseLabel(lib: Pick<LibSupp, "dose"> | undefined): string {
+  const dose = lib?.dose ?? ""
+  return STORE_MODE && /\d/.test(dose) ? t("{dose} (übliche Packungsangabe)", { dose }) : dose
 }
 
 export function libOf(s: MySupp | undefined) { return s?.lib ? LIB_BY_ID[s.lib] : undefined }

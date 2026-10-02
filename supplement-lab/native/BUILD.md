@@ -110,6 +110,12 @@ Ohne diese Schlüssel baut alles trotzdem – Lab Pro bleibt dann gratis.
 - **Neue Store-Version** (z. B. 1.0.1): `versionName` in `supplement-lab/android/app/build.gradle` **und**
   `MARKETING_VERSION` im Xcode-Projekt (`supplement-lab/ios/App/App.xcodeproj/project.pbxproj`, 2×) ändern –
   macht Claude. Die Build-Nummer zählt der Workflow selbst hoch (nie zurücksetzen: Workflow-Datei nicht umbenennen).
+  Dazu `version` in `supplement-lab/package.json` gleich setzen – daraus entsteht die App-Version im Feedback
+  (`1.0.0-ios` / `1.0.0-android` / `1.0.0-web`, `lib/labGrow.ts` → `appVersion()`). Überschreiben per Build-Variable
+  `VITE_APP_VERSION` (nur `0-9 a-z . -`, max. 12 Zeichen).
+- **Test-Builds kennzeichnen (optional):** `VITE_STATS_SRC=playtest` beim `vite build` → die anonyme Statistik zählt
+  diese Builds unter Kanal `playtest` (bleibt anonym, gleicher Kanal für alle). **Nie** für einen Build setzen, der
+  in die Produktion befördert wird – sonst zählen echte Nutzer als „playtest“.
 - **Kosten:** Linux-Minuten (Android) sind günstig; macOS-Minuten zählen in privaten Repos 10-fach gegen das
   Freikontingent. Deshalb startet „Kolbi iOS“ nur manuell bzw. bei iOS-Änderungen; ein voller Lauf
   (Prüfung + TestFlight) dauert ca. 30–50 macOS-Minuten.

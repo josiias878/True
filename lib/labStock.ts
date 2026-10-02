@@ -3,7 +3,7 @@
 // Dosis gegen die übliche Tagesmenge und erinnert rechtzeitig ans Nachkaufen.
 
 import {
-  addDays, intakeOn, libOf, todayIso, isHere, looksPrescribed,
+  addDays, intakeOn, libOf, todayIso, isHere, looksPrescribed, STORE_MODE,
   type LabState, type LibSupp, type MySupp, type Stock, type StockForm,
 } from "./supplementLab"
 import { t, euro, isEn, LOCALE } from "./labI18n"
@@ -120,7 +120,11 @@ export function gramDosed(x: MySupp, form: StockForm) {
 
 export interface DoseCheck { level: "ok" | "low" | "high"; amount: string; rec: string; text: string; better?: number }
 
-/** Vergleicht die Tagesmenge mit der üblichen Dosis aus der Bibliothek — nur ein Hinweis, keine Verordnung. */
+/**
+ * Vergleicht die Tagesmenge mit der üblichen Dosis aus der Bibliothek — nur ein Hinweis, keine Verordnung.
+ * Store-Modus: rein beschreibender Vergleich mit der üblichen Packungsangabe, ohne „X Kapseln würden reichen“
+ * und ohne Anstoß zu mehr/weniger (Kolbi empfiehlt keine persönlichen Dosierungen, Apple 1.4.1).
+ */
 export function doseCheck(x: MySupp, st: Stock): DoseCheck | null {
   const r = doseRange(libOf(x))
   if (!r || libOf(x)?.rx || libOf(x)?.category === "Peptide") return null
@@ -134,6 +138,11 @@ export function doseCheck(x: MySupp, st: Stock): DoseCheck | null {
   if (amt == null || amt <= 0) return null
   const rec = fmtRange(r.min, r.max, r.unit)
   const amount = fmtAmount(amt, r.unit)
+  if (STORE_MODE) {
+    if (amt > r.max * 1.3) return { level: "high", amount, rec, text: t("Mehr als die übliche Packungsangabe ({rec}). Halte dich an die Packung oder an ärztlichen Rat; bei Unsicherheit frag in der Apotheke.", { rec }) }
+    if (amt < r.min * 0.75) return { level: "low", amount, rec, text: t("Weniger als die übliche Packungsangabe ({rec}). Das ist nur ein Vergleich, keine Empfehlung – halte dich an die Packung oder an ärztlichen Rat.", { rec }) }
+    return { level: "ok", amount, rec, text: t("Liegt im Bereich der üblichen Packungsangabe ({rec}).", { rec }) }
+  }
   if (amt > r.max * 1.3) {
     // Weniger Stück würden reichen → hält länger, spart Geld
     const per = gramDosed(x, st.form) ? 1000 : st.active! * (st.activeUnit === "µg" ? 0.001 : 1)
@@ -154,18 +163,21 @@ export function doseCheck(x: MySupp, st: Stock): DoseCheck | null {
 export const AFFILIATE = { amazonTag: "" }
 export const shopIsAd = () => !!AFFILIATE.amazonTag
 
-/** Suchbegriff für den Nachkauf + Kolbis Tipp zur besseren Form. */
+/** Hinweis statt Mengenangabe – Kolbi empfiehlt keine Dosierungen (Apple 1.4.1, Store-Texte). */
+const PACK_DOSE = t("Achte auf die Dosis auf der Packung; bei Unsicherheit frag in der Apotheke.")
+
+/** Suchbegriff für den Nachkauf + Kolbis Tipp zur besseren Form. Bewusst ohne Mengen/Stärken (auch im Suchbegriff). */
 const BUY: Record<string, { q: string; alt?: string }> = {
-  kupfer:      { q: "Kupfer Bisglycinat 2 mg", alt: t("Kupfer-Bisglycinat ist gut verträglich – 1–2 mg am Tag reichen.") },
+  kupfer:      { q: "Kupfer Bisglycinat", alt: `${t("Kupfer-Bisglycinat ist gut verträglich.")} ${PACK_DOSE}` },
   magnesium:   { q: "Magnesium Glycinat", alt: t("Glycinat ist sanft zum Magen. Citrat wirkt eher abführend, Oxid wird schlecht aufgenommen.") },
   kreatin:     { q: "Kreatin Monohydrat Pulver", alt: t("Monohydrat ist die am besten untersuchte Form – teure „neue“ Formen bringen nachweislich nicht mehr.") },
   vitd:        { q: "Vitamin D3 K2 Tropfen", alt: t("Tropfen in Öl sind günstig und lassen sich fein dosieren.") },
   omega3:      { q: "Omega 3 EPA DHA Kapseln", alt: t("Achte auf EPA+DHA pro Kapsel, nicht nur „Fischöl“. Algenöl ist die vegane Variante.") },
-  zink:        { q: "Zink Bisglycinat 15 mg", alt: t("Bisglycinat oder Picolinat werden gut aufgenommen – 10–15 mg reichen meist.") },
+  zink:        { q: "Zink Bisglycinat", alt: `${t("Bisglycinat oder Picolinat werden gut aufgenommen.")} ${PACK_DOSE}` },
   eisen:       { q: "Eisen Bisglycinat", alt: t("Eisen-Bisglycinat ist deutlich magenschonender als Eisensulfat.") },
   b12:         { q: "Vitamin B12 Methylcobalamin Lutschtabletten", alt: t("Methyl- oder Adenosylcobalamin, als Lutschtablette oder Tropfen.") },
   folat:       { q: "Folat 5-MTHF", alt: t("5-MTHF (Methylfolat) ist die direkt aktive Form.") },
-  theanin:     { q: "L-Theanin 200 mg" },
+  theanin:     { q: "L-Theanin" },
   glycin:      { q: "Glycin Pulver", alt: t("Als Pulver viel günstiger als Kapseln – schmeckt leicht süß.") },
   ashwagandha: { q: "Ashwagandha KSM-66", alt: t("KSM-66 ist der am besten untersuchte Extrakt.") },
   curcumin:    { q: "Curcumin Piperin", alt: t("Ohne Piperin oder Mizellen-Form wird kaum etwas aufgenommen.") },
@@ -173,16 +185,16 @@ const BUY: Record<string, { q: string; alt?: string }> = {
   kollagen:    { q: "Kollagen Peptide Pulver" },
   whey:        { q: "Whey Protein Pulver" },
   elektrolyte: { q: "Elektrolyt Pulver ohne Zucker" },
-  citrullin:   { q: "L-Citrullin Malat Pulver", alt: t("Als Pulver viel günstiger – 6–8 g schafft man mit Kapseln kaum.") },
+  citrullin:   { q: "L-Citrullin Malat Pulver", alt: t("Als Pulver viel günstiger – größere Tagesmengen schafft man mit Kapseln kaum.") },
   betaalanin:  { q: "Beta Alanin Pulver" },
-  melatonin:   { q: "Melatonin 0,5 mg", alt: t("Weniger ist oft mehr: Viele starten mit 0,5–1 mg statt 5 mg.") },
+  melatonin:   { q: "Melatonin", alt: `${t("Die Stärken unterscheiden sich von Packung zu Packung stark.")} ${PACK_DOSE}` },
   probiotika:  { q: "Probiotika Kapseln magensaftresistent" },
   vitc:        { q: "Vitamin C gepuffert", alt: t("Gepuffertes Vitamin C ist sanfter zum Magen.") },
-  selen:       { q: "Selen 100 µg" },
-  jod:         { q: "Jod 100 µg" },
+  selen:       { q: "Selen" },
+  jod:         { q: "Jod" },
   flohsamen:   { q: "Flohsamenschalen gemahlen" },
   multivitamin:{ q: "Multivitamin" },
-  nac:         { q: "NAC 600 mg" },
+  nac:         { q: "NAC" },
   taurin:      { q: "Taurin Pulver", alt: t("Als Pulver sehr günstig und geschmacksneutral.") },
 }
 

@@ -1,7 +1,7 @@
 import { Capacitor } from "@capacitor/core"
 import { LocalNotifications } from "@capacitor/local-notifications"
 import { InAppReview } from "@capacitor-community/in-app-review"
-import { setNativeReview } from "@/lib/labGrow"
+import { setAppPlatform, setNativeReview } from "@/lib/labGrow"
 import { setNativeScheduler, upcomingNotifications } from "@/lib/labReminders"
 import type { LabState } from "@/lib/supplementLab"
 
@@ -10,6 +10,8 @@ import type { LabState } from "@/lib/supplementLab"
  * kommen auch bei geschlossener App, inkl. 1-Tipp-Bewertung direkt aus der Nachricht.
  */
 export async function initNative(): Promise<boolean> {
+  // Feedback-Version mit Plattform („1.0.0-ios“ / „1.0.0-android“ / „1.0.0-web“), damit Tester-Feedback trennbar ist
+  setAppPlatform(Capacitor.getPlatform())
   if (!Capacitor.isNativePlatform()) return false
 
   // Natives Bewertungs-Fenster (SKStoreReview / Play In-App Review) für lib/labGrow.ts → nativeReview()

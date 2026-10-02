@@ -3,7 +3,7 @@
 import React, { useState } from "react"
 import { todayIso, type LabState } from "@/lib/supplementLab"
 import { PRICES, PRICE_LABEL, PRO_FEATURES, SITE_URL, betaDaysLeft, betaEndLabel, betaOpen, freeForAll, inviteFriends, isPro, nativeReview, openPaywall, sendFeedback, type ProFeature } from "@/lib/labGrow"
-import { buy, restorePurchases, storePrices, type Plan } from "@/lib/labBilling"
+import { buy, paymentsReady, restorePurchases, storePrices, type Plan } from "@/lib/labBilling"
 import { Btn, Sheet, haptic } from "./ui"
 import { Mascot } from "./mascot"
 import { track } from "@/lib/labStats"
@@ -12,7 +12,7 @@ import { t, isEn, euro } from "@/lib/labI18n"
 const GRAD = "linear-gradient(135deg, #9085e9, #e87ba4)"
 
 /** Lab Pro: in der Beta als „Gründer-Pro“ freigeschaltet – zeigt, was drin ist. */
-export function ProCard({ s, startOpen = false }: { s: LabState; startOpen?: boolean }) {
+export function ProCard({ s, startOpen = false, onPlans }: { s: LabState; startOpen?: boolean; onPlans?: () => void }) {
   const [open, setOpen] = useState(startOpen)
   // In der Store-App kommen die Preise aus dem Store (Währung/Land), sonst unsere Standardpreise
   const [store, setStore] = useState<Partial<Record<Plan, string>>>({})
@@ -33,7 +33,7 @@ export function ProCard({ s, startOpen = false }: { s: LabState; startOpen?: boo
         <span style={{ fontWeight: 900, transform: open ? "rotate(90deg)" : "none", transition: "transform .3s" }}>›</span>
       </button>
       {open && (
-        <div className="lab-fade" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, padding: "0 12px 14px" }}>
+        <div className="lab-fade" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, padding: "0 12px 10px" }}>
           {PRO_FEATURES.map(f => (
             <div key={f.title} style={{ background: "rgba(255,255,255,.16)", borderRadius: 16, padding: "10px 11px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -50,6 +50,13 @@ export function ProCard({ s, startOpen = false }: { s: LabState; startOpen?: boo
           </div>
         </div>
       )}
+      {/* Immer sichtbar (auch für Gründer): Tarife, Kauf und „Käufe wiederherstellen“ – Store-Prüfer müssen den Kauf finden */}
+      <div style={{ padding: "0 12px 12px" }}>
+        <button className="lab-press" onClick={() => { haptic(); onPlans?.(); openPaywall() }} style={{
+          width: "100%", border: "none", borderRadius: 999, padding: "11px 14px", background: "#fff", color: "#6f63d9", fontWeight: 900, fontSize: "0.9rem", cursor: "pointer",
+          boxShadow: "0 4px 14px rgba(60,40,120,.18)",
+        }}>{t("Tarife ansehen")} ›</button>
+      </div>
     </div>
   )
 }
@@ -193,19 +200,68 @@ export function ProGate({ s, feature, children, gap = 0 }: { s: LabState; featur
 
 const LEGAL = isEn ? { terms: `${SITE_URL}/en/terms`, privacy: `${SITE_URL}/en/privacy` } : { terms: `${SITE_URL}/nutzungsbedingungen`, privacy: `${SITE_URL}/datenschutz` }
 
+/** Store-App (Capacitor) oder Web – ohne Import, damit Next (get-true.de/lab) nichts nachladen muss */
+type Platform = "ios" | "android" | "web"
+export function appPlatform(): Platform {
+  try {
+    const p = (window as { Capacitor?: { getPlatform?: () => string } }).Capacitor?.getPlatform?.()
+    return p === "ios" || p === "android" ? p : "web"
+  } catch { return "web" }
+}
+
+/**
+ * Store-Preis lesen („19,99 €“, „$19.99“, „CHF 20.00“, „¥3,000“, „1.234,56 €“): Zahl + Formatierer, der
+ * Währung, Trennzeichen und Nachkommastellen des Stores übernimmt (für „nur … im Monat“). Nicht lesbar → null.
+ */
+export function readPrice(str?: string): { value: number; fmt: (n: number) => string } | null {
+  if (!str) return null
+  const m = str.match(/\d(?:[\d.,\s  ']*\d)?/)
+  if (!m || m.index === undefined) return null
+  const raw = m[0], at = m.index
+  const d = raw.match(/([.,])(\d{1,2})$/)
+  const intPart = d ? raw.slice(0, -d[0].length) : raw
+  const group = intPart.match(/\D/)?.[0] ?? ""
+  const value = Number(intPart.replace(/\D/g, "") + (d ? `.${d[2]}` : ""))
+  if (!Number.isFinite(value) || value <= 0) return null
+  const places = d ? d[2].length : 0
+  const fmt = (n: number) => {
+    const f = 10 ** places
+    const [i, frac] = (Math.ceil(n * f - 1e-6) / f).toFixed(places).split(".") // aufrunden: nie zu niedrig anzeigen
+    const int = group ? i.replace(/\B(?=(\d{3})+(?!\d))/g, group) : i
+    return str.slice(0, at) + int + (frac ? d![1] + frac : "") + str.slice(at + raw.length)
+  }
+  return { value, fmt }
+}
+
 export function PaywallSheet({ s, from, onClose, onPurchased, onFlash }: {
   s: LabState; from?: ProFeature; onClose: () => void; onPurchased: (plan: Plan | "restored") => void; onFlash: (m: string) => void
 }) {
   const [plan, setPlan] = useState<Plan>("yearly")
   const [busy, setBusy] = useState(false)
-  const [store, setStore] = useState<Partial<Record<Plan, string>>>({})
+  // Preise kommen aus dem Store (Währung/Land/Steuer). null = lädt noch.
+  const [store, setStore] = useState<Partial<Record<Plan, string>> | null>(null)
   React.useEffect(() => { storePrices().then(setStore) }, [])
   const founder = !!s.pro?.founder
-  const save = Math.round((1 - PRICES.yearly / (PRICES.monthly * 12)) * 100)
+  const plat = appPlatform()
+  const native = plat !== "web"
+  const loading = paymentsReady() && store === null
+  const sp = store ?? {}
+  // Ohne Store-Preis: unsere Euro-Preise als Richtpreis (klar gekennzeichnet)
+  const raw: Record<Plan, string> = {
+    monthly: sp.monthly ?? euro(PRICES.monthly, true), yearly: sp.yearly ?? euro(PRICES.yearly, true), lifetime: sp.lifetime ?? euro(PRICES.lifetime, true),
+  }
+  const guide = !loading && (!sp.monthly || !sp.yearly || !sp.lifetime)
+  const yp = readPrice(raw.yearly), mp = readPrice(raw.monthly)
+  // Ersparnis und „pro Monat“ nur, wenn beide Preise aus derselben Quelle stammen
+  const sameSource = !!sp.yearly === !!sp.monthly
+  const save = sameSource && yp && mp ? Math.round((1 - yp.value / (mp.value * 12)) * 100) : 0
+  const perMonth = yp ? yp.fmt(yp.value / 12) : ""
+  const dots = "…"
+  const yearlySub = [native ? t("7 Tage gratis") : "", perMonth && !loading ? t("nur {p} im Monat", { p: perMonth }) : ""].filter(Boolean).join(" · ")
   const plans: { id: Plan; title: string; price: string; sub: string; badge?: string }[] = [
-    { id: "yearly", title: t("Jährlich"), price: store.yearly ? t("{p}/Jahr", { p: store.yearly }) : PRICE_LABEL.yearly, sub: t("nur {p} im Monat", { p: euro(PRICES.yearly / 12, true) }), badge: t("Beliebt · spar {n} %", { n: save }) },
-    { id: "monthly", title: t("Monatlich"), price: store.monthly ? t("{p}/Monat", { p: store.monthly }) : PRICE_LABEL.monthly, sub: t("jederzeit kündbar") },
-    { id: "lifetime", title: t("Für immer"), price: store.lifetime ? t("{p} einmalig", { p: store.lifetime }) : PRICE_LABEL.lifetime, sub: t("einmal zahlen, kein Abo") },
+    { id: "yearly", title: t("Jährlich"), price: loading ? dots : t("{p}/Jahr", { p: raw.yearly }), sub: yearlySub, badge: save > 0 ? t("Beliebt · spar {n} %", { n: save }) : t("Beliebt") },
+    { id: "monthly", title: t("Monatlich"), price: loading ? dots : t("{p}/Monat", { p: raw.monthly }), sub: t("jederzeit kündbar") },
+    { id: "lifetime", title: t("Für immer"), price: loading ? dots : t("{p} einmalig", { p: raw.lifetime }), sub: t("einmal zahlen, kein Abo") },
   ]
   const go = async () => {
     haptic(); setBusy(true)
@@ -222,7 +278,9 @@ export function PaywallSheet({ s, from, onClose, onPurchased, onFlash }: {
     if (r) { onPurchased("restored"); onFlash(t("✓ Lab Pro wiederhergestellt")) }
     else onFlash(r === null ? t("Bald verfügbar – gerade ist alles gratis 🎁") : t("Kein Kauf gefunden"))
   }
+  const hasSub = s.pro?.plan === "monthly" || s.pro?.plan === "yearly"
   const hl = from ? PRO_FEATURES.find(x => x.id === from) : undefined
+  const link: React.CSSProperties = { color: "inherit", fontWeight: 800 }
   return (
     <Sheet open onClose={onClose}>
       <div style={{ margin: "-10px -18px 0", padding: "24px 20px 20px", borderRadius: "28px 28px 0 0", color: "#fff", textAlign: "center", background: GRAD, position: "relative", overflow: "hidden" }}>
@@ -258,19 +316,39 @@ export function PaywallSheet({ s, from, onClose, onPurchased, onFlash }: {
                 <span style={{ width: 22, height: 22, borderRadius: 999, border: on ? "7px solid #9085e9" : "2px solid var(--border)", flexShrink: 0, boxSizing: "border-box" }} />
                 <span style={{ flex: 1 }}>
                   <span style={{ display: "block", fontWeight: 900 }}>{p.title}</span>
-                  <span style={{ display: "block", fontSize: "0.74rem", color: "var(--text-dim)" }}>{p.sub}</span>
+                  {p.sub && <span style={{ display: "block", fontSize: "0.74rem", color: "var(--text-dim)" }}>{p.sub}</span>}
                 </span>
-                <span style={{ fontWeight: 900 }}>{p.price}</span>
+                <span style={{ fontWeight: 900, whiteSpace: "nowrap" }}>{p.price}</span>
                 {p.badge && <span style={{ position: "absolute", top: -9, right: 12, fontSize: "0.62rem", fontWeight: 900, padding: "3px 8px", borderRadius: 999, background: GRAD, color: "#fff" }}>{p.badge}</span>}
               </button>
             )
           })}
         </div>
-        <Btn full disabled={busy} onClick={go} style={{ marginTop: 14 }}>{busy ? t("Einen Moment …") : founder ? t("💚 Kolbi trotzdem unterstützen") : t("Weiter")}</Btn>
+        {guide && <div style={{ fontSize: "0.68rem", color: "var(--text-dim)", textAlign: "center", marginTop: 8 }}>{t("Richtpreise in Euro – verbindlich ist der Preis, der dir beim Kauf angezeigt wird.")}</div>}
+        {hasSub && plan === "lifetime" && <div style={{ fontSize: "0.74rem", textAlign: "center", marginTop: 8, fontWeight: 700 }}>{t("Du hast schon ein Abo? Es endet nicht von selbst – bitte danach in den Store-Einstellungen kündigen.")}</div>}
+        <Btn full disabled={busy || loading} onClick={go} style={{ marginTop: 14 }}>{busy ? t("Einen Moment …") : founder ? t("💚 Kolbi trotzdem unterstützen") : t("Weiter")}</Btn>
         <button onClick={restore} disabled={busy} style={{ display: "block", margin: "10px auto 0", background: "none", border: "none", color: "var(--text-dim)", fontWeight: 800, fontSize: "0.8rem", cursor: "pointer" }}>{t("Käufe wiederherstellen")}</button>
-        <div style={{ fontSize: "0.66rem", color: "var(--text-dim)", lineHeight: 1.45, marginTop: 10, textAlign: "center" }}>
-          {plan !== "lifetime" && <>{t("Das Abo verlängert sich automatisch, wenn du es nicht mindestens 24 Stunden vor Ablauf kündigst. Kündigen kannst du jederzeit in den Einstellungen deines Store-Kontos.")}{" "}</>}
-          <a href={LEGAL.terms} target="_blank" rel="noreferrer" style={{ color: "inherit" }}>{t("Nutzungsbedingungen")}</a> · <a href={LEGAL.privacy} target="_blank" rel="noreferrer" style={{ color: "inherit" }}>{t("Datenschutz")}</a>
+        {/* Pflicht-Rechtstext (Apple 3.1.2 / Google Play) direkt beim Kaufknopf – store/subscriptions.md Teil D */}
+        <div style={{ fontSize: "0.66rem", color: "var(--text-dim)", lineHeight: 1.5, marginTop: 10 }}>
+          <b>{t("Jährlich:")}</b> {native ? t("7 Tage gratis, danach {p} pro Jahr.", { p: raw.yearly }) : t("{p} pro Jahr.", { p: raw.yearly })}{" "}
+          <b>{t("Monatlich:")}</b> {t("{p} pro Monat.", { p: raw.monthly })}{" "}
+          {plat === "ios" ? <>
+            {t("Die Zahlung wird bei Kaufbestätigung bzw. nach Ende der Gratis-Woche über deine Apple-ID abgerechnet.")}{" "}
+            {t("Das Abo verlängert sich automatisch um denselben Zeitraum zum selben Preis, wenn du es nicht mindestens 24 Stunden vor Ablauf kündigst; die Verlängerung wird in den letzten 24 Stunden vor Ablauf belastet.")}{" "}
+            {t("Kündigen und verwalten kannst du dein Abo jederzeit in den iPhone-Einstellungen unter [dein Name] → Abonnements.")}{" "}
+            {t("Kündigst du in der Gratis-Woche, zahlst du nichts.")}{" "}
+          </> : plat === "android" ? <>
+            {t("Die Zahlung wird bei Kaufbestätigung bzw. nach Ende der Gratis-Woche über dein Google-Play-Konto abgerechnet.")}{" "}
+            {t("Das Abo verlängert sich automatisch um denselben Zeitraum zum selben Preis, wenn du es nicht mindestens 24 Stunden vor Ablauf kündigst; die Verlängerung wird in den letzten 24 Stunden vor Ablauf belastet.")}{" "}
+            {t("Kündigen und verwalten kannst du dein Abo jederzeit in der Google-Play-App unter Profil → Zahlungen & Abos → Abos.")}{" "}
+            {t("Kündigst du in der Gratis-Woche, zahlst du nichts.")}{" "}
+          </> : <>
+            {t("Das Abo verlängert sich automatisch, wenn du es nicht mindestens 24 Stunden vor Ablauf kündigst. Kündigen kannst du jederzeit in den Einstellungen deines Store-Kontos.")}{" "}
+          </>}
+          <b>{t("Für immer:")}</b> {t("einmalig {p}, kein Abo, keine Verlängerung.", { p: raw.lifetime })}
+          <div style={{ textAlign: "center", marginTop: 6 }}>
+            <a href={LEGAL.terms} target="_blank" rel="noreferrer" style={link}>{t("Nutzungsbedingungen")}</a> · <a href={LEGAL.privacy} target="_blank" rel="noreferrer" style={link}>{t("Datenschutz")}</a>
+          </div>
         </div>
         {freeForAll() && <div style={{ fontSize: "0.72rem", textAlign: "center", marginTop: 10, fontWeight: 800, color: "var(--accent)" }}>{t("Gerade ist alles gratis 🎁")}</div>}
       </>

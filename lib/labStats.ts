@@ -10,6 +10,8 @@ export type StatEvent =
   | "paywall_view" | "purchase" | "restore"
 
 let cfg = { off: false, src: "" }
+/** Feste Quelle für Test-Builds (z. B. VITE_STATS_SRC=playtest beim Build) – gilt nur, wenn kein Start-Link-Kanal da ist. */
+const BUILD_SRC = /^[a-z]{1,20}$/.test(process.env.NEXT_PUBLIC_LAB_STATS_SRC ?? "") ? process.env.NEXT_PUBLIC_LAB_STATS_SRC! : ""
 /** Von der App bei jeder Änderung gesetzt (Einstellung „Statistik“ + Herkunftskanal aus dem Start-Link). */
 export function configureStats(off: boolean, src?: string) { cfg = { off, src: src ?? "" } }
 
@@ -20,7 +22,7 @@ export function trackOnce(e: StatEvent) { if (once.has(e)) return; once.add(e); 
 export function track(e: StatEvent) {
   if (cfg.off || !canSwitchLang()) return // nur die eigenständige App, nicht get-true.de
   try {
-    void fetch(URL_, { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ e, lang: LANG, src: cfg.src }) }).catch(() => {})
+    void fetch(URL_, { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ e, lang: LANG, src: cfg.src || BUILD_SRC }) }).catch(() => {})
   } catch {}
 }
 

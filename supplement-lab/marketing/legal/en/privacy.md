@@ -4,7 +4,7 @@ This is a translation for convenience; the German version is legally binding.
 
 > **DRAFT** – have it reviewed by a professional before publication. Placeholders in [square brackets].
 
-Last updated: October 2026
+Last updated: October 2026 · applies to the website, the web app and the store apps (iPhone, Android) from version 1.0
 
 ## 1. Controller
 
@@ -13,124 +13,201 @@ Last updated: October 2026
 [PLZ Ort]
 Email: [E-Mail-Adresse]
 
-## 2. Principle: your data stays on your device
+## 2. Principle: your entries stay on your device
 
-Supplement Lab works without an account. Everything you enter – supplements, intakes, check-ins,
-ratings, side effects, notes, stock, prices – is stored **only locally on your device**
-(browser storage or app storage). We have no access to it. If you delete the app or choose “Reset”
-in the settings, the data is gone. You can export a backup as a file yourself.
+Supplement Lab works without an account and without signing in. Everything you enter – supplements, intakes,
+check-ins, ratings, side effects, notes, stock, prices, goals – is stored **only locally on your device** (browser
+storage or app storage). We have no access to it. If you delete the app or choose “Reset” in the settings, the data
+is gone. You can save or share a backup as a file yourself; you decide where the file goes.
 
-Only the following features, **each of which you switch on individually**, transfer data to a server.
+Data is sent to a server only in these cases:
 
-## 3. Delivery of the app and website (hosting)
+- **no switch, technically necessary:** delivery of the website and web app (section 4) and, in the store apps,
+  purchase verification via RevenueCat (section 10);
+- **on by default, can be turned off at any time:** the anonymous usage stats without a device ID (section 5);
+- **only if you use or switch on the feature yourself:** push reminders in the web app (section 6), calendar
+  subscription (section 7), community (section 8, with explicit consent) and feedback (section 9).
 
-The web app and the website are delivered via **Vercel Inc.**, 340 S Lemon Ave #4133, Walnut, CA 91789, USA.
-When you access them, Vercel processes technically necessary data (IP address, time, requested file,
-browser type) in server logs in order to deliver the site and protect it against misuse. Legal basis:
-Art. 6(1)(f) GDPR (legitimate interest in secure, functioning delivery). Vercel is certified under
-the EU-US Data Privacy Framework.
+**Not included:** version 1.0 does not read any data from Apple Health or Google Health Connect. If such a connection
+is offered later, we will update this policy beforehand; it would only become active after your explicit consent in
+the app and in your device’s system settings. There is also no advertising, no advertising ID, no advertising or
+tracking SDKs, no location data and no access to contacts, camera, microphone or your calendar.
 
-**Audience measurement:** We use Vercel Web Analytics in its cookieless variant. Only aggregated page
-views are recorded (e.g. “342 visits this week”) – no cookies, no cross-device profiles, no content
-from the app. Legal basis: Art. 6(1)(f) GDPR.
+## 3. Storage on your device (Section 25 TDDDG)
 
-## 4. Push reminders (optional)
+The app stores data in your device’s local storage and reads it back: your entries and settings and – only if you use
+the respective feature – random identifiers for the community (section 8), calendar subscription (section 7) and web
+push (section 6). This storage is **strictly necessary** so that the app can provide the feature you asked for
+(Section 25(2) no. 2 of the German TDDDG); no consent is required for it. In the store apps, RevenueCat’s purchase
+system stores a random app user ID on the device (section 10). For the stats, see section 5. We don’t set cookies for
+advertising or analytics purposes.
 
-If you switch on push reminders, we store the following with **Supabase** (Supabase Inc., servers in
-Frankfurt am Main, EU):
+## 4. Delivery of the website and web app (hosting)
 
-- your device’s push address (assigned by your operating system’s push service, e.g. Apple or
-  Google),
-- the scheduled times of your reminders for the next 14 days with **neutral texts**
-  (e.g. “Time for your supplements”).
+The website and the web app are delivered via **Vercel Inc.**, 340 S Lemon Ave #4133, Walnut, CA 91789, USA. When
+you access them, Vercel processes technically necessary data (IP address, time, requested file, browser type) in
+server logs in order to deliver the site and protect it against misuse. Legal basis: Art. 6(1)(f) GDPR (legitimate
+interest in secure, functioning delivery). Vercel is certified under the EU-US Data Privacy Framework. The store apps
+ship their own files; Vercel is only involved there when you open a link to our website from the app (e.g. this
+policy).
 
-The names of your supplements and your health information are **not** transferred – your device only
-inserts the personal texts locally when the message arrives. To deliver the message, we pass it on to
-your device’s push service (Apple Push Notification Service or Google Firebase Cloud Messaging).
-Sent entries are deleted after 2 days at the latest; the push address is deleted when you switch the
-feature off or when it becomes invalid.
-Legal basis: Art. 6(1)(a) GDPR (consent by switching it on), which you can withdraw at any time by
-switching it off in the app or in your device’s notification settings.
+**Audience measurement (website and web app only):** We use Vercel Web Analytics in its cookieless variant. Only
+aggregated page views are evaluated (e.g. “342 visits this week”, also per link such as `/reddit`) – no cookies, no
+cross-device profiles, no content from the app. Legal basis: Art. 6(1)(f) GDPR (legitimate interest in knowing which
+pages and paths are used). Vercel Web Analytics is not built into the store apps.
 
-## 5. Calendar subscription (optional)
+## 5. Anonymous usage stats (web app and store apps, on by default, can be turned off)
 
-If you use the calendar subscription, your device generates a random identifier (token) and uploads a
-calendar file with your major events (e.g. “A test result is ready”) to Supabase (Frankfurt).
-By default, the events contain **no supplement names**; the names are only included if you activate
-“Show names in calendar”. Your calendar app regularly fetches this file via the subscription link.
-“End subscription” deletes the file and makes the link invalid.
-Legal basis: Art. 6(1)(a) GDPR.
+So we can see whether the app helps and which paths lead people to it, the app reports single events, e.g. “setup
+completed”, “first check-in”, “7th check-in”, “weekly recap opened”, “plans viewed”, “purchase completed”. Only the
+event, the app language and – if you came through a link like `…/reddit` – the channel name are sent; test versions
+(beta) send a fixed label of the test version instead. So that the channel is also counted for later events, the app
+remembers it locally on your device, as well as your setting for whether the stats are off.
 
-## 6. Community “What others experienced” (optional, with explicit consent)
+At Supabase (Frankfurt, section 11) this only increments a **daily counter** (e.g. “Oct 1 · first check-in ·
+English · reddit: 12”). Only the day, event, language, channel and count are stored – **no device ID, no IP address,
+no content and no health values**; individual people cannot be identified in the stats.
 
-Only if you agree, the following result is transferred to Supabase (Frankfurt) after a completed
-test:
+The stats are **switched on by default**. You can turn them off at any time in Settings under “📊 Anonymous stats”;
+after that, the app sends no more events. Legal basis: Art. 6(1)(f) GDPR (legitimate interest in improving the app);
+you can object at any time with the switch.
+
+> **Draft – to be clarified by a professional:** Whether storing the channel and the stats setting locally for the counting requires consent under Section 25 TDDDG (then: stats only after opt-in), or whether the legitimate interest with an opt-out is sufficient, will be reviewed before publication. This section will be updated afterwards.
+
+## 6. Push reminders (web app only, optional)
+
+**Store apps:** reminders are scheduled as **local notifications** directly on your device. Nothing is sent to us or
+to a push server.
+
+**Web app:** if you switch on push reminders there, we store the following with Supabase (Frankfurt):
+
+- your browser’s push address including the technical keys used to encrypt the message (assigned by your browser’s
+  or operating system’s push service, e.g. Apple, Google or Mozilla),
+- the scheduled times of your reminders for the next few days (at most 14) with **neutral texts** (e.g. “Time for
+  your supplements”, “Your weekly recap is ready”).
+
+The names of your supplements and your health information are **not** transferred – your device only inserts the
+personal texts locally when the message arrives. To deliver the message, we pass the encrypted message on to your
+browser’s push service. Sent entries are deleted after 2 days at the latest; the push address is deleted when you
+switch the feature off or as soon as the push service reports it as invalid.
+Legal basis: Art. 6(1)(a) GDPR (consent by switching it on), which you can withdraw at any time by switching it off
+in the app or in your browser’s or device’s notification settings.
+
+## 7. Calendar subscription (optional)
+
+If you use the calendar subscription, your device generates a random identifier (token) and uploads a calendar file
+with your major events (e.g. “A test result is ready”, “Last test day”) to Supabase (Frankfurt). By default, the
+events contain **no supplement names**; the names are only included if you activate “Show supplement names in calendar”. Your
+calendar app regularly fetches this file via the subscription link; we store the time of the last fetch. Anyone who
+knows the link can fetch the file – so don’t share it. “End subscription” deletes the file and makes the link
+invalid. If you delete the app without ending the subscription, the file remains; in that case send us the
+subscription link and we will delete it (without the link, we cannot link it to any person).
+Legal basis: Art. 6(1)(a) GDPR; if supplement names are included, additionally Art. 9(2)(a) GDPR (explicit consent by
+activating the switch). You can withdraw at any time via “End subscription”.
+
+## 8. Community “What others experienced” (optional, with explicit consent)
+
+Only if you agree, the following result is transferred to Supabase (Frankfurt) after a completed test:
 
 - which supplement from the library was tested (never your own entries),
 - test duration in days, your verdict (keep / maybe / out),
 - the change in your ratings compared with your reset phase (overall and per area),
 - identifiers of side effects that occurred (e.g. “headache”),
-- a random device identifier, so that a new result replaces your old one instead of duplicating it.
+- a random device identifier, so that a new result replaces your old one instead of duplicating it, and so that you
+  can delete your contributions.
 
-**No names, no account, no dates (calendar days) and no notes** are transferred.
-Because this is information about your well-being, it may count as health data; it is therefore
-processed only on the basis of your **explicit consent** (Art. 9(2)(a) GDPR). The data is
-pseudonymous: we cannot link it to any person. It is only shown in aggregated form and only once
-there are at least 5 contributions per supplement (shares, average, distribution).
-You can withdraw your consent at any time in the settings and delete all your contributions
-there.
+**No names, no account, no calendar dates and no notes** are transferred. Because this is information about your
+well-being, it may count as health data; it is therefore processed only on the basis of your **explicit consent**
+(Art. 6(1)(a) and Art. 9(2)(a) GDPR). The data is pseudonymous: we cannot link it to any person. It is only shown in
+aggregated form and only once there are at least 5 contributions per supplement (shares, average, distribution). The
+contributions remain stored until you delete them. You can withdraw your consent at any time in the settings and
+remove all your contributions there with “Delete my shared results”.
 
-## 7. Feedback to Kolbi (optional)
+To show the aggregated numbers, the app fetches them from Supabase. Nothing about you is stored in the process.
 
-If you send feedback in the app, we store only the following with Supabase (Frankfurt): your choice
-(😍/🙂/😕), your text (max. 1000 characters), where in the app you wrote it, the app version
-and the time – **without a device ID or any other identifier**. Please don’t include any names or
-personal health data. We use the feedback only to improve the app and delete it after 12 months at
-the latest. Legal basis: Art. 6(1)(a) GDPR (consent by sending). Because we cannot identify you, we
-cannot link individual entries to you afterwards.
+## 9. Feedback to Kolbi (optional)
 
-## 8. Anonymous usage stats (app, can be turned off)
+If you send feedback in the app, we store only the following with Supabase (Frankfurt): your choice (😍/🙂/😕), your
+text (max. 1000 characters), where in the app you wrote it, the app version including the platform (e.g. iOS,
+Android or web) and the time – **without a device ID or any other identifier**. Please don’t include any names or
+personal health data. We use the feedback only to improve the app and delete it after 12 months at the latest. Legal
+basis: Art. 6(1)(a) GDPR (consent by sending). Because we cannot identify you, we cannot link individual entries to
+you afterwards.
 
-So we can see whether the app helps and which paths lead people to it, the app counts single events, e.g.
-"setup completed", "first check-in", "7th check-in", "weekly recap opened". Only the event, the app language
-and – if you came through a link like `…/reddit` – the channel name are sent. At Supabase (Frankfurt) this
-only increments a **daily counter** (e.g. "Oct 1 · first check-in · English · reddit: 12"). There is **no
-device ID, no storage of IP addresses in the stats, no content and no health values** – individual people
-cannot be identified. Legal basis: Art. 6(1)(f) GDPR (legitimate interest in improving the app). You can turn
-the stats off at any time in Settings under "📊 Anonymous stats".
+## 10. In-app purchases (store apps only)
 
-## 9. Apple Health / Google Health Connect (app only, optional)
+Purchases of “Lab Pro” (subscription or one-time purchase) are handled entirely by Apple or Google; their privacy
+policies apply. We do not receive any payment data, name or email address.
 
-In the store app, you can allow sleep duration and heart rate variability to be **read** from Apple
-Health or Health Connect. These values are only analysed locally and are **never** transferred.
+To show prices and check whether “Lab Pro” is active, the store apps use **RevenueCat** (RevenueCat, Inc., USA). This
+runs **at every app start without a separate switch** as soon as purchases are enabled in the app – even if you
+don’t buy anything. Processed are: a random, anonymous app user ID (stored on the device), technical details such as
+platform and app version, the IP address of the connection and – if you buy or restore purchases – the purchase
+receipts from Apple or Google (product, time, status). No health data.
+Legal basis: Art. 6(1)(b) GDPR insofar as you buy or restore purchases (performance of a contract); otherwise
+Art. 6(1)(f) GDPR (legitimate interest in showing prices correctly and unlocking purchased features). RevenueCat
+processes the data on our behalf; for the transfer to the USA we rely on the EU-US Data Privacy Framework.
 
-## 10. Shopping links
+There are currently no purchases in the web app. If they are offered there, we will update this policy beforehand.
 
-For some supplements, we show a link to a search on Amazon. Only when you tap it do you leave the
-app; from then on, Amazon’s privacy policy applies. If these links are marked as “Ad”, we may
-receive a commission if you make a purchase – the price does not change for you.
+The store apps may show Apple’s or Google’s rating dialog. A rating goes directly to the store; we only see what is
+publicly shown there.
 
-## 11. In-app purchases (store app)
+## 11. Supabase (server for sections 5–9)
 
-Purchases (e.g. “Lab Pro”) are handled entirely by Apple or Google. We do not receive any payment
-data. To check whether “Lab Pro” is active, we use **RevenueCat** (RevenueCat, Inc., USA; EU-US Data Privacy
-Framework): a random app user ID and purchase receipts (product, time, status) are processed – no health
-data, no name, no email address. Legal basis: Art. 6(1)(b) GDPR (performance of a contract).
+Stats, web push, calendar subscription, community and feedback run on **Supabase** (Supabase, Inc., USA) as a
+processor. The database is located in a data centre in **Frankfurt am Main (EU)**. As with any internet request, the
+server technically receives your IP address; our functions do not store it in the data described. All connections
+are encrypted via HTTPS.
 
-## 12. Storage period
+## 12. Beta test via Google Play and TestFlight
 
-Local data: until you delete it. Server data: see the respective sections; it is deleted as soon as
-you switch off the feature or withdraw your consent.
+Before launch, we test the store apps in a closed test via **Google Play** or **TestFlight** (Apple). If you take
+part, Google or Apple process your data as a tester – e.g. your Google account or membership in the tester group, the
+email address of a TestFlight invitation, and installation and crash data – **under their own terms and privacy
+policies**. In their developer consoles we only see what the platform shows us (e.g. number of testers, crash
+reports, feedback sent via the store channel, and for TestFlight possibly the name and email address of invited
+testers). You can send feedback on the test version via the Google Play or TestFlight feedback channel or by email;
+we use it only to improve the app and delete it as soon as it is no longer needed for that. Inside the app, the same
+applies to testers as to everyone else (sections 2–11). Legal basis: Art. 6(1)(f) GDPR (legitimate interest in
+checking and improving the app before launch).
 
-## 13. Your rights
+## 13. Shopping links and sharing
 
-You have the right of access, rectification, erasure, restriction of processing, data portability
-and objection, as well as the right to withdraw consent at any time with effect for the future.
-Because we cannot link the server data to any person, please use the delete functions in the app or
-write to us at [E-Mail-Adresse].
-You can also lodge a complaint with a data protection supervisory authority, e.g. the authority of
-your federal state.
+For some supplements, we show a link to a search on Amazon. Only when you tap it do you leave the app; from then on,
+Amazon’s privacy policy applies. If these links are marked as “Ad”, we may receive a commission if you make a
+purchase – the price does not change for you.
 
-## 14. No sharing, no tracking
+If you share a result card or an invitation, the app uses your device’s share menu; you decide where the content goes.
 
-We don’t sell any data, and we don’t use advertising trackers or cookies for advertising purposes.
+## 14. Storage period
+
+- Local data on your device: until you delete it (delete the app or “Reset”).
+- Stats: only daily counters without personal reference; they are not linked to individual people.
+- Web push: sent entries at most 2 days, push address until you switch it off or it becomes invalid.
+- Calendar subscription: until “End subscription” or until you send us the subscription link for deletion.
+- Community: until you delete your contributions.
+- Feedback: at most 12 months.
+- RevenueCat: as long as needed to verify your purchases.
+- Hosting logs at Vercel: according to Vercel’s retention periods.
+
+## 15. Your rights
+
+You have the right of access, rectification, erasure, restriction of processing and data portability, as well as the
+right to withdraw consent at any time with effect for the future.
+
+**Right to object:** insofar as we process data on the basis of Art. 6(1)(f) GDPR (sections 4, 5, 10, 12), you can
+object at any time on grounds relating to your particular situation (Art. 21 GDPR). For the stats, simply turn them
+off in the settings.
+
+Because we cannot link the server data to any person, please use the delete and switch-off functions in the app or
+write to us at [E-Mail-Adresse]. You can also lodge a complaint with a data protection supervisory authority, e.g.
+the authority of your federal state or country.
+
+You are not obliged to provide us with any data; the core features of the app work without the optional features.
+There is no automated decision-making or profiling.
+
+## 16. No selling, no tracking
+
+We don’t sell any data, and we don’t use advertising trackers or cookies for advertising purposes. Service providers
+(Vercel, Supabase, RevenueCat) process data only on our behalf.

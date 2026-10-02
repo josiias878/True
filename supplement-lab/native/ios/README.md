@@ -50,9 +50,16 @@ Ergebnis: `ios/App/App/PrivacyInfo.xcprivacy`.
   - *Produktinteraktion* → anonyme Tageszähler („erster Check-in“ …), Zweck **Analyse** (abschaltbar).
   - *Gesundheit* → nur das anonyme Community-Ergebnis (nur mit Zustimmung), Zweck **App-Funktion**.
   - *Sonstige Nutzerinhalte* → freiwilliges Feedback + Kalender-Abo-Datei, Zweck **App-Funktion**.
-  - *Geräte-ID* → zufällige Kennung (Community-Beiträge ersetzen/löschen, Kalender-Link), Zweck **App-Funktion**.
-- Benutzte „Required Reason“-Schnittstelle: `UserDefaults` mit Grund `CA92.1` (Capacitor und die
-  Benachrichtigungen speichern darüber App-eigene Einstellungen).
+  - *Sonstige Nutzerinhalte* zusätzlich Zweck **Analyse** (Feedback hilft, die App zu verbessern).
+  - *Geräte-ID* → zufällige Kennung (Community-Beiträge ersetzen/löschen, Kalender-Link, anonyme RevenueCat-ID),
+    Zweck **App-Funktion**.
+  - *Kaufverlauf* → Kaufstatus über RevenueCat, Zwecke **App-Funktion + Analyse** (Mindestangabe laut RevenueCat).
+  Maßgeblich ist `marketing/store/forms.md` Abschnitt 2.2 – Manifest und Apple-Label müssen gleich sein.
+- Benutzte „Required Reason“-Schnittstelle: `UserDefaults` mit Grund `CA92.1` (Muster aus der Capacitor-Doku
+  „Privacy Manifest“). Geprüft 2. Okt 2026: Capacitor 8 und die eingebundenen Plugins (Local Notifications,
+  In-App-Review, RevenueCat-Capacitor) rufen im eigenen Swift-Code keine weitere Required-Reason-API auf;
+  `localStorage` der WebView ist WebKit (Apple-System) und braucht keinen Eintrag. Das RevenueCat-SDK
+  (purchases-ios) bringt sein eigenes Manifest mit.
 
 **Nach dem ersten Archiv-Build einmal prüfen:** Xcode → *Product → Archive* → im Organizer Rechtsklick
 auf das Archiv → **Generate Privacy Report**. Wenn dort eine weitere Schnittstelle ohne Grund auftaucht

@@ -1,7 +1,7 @@
 # Kolbi · Supplement Lab — Launch-Checkliste App Store & Google Play
 
 **Start: Dienstag, 1. Dezember 2026** (Beta endet am 30. Nov.; wer vorher startet, ist „Gründer“ mit Pro für immer).
-Stand dieser Liste: 1. Oktober 2026.
+Stand dieser Liste: 2. Oktober 2026.
 
 | | |
 |---|---|
@@ -15,7 +15,10 @@ Stand dieser Liste: 1. Oktober 2026.
 
 Alle Detail-Anleitungen:
 - Abos & Preise eintippen → [`marketing/store/subscriptions.md`](marketing/store/subscriptions.md)
-- Prüfer-Notizen, App-Datenschutz (Apple) & Datensicherheit (Google) → [`marketing/store/review-notes.md`](marketing/store/review-notes.md)
+- **Alle Store-Formulare** (Datensicherheit, App-Datenschutz, Altersfreigabe, Gesundheits-Apps, Zielgruppe, Kategorie,
+  Medizinprodukt-Status) – kopierfertig und **maßgeblich** → [`marketing/store/forms.md`](marketing/store/forms.md)
+- Prüfer-Notizen (App Review Information) → [`marketing/store/review-notes.md`](marketing/store/review-notes.md) Abschnitt 1
+- 12 Google-Tester (Plan, Texte, Feedback) → [`marketing/launch/TESTERS.md`](marketing/launch/TESTERS.md)
 - iOS-Dateien (Datenschutz-Manifest, Info.plist) → [`native/ios/README.md`](native/ios/README.md)
 - Builds über GitHub Actions + Secrets (Upload-Schlüssel, App-Store-Connect-API) → [`native/BUILD.md`](native/BUILD.md)
 
@@ -56,7 +59,13 @@ Alle Detail-Anleitungen:
       (`lib/labGrow.ts`, `lib/labBilling.ts`, `app/lab/grow.tsx`) – zahlt erst, wenn RevenueCat angeschlossen ist
 - [x] Name unter dem Icon „Kolbi“ (`capacitor.config.ts`)
 - [x] Apple-Datenschutz-Manifest + Info.plist-Anleitung + Dialog-Texte DE/EN (`native/ios/`)
-- [x] Prüfer-Notizen, App-Datenschutz-Antworten (Apple) und Datensicherheit (Google) (`marketing/store/review-notes.md`)
+- [x] Prüfer-Notizen (`marketing/store/review-notes.md`) und kopierfertige Formular-Antworten für beide Stores
+      (`marketing/store/forms.md`)
+- [x] Datenschutz-Manifest = Apple-Label (`forms.md` 2.2): inkl. **Kaufverlauf** (RevenueCat) und Zweck *Analysen*
+      bei Nutzerinhalten; `UIRequiredDeviceCapabilities` = `arm64` (2. Okt 2026)
+- [x] Kauf-/Dosis-Tipps ohne Mengenangaben, Dosis-Vergleich im Store-Modus nur als „übliche Packungsangabe“
+      (passt zu „Kolbi empfiehlt keine persönlichen Dosierungen“, Apple 1.4.1)
+- [x] App-Version im Feedback aus dem Build (`1.0.0-ios` / `1.0.0-android` / `1.0.0-web`), Tester-Feedback trennbar
 - [x] Abo-Einrichtung Schritt für Schritt inkl. Texte & Zeichenzahlen (`marketing/store/subscriptions.md`)
 - [x] Apple Health / Health Connect für 1.0 **nativ ausgeschlossen** (kein HealthKit, keine Health-Connect-Bibliothek;
       `capacitor.config.ts` → `includePlugins`, Workflows prüfen das). Plugin bleibt ungetestet für später (Frage 5)
@@ -86,12 +95,14 @@ Alle Detail-Anleitungen:
    einem Android-Handy installieren (Geräteprüfung).
 4. **Einstellungen → Zahlungsprofil**: Händlerkonto anlegen (IBAN), sonst keine Käufe möglich.
 5. **App erstellen**: Name „Kolbi: Supplement-Check“, Standardsprache Deutsch, App, Kostenlos (mit In-App-Käufen).
-6. **Test → Geschlossener Test → Tester**: E-Mail-Liste mit **mind. 12 Personen** anlegen (z. B. Beta-Nutzer).
+6. **Test → Geschlossener Test → Tester**: E-Mail-Liste mit **mind. 12 Personen** anlegen (woher sie kommen:
+   [`marketing/launch/TESTERS.md`](marketing/launch/TESTERS.md)).
    Sobald Claude den Build hochgeladen hat, den **Beitritts-Link** an die Tester schicken. Alle müssen
    **14 Tage am Stück** angemeldet bleiben.
 7. Danach: **Dashboard → Zugriff auf Produktion beantragen** (ein paar Fragen zum Test beantworten).
-8. **Richtlinien → App-Inhalte**: alle Formulare ausfüllen (Antworten stehen in `review-notes.md` Abschnitt 3:
-   Datensicherheit, Datenschutz-URL, Werbung, Gesundheits-Apps, Zielgruppe 18+, Altersfreigabe).
+8. **Richtlinien → App-Inhalte**: alle Formulare ausfüllen – Antworten in [`forms.md`](marketing/store/forms.md)
+   **Abschnitt 1** (Datenschutz-URL, App-Zugriff, Werbung, Altersfreigabe/IARC, Zielgruppe 18+, Datensicherheit,
+   Gesundheits-Apps, Store-Einstellungen).
 9. Abos + Lifetime anlegen → `subscriptions.md` Teil B (geht erst, wenn ein Build mit Bezahlen oben ist).
 10. **Upload-Schlüssel** für die Builds erzeugen und als GitHub-Secrets eintragen → [`native/BUILD.md`](native/BUILD.md) Teil A.
 
@@ -119,8 +130,11 @@ Alle Detail-Anleitungen:
 7. **Abo-Gruppe „Kolbi Pro“ + 2 Abos + Lifetime** → exakt nach `subscriptions.md` Teil A
    (Referenznamen, IDs, Preise 2,99 / 19,99 / 39,99 €, US $2.99 / $19.99 / $39.99, 7 Tage gratis beim Jahresabo,
    Prüfungs-Screenshot je Produkt = Paywall mit ausgewähltem Tarif aus TestFlight, Prüfungs-Notizen).
-8. **App-Datenschutz** ausfüllen → `review-notes.md` Abschnitt 2. Datenschutz-URL + Support-URL eintragen.
-9. **Altersfreigabe-Fragebogen**: überall „Nein“, nur „Medizinische Informationen / Behandlungsinfos“ = **selten**.
+8. **App-Datenschutz** ausfüllen → [`forms.md`](marketing/store/forms.md) **Abschnitt 2.2** (5 Datentypen inkl.
+   Kaufverlauf, nichts verknüpft, kein Tracking). Datenschutz-URL + Support-URL eintragen.
+9. **App-Informationen** → [`forms.md`](marketing/store/forms.md) **Abschnitt 2.1**: Kategorie, **Medizinprodukt-Status
+   „Nein“** (Pflicht bei Gesundheit & Fitness), Inhaltsrechte und **Altersfreigabe-Fragebogen** (Alkohol-Bezüge
+   = selten, Medizinische Informationen = selten, Gesundheits-/Wellness-Themen = Ja → erwartet **13+**).
 10. **Nutzer und Zugriff → Integrationen → In-App-Kauf** → Schlüssel erzeugen → `.p8`-Datei laden
     (nur einmal möglich, sicher aufheben) – kommt in RevenueCat (Schritt 5).
 11. **Nutzer und Zugriff → Integrationen → App Store Connect API** → Team-Schlüssel für die automatischen
@@ -156,8 +170,9 @@ Alle Detail-Anleitungen:
 - [x] Bundle-ID `app.kolbi` gesetzt, `npx cap add ios` / `android`, Dateien aus `native/ios/` eingebaut, Icons/Splash
 - [x] Build-Workflows GitHub Actions: `kolbi-android.yml` (AAB) und `kolbi-ios.yml` (Simulator-Prüfung + TestFlight) → `native/BUILD.md`
 - [ ] `@revenuecat/purchases-capacitor` einbauen, Adapter `src/billing.ts` → `setBillingProvider(...)`
-- [ ] **Paywall für Prüfer:** Gründer sehen heute keine Tarife und keinen „Wiederherstellen“-Knopf – der
-      Apple-Prüfer (Ende Nov.) würde aber Gründer. Prüfer muss Tarife sehen und testen können
+- [ ] **Paywall für Prüfer:** Der Apple-Prüfer (Ende Nov.) wird Gründer und sieht keine gesperrte Pro-Karte → braucht
+      in der Store-App immer einen Weg zu Tarifen, Kauf und „Käufe wiederherstellen“ (`forms.md` Abschnitt 4,
+      Übergabe 1); danach den Weg in `review-notes.md` bestätigen
 - [ ] Paywall: Testwochen-Satz + vollständiger Rechtstext (`subscriptions.md` Teil D); **alle** Preise in der
       Store-App aus dem Store, nicht fest „€“ (z. B. auch auf der Pro-Karte im Kolbi-Tab)
 - [ ] Links **Datenschutz · Nutzungsbedingungen · Impressum** in die Einstellungen (Apple-Pflicht)
@@ -177,14 +192,16 @@ Alle Detail-Anleitungen:
 | Risiko | Maßnahme |
 |---|---|
 | **Apple 1.4.1 / Google „Unapproved substances“** (Peptide) | Store-Modus: keine Peptide in Bibliothek, Demo-Daten und Community; eigene Substanzen nur neutral, ohne Dosierung/Bezugsquelle |
+| **Apple 1.4.1 – Dosis-Empfehlungen** | Tipps ohne Mengen („Achte auf die Dosis auf der Packung …“); Bibliotheks-Mengen nur als „übliche Packungsangabe“, nicht als „deine Dosis“ vorbelegt; kein „X Kapseln würden reichen“ |
 | **Health-Claims** (Apple 1.4.1 / 2.3.1, Google „Health misinformation“) | Texte nur über die App (testen, vergleichen, erinnern, sparen), nie „Supplement X wirkt“; [Health-Claims-Check](marketing/legal/health-claims-check.md); Hinweis „kein Medizinprodukt“ im Onboarding, in der App und in der Beschreibung |
-| **Datenschutz-Angaben passen nicht** (Apple 5.1.1/5.1.2, Google Datensicherheit) | Manifest (`native/ios/PrivacyInfo.xcprivacy`), Apple-Label und Google-Formular sind identisch: nichts verknüpft, kein Tracking; Community nur mit Zustimmung; Statistik abschaltbar; Datenschutz-Link in der App (Claude-Aufgabe) |
-| **Apple Health** (2.5.1, 5.1.3) | Nur lesen, nur auf dem Gerät, nie Werbung/iCloud. Apple verlangt, dass Health **in Beschreibung und App sichtbar** genannt wird → Satz in `listing.md` ergänzen oder Health in Version 1 weglassen |
+| **Datenschutz-Angaben passen nicht** (Apple 5.1.1/5.1.2, Google Datensicherheit) | Manifest (`ios/App/App/PrivacyInfo.xcprivacy`), Apple-Label und Google-Formular nach [`forms.md`](marketing/store/forms.md) Abschnitt 0/1.7/2.2: nichts verknüpft, kein Tracking; Community nur mit Zustimmung; Statistik abschaltbar; Datenschutz-Link in der App (Claude-Aufgabe) |
+| **Apple Health** (2.5.1, 5.1.3) | **Nicht in 1.0** (kein HealthKit im Binary). Erst relevant, wenn Health später kommt: dann in Beschreibung und App sichtbar nennen |
+| **Apple: Medizinprodukt-Status** (Gesundheit & Fitness) | Pflichtfeld für neue Apps dieser Kategorie (EWR/UK/USA) → „Nein“ ([`forms.md`](marketing/store/forms.md) 2.1), Einstufung von der Fachperson bestätigen lassen |
 | **Abo / In-App-Kauf** (3.1.1, 3.1.2) | Nur Apple/Google-Kauf in der App, kein Hinweis auf Web-Preise/Stripe; Preise aus dem Store; Rechtstext + Links + „Käufe wiederherstellen“; kostenloser Kern bleibt nutzbar |
 | **Prüfer findet die Käufe nicht** (2.1) | Paywall muss für Prüfer sichtbar sein (siehe Claude-Aufgaben); Weg in den Prüfer-Notizen beschrieben |
-| **„Nur eine Website in einer Hülle“** (4.2) | Native Erinnerungen mit Aktionen, Offline, Health, Bewertungsdialog, Haptik; kein Login, kein Link zur Website nötig |
+| **„Nur eine Website in einer Hülle“** (4.2) | Native Erinnerungen mit Aktionen, Offline, Bewertungsdialog, Haptik; kein Login, kein Link zur Website nötig |
 | **Google: neue Privatkonten** | 12 Tester × 14 Tage geschlossener Test, dann Produktionszugriff beantragen → früh starten |
-| **Google: Gesundheits-Formulare** | „Health apps“-Erklärung + Health-Connect-Begründung (Texte in `review-notes.md`); Health-Connect-Zugriff wird extra geprüft |
+| **Google: Gesundheits-Formulare** | „Health apps“-Erklärung ([`forms.md`](marketing/store/forms.md) 1.8) + Pflicht-Hinweis „kein Medizinprodukt“ in der Beschreibung; **Health Connect nicht in 1.0** (keine Begründung nötig) |
 | **Gründer-Versprechen** | Gründer-Status ist lokal gespeichert – Web-Nutzer, die in die Store-App wechseln, brauchen einen Weg, ihn mitzunehmen (siehe Frage 7) |
 
 ---
@@ -209,8 +226,8 @@ Ohne Small Business Program wären es 30 % Gebühr (z. B. Jahresabo nur ≈ 11,7
 3. **Welche Adresse/Telefonnummer** darf öffentlich im Store stehen (EU-Händlerpflicht)?
 4. **Domain & Support:** Bleibt es bei `kolbi-smoky.vercel.app` oder kommt eine eigene Domain? Welche
    **Support-E-Mail**? (Apple verlangt eine Support-URL mit Kontaktmöglichkeit.)
-5. **Apple Health / Health Connect in Version 1?** Ja = muss einmal auf echten Geräten getestet werden,
-   Beschreibung ergänzen, Google-Formular. Nein = schnellere, sicherere Prüfung; später nachreichen.
+5. ~~**Apple Health / Health Connect in Version 1?**~~ ✅ entschieden: **nicht in 1.0** (nativ ausgeschlossen,
+   siehe Erledigt); später nachreichen.
 6. **Primärsprache bei Apple:** Englisch (USA) empfohlen (Länder ohne Deutsch sehen dann Englisch). Okay?
 7. **Gründer aus der Web-App:** Sollen sie ihren Gründer-Status in die Store-App mitnehmen können
    (z. B. per Backup-Import oder Code)? Sonst sehen sie dort ab 1. Dez. die Paywall.
@@ -218,7 +235,8 @@ Ohne Small Business Program wären es 30 % Gebühr (z. B. Jahresabo nur ≈ 11,7
    Vorschlag: für Nutzer überall „Lab Pro“ (so stehen die Produktnamen in `subscriptions.md`).
 9. **7 Tage gratis** beim Jahresabo okay?
 10. ~~**iOS-Build**~~ ✅ entschieden: automatisch in der Cloud (GitHub Actions, `native/BUILD.md`).
-11. **Wer sind die 12 Google-Tester?** (Beta-Nutzer mit Android-Handy und Google-Konto.)
+11. **Wer sind die 12 Google-Tester?** Plan, Wege und Texte stehen in
+    [`marketing/launch/TESTERS.md`](marketing/launch/TESTERS.md) – dort freigeben, wer angesprochen wird.
 
 ---
 

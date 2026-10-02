@@ -37,7 +37,7 @@ export const SIDE_CAUSES: SideCause[] = [
   { lib: "kreatin", sides: ["blaehungen", "durchfall", "wasser"], text: t("Kreatin zieht Wasser in die Muskeln. Genug trinken und die Portion aufteilen hilft; 1–2 kg mehr auf der Waage sind normal.") },
   { lib: "omega3", sides: ["uebelkeit", "blaehungen"], text: t("Fischaufstoßen? Zu einer Mahlzeit nehmen oder die Kapseln im Gefrierfach lagern.") },
   { lib: "koffein", sides: ["schlafprob", "unruhe", "herzrasen"], text: t("Nach 5–6 Stunden ist noch rund die Hälfte des Koffeins im Blut. Letzte Tasse spätestens 8 h vor dem Schlafen; manche kombinieren Kaffee mit L-Theanin."), add: "theanin" },
-  { lib: "melatonin", sides: ["kopfschmerz", "traeume", "muede"], text: t("Oft ist die Dosis zu hoch: 0,3–1 mg reichen meist und machen morgens weniger dumpf.") },
+  { lib: "melatonin", sides: ["kopfschmerz", "traeume", "muede"], text: t("Kopfschmerzen, lebhafte Träume oder ein dumpfer Morgen hängen bei Melatonin oft mit der Stärke zusammen. Vergleiche mit der Packungsangabe und frag bei Unsicherheit in der Apotheke.") },
   { lib: "betaalanin", sides: ["kribbeln"], text: t("Das Kribbeln ist harmlos. Kleinere Portionen über den Tag verteilt verhindern es.") },
   { lib: "b12", sides: ["schlafprob", "unruhe"], text: t("B-Vitamine können aktivieren – nimm sie morgens statt abends.") },
   { lib: "bkomplex", sides: ["schlafprob", "unruhe"], text: t("B-Vitamine können aktivieren – nimm sie morgens statt abends.") },
@@ -60,7 +60,7 @@ export const SIDE_CAUSES: SideCause[] = [
 export const FACTS: Record<string, string[]> = {
   magnesium: [t("Über 300 Enzyme im Körper brauchen Magnesium – für Muskeln, Nerven und Energie."), t("Die Form macht den Unterschied: Citrat wirkt eher abführend, Glycinat ist magenfreundlich.")],
   glycin: [t("In Studien sank mit Glycin die Körpertemperatur leicht – ein Signal, das zum Einschlafen gehört.")],
-  melatonin: [t("Melatonin ist eher ein Zeitgeber als ein Schlafmittel: Es sagt dem Körper „jetzt ist Nacht“."), t("Viele kommen mit 0,3–1 mg aus – mehr ist nicht automatisch besser.")],
+  melatonin: [t("Melatonin ist eher ein Zeitgeber als ein Schlafmittel: Es sagt dem Körper „jetzt ist Nacht“."), t("Bei Melatonin ist mehr nicht automatisch besser – die Stärken unterscheiden sich von Packung zu Packung stark.")],
   theanin: [t("L-Theanin steckt natürlich im Grüntee – ein Grund, warum viele Tee als ruhiger empfinden als Kaffee.")],
   koffein: [t("Koffein hat eine Halbwertszeit von ca. 5 Stunden: Der Kaffee um 16 Uhr ist um 21 Uhr noch halb im Blut."), t("Koffein blockiert Adenosin – den Botenstoff, der Müdigkeit meldet.")],
   rhodiola: [t("Rhodiola wächst in kalten Bergregionen und wurde dort traditionell in fordernden Zeiten genutzt.")],

@@ -24,7 +24,18 @@ export function betaDaysLeft(today: string): number {
 export const betaEndLabel = () => new Date(`${BETA_END}T12:00:00`).toLocaleDateString(LOCALE, { day: "numeric", month: "short" })
 export const SITE_URL = "https://kolbi-smoky.vercel.app"
 const FEEDBACK_URL = "https://mkdfohmshuuiroeruyyz.supabase.co/functions/v1/lab-feedback"
-export const APP_VERSION = "0.9-beta"
+/**
+ * App-Version fürs Feedback (Backend erlaubt nur /^[0-9a-z.\-]{1,20}$/).
+ * Store-/Web-Build (Vite): VITE_APP_VERSION oder die Version aus supplement-lab/package.json; die Store-App hängt
+ * beim Start die Plattform an (setAppPlatform → „1.0.0-ios“, „1.0.0-android“, Web: „1.0.0-web“).
+ * TRUE-Web (/lab, Next) setzt nichts → bleibt „0.9-beta“ wie bisher.
+ */
+const cleanVer = (v: string | undefined) => (v ?? "").toLowerCase().replace(/[^0-9a-z.\-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 12)
+export const APP_VERSION = cleanVer(process.env.NEXT_PUBLIC_LAB_VERSION) || "0.9-beta"
+let appPlatform = ""
+/** Von supplement-lab/src/native.ts gesetzt (Capacitor.getPlatform(): "ios" | "android" | "web"). */
+export function setAppPlatform(p: string) { appPlatform = /^[a-z]{1,7}$/.test(p) ? p : "" }
+export const appVersion = () => (appPlatform && APP_VERSION !== "0.9-beta" ? `${APP_VERSION}-${appPlatform}` : APP_VERSION)
 
 export type ProFeature = "patterns" | "costs" | "experiments" | "timing" | "calendar" | "community"
 export const PRO_FEATURES: { id: ProFeature; emoji: string; title: string; text: string }[] = [
@@ -99,7 +110,7 @@ export async function nativeReview(): Promise<boolean> {
 
 export async function sendFeedback(mood: "love" | "ok" | "meh", text: string, where: string): Promise<boolean> {
   try {
-    const res = await fetch(FEEDBACK_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mood, text, where, v: APP_VERSION }) })
+    const res = await fetch(FEEDBACK_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mood, text, where, v: appVersion() }) })
     if (res.ok) track("feedback")
     return res.ok
   } catch { return false }
