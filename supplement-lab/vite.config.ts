@@ -10,6 +10,8 @@ export default defineConfig({
   base: "./",
   define: {
     "process.env.NEXT_PUBLIC_LAB_STORE": JSON.stringify("1"),
+    // Apple Health / Health Connect: in Store-Version 1.0 aus (siehe lib/health.ts → HEALTH_UI)
+    "process.env.NEXT_PUBLIC_LAB_HEALTH": JSON.stringify(process.env.NEXT_PUBLIC_LAB_HEALTH ?? ""),
   },
   resolve: {
     alias: [

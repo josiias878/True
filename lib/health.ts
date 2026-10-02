@@ -52,6 +52,16 @@ export interface HealthProvider {
 let provider: HealthProvider | null = null
 export function setHealthProvider(p: HealthProvider | null) { provider = p }
 export function hasHealthProvider() { return provider != null }
+
+/**
+ * Anzeige-Schalter: Sind Health-Einstiege (Einstellungs-Karte, Sync, Vergleichskarte) sichtbar?
+ * Store-Version 1.0 startet bewusst OHNE Apple Health / Health Connect (HealthKit-Capability nicht
+ * aktiv, Health-Connect-Berechtigungen nicht im Manifest) → aus. Im Web gibt es ohnehin keinen Provider.
+ * Wieder einschalten per Build-Variable NEXT_PUBLIC_LAB_HEALTH=1 (dann nur, wo ein Provider registriert ist).
+ * Ein gespeichertes `healthEnabled: true` wird bei „aus“ einfach ignoriert.
+ */
+export const HEALTH_UI = process.env.NEXT_PUBLIC_LAB_HEALTH === "1"
+export function healthVisible() { return HEALTH_UI && provider != null }
 export async function healthAvailable() { return provider ? provider.available() : false }
 export async function requestHealthPermission() { return provider ? provider.requestPermission() : false }
 

@@ -13,7 +13,7 @@ import {
 } from "@/lib/supplementLab"
 import { checkLabReminders, downloadIcs, hasNativeReminders, syncNativeReminders } from "@/lib/labReminders"
 import { enablePush, pushAvailable, pushState, syncPush, type PushState } from "@/lib/labPush"
-import { fetchHealthSince, hasHealthProvider, healthCompare, mergeHealthDay, requestHealthPermission } from "@/lib/health"
+import { fetchHealthSince, healthVisible, healthCompare, mergeHealthDay, requestHealthPermission } from "@/lib/health"
 import { coach, type CoachAction, type CoachMsg } from "@/lib/labCoach"
 import { LAB_CSS, Btn, Capsule, Card, FaceRow, Icon, IconBtn, Label, Segmented, Sheet, SideChips, Stars, Stepper, XpToast, haptic } from "./ui"
 import { CheckInSheet, Onboarding, SuppPicker } from "./flows"
@@ -362,7 +362,8 @@ export default function LabApp() {
   }, [s.healthEnabled, update])
 
   useEffect(() => {
-    if (!s.healthEnabled || !s.startDate) return
+    // Health ausgeblendet (Store 1.0) → gespeichertes healthEnabled einfach ignorieren, nichts abfragen
+    if (!healthVisible() || !s.healthEnabled || !s.startDate) return
     let cancelled = false
     const run = async () => {
       const data = await fetchHealthSince(s.startDate!, todayIso())
@@ -1537,6 +1538,7 @@ function JourneyView({ s, wins, today, onPhase, goTab }: {
 
 /** Ø Schlaf/HRV aus Apple Health/Health Connect, Reset vs. Test — nur sichtbar, wenn Health-Daten vorliegen. */
 function HealthCompareCard({ s, base, test }: { s: LabState; base?: { start: string; end: string }; test: { start: string; end: string } }) {
+  if (!healthVisible()) return null
   const cmp = healthCompare(s, base, test)
   if (!cmp || (cmp.testSleep == null && cmp.testHrv == null)) return null
   const row = (emoji: string, label: string, baseV: number | null, testV: number | null, unit: string, decimals: number) => testV == null ? null : (
@@ -2238,8 +2240,8 @@ function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnable
         </Card>
       )}
 
-      {/* Apple Health / Health Connect — nur in der Store-App verfügbar */}
-      {hasHealthProvider() && (
+      {/* Apple Health / Health Connect — nur Store-App mit Provider; in Version 1.0 ausgeblendet (lib/health.ts → HEALTH_UI) */}
+      {healthVisible() && (
         <Card style={{ marginBottom: 12 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
             <Label>🍎 Apple Health / Health Connect</Label>

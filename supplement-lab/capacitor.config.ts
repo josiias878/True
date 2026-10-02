@@ -14,6 +14,9 @@ const config: CapacitorConfig = {
   android: { backgroundColor: "#0f0f1a" },
   plugins: {
     LocalNotifications: {
+      // Android-Statusleisten-Symbol: einfarbige Kolben-Silhouette (android/app/src/main/res/drawable/ic_stat_kolbi.xml);
+      // ohne eigenes Small-Icon zeigt Android nur ein weißes Quadrat
+      smallIcon: "ic_stat_kolbi",
       iconColor: "#2ECC8A",
     },
   },
