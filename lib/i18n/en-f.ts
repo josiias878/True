@@ -34,6 +34,8 @@ export const EN_F: Record<string, string> = {
   "💭 So geht's mir": "💭 How I'm doing",
   "❓ So funktioniert's": "❓ How it works",
   "Häufige Fragen": "FAQ",
+  "trüb": "murky",
+  "klar": "clear",
   "🏅 Abzeichen · {n}/{total}": "🏅 Badges · {n}/{total}",
   "1 Selbstversuch in der Community": "1 self-experiment in the community",
   "1) Reset: ein paar Tage gar nichts nehmen, so lerne ich dein Normal kennen. 2) Einzeln testen: immer nur ein Supplement für ein paar Tage, dazwischen kurze Pausen. 3) Stack: alles, was du behalten hast, nimmst du am Ende zusammen, und ich passe auf, ob dein Ergebnis hält.": "1) Reset: take nothing at all for a few days so I can learn your normal. 2) Test one at a time: just one supplement for a few days, with short breaks in between. 3) Stack: at the end you take everything you kept together, and I keep an eye on whether your result holds.",

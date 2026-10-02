@@ -60,7 +60,7 @@ html.dark .lab { --glass: rgba(24,24,44,.5); --glass-strong: rgba(28,28,50,.72);
 .lab-flip-inner.on { transform: rotateY(180deg); }
 .lab-flip-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
 .lab-flip-back { position: absolute; inset: 0; transform: rotateY(180deg); }
-.lab-tabin { animation: labTabIn .32s cubic-bezier(.2,.9,.3,1) both; }
+.lab-tabin { animation: labTabIn .32s cubic-bezier(.2,.9,.3,1) backwards; } /* backwards: danach kein transform → Blätter (position: fixed) im Tab liegen wieder über allem */
 @keyframes labTabIn { from { opacity: 0; transform: translateX(var(--dx, 24px)) } to { opacity: 1; transform: none } }
 @keyframes labDropIn { 0% { opacity: 0; transform: translateY(-30px) scale(.6) } 30% { opacity: 1 } 100% { opacity: 0; transform: translateY(70px) scale(.9) } }
 @keyframes labGrow { from { transform: scaleY(0) } to { transform: scaleY(1) } }

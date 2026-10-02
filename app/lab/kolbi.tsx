@@ -50,6 +50,7 @@ export function KolbiPage({ s, mood, fill, murky, msgs, onAction, onFlash, onFee
   const pct = Math.round(fill * 100)
   const pro = isPro(s)
   const founder = !!s.pro?.founder
+  const gotBadges = BADGES.filter(b => s.badges.includes(b.id))
   const states = [
     { on: true, emoji: "💧", title: t("{n} % voll", { n: pct }), text: t("So viel von heute ist erledigt. Mit jeder Einnahme und dem Check-in fülle ich mich.") },
     { on: glow, emoji: "✨", title: glow ? t("Ich leuchte – {n} Tage Serie!", { n: st }) : t("Leuchten ab 3 Tagen Serie"), text: glow ? t("Bleib dran, dann bleibt das so.") : st === 1 ? t("Du bist bei 1 Tag. Noch {r} und ich strahle.", { r: 3 - st }) : t("Du bist bei {n} Tagen. Noch {r} und ich strahle.", { n: st, r: 3 - st }) },
@@ -73,7 +74,7 @@ export function KolbiPage({ s, mood, fill, murky, msgs, onAction, onFlash, onFee
           <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 7 }}>
             <span style={chip}>💧 {pct} %</span>
             <span style={{ ...chip, opacity: st ? 1 : 0.6 }}>{glow ? "✨" : "🔥"} {st}</span>
-            <span style={chip}>{murky ? "🌫️" : "🫧"}</span>
+            <span style={chip}>{murky ? `🌫️ ${t("trüb")}` : `🫧 ${t("klar")}`}</span>
           </div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 9, fontSize: "0.78rem" }}>
             <span style={{ fontWeight: 900, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lvl.emoji} {lvl.name}</span>
@@ -133,9 +134,9 @@ export function KolbiPage({ s, mood, fill, murky, msgs, onAction, onFlash, onFee
       {/* Ruhiges Raster: Details erst beim Antippen */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <Tile emoji={murky ? "🌫️" : glow ? "✨" : "💭"} title={t("So geht's mir")} sub={t("{n} % voll", { n: pct })} onClick={() => setPanel("mir")} />
-        <Tile emoji="🏅" title={t("Abzeichen")} sub={<>{t("{n} von {total}", { n: s.badges.length, total: BADGES.length })} {BADGES.filter(b => s.badges.includes(b.id)).slice(-3).map(b => b.emoji).join("")}</>} onClick={() => setPanel("badges")} />
+        <Tile emoji="🏅" title={t("Abzeichen")} sub={<>{t("{n} von {total}", { n: gotBadges.length, total: BADGES.length })} {gotBadges.slice(-3).map(b => b.emoji).join("")}</>} onClick={() => setPanel("badges")} />
         <Tile emoji="❓" title={t("So funktioniert's")} sub={t("Was ich mache + Fragen")} onClick={() => setPanel("guide")} />
-        <Tile emoji={founder ? "🏅" : "⭐"} title={founder ? t("Gründer-Pro aktiv") : pro ? t("Lab Pro aktiv") : "Lab Pro"} sub={founder ? t("Für dich für immer gratis") : pro ? t("Gerade noch frei") : t("Alles, was drin ist")} onClick={() => setPanel("pro")} />
+        <Tile emoji="⭐" title={founder ? t("Gründer-Pro aktiv") : pro ? t("Lab Pro aktiv") : "Lab Pro"} sub={founder ? t("Für dich für immer gratis") : pro ? t("Gerade noch frei") : t("Alles, was drin ist")} onClick={() => setPanel("pro")} />
         <Tile emoji="💌" title={t("Freunde einladen")} sub={inviteSub()} onClick={() => inviteWithFlash(onFlash)} arrow={false} />
         <Tile emoji="💬" title="Feedback" sub={t("Sag mir, was fehlt")} onClick={() => { haptic(); onFeedback() }} arrow={false} />
       </div>
@@ -174,7 +175,7 @@ export function KolbiPage({ s, mood, fill, murky, msgs, onAction, onFlash, onFee
         </Sheet>
       )}
       {panel === "badges" && (
-        <Sheet open onClose={close} title={t("🏅 Abzeichen · {n}/{total}", { n: s.badges.length, total: BADGES.length })}>
+        <Sheet open onClose={close} title={t("🏅 Abzeichen · {n}/{total}", { n: gotBadges.length, total: BADGES.length })}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))", gap: 12 }}>
             {BADGES.map(b => {
               const got = s.badges.includes(b.id)
@@ -192,7 +193,7 @@ export function KolbiPage({ s, mood, fill, murky, msgs, onAction, onFlash, onFee
         </Sheet>
       )}
       {panel === "pro" && (
-        <Sheet open onClose={close} title={founder ? t("Gründer-Pro aktiv") : pro ? t("Lab Pro aktiv") : "Lab Pro"}>
+        <Sheet open onClose={close} title="⭐ Lab Pro">
           <ProCard s={s} startOpen />
         </Sheet>
       )}
