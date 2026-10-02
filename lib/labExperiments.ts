@@ -27,7 +27,7 @@ export const EXPERIMENTS: Experiment[] = [
     colors: ["#1baf7a", "#9ee6c5"], weeks: t("ca. 3–4 Wochen"), note: t("Adaptogene brauchen etwas länger – Kolbi plant dafür mehr Tage ein."),
     supps: [{ lib: "theanin", mode: "test" }, { lib: "rhodiola", mode: "test" }, { lib: "ashwagandha", mode: "test" }] },
   { id: "training", emoji: "💪", title: t("Mehr Power im Training"), question: t("Was bringt mir im Training wirklich etwas?"), goals: ["muskel", "regeneration"],
-    colors: ["#eb6834", "#eda100"], weeks: t("ca. 2–3 Wochen"), note: t("Kreatin läuft durchgehend (wirkt über Wochen), Citrullin & Elektrolyte werden getestet."),
+    colors: ["#eb6834", "#eda100"], weeks: t("ca. 2–3 Wochen"), note: t("Kreatin läuft durchgehend (Effekte, wenn, erst nach Wochen), Citrullin & Elektrolyte werden getestet."),
     supps: [{ lib: "kreatin", mode: "konstant" }, { lib: "citrullin", mode: "test" }, { lib: "elektrolyte", mode: "test" }] },
   { id: "basis", emoji: "🛡️", title: t("Gute Basis"), question: t("Bin ich gut versorgt – ohne Rätselraten?"), goals: ["immun", "longevity"],
     colors: ["#eda100", "#e87ba4"], weeks: t("dauerhaft"), note: t("Kein Test nötig: läuft durchgehend. Sinnvoll: Vitamin D & Co. nach 8–12 Wochen per Blutbild prüfen."),

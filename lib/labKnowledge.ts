@@ -23,7 +23,7 @@ export const PARTNERS: Record<string, Partner[]> = {
   folat: [{ with: "b12", title: t("Folat und B12 sind ein Team"),
     text: t("Viel Folat kann einen B12-Mangel verdecken. Deshalb werden die beiden oft zusammen genommen.") }],
   whey: [{ with: "kreatin", title: t("Eiweiß + Kreatin"),
-    text: t("Kreatin ist das am besten untersuchte Supplement für Kraft und passt gut zu einem Eiweiß-Fokus.") }],
+    text: t("Kreatin gehört zu den am besten untersuchten Supplements im Kraftsport und passt gut zu einem Eiweiß-Fokus.") }],
 }
 
 /** Nebenwirkung, während man X nimmt → typische Ursache und was meist hilft. */
@@ -36,13 +36,13 @@ export const SIDE_CAUSES: SideCause[] = [
   { lib: "eisen", sides: ["verstopfung", "uebelkeit"], text: t("Eisen schlägt oft auf den Magen. Niedrigere Dosis, jeden 2. Tag oder Eisen-Bisglycinat sind meist besser verträglich.") },
   { lib: "kreatin", sides: ["blaehungen", "durchfall", "wasser"], text: t("Kreatin zieht Wasser in die Muskeln. Genug trinken und die Portion aufteilen hilft; 1–2 kg mehr auf der Waage sind normal.") },
   { lib: "omega3", sides: ["uebelkeit", "blaehungen"], text: t("Fischaufstoßen? Zu einer Mahlzeit nehmen oder die Kapseln im Gefrierfach lagern.") },
-  { lib: "koffein", sides: ["schlafprob", "unruhe", "herzrasen"], text: t("Koffein wirkt 5–6 Stunden nach. Letzte Tasse spätestens 8 h vor dem Schlafen; manche kombinieren Kaffee mit L-Theanin."), add: "theanin" },
+  { lib: "koffein", sides: ["schlafprob", "unruhe", "herzrasen"], text: t("Nach 5–6 Stunden ist noch rund die Hälfte des Koffeins im Blut. Letzte Tasse spätestens 8 h vor dem Schlafen; manche kombinieren Kaffee mit L-Theanin."), add: "theanin" },
   { lib: "melatonin", sides: ["kopfschmerz", "traeume", "muede"], text: t("Oft ist die Dosis zu hoch: 0,3–1 mg reichen meist und machen morgens weniger dumpf.") },
   { lib: "betaalanin", sides: ["kribbeln"], text: t("Das Kribbeln ist harmlos. Kleinere Portionen über den Tag verteilt verhindern es.") },
   { lib: "b12", sides: ["schlafprob", "unruhe"], text: t("B-Vitamine können aktivieren – nimm sie morgens statt abends.") },
   { lib: "bkomplex", sides: ["schlafprob", "unruhe"], text: t("B-Vitamine können aktivieren – nimm sie morgens statt abends.") },
-  { lib: "rhodiola", sides: ["unruhe", "schlafprob"], text: t("Rhodiola wirkt aktivierend – nur morgens nehmen, nicht nach 14 Uhr.") },
-  { lib: "tyrosin", sides: ["unruhe", "schlafprob"], text: t("Tyrosin wirkt aktivierend – nur morgens nehmen, nicht nach 14 Uhr.") },
+  { lib: "rhodiola", sides: ["unruhe", "schlafprob"], text: t("Rhodiola kann wach machen – nur morgens nehmen, nicht nach 14 Uhr.") },
+  { lib: "tyrosin", sides: ["unruhe", "schlafprob"], text: t("Tyrosin kann wach machen – nur morgens nehmen, nicht nach 14 Uhr.") },
   { lib: "alcar", sides: ["unruhe", "schlafprob"], text: t("Carnitin kann aktivieren – nur morgens nehmen.") },
   { lib: "ashwagandha", sides: ["muede"], text: t("Ashwagandha kann müde machen – dann besser abends nehmen.") },
   { lib: "flohsamen", sides: ["blaehungen", "verstopfung"], text: t("Mit wenig anfangen und viel Wasser trinken (mind. 300 ml pro Portion) – sonst bläht und stopft es.") },
@@ -60,7 +60,7 @@ export const SIDE_CAUSES: SideCause[] = [
 export const FACTS: Record<string, string[]> = {
   magnesium: [t("Über 300 Enzyme im Körper brauchen Magnesium – für Muskeln, Nerven und Energie."), t("Die Form macht den Unterschied: Citrat wirkt eher abführend, Glycinat ist magenfreundlich.")],
   glycin: [t("In Studien sank mit Glycin die Körpertemperatur leicht – ein Signal, das zum Einschlafen gehört.")],
-  melatonin: [t("Melatonin ist eher ein Zeitgeber als ein Schlafmittel: Es sagt dem Körper „jetzt ist Nacht“."), t("Oft wirken 0,3–1 mg genauso gut wie viel höhere Dosen.")],
+  melatonin: [t("Melatonin ist eher ein Zeitgeber als ein Schlafmittel: Es sagt dem Körper „jetzt ist Nacht“."), t("Viele kommen mit 0,3–1 mg aus – mehr ist nicht automatisch besser.")],
   theanin: [t("L-Theanin steckt natürlich im Grüntee – ein Grund, warum viele Tee als ruhiger empfinden als Kaffee.")],
   koffein: [t("Koffein hat eine Halbwertszeit von ca. 5 Stunden: Der Kaffee um 16 Uhr ist um 21 Uhr noch halb im Blut."), t("Koffein blockiert Adenosin – den Botenstoff, der Müdigkeit meldet.")],
   rhodiola: [t("Rhodiola wächst in kalten Bergregionen und wurde dort traditionell in fordernden Zeiten genutzt.")],
@@ -122,8 +122,8 @@ export const FACTS: Record<string, string[]> = {
 
 export const GENERAL_FACTS = [
   t("Der Placebo-Effekt ist echt – genau deshalb vergleichen wir mit deinem Reset."),
-  t("Immer nur eins testen: Nur so weißt du, was wirklich wirkt."),
-  t("Viele Supplements wirken nur spürbar, wenn vorher ein Mangel da war."),
+  t("Immer nur eins testen: Nur so weißt du, was bei dir wirklich wirkt."),
+  t("Bei vielen Supplements merkt man nur etwas, wenn vorher ein Mangel da war."),
   t("Die Vitamine A, D, E und K sind fettlöslich – sie brauchen eine Mahlzeit mit Fett."),
   t("Regelmäßigkeit schlägt Dosis: Jeden Tag zur gleichen Zeit bringt mehr als mal viel."),
 ]

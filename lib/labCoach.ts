@@ -131,8 +131,8 @@ export function coach(s: LabState, now = new Date(), dismissed: string[] = []): 
     push({ id: `reclassify-${reclassify.map(x => x.id).join("-")}`, mood: "think", prio: 3,
       title: many ? t("{n} Supplements brauchen keinen Test", { n: reclassify.length }) : t("{name} braucht keinen Test", { name: first.name }),
       text: many
-        ? t("{names} wirken erst über Wochen — ein kurzer Test bringt da wenig. Mein Vorschlag: einfach durchgehend nehmen, kein Test nötig.", { names: reclassify.map(x => x.name).join(", ") })
-        : t("{names} wirkt erst über Wochen — ein kurzer Test bringt da wenig. Mein Vorschlag: einfach durchgehend nehmen, kein Test nötig.", { names: reclassify.map(x => x.name).join(", ") }),
+        ? t("Bei {names} merkt man, wenn überhaupt, erst nach Wochen etwas — ein kurzer Test bringt da wenig. Mein Vorschlag: einfach alle durchgehend nehmen, kein Test nötig.", { names: reclassify.map(x => x.name).join(", ") })
+        : t("Bei {names} merkt man, wenn überhaupt, erst nach Wochen etwas — ein kurzer Test bringt da wenig. Mein Vorschlag: einfach durchgehend nehmen, kein Test nötig.", { names: reclassify.map(x => x.name).join(", ") }),
       actions: many ? [
         { label: t("📌 Alle durchgehend"), action: { kind: "konstantAll", suppIds: reclassify.map(x => x.id) }, primary: true },
         { label: t("☑️ Selbst auswählen"), action: { kind: "reclassifyPick", suppIds: reclassify.map(x => x.id) } },
@@ -343,7 +343,7 @@ function phaseAdvice(s: LabState, w: PhaseWindow, today: string, baseMean: numbe
         actions: [{ label: t("✋ Jetzt abbrechen"), action: { kind: "abort" } }] })
     } else if (cs.length >= 2 && mean != null && baseMean != null && mean > baseMean + 0.4) {
       push({ id: `better-${w.id}-${cs.length}`, mood: "party", prio: 6, title: t("Sieht gut aus!"),
-        text: t("Mit {name} liegst du bei Ø {mean}★, im Reset waren es {base}★. Zieh den Test noch durch, dann ist das Ergebnis sicher.", { name: name(s, w.suppId), mean: fmt(mean), base: fmt(baseMean) }) })
+        text: t("Mit {name} liegst du bei Ø {mean}★, im Reset waren es {base}★. Zieh den Test noch durch, dann ist das Ergebnis belastbarer.", { name: name(s, w.suppId), mean: fmt(mean), base: fmt(baseMean) }) })
     }
     const watch = lib?.watch.map(d => DIMS.find(x => x.id === d)?.label).filter(Boolean).join(", ")
     push({ id: `phase-${w.id}-${day}`, mood: "happy", prio: 5,
@@ -362,12 +362,12 @@ function phaseAdvice(s: LabState, w: PhaseWindow, today: string, baseMean: numbe
     const fading = cs.length >= 6 && recentMean != null && ((earlyMean != null && recentMean < earlyMean - 0.4) || (baseMean != null && recentMean < baseMean))
     if (fading && kept.length) {
       const suspect = [...kept].sort((a, b) => signal(s, a.id).net - signal(s, b.id).net)[0]
-      push({ id: `fading-${w.id}-${cs.length}`, mood: "think", prio: 2, title: t("Die Wirkung lässt nach"),
+      push({ id: `fading-${w.id}-${cs.length}`, mood: "think", prio: 2, title: t("Deine Werte sinken"),
         text: t("Die letzten 3 Tage: Ø {recent}★, zu Beginn des Stacks {early}★. Lass {name} 3 Tage weg und beobachte, ob sich etwas ändert. Es kann auch an Schlaf, Stress oder Ernährung liegen.", { recent: fmt(recentMean!), early: fmt(earlyMean ?? baseMean ?? 0), name: suspect.name }),
         actions: [{ label: t("👀 {name} 3 Tage weglassen", { name: suspect.name }), action: { kind: "check", suppId: suspect.id }, primary: true }] })
     } else {
       push({ id: `stack-${w.id}-${Math.floor(cs.length / 7)}`, mood: "party", prio: 6, title: t("Dein Stack läuft · Tag {day}", { day: diffDays(w.start, today) + 1 }),
-        text: cs.length >= 3 && recentMean != null ? t("Stabil bei Ø {mean}★. Ich passe auf und melde mich, wenn die Wirkung nachlässt.", { mean: fmt(recentMean) }) : t("Nimm deine behaltenen Supplements wie geplant. Ich beobachte, ob die Wirkung anhält.") })
+        text: cs.length >= 3 && recentMean != null ? t("Stabil bei Ø {mean}★. Ich passe auf und melde mich, wenn deine Werte sinken.", { mean: fmt(recentMean) }) : t("Nimm deine behaltenen Supplements wie geplant. Ich beobachte, ob deine Werte stabil bleiben.") })
     }
     return
   }
@@ -388,7 +388,7 @@ function idleAdvice(s: LabState, today: string, wins: PhaseWindow[], push: Push)
     const lib = libOf(next)
     if (lib?.onset === "langsam") {
       push({ id: `slow-${next.id}`, mood: "think", prio: 3, title: t("Als Nächstes: {name}", { name: next.name }),
-        text: t("{name} wirkt eher über Wochen. In ein paar Tagen merkst du davon wenig. Du kannst es trotzdem {n} Tage testen, oder es einfach durchgehend nehmen und per Blutbild prüfen.", { name: next.name, n: ONSET_INFO[lib.onset].days }),
+        text: t("Bei {name} merkt man, wenn überhaupt, eher nach Wochen etwas. In ein paar Tagen siehst du davon wenig. Du kannst es trotzdem {n} Tage testen, oder es einfach durchgehend nehmen und per Blutbild prüfen.", { name: next.name, n: ONSET_INFO[lib.onset].days }),
         actions: [{ label: t("🔬 {n} Tage testen", { n: ONSET_INFO[lib.onset].days }), action: { kind: "startTest", suppId: next.id }, primary: true },
           { label: t("📌 Einfach durchgehend nehmen"), action: { kind: "konstant", suppId: next.id } },
           { label: t("Anderes wählen"), action: { kind: "pickNext" } }] })
@@ -407,8 +407,8 @@ function idleAdvice(s: LabState, today: string, wins: PhaseWindow[], push: Push)
   if (kept.length && !wins.some(x => x.kind === "stack")) {
     push({ id: "stack-ready", mood: "party", prio: 3, title: t("Alles getestet! 🎉"),
       text: kept.length > 1
-        ? t("{n} Supplements haben überzeugt. Ab jetzt nimmst du sie zusammen, und ich passe auf, ob die Wirkung anhält.", { n: kept.length })
-        : t("{n} Supplement hat überzeugt. Ab jetzt nimmst du es zusammen, und ich passe auf, ob die Wirkung anhält.", { n: kept.length }),
+        ? t("{n} Supplements haben überzeugt. Ab jetzt nimmst du sie zusammen, und ich passe auf, ob deine Werte stabil bleiben.", { n: kept.length })
+        : t("{n} Supplement hat überzeugt. Ab jetzt nimmst du es zusammen, und ich passe auf, ob deine Werte stabil bleiben.", { n: kept.length }),
       actions: [{ label: t("🏆 Stack starten"), action: { kind: "startStack" }, primary: true }] })
   } else if (!kept.length) {
     push({ id: "nothing-kept", mood: "think", prio: 3, title: t("Nichts hat klar überzeugt"),

@@ -273,7 +273,7 @@ export type Route = "oral" | "subkutan" | "nasal" | "topisch"
 export const ONSET_INFO: Record<Onset, { label: string; days: number; text: string; emoji: string }> = {
   schnell: { label: t("Spürbar in Stunden–Tagen"), days: 3,  emoji: "⚡", text: t("Ideal für den 3–5-Tage-Test.") },
   mittel:  { label: t("Spürbar nach 1–3 Wochen"),  days: 5,  emoji: "⏳", text: t("Braucht einen etwas längeren Testblock.") },
-  langsam: { label: t("Wirkt über Wochen–Monate"), days: 7, emoji: "🐢", text: t("Kaum im Kurztest fühlbar — Blutwerte sagen oft mehr als Gefühl.") },
+  langsam: { label: t("Spürbar eher nach Wochen–Monaten"), days: 7, emoji: "🐢", text: t("Kaum im Kurztest fühlbar — Blutwerte sagen oft mehr als Gefühl.") },
 }
 
 export const ROUTE_INFO: Record<Route, { emoji: string; label: string }> = {
@@ -384,7 +384,7 @@ const ALL_LIBRARY: LibSupp[] = [
   { id: "melatonin", name: "Melatonin", emoji: "🦉", category: "Schlaf & Ruhe", onset: "schnell",
     slots: ["schlaf"], dose: t("0,5–1 mg"), watch: ["schlaf", "energie"],
     effect: t("Taktgeber der inneren Uhr – wird zum Einschlafen und bei Jetlag oder Schichtarbeit genutzt."),
-    timing: t("30–60 Min vor dem Schlafen. Niedrig dosiert wirkt oft besser als hoch."),
+    timing: t("30–60 Min vor dem Schlafen. Niedrig dosiert reicht oft – mehr ist nicht automatisch besser."),
     caution: t("Nicht für Dauereinnahme gedacht. Bei Medikamenten ärztlich abklären."), aliases: ["melatonin"] },
   { id: "theanin", name: t("L-Theanin"), emoji: "🍵", category: "Energie & Fokus", onset: "schnell",
     slots: ["fruehstueck", "schlaf"], dose: "100–200 mg", watch: ["ruhe", "fokus"],
@@ -442,7 +442,7 @@ const ALL_LIBRARY: LibSupp[] = [
     timing: t("Täglich zur gleichen Zeit, kurz vor oder zum Frühstück."), aliases: ["probiotika", "probiotic", "probiotikum", "darmbakterien", "kefir"] },
   { id: "kreatin", name: t("Kreatin"), emoji: "🏋️", category: "Training", onset: "langsam",
     slots: ["fruehstueck", "training"], dose: "3–5 g", watch: ["koerper", "fokus", "energie"],
-    effect: t("Erhöht die Leistung bei kurzen, intensiven Belastungen (ab 3 g/Tag). Leichte Wassereinlagerung ist normal."),
+    effect: t("Gut untersucht für kurze, intensive Belastungen wie Krafttraining (meist 3–5 g/Tag). Leichte Wassereinlagerung ist normal."),
     timing: t("Timing egal — Hauptsache jeden Tag. Muskel-Sättigung nach ~3–4 Wochen."), aliases: ["kreatin", "creatin", "creatine", "monohydrat"] },
   { id: "citrullin", name: t("L-Citrullin"), emoji: "🔥", category: "Training", onset: "schnell",
     slots: ["training"], dose: "6–8 g", watch: ["koerper", "energie"],
@@ -1136,13 +1136,13 @@ export function signal(s: LabState, suppId: string): Signal {
   if (r.n < 3) return { key: "few", text: r.n === 1 ? t("Erst 1 Check-in — noch wenig aussagekräftig") : t("Erst {n} Check-ins — noch wenig aussagekräftig", { n: r.n }), emoji: "🤏", suggestion: "maybe", ...base }
   if (hasSides && benefit >= 0.2) {
     return net >= 0.2
-      ? { key: "tradeoff", text: t("Wirkt — aber mit Nebenwirkungen"), emoji: "⚖️", suggestion: "maybe", ...base }
+      ? { key: "tradeoff", text: t("Plus bei dir — aber mit Nebenwirkungen"), emoji: "⚖️", suggestion: "maybe", ...base }
       : { key: "tradeoff", text: t("Nebenwirkungen fressen den Nutzen auf"), emoji: "⚠️", suggestion: "drop", ...base }
   }
   if (net >= 0.45) return { key: "strong", text: t("Deutliches Plus"), emoji: "💚", suggestion: "keep", ...base }
   if (net >= 0.2) return { key: "light", text: t("Leichtes Plus"), emoji: "🌱", suggestion: "keep", ...base }
   if (net <= -0.25) return { key: "neg", text: hasSides ? t("Eher negativ — vor allem Nebenwirkungen") : t("Eher negativ"), emoji: "⚠️", suggestion: "drop", ...base }
-  return { key: "flat", text: lib?.onset === "langsam" ? t("Kein klarer Effekt — wirkt aber auch langsam") : t("Kein klarer Effekt"), emoji: "😶", suggestion: lib?.onset === "langsam" ? "maybe" : "drop", ...base }
+  return { key: "flat", text: lib?.onset === "langsam" ? t("Kein klarer Effekt — bei langsamen Kandidaten aber normal") : t("Kein klarer Effekt"), emoji: "😶", suggestion: lib?.onset === "langsam" ? "maybe" : "drop", ...base }
 }
 
 export function streak(s: LabState): number {

@@ -18,6 +18,14 @@ Werbung für Nahrungsergänzungsmittel darf in der EU nur **zugelassene Health C
 
 ## Offene Punkte in der App
 
-- [ ] Bibliothek-Texte „Was es kann“ auf vorsichtige Formulierungen prüfen („wird genutzt für …“,
+- [x] Bibliothek-Texte „Was es kann“ auf vorsichtige Formulierungen prüfen („wird genutzt für …“,
       „Studien deuten an …“) bzw. zugelassene Claims – vor Store-Launch.
+      *Erledigt 2. Okt 2026 (Technik):* alle 72 Bibliothekseinträge (Wirkung, Einnahme, Hinweis) plus Kombi-Regeln,
+      Wissens-Fakten, Experimente und Coach-Texte geprüft, 92 Texte DE+EN umformuliert. Vitamine/Mineralstoffe nur
+      noch mit dem Wortlaut zugelassener Claims (VO 432/2012, „trägt zu … bei“), alles andere beschreibend
+      („wird genutzt für …“), ohne Krankheitsbezug. GLP-1 (Rx) nicht mehr als Vorschlag beim Ziel „Abnehmen“.
+      Offen: fachliche Gegenprüfung (siehe unten) und UI-Beschriftung „Wirkung:“ in der Detailansicht.
+- [ ] Fachperson (Lebensmittelrecht) prüft vor Launch stichprobenartig die Bibliothek – v. a. pflanzliche Stoffe
+      (Botanicals ohne zugelassene Claims), Melatonin, Probiotika (Begriff selbst gilt in der EU als Claim) und die
+      Ziel-Vorschläge („Besser schlafen“, „Weniger Stress“ → Supplement-Liste).
 - [ ] Peptide sind in der Store-Version bereits ausgeblendet (gut so).
