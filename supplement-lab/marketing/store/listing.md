@@ -11,7 +11,7 @@ Längen sind geprüft (`node tools/check-listing.mjs`).
 **App-Name (30):** Kolbi: Supplement-Check
 **Untertitel (30):** Finde raus, was bei dir wirkt
 **Kategorie:** Gesundheit & Fitness · Zweitkategorie: Lifestyle
-**Alter:** 12+ (Medizinische Infos, selten) – keine Käufe für Kinder
+**Alter:** Apple **13+** (berechnet: Alkohol-Bezüge selten, Medizin-Infos selten, Wellness-Themen ja) · Google Zielgruppe **18+** – Fragebögen: [`forms.md`](./forms.md)
 
 **Werbetext (170):**
 Schluss mit Raten: Kolbi testet deine Supplements nacheinander, vergleicht mit deinem
@@ -55,9 +55,10 @@ dein Ergebnis anonym mit der Community teilen – nur mit deiner Zustimmung, jed
 
 WICHTIG
 Kolbi ist ein Tagebuch- und Experimentier-Werkzeug, kein Medizinprodukt. Die App stellt keine
-Diagnosen und ersetzt keine ärztliche Beratung. Ergebnisse sind deine persönliche, subjektive
-Einschätzung. Bei Beschwerden, Schwangerschaft oder Medikamenten sprich bitte vorher mit deiner
-Ärztin, deinem Arzt oder in der Apotheke.
+Diagnosen und behandelt, heilt oder verhindert keine Erkrankung. Sie ersetzt keine ärztliche
+Beratung und empfiehlt keine Supplements oder Dosierungen. Ergebnisse sind deine persönliche,
+subjektive Einschätzung. Bei gesundheitlichen Fragen, Beschwerden, Schwangerschaft oder Medikamenten
+sprich bitte vorher mit deiner Ärztin, deinem Arzt oder in der Apotheke.
 
 **Keywords (100, ohne Leerzeichen):**
 supplements,tracker,vitamine,magnesium,kreatin,omega3,schlaf,tagebuch,selbstversuch,stack,routine
@@ -115,8 +116,9 @@ No account, no sign-up. Your entries stay on your device. If you want, you can s
 anonymously with the community – only with your consent, deletable any time.
 
 IMPORTANT
-Kolbi is a journaling and self-experiment tool, not a medical device. It does not diagnose and
-does not replace medical advice. Results are your personal, subjective rating. If you have health
+Kolbi is a journaling and self-experiment tool, not a medical device. It does not diagnose, treat,
+cure or prevent any condition, does not replace medical advice and does not recommend supplements
+or doses. Results are your personal, subjective rating. For medical questions, or if you have health
 issues, are pregnant or take medication, please talk to your doctor or pharmacist first.
 
 **Keywords (100):**
@@ -155,24 +157,13 @@ Neu erzeugen (Stand 2. Okt 2026):
 
 ---
 
-## App-Datenschutz („Nutrition Label“ bei Apple / „Datensicherheit“ bei Google)
+## App-Datenschutz, Altersfreigabe & Prüfer-Hinweis
 
-| Daten | Erhoben? | Verknüpft mit Person? | Zweck |
-|-------|----------|-----------------------|-------|
-| Gesundheit & Fitness (Check-in-Werte, Supplements) | **Nein** – bleibt auf dem Gerät | – | – |
-| Gesundheit (anonymes Test-Ergebnis: Supplement-ID, ±★, Urteil) | Ja, **nur mit Zustimmung** | Nein | App-Funktion (Community-Statistik) |
-| Feedback-Text (freiwillig, ohne Kennung) | Ja, nur beim Abschicken | Nein | App-Funktion / Produktverbesserung |
-| Geräte-ID (zufällig, für Löschen der eigenen Beiträge / Push) | Ja | Nein | App-Funktion |
-| Nutzungsdaten (anonyme Aufrufzählung, Vercel Analytics, nur Web) | Ja | Nein | Analyse |
-| Produktinteraktion (anonyme Tageszähler, z. B. „erster Check-in“, abschaltbar) | Ja | Nein | Analyse |
-| Tracking über Apps hinweg | **Nein** | – | – |
-
-## Prüfer-Hinweis (App Review Notes)
-
-> No account or login required. All data is stored locally on the device. Optional features:
-> push reminders (local notifications), Apple Health (read-only: sleep duration and HRV),
-> anonymous community statistics (opt-in, can be deleted in Settings). The app does not give
-> medical advice; it is a journaling tool for personal self-experiments.
+Maßgeblich (im Code geprüft, Stand 2. Okt 2026): Formulare → [`forms.md`](./forms.md) ·
+Prüfer-Notizen → [`review-notes.md`](./review-notes.md). Kurz: kein Konto, Einträge bleiben auf dem Gerät;
+erhoben werden nur anonyme Statistik (abschaltbar), freiwilliges Feedback, das Community-Ergebnis (nur mit
+Zustimmung), Kalender-Abo (Pro) und der Kaufstatus über RevenueCat – nichts mit der Person verknüpft, kein Tracking.
+Version 1.0 enthält **kein** Apple Health / Health Connect.
 
 ## Google Play
 
