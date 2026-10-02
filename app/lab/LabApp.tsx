@@ -8,7 +8,7 @@ import {
   phaseWindows, phaseAt, testResult, checkinsIn, buildStack, allowedSlots, slotTime, slotFor, stackMembers, intakeOn,
   STORE_MODE, LAB_BASE, todayIso, setDayBoundary, relMin, toMin, addDays, diffDays, fmtDate, suppColor, daySum, activeDims, signal, libOf, makeSupp, defaultCheckinTime,
   nextCandidates, suppStatus, takingInfo, avgIntakeMinutes, phaseEndsAt, fmtCountdown, nowTime, closeActive, looksPrescribed,
-  startTest, startStack, startCheck, applyVerdict, resolveCheck, fromMin, timeTip, LIB_BY_ID, slotMinutes,
+  startTest, startStack, startCheck, applyVerdict, resolveCheck, fromMin, timeTip, LIB_BY_ID, slotMinutes, libDoseLabel,
   type SlotId, type LabState, type Decision, type Dim, type PhaseWindow, type MySupp, type LibSupp, type Settings, type CheckIn, type Scores, type SuppStatusKey,
 } from "@/lib/supplementLab"
 import { checkLabReminders, downloadIcs, hasNativeReminders, syncNativeReminders } from "@/lib/labReminders"
@@ -1210,7 +1210,7 @@ function SuppSheet({ s, id, today, adv, onClose, update, onAction, onVerdict, on
       <Card style={{ marginBottom: 12 }}>
         <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, fontWeight: 800, fontSize: "0.88rem" }}>
           {t("Deine Dosis")}
-          <input value={x.dose} placeholder={t("z. B. 400 mg")} onChange={e => { const v = e.target.value; update(p => { p.supps = p.supps.map(q => q.id === id ? { ...q, dose: v } : q); return p }) }}
+          <input value={x.dose} placeholder={t("laut Packung")} onChange={e => { const v = e.target.value; update(p => { p.supps = p.supps.map(q => q.id === id ? { ...q, dose: v } : q); return p }) }}
             style={{ width: 150, padding: "8px 10px", borderRadius: 10, fontSize: "0.85rem" }} />
         </label>
       </Card>
@@ -1577,7 +1577,7 @@ function PhaseSheet({ s, w, today, onClose, update, onVerdict }: {
         <Card style={{ marginBottom: 12 }}>
           <div style={{ fontSize: "0.88rem", lineHeight: 1.55 }}>
             <div><b>{t("Kurz erklärt:")}</b> {lib.effect}</div>
-            <div style={{ marginTop: 6 }}><b>{t("Dosis:")}</b> {supp?.dose || lib.dose}{lib.route ? ` · ${ROUTE_INFO[lib.route].emoji} ${ROUTE_INFO[lib.route].label}` : ""}</div>
+            <div style={{ marginTop: 6 }}><b>{t("Dosis:")}</b> {supp?.dose || libDoseLabel(lib)}{lib.route ? ` · ${ROUTE_INFO[lib.route].emoji} ${ROUTE_INFO[lib.route].label}` : ""}</div>
             <div style={{ marginTop: 6 }}><b>{t("Einnahme:")}</b> {lib.timing}</div>
             {LIB_SIDES[lib.id]?.length ? <div style={{ marginTop: 6 }}><b>{t("Mögliche Nebenwirkungen:")}</b> {LIB_SIDES[lib.id].map(id => `${SIDE_BY_ID[id]?.emoji} ${SIDE_BY_ID[id]?.label}`).join(" · ")}</div> : null}
             {lib.caution && <div style={{ marginTop: 6, color: "var(--warning)" }}>⚠️ {lib.caution}</div>}
@@ -2000,7 +2000,7 @@ function StackView({ s, update, onVerdict, onStartStack }: { s: LabState; update
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontWeight: 800, fontSize: "0.9rem" }}>{x.name}{isMaybe && <span style={{ fontSize: "0.7rem", color: "var(--text-dim)" }}>{t(" · vielleicht")}</span>}</div>
                             <div style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>
-                              {x.dose || lib?.dose}{lib?.withFat ? t(" · mit fetthaltigem Essen") : ""}{lib?.route && lib.route !== "oral" ? ` · ${ROUTE_INFO[lib.route].emoji} ${ROUTE_INFO[lib.route].label}` : ""}
+                              {x.dose || libDoseLabel(lib)}{lib?.withFat ? t(" · mit fetthaltigem Essen") : ""}{lib?.route && lib.route !== "oral" ? ` · ${ROUTE_INFO[lib.route].emoji} ${ROUTE_INFO[lib.route].label}` : ""}
                             </div>
                           </div>
                           <span style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>⇅</span>

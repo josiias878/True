@@ -22,8 +22,8 @@ Notizen, Vorrat, Preise, Ziele) liegt **nur auf dem Gerät** (`localStorage`), k
 
 | # | Funktion | Was geht raus | Kennung? | Standard | Löschen | Server | Fundstelle |
 |---|---|---|---|---|---|---|---|
-| 1 | **Anonyme Statistik** | Ereignisname (z. B. `first_checkin`, `paywall_view`, `purchase`), App-Sprache, Herkunftskanal (`src`, nur aus Web-Links) → nur ein **Tageszähler** wird erhöht | **keine** (keine Geräte-ID, IP wird nicht gespeichert) | **an**, abschaltbar: Einstellungen → „📊 Anonyme Statistik“ | nicht nötig/möglich (nur Summen) | Supabase Frankfurt | `lib/labStats.ts`, `supabase/functions/lab-stats` |
-| 2 | **Feedback** | Stimmung (love/ok/meh), Freitext ≤ 1000 Zeichen, Ort in der App (`where`), App-Version | **keine** | nur beim Abschicken | Löschung nach 12 Monaten (Datenschutz §7); einzeln nicht zuordenbar | Supabase | `lib/labGrow.ts` `sendFeedback`, `functions/lab-feedback` |
+| 1 | **Anonyme Statistik** | Ereignisname (z. B. `first_checkin`, `paywall_view`, `purchase`), App-Sprache, Herkunftskanal (`src`, nur aus Web-Links oder ein fester Test-Kanal in Test-Versionen, z. B. `playtest` über `VITE_STATS_SRC`) → nur ein **Tageszähler** wird erhöht | **keine** (keine Geräte-ID, IP wird nicht gespeichert) | **an**, abschaltbar: Einstellungen → „📊 Anonyme Statistik“ | nicht nötig/möglich (nur Summen) | Supabase Frankfurt | `lib/labStats.ts`, `supabase/functions/lab-stats` |
+| 2 | **Feedback** | Stimmung (love/ok/meh), Freitext ≤ 1000 Zeichen, Ort in der App (`where`), App-Version mit Plattform (z. B. `1.0.0-android`, `1.0.0-ios`, `1.0.0-web`) | **keine** | nur beim Abschicken | Löschung nach 12 Monaten (Datenschutz §7); einzeln nicht zuordenbar | Supabase | `lib/labGrow.ts` `sendFeedback`, `functions/lab-feedback` |
 | 3 | **Community** | Bibliotheks-ID des Supplements, Testtage, Urteil, ±★ gesamt/je Bereich, Nebenwirkungs-IDs | **zufällige Geräte-ID** (32 Hex, in der App erzeugt) | **aus**, nur mit Zustimmung | in der App: „Meine geteilten Ergebnisse löschen“ (löscht alle Beiträge der ID) | Supabase | `lib/labCommunity.ts`, `functions/lab-community` |
 | 4 | **Kalender-Abo** (Pro) | ICS-Datei mit großen Terminen; Titel **neutral**, Supplement-Namen nur wenn „Namen im Kalender“ an | **zufälliges Token** (48 Hex) | aus | „Abo beenden“ löscht die Datei | Supabase | `lib/labCalendar.ts`, `functions/lab-cal` |
 | 5 | **Käufe** (RevenueCat) | anonyme App-Nutzer-ID von RevenueCat, Kaufbelege (Produkt, Zeitpunkt, Status) | **anonyme RC-ID** | aktiv, sobald der RC-Schlüssel im Build steckt (beim Start: Angebote + Kaufstatus abfragen) | über RevenueCat-Dashboard auf Anfrage | RevenueCat (USA, DPF) | `supplement-lab/src/billing.ts` |
@@ -59,7 +59,8 @@ Alle Erklärungen gelten schon für den **geschlossenen Test** – sie müssen v
 - Gültig erst, wenn die **Impressum-Daten** eingetragen und die Seite neu gebaut/deployt ist (heute stehen noch
   Platzhalter wie `[Vorname Nachname]` drin – Google verlangt, dass der Anbieter und ein Kontakt erkennbar sind).
 - Die Seite ist öffentlich erreichbar, kein PDF, nicht ortsgesperrt; `noindex` ist dafür kein Problem.
-- **Klären (CEO, Rechtstexte):** drei Stellen passen noch nicht ganz zur Store-App 1.0 → Abschnitt 4 „Übergaben“.
+- Rechtstexte am 2. Okt 2026 an die Store-App 1.0 angepasst (Statistik standardmäßig an, RevenueCat ohne Schalter, kein
+  Health, Push nur Web-App, Beta-Test-Abschnitt). Offene Rechtsfragen gebündelt in [`../legal/FACHPERSON.md`](../legal/FACHPERSON.md).
 
 ### 1.2 App-Zugriff (App access)
 
@@ -159,7 +160,7 @@ Pfad: **App-Inhalte → Datensicherheit → Starten**. Antworten gelten für die
 | **Gesundheit und Fitness → Gesundheitsinformationen** (Health info) | anonymes Community-Testergebnis (#3); Kalender-Datei, **falls** „Namen im Kalender“ an ist (#4) | Ja | **Optional** (Einwilligung bzw. Schalter) | App-Funktionalität (App functionality) |
 | **App-Aktivitäten → App-Interaktionen** (App interactions) | anonyme Tageszähler je Ereignis + Sprache + Kanal (#1) | Ja | **Optional** (in den Einstellungen abschaltbar) | Analysen (Analytics) |
 | **App-Aktivitäten → Sonstige von Nutzern erstellte Inhalte** (Other user-generated content) | Feedback-Text + Stimmung (#2); Kalender-Datei mit neutralen Titeln (#4) | Ja | **Optional** | App-Funktionalität, Analysen |
-| **Geräte- oder andere IDs** (Device or other IDs) | zufällige Community-Geräte-ID (#3), Kalender-Token (#4), **anonyme RevenueCat-ID** (#5) | Ja | **Erforderlich** – die RevenueCat-ID entsteht bei jedem Start der Store-App, sobald Bezahlen aktiv ist | App-Funktionalität, Analysen |
+| **Geräte- oder andere IDs** (Device or other IDs) | zufällige Community-Geräte-ID (#3), Kalender-Token (#4), **anonyme RevenueCat-ID** (#5) | Ja | **Erforderlich** – die RevenueCat-ID entsteht bei jedem Start der Store-App, sobald Bezahlen aktiv ist | **nur** App-Funktionalität (die zufälligen IDs dienen Löschen, Kalender und Käufen – gleich wie Apple 2.2 und `PrivacyInfo.xcprivacy`) |
 | **Finanzinformationen → Kaufverlauf** (Financial info → Purchase history) | Kaufstatus/Belege über Google Play Billing → RevenueCat (#5) | Ja | **Optional** (nur wer kauft oder wiederherstellt) | App-Funktionalität, Analysen |
 
 **Nicht erhoben** (nichts ankreuzen): Standort · Personenbezogene Angaben (Name, E-Mail, Adresse, Telefon …) ·
@@ -171,8 +172,8 @@ App-Aktivität „Suchverlauf in der App“, „Installierte Apps“, „Sonstig
 > Hinweis zur Gesundheit: Check-ins, Bewertungen, Nebenwirkungen und Notizen bleiben **auf dem Gerät** → nicht
 > „erhoben“ im Sinne von Google. Nur das freiwillige Community-Ergebnis verlässt das Gerät.
 > Hinweis zur Statistik: Sie ist **standardmäßig an** und abschaltbar. „Optional“ ist korrekt, weil Nutzer sie
-> abschalten können. **Klären (CEO/Rechtsprüfung):** ob die Statistik für die Store-App auf „aus bis zur Zustimmung“
-> umgestellt werden soll – dann wäre auch Datenschutz §2 („von dir einzeln eingeschaltet“) wörtlich richtig.
+> abschalten können. **Klären (Fachperson, `legal/FACHPERSON.md` A1):** ob die Statistik auf „aus bis zur Zustimmung“
+> umgestellt werden muss – dann hier „Optional“ lassen, Datenschutz §5 anpassen, Logik baut das Opt-in.
 
 ### 1.8 Gesundheits-Apps (Health apps declaration)
 
@@ -352,9 +353,8 @@ prevent any condition. Results are your own subjective ratings. Kolbi does not r
 personal doses. For medical questions, please consult a doctor or pharmacist.
 ```
 
-> **Klären (Logik/UI):** Der Satz „empfiehlt keine … persönlichen Dosierungen“ stimmt nur, wenn die Kauf-Tipps in
-> `lib/labStock.ts` (z. B. „1–2 mg am Tag reichen“, „Viele starten mit 0,5–1 mg statt 5 mg“) im Store-Modus
-> entfallen oder neutral werden – siehe Abschnitt 4. Bis dahin ist das ein Prüfungsrisiko (Apple 1.4.1).
+> *Erledigt (Technik, 2. Okt):* Kauf-Tipps in `lib/labStock.ts` nennen keine Mengen mehr; die Bibliothek zeigt im
+> Store nur die „übliche Packungsangabe“ als Vergleich. Prüfung durch die Fachperson: `legal/FACHPERSON.md` B2.
 
 ### 2.5 Abos & In-App-Käufe
 
@@ -396,8 +396,8 @@ Preise 2,99 € / 19,99 € / 39,99 €, Familienfreigabe aus, Prüfungs-Screens
 - Impressum-Daten eintragen → Datenschutz-URL wird erst damit gültig.
 - Telefonnummer öffentlich ja/nein (EU-Händlerpflicht, Konto-Ebene).
 - Google-Tags aus der Konsolen-Liste auswählen (1.9).
-- Statistik standardmäßig an lassen oder auf Zustimmung umstellen (1.7)?
-- Medizinprodukt-„Nein“ von der Fachperson bestätigen lassen (2.1).
+- Offene Rechtsfragen (Statistik-Einwilligung, Medizinprodukt-„Nein“, Claims, Impressum …) gebündelt in
+  [`../legal/FACHPERSON.md`](../legal/FACHPERSON.md) – als eine Liste an die Fachperson geben.
 
 **Übergabe an Logik:**
 1. **Prüfer finden den Kauf nicht (Apple 2.1, Prüfung Ende Nov.):** Die Pro-Seite mit Tarifen (`PaywallSheet`) öffnet
@@ -410,10 +410,10 @@ Preise 2,99 € / 19,99 € / 39,99 €, Familienfreigabe aus, Prüfungs-Screens
    ergänzen; bei *Other User Content* Zweck *Analytics* ergänzen – damit Manifest = Label (2.2).
 3. **Info.plist:** `UIRequiredDeviceCapabilities` = `armv7` (Capacitor-Vorlage) – prüfen, ob `arm64` gemeint ist
    (`NSHealthShareUsageDescription` ist laut Technik bereits entfernt).
-4. **Kauf-Tipps mit Mengenangaben** (`lib/labStock.ts`, `BUY[...].alt`, z. B. Melatonin, Kupfer, Zink) widersprechen
-   dem In-App-Satz „Die App empfiehlt keine Substanzen oder Dosierungen“ → im Store-Modus Mengen weglassen oder Tipps ausblenden.
-5. **App-Version im Feedback:** `APP_VERSION = "0.9-beta"` (`lib/labGrow.ts`) – für den Android-Test/Store eine eigene
-   Kennung (z. B. `1.0.0-android`), damit Tester-Feedback getrennt auswertbar ist (siehe `TESTERS.md`).
+4. ~~**Kauf-Tipps mit Mengenangaben**~~ *erledigt (Technik, 2. Okt):* Kauf-Tipps ohne Mengen („Achte auf die Dosis auf der
+   Packung …“); Bibliotheks-Mengen erscheinen im Store als „übliche Packungsangabe“ und werden nicht mehr als eigene
+   Dosis vorbelegt.
+5. ~~**App-Version im Feedback**~~ *erledigt (Technik):* Feedback trägt jetzt z. B. `1.0.0-android` / `1.0.0-ios` / `1.0.0-web`.
 6. **Paywall-Rechtstext** fehlt noch: Testwochen-Satz, Abrechnungszeitpunkt, Kündigungsweg je Plattform
    (`subscriptions.md` Teil D); Untertitel „nur {p} im Monat“ rechnet mit festem Euro-Preis statt Store-Preis.
 7. **STORE.md** (nur melden, Datei gehört nicht Growth):
@@ -426,8 +426,8 @@ Preise 2,99 € / 19,99 € / 39,99 €, Familienfreigabe aus, Prüfungs-Screens
      nicht für 1.0; neu: Apple-Medizinprodukt-Status (Gesundheit & Fitness) als Pflichtfeld.
    - Frage 11 „Wer sind die 12 Google-Tester? (Beta-Nutzer …)“ → Plan steht jetzt in `launch/TESTERS.md`.
 
-**Übergabe an CEO (Rechtstexte `legal/`):**
-- Datenschutz §2 sagt „Nur die folgenden, **von dir einzeln eingeschalteten** Funktionen übertragen Daten“ – die
-  Statistik (§8) ist aber standardmäßig an und RevenueCat (§11) läuft ohne Schalter. Satz anpassen.
-- §9 (Apple Health/Health Connect) beschreibt eine Funktion, die 1.0 nicht hat → „in einer späteren Version“ oder streichen.
-- §4 Push-Erinnerungen gilt nur für die Web-App → „nur Web-App“ ergänzen (die Store-App plant lokal).
+**Rechtstexte `legal/`:** *erledigt 2. Okt 2026 (Growth):* Datenschutz neu gegliedert – §2 trennt „ohne Schalter“
+(Hosting, RevenueCat) / „standardmäßig an, abschaltbar“ (Statistik) / „nur wenn du es nutzt“; kein Apple Health/Health
+Connect in 1.0; Push nur Web-App (Store-App: lokale Benachrichtigungen); neuer Abschnitt Beta-Test (Google Play/TestFlight);
+§ 25 TDDDG. Nutzungsbedingungen: Abo-Bedingungen wie `subscriptions.md` Teil D, Beta-Abschnitt. Offene Rechtsfragen →
+[`../legal/FACHPERSON.md`](../legal/FACHPERSON.md).

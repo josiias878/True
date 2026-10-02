@@ -184,7 +184,7 @@ export function StockSheet({ s, suppId, onClose, onSave }: {
       {step === 2 && (
         <div key="s2" className="lab-rise" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{ fontSize: "1.25rem", fontWeight: 900, textAlign: "center" }}>{libOf(x)?.weekly ? t("Wie viel nimmst du pro Einnahme?") : t("Wie viel nimmst du am Tag?")}</div>
-          {libOf(x) && <div style={{ fontSize: "0.82rem", color: "var(--text-dim)", textAlign: "center", marginTop: -10 }}>{t("Übliche Menge: {dose}", { dose: libOf(x)!.dose })}</div>}
+          {libOf(x) && <div style={{ fontSize: "0.82rem", color: "var(--text-dim)", textAlign: "center", marginTop: -10 }}>{t("Übliche Packungsangabe: {dose}", { dose: libOf(x)!.dose })}</div>}
           <NumberPick value={perDay} onChange={setPerDay} chips={f.doseChips} unit={f.doseUnit} max={f.doseMax} step={form === "fluessig" ? 5 : 1} />
           {askActive && (
             <div style={{ padding: 14, borderRadius: 20, background: "var(--surface-2)" }}>

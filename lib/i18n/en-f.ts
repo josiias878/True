@@ -91,4 +91,6 @@ export const EN_F: Record<string, string> = {
   "Android-Tester gesucht": "Android testers wanted",
   "Hilf Kolbi in den Play Store: 14 Tage die Store-Version testen – deine Daten ziehst du per Backup mit.": "Help Kolbi into the Play Store: test the store version for 14 days – bring your data along with a backup.",
   "Mitmachen": "Join",
+  "Übliche Packungsangabe: {dose}": "Typical label amount: {dose}",
+  "laut Packung": "as on the label",
 }

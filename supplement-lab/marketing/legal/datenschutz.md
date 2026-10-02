@@ -61,8 +61,7 @@ Store-Apps ist Vercel Web Analytics nicht eingebaut.
 Damit wir sehen, ob die App hilft und welche Wege zu ihr führen, meldet die App einzelne Ereignisse, z. B.
 „Einrichtung abgeschlossen“, „erster Check-in“, „7. Check-in“, „Wochenrückblick geöffnet“, „Tarife angesehen“,
 „Kauf abgeschlossen“. Übertragen werden nur: das Ereignis, die App-Sprache und – falls du über einen Link wie
-`…/reddit` gekommen bist – der Kanalname; Test-Versionen (Beta) melden stattdessen eine feste Bezeichnung der
-Test-Version. Damit der Kanal auch bei späteren Ereignissen mitgezählt wird, merkt sich die App ihn lokal auf
+`…/reddit` gekommen bist – der Kanalname, oder in Test-Versionen (Beta) ohne solchen Link ein fester Test-Kanal (z. B. „playtest“). Damit der Kanal auch bei späteren Ereignissen mitgezählt wird, merkt sich die App ihn lokal auf
 deinem Gerät, ebenso deine Einstellung, ob die Statistik aus ist.
 
 Bei Supabase (Frankfurt, Abschnitt 11) wird daraus nur ein **Tageszähler** erhöht (z. B. „1. Okt · erster

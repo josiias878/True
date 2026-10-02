@@ -29,3 +29,9 @@ Werbung für Nahrungsergänzungsmittel darf in der EU nur **zugelassene Health C
       (Botanicals ohne zugelassene Claims), Melatonin, Probiotika (Begriff selbst gilt in der EU als Claim) und die
       Ziel-Vorschläge („Besser schlafen“, „Weniger Stress“ → Supplement-Liste).
 - [ ] Peptide sind in der Store-Version bereits ausgeblendet (gut so).
+
+## Für die Fachperson
+
+Alle offenen Rechtsfragen (Statistik-Einwilligung, zugelassene Claims, Melatonin-Seite, Medizinprodukt-„Nein“,
+Impressum/Adresse, Haftung, Abo-/Verbraucherrecht) stehen gebündelt in [`FACHPERSON.md`](./FACHPERSON.md) – diese
+eine Datei an die Fachperson geben.

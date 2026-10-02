@@ -60,8 +60,7 @@ pages and paths are used). Vercel Web Analytics is not built into the store apps
 
 So we can see whether the app helps and which paths lead people to it, the app reports single events, e.g. “setup
 completed”, “first check-in”, “7th check-in”, “weekly recap opened”, “plans viewed”, “purchase completed”. Only the
-event, the app language and – if you came through a link like `…/reddit` – the channel name are sent; test versions
-(beta) send a fixed label of the test version instead. So that the channel is also counted for later events, the app
+event, the app language and – if you came through a link like `…/reddit` – the channel name, or in test versions (beta) without such a link a fixed test channel (e.g. “playtest”), are sent. So that the channel is also counted for later events, the app
 remembers it locally on your device, as well as your setting for whether the stats are off.
 
 At Supabase (Frankfurt, section 11) this only increments a **daily counter** (e.g. “Oct 1 · first check-in ·
