@@ -26,7 +26,6 @@ export const EN_C: Record<string, string> = {
   "Ohne Piperin oder Mizellen-Form wird kaum etwas aufgenommen.": "Without piperine or a micellar form, very little gets absorbed.",
   "Ubiquinol wird – besonders ab 40 – besser aufgenommen als Ubichinon.": "Ubiquinol is absorbed better than ubiquinone – especially after 40.",
   "Als Pulver viel günstiger – 6–8 g schafft man mit Kapseln kaum.": "Much cheaper as powder – 6–8 g is hard to get from capsules.",
-  "Weniger ist oft mehr: 0,5–1 mg wirken meist genauso gut wie 5 mg.": "Less is often more: 0.5–1 mg usually works just as well as 5 mg.",
   "Gepuffertes Vitamin C ist sanfter zum Magen.": "Buffered vitamin C is gentler on the stomach.",
   "Als Pulver sehr günstig und geschmacksneutral.": "Very cheap as powder and tasteless.",
   "Sonntags": "On Sundays",

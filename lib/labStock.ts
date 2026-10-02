@@ -175,7 +175,7 @@ const BUY: Record<string, { q: string; alt?: string }> = {
   elektrolyte: { q: "Elektrolyt Pulver ohne Zucker" },
   citrullin:   { q: "L-Citrullin Malat Pulver", alt: t("Als Pulver viel günstiger – 6–8 g schafft man mit Kapseln kaum.") },
   betaalanin:  { q: "Beta Alanin Pulver" },
-  melatonin:   { q: "Melatonin 0,5 mg", alt: t("Weniger ist oft mehr: 0,5–1 mg wirken meist genauso gut wie 5 mg.") },
+  melatonin:   { q: "Melatonin 0,5 mg", alt: t("Weniger ist oft mehr: Viele starten mit 0,5–1 mg statt 5 mg.") },
   probiotika:  { q: "Probiotika Kapseln magensaftresistent" },
   vitc:        { q: "Vitamin C gepuffert", alt: t("Gepuffertes Vitamin C ist sanfter zum Magen.") },
   selen:       { q: "Selen 100 µg" },

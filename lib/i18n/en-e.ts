@@ -119,7 +119,6 @@ export const EN_E: Record<string, string> = {
   "Kein Test nötig – alles läuft durchgehend mit.": "No test needed – everything runs the whole time.",
   "💚 Behalten": "💚 Keep",
   "🤔 Vielleicht": "🤔 Maybe",
-  "✂️ Fliegt raus": "✂️ Drop",
   "M E I N   S E L B S T V E R S U C H": "M Y   E X P E R I M E N T",
   "{n} Tage getestet · vs. mein Normal": "{n} days tested · vs. my normal",
   "Gesamtgefühl": "Overall feeling",

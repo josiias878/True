@@ -302,7 +302,7 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
 
       {step === 1 && (
         <div className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          {kolbi("happy", <>{t("Damit ich weiß, worauf ich achten soll:")} <b>{t("Was möchtest du verbessern?")}</b> {t("Mehrere sind okay.")}</>)}
+          {kolbi("happy", <>{t("Damit ich weiß, worauf ich achten soll:")} <b>{t("Was ist dir wichtig?")}</b> {t("Mehrere sind okay.")}</>)}
           {question(t("Deine Ziele"))}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
             {GOALS.map(g => tile(goals.includes(g.id), () => setGoals(p => p.includes(g.id) ? p.filter(x => x !== g.id) : [...p, g.id]), g.emoji, g.label))}

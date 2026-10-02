@@ -13,7 +13,7 @@ import { SITE_URL } from "@/lib/labGrow"
 const W = 1080, H = 1920
 const fmt1 = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : "±"}${dec(Math.abs(n), 1)}`
 const DECISION: Record<string, { label: string; color: string }> = {
-  keep: { label: t("💚 Behalten"), color: "#1baf7a" }, maybe: { label: t("🤔 Vielleicht"), color: "#eda100" }, drop: { label: t("✂️ Fliegt raus"), color: "#e34948" },
+  keep: { label: t("💚 Behalten"), color: "#1baf7a" }, maybe: { label: t("🤔 Vielleicht"), color: "#eda100" }, drop: { label: t("✂️ Raus"), color: "#e34948" },
 }
 
 async function kolbiImage(mood: "party" | "happy" | "think", size: number): Promise<HTMLImageElement | null> {

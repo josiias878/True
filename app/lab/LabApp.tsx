@@ -73,7 +73,7 @@ function phaseEmoji(s: LabState, w: { kind: string; suppId?: string }) {
 const DECISIONS: { id: Decision; emoji: string; label: string; color: string }[] = [
   { id: "keep",  emoji: "💚", label: t("Behalten"),  color: "#1baf7a" },
   { id: "maybe", emoji: "🤔", label: t("Vielleicht"), color: "#eda100" },
-  { id: "drop",  emoji: "✂️", label: t("Fliegt raus"), color: "#e34948" },
+  { id: "drop",  emoji: "✂️", label: t("Raus"), color: "#e34948" },
 ]
 
 const STATUS_STYLE: Record<SuppStatusKey, { bg: string; fg: string }> = {
@@ -1261,7 +1261,7 @@ function SuppSheet({ s, id, today, adv, onClose, update, onAction, onVerdict, on
         <Card style={{ marginBottom: 12 }}>
           <div style={{ fontSize: "0.86rem", lineHeight: 1.55 }}>
             <div><b>{t("Wofür genutzt:")}</b> {lib.effect}</div>
-            <div style={{ marginTop: 6 }}><b>{t("Wirkt:")}</b> {ONSET_INFO[lib.onset].emoji} {ONSET_INFO[lib.onset].label}</div>
+            <div style={{ marginTop: 6 }}><b>{t("Zeitrahmen:")}</b> {ONSET_INFO[lib.onset].emoji} {ONSET_INFO[lib.onset].label}</div>
             {LIB_SIDES[lib.id]?.length ? <div style={{ marginTop: 6 }}><b>{t("Mögliche Nebenwirkungen:")}</b> {LIB_SIDES[lib.id].map(sid => SIDE_BY_ID[sid]?.label).join(", ")}</div> : null}
             {lib.caution && <div style={{ marginTop: 6, color: "var(--warning)" }}>⚠️ {lib.caution}</div>}
           </div>
@@ -1350,7 +1350,7 @@ function ReclassifySheet({ s, ids, onClose, onApply }: { s: LabState; ids: strin
   return (
     <Sheet open onClose={onClose} title={t("Durchgehend oder testen?")}>
       <div style={{ fontSize: "0.86rem", color: "var(--text-dim)", lineHeight: 1.5, marginBottom: 14 }}>
-        {t("Diese wirken erst über Wochen, deshalb empfehle ich „durchgehend“. Willst du eins trotzdem testen, stell es auf 🔬.")}
+        {t("Bei diesen merkt man, wenn überhaupt, erst nach Wochen etwas – deshalb empfehle ich „durchgehend“. Willst du eins trotzdem testen, stell es auf 🔬.")}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
         {items.map(x => {
@@ -1892,7 +1892,7 @@ function StackView({ s, update, onVerdict, onStartStack }: { s: LabState; update
       items.forEach(p => { const x = s.supps.find(q => q.id === p.suppId)!; lines.push(`  • ${x.name}${x.dose ? ` (${x.dose})` : ""}`) })
     })
     if (plan.weekly.length) lines.push("", t("Wöchentlich: {list}", { list: plan.weekly.map(id => s.supps.find(x => x.id === id)?.name).join(", ") }))
-    if (drop.length) lines.push("", t("Rausgeflogen: {list}", { list: drop.map(x => x.name).join(", ") }))
+    if (drop.length) lines.push("", t("Raus: {list}", { list: drop.map(x => x.name).join(", ") }))
     try {
       if (navigator.share) await navigator.share({ title: t("Mein Supplement-Stack"), text: lines.join("\n") })
       else await navigator.clipboard.writeText(lines.join("\n"))
@@ -1928,7 +1928,7 @@ function StackView({ s, update, onVerdict, onStartStack }: { s: LabState; update
       )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-        {[["💚", keep.length + constant.length, t("im Stack")], ["🤔", maybe.length, t("vielleicht")], ["✂️", drop.length, t("rausgeflogen")]].map(([e, n, l]) => (
+        {[["💚", keep.length + constant.length, t("im Stack")], ["🤔", maybe.length, t("vielleicht")], ["✂️", drop.length, t("raus")]].map(([e, n, l]) => (
           <Card key={l as string} style={{ padding: 14, textAlign: "center" }}>
             <div style={{ fontSize: "1.3rem" }}>{e}</div>
             <div style={{ fontSize: "1.8rem", fontWeight: 900, lineHeight: 1.1 }}>{n}</div>
@@ -1941,7 +1941,7 @@ function StackView({ s, update, onVerdict, onStartStack }: { s: LabState; update
         {group(t("Behalten"), keep, "💚")}
         {group(t("Durchgehend"), constant, "📌")}
         {group(t("Vielleicht"), maybe, "🤔")}
-        {group(t("Fliegt raus"), drop, "✂️")}
+        {group(t("Raus"), drop, "✂️")}
         {group(t("Noch offen · tippen zum Bewerten"), open, "⏳")}
         {drop.length > 0 && <div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>{drop.length > 1 ? t("💸 {n} Supplements weniger: weniger Geld, weniger Pillen, mehr Klarheit.", { n: drop.length }) : t("💸 {n} Supplement weniger: weniger Geld, weniger Pillen, mehr Klarheit.", { n: drop.length })}</div>}
       </Card>

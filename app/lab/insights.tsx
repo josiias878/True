@@ -101,7 +101,7 @@ export function CostCard({ s, today, onStock }: { s: LabState; today: string; on
           <span style={{ fontSize: "1.7rem" }}>✂️</span>
           <span style={{ flex: 1 }}>
             <span style={{ display: "block", fontWeight: 900, fontSize: "1.05rem" }}>{t("Du sparst {amount} im Monat", { amount: fmtEuro(c.savedMonthly) })}</span>
-            <span style={{ display: "block", fontSize: "0.76rem", opacity: 0.9 }}>{c.saved.length > 1 ? t("{names} flogen raus · schon", { names: c.saved.map(x => x.x.name).join(", ") }) : t("{names} flog raus · schon", { names: c.saved.map(x => x.x.name).join(", ") })} <b><CountUp to={c.savedSoFar} format={v => fmtEuro(v)} /></b> {t("gespart")}</span>
+            <span style={{ display: "block", fontSize: "0.76rem", opacity: 0.9 }}>{t("{names} hast du weggelassen · schon", { names: c.saved.map(x => x.x.name).join(", ") })} <b><CountUp to={c.savedSoFar} format={v => fmtEuro(v)} /></b> {t("gespart")}</span>
           </span>
         </div>
       )}

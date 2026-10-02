@@ -165,10 +165,10 @@ export interface Goal { id: GoalId; emoji: string; label: string; dims: Dim[]; s
 
 // Verschreibungspflichtiges (z. B. glp1) bewusst NICHT als Ziel-Vorschlag – keine Werbung für Rx-Arzneimittel (HWG § 10).
 export const GOALS: Goal[] = [
-  { id: "schlaf",       emoji: "🌙", label: t("Besser schlafen"),   dims: ["schlaf", "ruhe", "energie"],    suggest: ["magnesium", "glycin", "theanin", "apigenin", "melatonin", "ashwagandha", "gaba", "baldrian", "taurin", "cjc-ipa"] },
-  { id: "energie",      emoji: "⚡", label: t("Mehr Energie"),      dims: ["energie", "stimmung", "fokus"], suggest: ["b12", "bkomplex", "rhodiola", "koffein", "q10", "eisen", "elektrolyte", "cordyceps", "alcar", "motsc"] },
+  { id: "schlaf",       emoji: "🌙", label: t("Schlaf"),   dims: ["schlaf", "ruhe", "energie"],    suggest: ["magnesium", "glycin", "theanin", "apigenin", "melatonin", "ashwagandha", "gaba", "baldrian", "taurin", "cjc-ipa"] },
+  { id: "energie",      emoji: "⚡", label: t("Energie"),      dims: ["energie", "stimmung", "fokus"], suggest: ["b12", "bkomplex", "rhodiola", "koffein", "q10", "eisen", "elektrolyte", "cordyceps", "alcar", "motsc"] },
   { id: "fokus",        emoji: "🎯", label: t("Fokus & Kopf"),      dims: ["fokus", "energie", "stimmung"], suggest: ["theanin", "koffein", "tyrosin", "citicolin", "lionsmane", "bacopa", "alphagpc", "semax", "kreatin", "omega3"] },
-  { id: "stress",       emoji: "🧘", label: t("Weniger Stress"),    dims: ["ruhe", "stimmung", "schlaf"],   suggest: ["ashwagandha", "magnesium", "theanin", "rhodiola", "lavendel", "safran", "inositol", "reishi", "selank"] },
+  { id: "stress",       emoji: "🧘", label: t("Stress & Ruhe"),    dims: ["ruhe", "stimmung", "schlaf"],   suggest: ["ashwagandha", "magnesium", "theanin", "rhodiola", "lavendel", "safran", "inositol", "reishi", "selank"] },
   { id: "muskel",       emoji: "🏋️", label: t("Muskeln & Kraft"),   dims: ["koerper", "energie"],           suggest: ["kreatin", "whey", "citrullin", "betaalanin", "eaa", "hmb", "betain", "vitd", "zink", "cjc-ipa", "elektrolyte"] },
   { id: "regeneration", emoji: "🩹", label: t("Regeneration"),      dims: ["gelenke", "koerper", "schlaf"], suggest: ["bpc157", "tb500", "kollagen", "omega3", "curcumin", "magnesium", "glutamin", "astaxanthin", "ingwer"] },
   { id: "abnehmen",     emoji: "🔥", label: t("Abnehmen"),          dims: ["appetit", "energie", "stimmung"], suggest: ["berberin", "flohsamen", "whey", "motsc", "elektrolyte", "koffein", "probiotika"] },
@@ -443,7 +443,7 @@ const ALL_LIBRARY: LibSupp[] = [
   { id: "kreatin", name: t("Kreatin"), emoji: "🏋️", category: "Training", onset: "langsam",
     slots: ["fruehstueck", "training"], dose: "3–5 g", watch: ["koerper", "fokus", "energie"],
     effect: t("Gut untersucht für kurze, intensive Belastungen wie Krafttraining (meist 3–5 g/Tag). Leichte Wassereinlagerung ist normal."),
-    timing: t("Timing egal — Hauptsache jeden Tag. Muskel-Sättigung nach ~3–4 Wochen."), aliases: ["kreatin", "creatin", "creatine", "monohydrat"] },
+    timing: t("Timing egal — Hauptsache jeden Tag. Bei Kreatin rechnen viele mit mehreren Wochen, bevor sie etwas merken – wenn überhaupt."), aliases: ["kreatin", "creatin", "creatine", "monohydrat"] },
   { id: "citrullin", name: t("L-Citrullin"), emoji: "🔥", category: "Training", onset: "schnell",
     slots: ["training"], dose: "6–8 g", watch: ["koerper", "energie"],
     effect: t("Wird vor dem Training für Pump und Ausdauer genutzt."),
@@ -1180,7 +1180,7 @@ export const BADGES: { id: string; emoji: string; name: string; desc: string }[]
   { id: "reset",    emoji: "🧘", name: t("Reset gemeistert"), desc: t("Baseline-Woche abgeschlossen") },
   { id: "verdict1", emoji: "⚖️", name: t("Erstes Urteil"),    desc: t("Erstes Supplement bewertet") },
   { id: "verdict3", emoji: "🔬", name: t("Wissenschaftler"),  desc: t("3 Supplements bewertet") },
-  { id: "drop",     emoji: "✂️", name: t("Ausgemistet"),      desc: t("Ein Supplement rausgeworfen — Geld gespart") },
+  { id: "drop",     emoji: "✂️", name: t("Ausgemistet"),      desc: t("Ein Supplement weggelassen — Geld gespart") },
   { id: "stack",    emoji: "🏆", name: t("Stack-Architekt"),  desc: t("Deinen persönlichen Stack gebaut") },
 ]
 
@@ -1358,7 +1358,7 @@ export function suppStatus(s: LabState, id: string, today = todayIso()): { key: 
   if (w?.kind === "check" && w.suppId === id) return { key: "observing", label: t("Pausiert zum Beobachten"), emoji: "👀" }
   if (v === "keep") return { key: "kept", label: t("Behalten"), emoji: "💚" }
   if (v === "maybe") return { key: "maybe", label: t("Vielleicht"), emoji: "🤔" }
-  if (v === "drop") return { key: "dropped", label: t("Rausgeflogen"), emoji: "✂️" }
+  if (v === "drop") return { key: "dropped", label: t("Raus"), emoji: "✂️" }
   if (x?.mode === "konstant") return { key: "constant", label: t("Läuft durchgehend"), emoji: "📌" }
   if (x?.mode === "pause") return { key: "paused", label: t("Pausiert"), emoji: "⏸️" }
   if (phaseWindows(s).some(p => p.kind === "test" && p.suppId === id && p.end < today)) return { key: "verdict", label: t("Urteil fällig"), emoji: "⚖️" }
