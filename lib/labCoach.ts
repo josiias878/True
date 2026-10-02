@@ -410,10 +410,15 @@ function idleAdvice(s: LabState, today: string, wins: PhaseWindow[], push: Push)
         ? t("{n} Supplements haben überzeugt. Ab jetzt nimmst du sie zusammen, und ich passe auf, ob deine Werte stabil bleiben.", { n: kept.length })
         : t("{n} Supplement hat überzeugt. Ab jetzt nimmst du es zusammen, und ich passe auf, ob deine Werte stabil bleiben.", { n: kept.length }),
       actions: [{ label: t("🏆 Stack starten"), action: { kind: "startStack" }, primary: true }] })
-  } else if (!kept.length) {
+  } else if (!kept.length && (Object.keys(s.verdicts).length > 0 || wins.some(x => x.kind === "test"))) {
     push({ id: "nothing-kept", mood: "think", prio: 3, title: t("Nichts hat klar überzeugt"),
       text: t("Das ist auch ein Ergebnis: Du sparst Geld und Pillen. Füge neue Supplements hinzu oder teste „Vielleicht“-Kandidaten nochmal."),
       actions: [{ label: t("🧪 Experiment wählen"), action: { kind: "experiments" }, primary: true }, { label: t("➕ Supplement hinzufügen"), action: { kind: "pickNext" } }] })
+  } else if (!kept.length) {
+    // Noch nichts getestet – z. B. nur Durchgehendes auf der Liste: kein „Ergebnis“ behaupten, sondern einen Test anbieten
+    push({ id: "nothing-to-test", mood: "think", prio: 3, title: t("Was willst du als Erstes testen?"),
+      text: t("Dein Normal steht. Gerade ist nichts zum Einzeltest eingeplant – such dir eins aus, dann vergleiche ich es mit deinem Normal."),
+      actions: [{ label: t("🔬 Supplement wählen"), action: { kind: "pickNext" }, primary: true }, { label: t("🧪 Experiment wählen"), action: { kind: "experiments" } }] })
   }
 }
 

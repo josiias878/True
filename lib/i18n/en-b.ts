@@ -159,7 +159,7 @@ export const EN_B: Record<string, string> = {
   "Aus Grüntee, wird für ruhige Konzentration genutzt – oft zusammen mit Kaffee.": "From green tea, used for calm focus – often together with coffee.",
   "Morgens zusammen mit Kaffee — oder abends zum Runterkommen.": "In the morning with coffee — or in the evening to wind down.",
   "Koffein / Kaffee": "Caffeine / coffee",
-  "Trägt zu mehr Wachheit und Konzentration bei — kann aber Schlaf und Ruhe kosten.": "Contributes to increased alertness and concentration — but it can cost you sleep and calm.",
+  "Wird für Wachheit und Konzentration genutzt — kann aber Schlaf und Ruhe kosten.": "Used for alertness and focus — but it can cost you sleep and calm.",
   "90 Min nach dem Aufstehen, spätestens 8 h vor dem Schlafen.": "90 min after waking up, no later than 8 h before bed.",
   "Im Reset weglassen = Entzugskopfschmerz möglich (2–9 Tage). Eher langsam reduzieren.": "Skipping it during the reset can mean withdrawal headaches (2–9 days). Better to cut back slowly.",
   "Wurzel aus Bergregionen, wird traditionell in fordernden, stressigen Phasen genutzt.": "Root from mountain regions, traditionally used during demanding, stressful stretches.",

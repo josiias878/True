@@ -40,4 +40,7 @@ export const EN_F: Record<string, string> = {
   "1 Selbstversuch in der Community": "1 self-experiment in the community",
   "1) Reset: ein paar Tage gar nichts nehmen, so lerne ich dein Normal kennen. 2) Einzeln testen: immer nur ein Supplement für ein paar Tage, dazwischen kurze Pausen. 3) Stack: alles, was du behalten hast, nimmst du am Ende zusammen, und ich passe auf, ob dein Ergebnis hält.": "1) Reset: take nothing at all for a few days so I can learn your normal. 2) Test one at a time: just one supplement for a few days, with short breaks in between. 3) Stack: at the end you take everything you kept together, and I keep an eye on whether your result holds.",
   "Du nimmst alle behaltenen Supplements zusammen. Sinken deine Werte, schlage ich vor, eins für 3 Tage wegzulassen. So findest du raus, ob es bei dir noch einen Unterschied macht oder ob andere Dinge (Schlaf, Stress) dahinterstecken.": "You take all the supplements you kept together. If your scores drop, I'll suggest leaving one out for 3 days. That way you find out whether it still makes a difference for you or whether other things (sleep, stress) are behind it.",
+  "🔬 Supplement wählen": "🔬 Pick a supplement",
+  "Was willst du als Erstes testen?": "What do you want to test first?",
+  "Dein Normal steht. Gerade ist nichts zum Einzeltest eingeplant – such dir eins aus, dann vergleiche ich es mit deinem Normal.": "Your normal is set. Nothing is planned for a single test right now – pick one and I'll compare it with your normal.",
 }

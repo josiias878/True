@@ -178,12 +178,15 @@ function prefillSupps(): MySupp[] {
     const q = new URLSearchParams(window.location.search)
     const ids = (q.get("s") ?? "").split(",")
     const src = q.get("src") ?? ""
-    if (src.startsWith("test")) ids.push(src.slice(4))
+    // Wer von einer Selbsttest-Seite kommt, will genau dieses Supplement testen – auch wenn es langsam ist
+    const testKey = src.startsWith("test") ? src.slice(4).replace(/[^a-z]/g, "") : ""
+    if (testKey) ids.push(testKey)
     const out: MySupp[] = []
     for (const raw of ids) {
       const key = raw.toLowerCase().replace(/[^a-z]/g, "")
       const lib = key ? LIBRARY.find(l => l.id.replace(/[^a-z]/g, "") === key) : undefined
-      if (lib && lib.category !== "Peptide" && !lib.rx && !out.some(x => x.lib === lib.id)) out.push(makeSupp(lib, lib.name, out))
+      if (lib && lib.category !== "Peptide" && !lib.rx && !out.some(x => x.lib === lib.id))
+        out.push({ ...makeSupp(lib, lib.name, out), ...(key === testKey ? { mode: "test" as const } : {}) })
     }
     return out.slice(0, 12)
   } catch { return [] }

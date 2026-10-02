@@ -392,7 +392,7 @@ const ALL_LIBRARY: LibSupp[] = [
     timing: t("Morgens zusammen mit Kaffee — oder abends zum Runterkommen."), aliases: ["theanin", "theanine", "l-theanin"] },
   { id: "koffein", name: t("Koffein / Kaffee"), emoji: "☕", category: "Energie & Fokus", onset: "schnell",
     slots: ["fruehstueck", "training"], dose: "100–200 mg", watch: ["energie", "fokus", "schlaf"],
-    effect: t("Trägt zu mehr Wachheit und Konzentration bei — kann aber Schlaf und Ruhe kosten."),
+    effect: t("Wird für Wachheit und Konzentration genutzt — kann aber Schlaf und Ruhe kosten."),
     timing: t("90 Min nach dem Aufstehen, spätestens 8 h vor dem Schlafen."),
     caution: t("Im Reset weglassen = Entzugskopfschmerz möglich (2–9 Tage). Eher langsam reduzieren."), aliases: ["koffein", "caffeine", "kaffee", "coffee", "espresso", "pre-workout", "preworkout"] },
   { id: "rhodiola", name: "Rhodiola Rosea", emoji: "🏔️", category: "Stress & Adaptogene", onset: "schnell",
