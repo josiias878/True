@@ -93,4 +93,6 @@ export const EN_F: Record<string, string> = {
   "Mitmachen": "Join",
   "Übliche Packungsangabe: {dose}": "Typical label amount: {dose}",
   "laut Packung": "as on the label",
+  "Die Zahlung wird bei Kaufbestätigung über deine Apple-ID abgerechnet.": "Payment is charged to your Apple ID at confirmation of purchase.",
+  "Die Zahlung wird bei Kaufbestätigung über dein Google-Play-Konto abgerechnet.": "Payment is charged to your Google Play account at confirmation of purchase.",
 }

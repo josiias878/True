@@ -25,10 +25,10 @@ import { factsFor, partnerTips, recentSides, sideCauses } from "@/lib/labKnowled
 import { openShop, refillStock, shoppingList, stockInfo } from "@/lib/labStock"
 import { ShopButton, ShoppingCard, StockCard, StockSheet } from "./stock"
 import { KolbiPage } from "./kolbi"
-import { FounderWelcome, PaywallSheet, ProGate, ReviewSheet } from "./grow"
+import { FounderWelcome, PaywallSheet, ProGate, ReviewSheet, appPlatform } from "./grow"
 import { ProfileCard } from "./profile"
 import { SITE_URL, betaOpen, claimFounder, markPurchased, markReviewAsked, openPaywall, shouldAskReview, type ProFeature } from "@/lib/labGrow"
-import { checkEntitlement } from "@/lib/labBilling"
+import { checkEntitlement, paymentsReady } from "@/lib/labBilling"
 import { configureStats, srcFromUrl, track, trackCheckin, trackOnce } from "@/lib/labStats"
 import { RoadPath } from "./path"
 import { ShareButton, makeResultCard } from "./share"
@@ -2219,8 +2219,8 @@ function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnable
         <button onClick={async () => { await removeMyResults(); update(p => { p.community = false; return p }); alert(t("Deine geteilten Ergebnisse wurden gelöscht.")) }} style={{ marginTop: 8, background: "none", border: "none", color: "var(--text-dim)", fontSize: "0.76rem", fontWeight: 700, cursor: "pointer", padding: 0 }}>{t("Meine geteilten Ergebnisse löschen")}</button>
       </Card>}
 
-      {/* Lab Pro & Käufe: Tarife, Kauf, „Käufe wiederherstellen“ – immer erreichbar, auch für Gründer (Store-Prüfung) */}
-      <button className="lab-card lab-press" onClick={() => { haptic(); onClose(); openPaywall() }} style={{
+      {/* Lab Pro & Käufe: Tarife, Kauf, „Käufe wiederherstellen“ – sobald gekauft werden kann; in der Store-App immer (Store-Prüfung), im Web nur mit Bezahl-Schlüssel */}
+      {(paymentsReady() || appPlatform() !== "web") && <button className="lab-card lab-press" onClick={() => { haptic(); onClose(); openPaywall() }} style={{
         width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", marginBottom: 12, textAlign: "left", color: "var(--text)", cursor: "pointer",
       }}>
         <span aria-hidden style={{ fontSize: "1.4rem" }}>⭐</span>
@@ -2229,7 +2229,7 @@ function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnable
           <span style={{ display: "block", fontSize: "0.76rem", color: "var(--text-dim)" }}>{t("Tarife ansehen · Käufe wiederherstellen")}</span>
         </span>
         <span aria-hidden style={{ color: "var(--text-dim)", fontWeight: 900 }}>›</span>
-      </button>
+      </button>}
 
       {canSwitchLang() && (
         <Card style={{ marginBottom: 12 }}>

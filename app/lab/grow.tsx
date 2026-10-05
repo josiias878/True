@@ -11,12 +11,40 @@ import { t, isEn, euro } from "@/lib/labI18n"
 
 const GRAD = "linear-gradient(135deg, #9085e9, #e87ba4)"
 
+/**
+ * Store-Preis-Eintrag lesen – heute ein String („19,99 €“), künftig evtl. ein Objekt mit Zusatzinfos
+ * (z. B. `{ priceString, pricePerMonthString, trial }`). Funktioniert mit beiden Formen.
+ */
+type StoreEntry = string | { priceString?: unknown; price?: unknown; formattedPrice?: unknown; pricePerMonthString?: unknown; perMonth?: unknown; trial?: unknown }
+const nonEmpty = (v: unknown) => (typeof v === "string" && v.trim() ? v : undefined)
+const entry = (v: unknown): StoreEntry | undefined => (typeof v === "string" || (v && typeof v === "object") ? (v as StoreEntry) : undefined)
+/** Lokalisierter Preis-String des Stores */
+export function storePriceStr(v: unknown): string | undefined {
+  const e = entry(v)
+  return typeof e === "string" ? nonEmpty(e) : e ? nonEmpty(e.priceString) ?? nonEmpty(e.price) ?? nonEmpty(e.formattedPrice) : undefined
+}
+/** Monatspreis-String, falls der Store ihn liefert (für „nur … im Monat“) */
+function storePerMonth(v: unknown): string | undefined {
+  const e = entry(v)
+  return e && typeof e === "object" ? nonEmpty(e.pricePerMonthString) ?? nonEmpty(e.perMonth) : undefined
+}
+/** Gratis-Woche nur, wenn der Store sie für diesen Nutzer ausdrücklich bestätigt */
+function storeTrial(v: unknown): boolean {
+  const e = entry(v)
+  return !!e && typeof e === "object" && e.trial === true
+}
+type StorePrices = Partial<Record<Plan, unknown>>
+const storeStrings = (sp: StorePrices): Partial<Record<Plan, string>> => ({ monthly: storePriceStr(sp.monthly), yearly: storePriceStr(sp.yearly), lifetime: storePriceStr(sp.lifetime) })
+
 /** Lab Pro: in der Beta als „Gründer-Pro“ freigeschaltet – zeigt, was drin ist. */
 export function ProCard({ s, startOpen = false, onPlans }: { s: LabState; startOpen?: boolean; onPlans?: () => void }) {
   const [open, setOpen] = useState(startOpen)
   // In der Store-App kommen die Preise aus dem Store (Währung/Land), sonst unsere Standardpreise
-  const [store, setStore] = useState<Partial<Record<Plan, string>>>({})
+  const [storeRaw, setStore] = useState<StorePrices>({})
   React.useEffect(() => { storePrices().then(setStore) }, [])
+  const store = storeStrings(storeRaw)
+  // Tarife nur zeigen, wenn wirklich gekauft werden kann (Bezahl-Anbieter aktiv) oder in der Store-App (Prüfer)
+  const canBuy = paymentsReady() || appPlatform() !== "web"
   const P = { monthly: store.monthly ? t("{p}/Monat", { p: store.monthly }) : PRICE_LABEL.monthly, yearly: store.yearly ? t("{p}/Jahr", { p: store.yearly }) : PRICE_LABEL.yearly, lifetime: store.lifetime ? t("{p} einmalig", { p: store.lifetime }) : PRICE_LABEL.lifetime }
   const pro = isPro(s)
   const founder = !!s.pro?.founder
@@ -50,13 +78,13 @@ export function ProCard({ s, startOpen = false, onPlans }: { s: LabState; startO
           </div>
         </div>
       )}
-      {/* Immer sichtbar (auch für Gründer): Tarife, Kauf und „Käufe wiederherstellen“ – Store-Prüfer müssen den Kauf finden */}
-      <div style={{ padding: "0 12px 12px" }}>
+      {/* Sichtbar, sobald gekauft werden kann (auch für Gründer): Tarife, Kauf und „Käufe wiederherstellen“ – Store-Prüfer müssen den Kauf finden */}
+      {canBuy && <div style={{ padding: "0 12px 12px" }}>
         <button className="lab-press" onClick={() => { haptic(); onPlans?.(); openPaywall() }} style={{
           width: "100%", border: "none", borderRadius: 999, padding: "11px 14px", background: "#fff", color: "#6f63d9", fontWeight: 900, fontSize: "0.9rem", cursor: "pointer",
           boxShadow: "0 4px 14px rgba(60,40,120,.18)",
         }}>{t("Tarife ansehen")} ›</button>
-      </div>
+      </div>}
     </div>
   )
 }
@@ -218,7 +246,11 @@ export function readPrice(str?: string): { value: number; fmt: (n: number) => st
   const m = str.match(/\d(?:[\d.,\s  ']*\d)?/)
   if (!m || m.index === undefined) return null
   const raw = m[0], at = m.index
-  const d = raw.match(/([.,])(\d{1,2})$/)
+  const seps = raw.match(/[.,]/g) ?? []
+  // Ein einziges Trennzeichen mit genau drei Ziffern danach („KWD 6.990“ vs. „¥3,000“) ist nicht eindeutig → lieber nichts rechnen
+  if (seps.length === 1 && /[.,]\d{3}$/.test(raw)) return null
+  // Zwei verschiedene Trennzeichen: das letzte ist das Komma-Zeichen, auch mit 3 Nachkommastellen („KWD 1,234.567“)
+  const d = raw.match(new Set(seps).size > 1 ? /([.,])(\d{1,3})$/ : /([.,])(\d{1,2})$/)
   const intPart = d ? raw.slice(0, -d[0].length) : raw
   const group = intPart.match(/\D/)?.[0] ?? ""
   const value = Number(intPart.replace(/\D/g, "") + (d ? `.${d[2]}` : ""))
@@ -239,13 +271,14 @@ export function PaywallSheet({ s, from, onClose, onPurchased, onFlash }: {
   const [plan, setPlan] = useState<Plan>("yearly")
   const [busy, setBusy] = useState(false)
   // Preise kommen aus dem Store (Währung/Land/Steuer). null = lädt noch.
-  const [store, setStore] = useState<Partial<Record<Plan, string>> | null>(null)
+  const [store, setStore] = useState<StorePrices | null>(null)
   React.useEffect(() => { storePrices().then(setStore) }, [])
   const founder = !!s.pro?.founder
   const plat = appPlatform()
-  const native = plat !== "web"
   const loading = paymentsReady() && store === null
-  const sp = store ?? {}
+  const sp = storeStrings(store ?? {})
+  // Gratis-Woche nur, wenn der Store sie für diesen Nutzer bestätigt (sonst neutraler Abo-Text)
+  const trial = storeTrial(store?.yearly)
   // Ohne Store-Preis: unsere Euro-Preise als Richtpreis (klar gekennzeichnet)
   const raw: Record<Plan, string> = {
     monthly: sp.monthly ?? euro(PRICES.monthly, true), yearly: sp.yearly ?? euro(PRICES.yearly, true), lifetime: sp.lifetime ?? euro(PRICES.lifetime, true),
@@ -255,9 +288,9 @@ export function PaywallSheet({ s, from, onClose, onPurchased, onFlash }: {
   // Ersparnis und „pro Monat“ nur, wenn beide Preise aus derselben Quelle stammen
   const sameSource = !!sp.yearly === !!sp.monthly
   const save = sameSource && yp && mp ? Math.round((1 - yp.value / (mp.value * 12)) * 100) : 0
-  const perMonth = yp ? yp.fmt(yp.value / 12) : ""
+  const perMonth = storePerMonth(store?.yearly) ?? (yp ? yp.fmt(yp.value / 12) : "")
   const dots = "…"
-  const yearlySub = [native ? t("7 Tage gratis") : "", perMonth && !loading ? t("nur {p} im Monat", { p: perMonth }) : ""].filter(Boolean).join(" · ")
+  const yearlySub = [trial ? t("7 Tage gratis") : "", perMonth && !loading ? t("nur {p} im Monat", { p: perMonth }) : ""].filter(Boolean).join(" · ")
   const plans: { id: Plan; title: string; price: string; sub: string; badge?: string }[] = [
     { id: "yearly", title: t("Jährlich"), price: loading ? dots : t("{p}/Jahr", { p: raw.yearly }), sub: yearlySub, badge: save > 0 ? t("Beliebt · spar {n} %", { n: save }) : t("Beliebt") },
     { id: "monthly", title: t("Monatlich"), price: loading ? dots : t("{p}/Monat", { p: raw.monthly }), sub: t("jederzeit kündbar") },
@@ -330,18 +363,18 @@ export function PaywallSheet({ s, from, onClose, onPurchased, onFlash }: {
         <button onClick={restore} disabled={busy} style={{ display: "block", margin: "10px auto 0", background: "none", border: "none", color: "var(--text-dim)", fontWeight: 800, fontSize: "0.8rem", cursor: "pointer" }}>{t("Käufe wiederherstellen")}</button>
         {/* Pflicht-Rechtstext (Apple 3.1.2 / Google Play) direkt beim Kaufknopf – store/subscriptions.md Teil D */}
         <div style={{ fontSize: "0.66rem", color: "var(--text-dim)", lineHeight: 1.5, marginTop: 10 }}>
-          <b>{t("Jährlich:")}</b> {native ? t("7 Tage gratis, danach {p} pro Jahr.", { p: raw.yearly }) : t("{p} pro Jahr.", { p: raw.yearly })}{" "}
+          <b>{t("Jährlich:")}</b> {trial ? t("7 Tage gratis, danach {p} pro Jahr.", { p: raw.yearly }) : t("{p} pro Jahr.", { p: raw.yearly })}{" "}
           <b>{t("Monatlich:")}</b> {t("{p} pro Monat.", { p: raw.monthly })}{" "}
           {plat === "ios" ? <>
-            {t("Die Zahlung wird bei Kaufbestätigung bzw. nach Ende der Gratis-Woche über deine Apple-ID abgerechnet.")}{" "}
+            {trial ? t("Die Zahlung wird bei Kaufbestätigung bzw. nach Ende der Gratis-Woche über deine Apple-ID abgerechnet.") : t("Die Zahlung wird bei Kaufbestätigung über deine Apple-ID abgerechnet.")}{" "}
             {t("Das Abo verlängert sich automatisch um denselben Zeitraum zum selben Preis, wenn du es nicht mindestens 24 Stunden vor Ablauf kündigst; die Verlängerung wird in den letzten 24 Stunden vor Ablauf belastet.")}{" "}
             {t("Kündigen und verwalten kannst du dein Abo jederzeit in den iPhone-Einstellungen unter [dein Name] → Abonnements.")}{" "}
-            {t("Kündigst du in der Gratis-Woche, zahlst du nichts.")}{" "}
+            {trial && <>{t("Kündigst du in der Gratis-Woche, zahlst du nichts.")}{" "}</>}
           </> : plat === "android" ? <>
-            {t("Die Zahlung wird bei Kaufbestätigung bzw. nach Ende der Gratis-Woche über dein Google-Play-Konto abgerechnet.")}{" "}
+            {trial ? t("Die Zahlung wird bei Kaufbestätigung bzw. nach Ende der Gratis-Woche über dein Google-Play-Konto abgerechnet.") : t("Die Zahlung wird bei Kaufbestätigung über dein Google-Play-Konto abgerechnet.")}{" "}
             {t("Das Abo verlängert sich automatisch um denselben Zeitraum zum selben Preis, wenn du es nicht mindestens 24 Stunden vor Ablauf kündigst; die Verlängerung wird in den letzten 24 Stunden vor Ablauf belastet.")}{" "}
             {t("Kündigen und verwalten kannst du dein Abo jederzeit in der Google-Play-App unter Profil → Zahlungen & Abos → Abos.")}{" "}
-            {t("Kündigst du in der Gratis-Woche, zahlst du nichts.")}{" "}
+            {trial && <>{t("Kündigst du in der Gratis-Woche, zahlst du nichts.")}{" "}</>}
           </> : <>
             {t("Das Abo verlängert sich automatisch, wenn du es nicht mindestens 24 Stunden vor Ablauf kündigst. Kündigen kannst du jederzeit in den Einstellungen deines Store-Kontos.")}{" "}
           </>}
