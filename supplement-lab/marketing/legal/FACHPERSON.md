@@ -162,6 +162,16 @@ Beta-Test über Google Play/TestFlight ab Ende Oktober.
 - Stand: Feld „Lizenzvereinbarung“ in App Store Connect leer → Apples Standard-EULA gilt zusätzlich.
 - Frage: Widersprechen sich die beiden Texte irgendwo, und welcher Text gilt vorrangig?
 
+## F · Community mit Erfahrungsberichten (geplant, noch nicht gebaut)
+
+**F1. Nutzer-Erfahrungsberichte auch zu nicht zugelassenen Stoffen (z. B. Peptide wie BPC-157)**
+- Plan: Kolbi stellt nur die Plattform (wie ein Forum). Nutzer schreiben eigene Erfahrungen; Kolbi gibt keine
+  Empfehlungen, keine Dosierungen, keine Bezugsquellen, hebt nichts hervor. Regeln + Melden + Moderation, ab 18.
+- Fragen: Haftungsprivileg als Hosting-Anbieter (DSA Art. 6) – was müssen wir konkret tun (Melde-Verfahren,
+  Kontaktstelle, Transparenz)? Kann eine solche Rubrik als Werbung für Arzneimittel (HWG/AMG) gewertet werden,
+  wenn die App kostenpflichtig ist? Braucht es eine Altersprüfung? Was ist bei strukturierten Auswertungen
+  („58 % behalten“) zu beachten – gilt das als unsere eigene Aussage?
+
 ---
 
 ## Antworten der Fachperson (hier eintragen)

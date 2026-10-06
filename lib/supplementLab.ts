@@ -210,9 +210,14 @@ export interface Settings {
   bed: string       // "23:00"
   training: string | null
   washoutDays: number
+  /** Morgen-Frage „Wie hast du geschlafen?“ so viele Minuten nach dem Aufstehen (fehlt = MORNING_DELAY_DEFAULT). */
+  morningDelay?: number
 }
 
 export const DEFAULT_SETTINGS: Settings = { wake: "07:00", bed: "23:00", training: null, washoutDays: 2 }
+/** Auswahl für „Morgen-Frage nach dem Aufstehen“ (Minuten). */
+export const MORNING_DELAYS = [15, 30, 45, 60, 90]
+export const MORNING_DELAY_DEFAULT = 45
 
 export const RHYTHMS = [
   { id: "frueh",  emoji: "🐓", label: t("Frühaufsteher"), wake: "06:00", bed: "22:00" },
@@ -257,6 +262,30 @@ export function slotTime(slot: SlotId, s: Settings) { return fromMin(slotMinutes
  * der Aufstehzeit – alles davor (z. B. 00:30) zählt noch zum Vorabend (→ +1440).
  */
 export function relMin(m: number, s: Settings) { return m < dayStartMin(s) ? m + 1440 : m }
+
+/** Uhrzeit der Morgen-Frage in Minuten seit Mitternacht (Aufstehzeit + morningDelay, Standard + 45 Min). */
+export function morningMin(s: Settings) {
+  const d = s.morningDelay
+  return toMin(s.wake) + (typeof d === "number" && d >= 0 && d <= 240 ? Math.round(d) : MORNING_DELAY_DEFAULT)
+}
+
+/**
+ * Ab wann der Abend-Check-in offen ist (Minuten im Lab-Tag, vgl. relMin): 6 h vor der Check-in-Erinnerung
+ * (reminders.checkin = „Tag ist vorbei ab“), aber nie früher als 8 h nach dem Aufstehen.
+ * Beispiele: Aufstehen 4:00 / Erinnerung 22:00 → ab 16:00 · 7:00 / 22:00 → ab 16:00 · 9:00 / 0:30 → ab 18:30.
+ */
+export function checkinOpensMin(s: Pick<LabState, "settings" | "reminders">) {
+  return Math.max(relMin(toMin(s.reminders.checkin), s.settings) - 360, toMin(s.settings.wake) + 480)
+}
+
+/**
+ * Ersetzt die harte Sperre in LabApp (früher: bis reminders.checkin). Gesperrt nur, wenn Erinnerungen an sind,
+ * der Check-in nicht per Long-Press für heute entsperrt wurde und es noch vor checkinOpensMin ist.
+ */
+export function isCheckinLocked(s: Pick<LabState, "settings" | "reminders">, now: Date, unlockedFor?: string | null, today = todayIso()) {
+  if (!s.reminders.enabled || unlockedFor === today) return false
+  return relMin(now.getHours() * 60 + now.getMinutes(), s.settings) < checkinOpensMin(s)
+}
 
 /** Standard-Zeit für den abendlichen Check-in: 1 h vor dem Schlafen. */
 export function defaultCheckinTime(s: Settings) {
@@ -787,7 +816,30 @@ export interface CheckIn {
   note: string
   quick?: boolean // 1-Klick-Check-in (alle Bereiche = Gesamtgefühl)
   at?: string     // Uhrzeit des Check-ins (HH:MM), automatisch
+  /** „Ich vermute: …“ je Beschwerde → SuspectOption.key (Supplement-ID aus dem Plan oder "x:<extraKey>"). Fehlt = weiß nicht. */
+  suspect?: Record<string, string>
 }
+
+/**
+ * Morgen-Frage, gespeichert unter dem Datum des AUFWACH-Tages (= todayIso() am Morgen).
+ * `schlaf` = Nacht davor – exakt dieselbe Bedeutung wie der bisherige Abend-Wert „Letzte Nacht“ in checkins[date].scores.schlaf.
+ * Beim Speichern des Abend-Check-ins (putCheckin) wird `schlaf` in checkins[date].scores übernommen.
+ */
+export interface MorningEntry { schlaf?: number; fit?: number; at?: string }
+
+/** Spontane Einnahme außerhalb des Plans (auch Supplements, die nicht in „Meine Supplements“ stehen). */
+export interface ExtraIntake {
+  id: string        // eindeutig je Eintrag (zum Löschen)
+  lib?: string      // Bibliotheks-ID (LIB_BY_ID), falls aus der Bibliothek
+  supp?: string     // MySupp-ID, falls aus der eigenen Liste (z. B. pausiert oder eine Extra-Dosis)
+  name: string      // Anzeigename beim Eintragen (eigene Namen bleiben, Bibliotheks-Namen werden übersetzt)
+  emoji?: string
+  dose?: string
+  at?: string       // Uhrzeit HH:MM (optional)
+}
+
+/** Beschwerden an einem Tag OHNE (oder vor dem) Abend-Check-in – wird beim Check-in in checkin.sides/suspect übernommen. */
+export interface DaySides { sides: Record<string, number>; suspect?: Record<string, string>; at?: string }
 
 export type Decision = "keep" | "maybe" | "drop"
 export interface Verdict { decision: Decision; note: string; date: string }
@@ -825,6 +877,9 @@ export interface LabState {
   src?: string        // Herkunftskanal beim Start (?src=reddit) – nur für die anonyme Statistik
   statsOff?: boolean  // anonyme Nutzungsstatistik abgeschaltet
   migrated?: string[] // einmalige Umstellungen, die schon gelaufen sind (z. B. "store-dose")
+  morning?: Record<string, MorningEntry>   // Aufwach-Datum → Morgen-Frage
+  extra?: Record<string, ExtraIntake[]>    // Datum → spontane Extra-Einnahmen
+  daySides?: Record<string, DaySides>      // Datum → Beschwerden, solange es noch keinen Check-in gibt
 }
 
 export const STORAGE_KEY = "true-supplement-lab-v1"
@@ -877,6 +932,7 @@ export function hydrate(raw: unknown): LabState {
     c.tags = c.tags.filter(t => !LEGACY_TAG_SIDES[t])
   }
   setDayBoundary(s.settings)
+  sanitizeDayData(s)
   if (p.taken) {
     for (const [date, v] of Object.entries(p.taken)) {
       const id = v ? testSuppOn(s, date) : null
@@ -885,6 +941,59 @@ export function hydrate(raw: unknown): LabState {
     delete (s as Partial<typeof p>).taken
   }
   return s
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const okScore = (v: unknown): v is number => typeof v === "number" && v >= 1 && v <= 5
+const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v)
+
+/**
+ * Neue optionale Felder (morning, extra, daySides) robust einlesen – kaputte Einträge werden still verworfen,
+ * nie der ganze Stand. Fehlen sie (alte Daten), bleibt alles wie vorher (Felder bleiben undefined).
+ * Sicherheitsnetz: Morgen-Schlaf / Tages-Beschwerden, die noch nicht in einen vorhandenen Check-in übernommen
+ * wurden (z. B. Check-in ohne putCheckin gespeichert), werden hier nachgezogen.
+ */
+function sanitizeDayData(s: LabState) {
+  if (s.morning !== undefined) {
+    const m: Record<string, MorningEntry> = {}
+    if (isObj(s.morning)) for (const [d, e] of Object.entries(s.morning)) {
+      if (!DATE_RE.test(d) || !isObj(e)) continue
+      const x: MorningEntry = {}
+      if (okScore(e.schlaf)) x.schlaf = e.schlaf
+      if (okScore(e.fit)) x.fit = e.fit
+      if (typeof e.at === "string") x.at = e.at
+      if (x.schlaf != null || x.fit != null) m[d] = x
+    }
+    s.morning = m
+  }
+  if (s.extra !== undefined) {
+    const out: Record<string, ExtraIntake[]> = {}
+    if (isObj(s.extra)) for (const [d, list] of Object.entries(s.extra)) {
+      if (!DATE_RE.test(d) || !Array.isArray(list)) continue
+      const ok = list.filter((x): x is ExtraIntake => isObj(x) && typeof x.id === "string" && typeof x.name === "string" && !!x.name.trim())
+      if (ok.length) out[d] = ok
+    }
+    s.extra = out
+  }
+  if (s.daySides !== undefined) {
+    const out: Record<string, DaySides> = {}
+    if (isObj(s.daySides)) for (const [d, e] of Object.entries(s.daySides)) {
+      if (!DATE_RE.test(d) || !isObj(e) || !isObj(e.sides)) continue
+      out[d] = e as unknown as DaySides
+    }
+    s.daySides = out
+  }
+  for (const [d, m] of Object.entries(s.morning ?? {})) {
+    const c = s.checkins[d]
+    if (c && m.schlaf != null && c.scores.schlaf !== m.schlaf) c.scores = { ...c.scores, schlaf: m.schlaf }
+  }
+  for (const [d, ds] of Object.entries(s.daySides ?? {})) {
+    const c = s.checkins[d]
+    if (!c) continue
+    c.sides = { ...ds.sides, ...c.sides }
+    if (ds.suspect) c.suspect = { ...ds.suspect, ...c.suspect }
+    delete s.daySides![d]
+  }
 }
 
 export function loadState(): LabState {
@@ -1049,8 +1158,68 @@ export function avgScores(checkins: CheckIn[]): Scores | null {
   return out
 }
 
+/**
+ * ── Schlaf-Zuordnung in der Auswertung ──
+ * Gespeichert wird Schlaf immer am AUFWACH-Tag: checkins[D].scores.schlaf bzw. morning[D].schlaf = Nacht D−1 → D
+ * (so haben es auch alle alten Abend-Check-ins gemeint: „Wie gut hast du geschlafen? – Letzte Nacht“).
+ * Ausgewertet wird er beim Tag DAVOR: Die Nacht D → D+1 hängt von den Einnahmen/Störfaktoren an Tag D ab.
+ * Ein Auswertungs-Tag D = Einnahmen + Störfaktoren + Gefühl an D + die Nacht danach.
+ * (Folge: „Bei Alkohol“ zeigt den Schlaf nach dem Trinken, „Am Tag nach Alkohol“ das Befinden am Folgetag.)
+ */
+export function sleepAfter(s: Pick<LabState, "checkins" | "morning">, date: string): number | undefined {
+  const next = addDays(date, 1)
+  return s.morning?.[next]?.schlaf ?? s.checkins[next]?.scores.schlaf
+}
+
+/** Check-in, wie ihn die Auswertung sieht: `schlaf` = Nacht nach diesem Tag (fehlt, solange noch unbekannt). */
+export function evalCheckin(s: Pick<LabState, "checkins" | "morning">, c: CheckIn): CheckIn {
+  const rest: Scores = { ...c.scores }
+  delete rest.schlaf
+  const sl = sleepAfter(s, c.date)
+  return { ...c, scores: sl != null ? { ...rest, schlaf: sl } : rest }
+}
+
+/** Alle Check-ins in Auswertungs-Sicht (für Diagramme/Profil, wenn sie zur Auswertung passen sollen), nach Datum sortiert. */
+export function evalCheckins(s: Pick<LabState, "checkins" | "morning">): CheckIn[] {
+  return Object.values(s.checkins).sort((a, b) => a.date.localeCompare(b.date)).map(c => evalCheckin(s, c))
+}
+
+/** Check-ins eines Zeitfensters in Auswertungs-Sicht (Schlaf = Nacht danach, siehe sleepAfter). */
 export function checkinsIn(s: LabState, w: { start: string; end: string }): CheckIn[] {
   return Object.values(s.checkins).filter(c => c.date >= w.start && c.date <= w.end).sort((a, b) => a.date.localeCompare(b.date))
+    .map(c => evalCheckin(s, c))
+}
+
+// ── Extra-Einnahmen (Auswertung) ──────────────────────────────────────────────
+
+/** Gruppierungs-Schlüssel einer Extra-Einnahme: Bibliotheks-ID, sonst eigene Supplement-ID, sonst Name (klein). */
+export function extraKey(x: Pick<ExtraIntake, "lib" | "supp" | "name">) {
+  return x.lib ? x.lib : x.supp ? x.supp : `n:${x.name.trim().toLowerCase()}`
+}
+/** Anzeige-Name (Bibliotheks-Namen in der aktuellen Sprache). */
+export function extraLabel(x: Pick<ExtraIntake, "lib" | "name">) {
+  return x.lib && LIB_BY_ID[x.lib] ? LIB_BY_ID[x.lib].name : t(x.name)
+}
+export function extraEmoji(x: Pick<ExtraIntake, "lib" | "emoji">) {
+  return x.emoji ?? (x.lib ? LIB_BY_ID[x.lib]?.emoji : undefined) ?? "💊"
+}
+export function extrasOn(s: Pick<LabState, "extra">, date: string): ExtraIntake[] { return s.extra?.[date] ?? [] }
+
+/** Extra-Einnahmen in einem Fenster: [Anzeige-Name, Tage] – wie Störfaktoren (Tag markiert, nicht herausgerechnet). */
+function extraCounts(s: LabState, cs: CheckIn[]): [string, number][] {
+  const m = new Map<string, { label: string; n: number }>()
+  for (const c of cs) {
+    const seen = new Set<string>()
+    for (const x of extrasOn(s, c.date)) {
+      const k = extraKey(x)
+      if (seen.has(k)) continue
+      seen.add(k)
+      const cur = m.get(k) ?? { label: extraLabel(x), n: 0 }
+      cur.n++
+      m.set(k, cur)
+    }
+  }
+  return [...m.values()].sort((a, b) => b.n - a.n).map(x => [x.label, x.n])
 }
 
 export function baselineAvg(s: LabState) {
@@ -1102,7 +1271,11 @@ export function testResult(s: LabState, suppId: string) {
   // Nebenwirkungen, die im Test häufiger sind als im Reset
   const newSides = sTest.list.filter(x => x.days / Math.max(1, cs.length) > (baseRate.get(x.id) ?? 0) + 0.15 || x.strong > 0)
   const sides = { load: sTest.load, baseLoad: sBase.load, extra: Math.max(0, sTest.load - sBase.load), list: newSides, strongDays: cs.filter(c => Object.values(c.sides ?? {}).some(v => v >= 2)).length }
-  if (!avg || !base) return { window: w, n: cs.length, avg, base, delta: null, dims: [] as Dim[], total: 0, overall, sides, tags: tagCounts(cs) }
+  // Extra-Einnahmen zählen wie Störfaktoren: in `tags` als „➕ Name“ (so zeigt sie die Ergebnis-Karte ohne Umbau) + getrennt in `extras`
+  const extras = extraCounts(s, cs)
+  const baseExtras = baseW ? extraCounts(s, checkinsIn(s, baseW)) : []
+  const tags = [...tagCounts(cs), ...extras.map(([n, k]) => [`➕ ${n}`, k] as [string, number])].sort((a, b) => b[1] - a[1])
+  if (!avg || !base) return { window: w, n: cs.length, avg, base, delta: null, dims: [] as Dim[], total: 0, overall, sides, tags, extras, baseExtras }
   const delta: Scores = {}
   const dims: Dim[] = []
   let total = 0
@@ -1112,7 +1285,7 @@ export function testResult(s: LabState, suppId: string) {
     dims.push(d.id)
     total += delta[d.id]!
   }
-  return { window: w, n: cs.length, avg, base, delta, dims, total, overall, sides, tags: tagCounts(cs) }
+  return { window: w, n: cs.length, avg, base, delta, dims, total, overall, sides, tags, extras, baseExtras }
 }
 
 function tagCounts(cs: CheckIn[]) {
@@ -1519,10 +1692,13 @@ export function demoState(): LabState {
     const date = addDays(start, i)
     const w = windows.find(x => date >= x.start && date <= x.end)
     const eff = w?.kind === "test" && w.suppId ? effects[w.suppId] ?? {} : {}
+    // Schlaf wird am Aufwach-Tag gespeichert → Wirkung kommt von der Einnahme am Vortag (siehe sleepAfter)
+    const pw = windows.find(x => addDays(date, -1) >= x.start && addDays(date, -1) <= x.end)
+    const effPrev = pw?.kind === "test" && pw.suppId ? effects[pw.suppId] ?? {} : {}
     const scores: Scores = {}
     for (const d of dims) {
       const base = d.id === "schlaf" ? 2.6 : d.id === "ruhe" ? 2.5 : d.id === "gelenke" ? 2.4 : 3
-      scores[d.id] = Math.max(1, Math.min(5, Math.round(base + (eff[d.id] ?? 0) + (rnd() - 0.5) * 1.6)))
+      scores[d.id] = Math.max(1, Math.min(5, Math.round(base + ((d.id === "schlaf" ? effPrev : eff)[d.id] ?? 0) + (rnd() - 0.5) * 1.6)))
     }
     const tags: string[] = []
     const sides: Record<string, number> = {}

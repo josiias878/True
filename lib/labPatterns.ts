@@ -3,14 +3,14 @@
 // ausgelassene Einnahmen und Einnahme-Uhrzeit. Nur Hinweise – keine Beweise.
 
 import {
-  DIMS, TAGS, addDays, daySum, tagLabel, intakeOn, libOf, relMin, toMin, fromMin,
+  DIMS, TAGS, addDays, daySum, tagLabel, intakeOn, libOf, relMin, toMin, fromMin, evalCheckin, extraKey, extraLabel, extraEmoji, LIB_BY_ID,
   type CheckIn, type Dim, type LabState,
 } from "./supplementLab"
 import { t } from "./labI18n"
 
 export interface Pattern {
   id: string
-  kind: "tag" | "nextday" | "weekday" | "skip" | "time"   // nextday = Tag NACH einem Störfaktor (z. B. Alkohol)
+  kind: "tag" | "nextday" | "weekday" | "skip" | "time" | "extra" | "extranext"   // nextday = Tag NACH einem Störfaktor (z. B. Alkohol) · extra/extranext = an Tagen mit / am Tag nach einer Extra-Einnahme
   emoji: string
   title: string       // z. B. „Nach Alkohol“
   dim: Dim | null     // null = Gesamtgefühl
@@ -52,7 +52,8 @@ function bestSplit(yes: CheckIn[], no: CheckIn[], dims: (Dim | null)[]) {
 }
 
 export function findPatterns(s: LabState): Pattern[] {
-  const cs = Object.values(s.checkins).filter(c => !c.quick || Object.keys(c.scores).length)
+  // Auswertungs-Sicht: Schlaf = Nacht NACH dem Tag (siehe sleepAfter) → „Bei Alkohol“ enthält den Schlaf nach dem Trinken
+  const cs = Object.values(s.checkins).filter(c => !c.quick || Object.keys(c.scores).length).map(c => evalCheckin(s, c))
   if (cs.length < 6) return []
   const allDims: (Dim | null)[] = [null, ...DIMS.filter(d => cs.some(c => c.scores[d.id] != null)).map(d => d.id)]
   const out: Pattern[] = []
@@ -77,6 +78,29 @@ export function findPatterns(s: LabState): Pattern[] {
     if (b) out.push({ id: `nextday:${tag}`, kind: "nextday", emoji: TAG_EMOJI[tag] ?? "🏷️",
       title: tag === "Alkohol" ? t("Am Tag nach Alkohol") : t("Am Tag nach „{tag}“", { tag: tagLabel(tag) }),
       dim: b.dim, delta: b.d, with: b.w, without: b.wo, labelWith: t("Tag danach"), labelWithout: t("sonst"), n: yes.length })
+  }
+
+  // Extra-Einnahmen: „An Tagen mit …“ und „Am Tag nach …“ (gleiche Mindestmengen wie oben).
+  // Nur Check-in-Tage zählen; ohne Check-in am Vortag ist der Folgetag unbekannt und fällt raus.
+  const extraKeys = new Map<string, { label: string; emoji: string; dates: Set<string> }>()
+  for (const [date, list] of Object.entries(s.extra ?? {})) for (const x of list) {
+    const k = extraKey(x)
+    const cur = extraKeys.get(k) ?? { label: extraLabel(x), emoji: extraEmoji(x), dates: new Set<string>() }
+    cur.dates.add(date)
+    extraKeys.set(k, cur)
+  }
+  for (const [k, info] of extraKeys) {
+    if (info.dates.size < MIN_N) continue
+    const dims = [null, ...(LIB_BY_ID[k]?.watch ?? allDims.filter((d): d is Dim => d != null))] as (Dim | null)[]
+    const b = bestSplit(cs.filter(c => info.dates.has(c.date)), cs.filter(c => !info.dates.has(c.date)), dims)
+    if (b) out.push({ id: `extra:${k}`, kind: "extra", emoji: info.emoji, title: t("An Tagen mit {name}", { name: info.label }),
+      dim: b.dim, delta: b.d, with: b.w, without: b.wo, labelWith: t("mit"), labelWithout: t("ohne"), n: cs.filter(c => info.dates.has(c.date)).length })
+    const after = cs.filter(c => byDate.has(addDays(c.date, -1)))
+    const yes = after.filter(c => info.dates.has(addDays(c.date, -1)))
+    const no = after.filter(c => !info.dates.has(addDays(c.date, -1)))
+    const bn = bestSplit(yes, no, dims)
+    if (bn) out.push({ id: `extranext:${k}`, kind: "extranext", emoji: info.emoji, title: t("Am Tag nach {name}", { name: info.label }),
+      dim: bn.dim, delta: bn.d, with: bn.w, without: bn.wo, labelWith: t("Tag danach"), labelWithout: t("sonst"), n: yes.length })
   }
 
   // Wochentage: schwächster bzw. stärkster Tag gegen den Rest

@@ -21,6 +21,14 @@ Feedback aus `lab_feedback` einarbeiten; Store-Build vorbereiten, sobald der App
 
 ## Entscheidungen (vom Inhaber)
 
+- ✅ 6. Okt 2026 (CEO-Entscheidung nach Inhaber-Input): **Community = neutrale Plattform für Erfahrungsberichte**, wie Reddit –
+  Kolbi rät, dosiert und empfiehlt nichts; Nutzer teilen eigene Erfahrungen, auch zu Peptiden (z. B. BPC-157).
+  Reihenfolge: (1) Store-1.0 ohne Peptide in Bibliothek/Kolbi-Texten (Store-Freigabe zuerst); privat als eigener
+  Eintrag erfassbar. (2) Community Stufe 1: strukturierte, anonyme Bewertungen (ab n ≥ 5). (3) Stufe 2 ab ~1.000 aktiven
+  Nutzern: Freitext-Berichte zu jeder Substanz, mit Forenregeln (keine Dosis-Anleitungen, keine Bezugsquellen/Links,
+  kein medizinischer Rat), Melden + Moderation (DSA-Melde-Verfahren), ab 18, keine Hervorhebung/Ranking durch Kolbi.
+  Vor dem Einschalten: Fachperson (FACHPERSON.md F1) + Store-Richtlinien für nutzergenerierte Inhalte prüfen.
+
 - ✅ 2. Okt 2026: **App-ID `app.kolbi`** (iOS + Android, endgültig). Store-Builds über **GitHub Actions** (kein eigener Mac; wie bei der App „Iron“). Apple-Entwicklerkonto wird ohnehin für Iron gebraucht – ein Konto für beide Apps.
 
 - Herausgeber: **auf den Namen des Inhabers** (nicht über die bestehende Firma „Iron“)
