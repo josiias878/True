@@ -32,6 +32,7 @@ import { QuickSheet, TodayView } from "./today"
 import { DiscoverView } from "./discover"
 import { LabPage, LaborHome, type LabTab, type LaborView } from "./labor"
 import { MeHome, type MeView } from "./me"
+import { useMarkSeen } from "./newbadge"
 import { FounderWelcome, PaywallSheet, ProGate, ReviewSheet, appPlatform } from "./grow"
 import { ProfileCard } from "./profile"
 import { SITE_URL, betaOpen, claimFounder, markPurchased, markReviewAsked, openPaywall, shouldAskReview, type ProFeature } from "@/lib/labGrow"
@@ -275,6 +276,7 @@ export default function LabApp() {
     window.scrollTo({ top: 0 })
   }, [])
   const now = useNow()
+  useMarkSeen("alcohol-pattern", tab === "ich" && meView === "auswertung")
   // Neue Ebene (Lab-Seite, Unteransicht) beginnt oben
   useEffect(() => { window.scrollTo({ top: 0 }) }, [laborView, meView, lab?.suppId, lab?.libId, !!lab]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -556,9 +558,10 @@ export default function LabApp() {
     if (!x) {
       if (!lib) return
       update(p => {
-        if (!p.supps.some(q => q.lib === lib.id)) p.supps.push(lib.rx ? { ...makeSupp(lib, lib.name, p.supps), mode: "konstant" } : makeSupp(lib, lib.name, p.supps))
+        // „Selbst testen“ heißt testen – auch wenn die Bibliothek sonst „durchgehend“ vorschlagen würde
+        if (!p.supps.some(q => q.lib === lib.id)) p.supps.push(lib.rx ? { ...makeSupp(lib, lib.name, p.supps), mode: "konstant" } : { ...makeSupp(lib, lib.name, p.supps), mode: "test", keepTesting: true })
         return p
-      }, { amount: 5, label: t("{name} vorgemerkt", { name: lib.name }) })
+      })
       if (lib.rx) setFlash(t("📌 {name} wird nur mitprotokolliert", { name: lib.name }))
       else if (canStart) setTestSetup(lib.id)
       else later(lib.name)

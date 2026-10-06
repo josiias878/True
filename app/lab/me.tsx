@@ -6,6 +6,7 @@ import { FACT_COUNT, learnedFacts } from "@/lib/labKnowledge"
 import { avatarBg, pseudonym, reportCard, socialSeed, type GradeKind } from "@/lib/labSocial"
 import { DemoBadge, haptic } from "./ui"
 import { Mascot } from "./mascot"
+import { NewBadge } from "./newbadge"
 import { t, isEn } from "@/lib/labI18n"
 
 export type MeView = "auswertung" | "album" | "kolbi"
@@ -53,12 +54,13 @@ export function MeHome({ s, today, tipCount, onView, onSettings, onOpenLab, onAl
       <div style={{ fontSize: "0.74rem", fontWeight: 800, color: "var(--text-dim)" }}>{l}</div>
     </div>
   )
-  const btn = (emoji: string, label: string, sub: string, onClick: () => void, dot?: boolean) => (
+  const btn = (emoji: string, label: string, sub: string, onClick: () => void, dot?: boolean, badge?: React.ReactNode) => (
     <button onClick={() => { haptic(); onClick() }} className="lab-press lab-card" style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2, padding: "14px 14px 13px", textAlign: "left", color: "var(--text)", borderRadius: 18, minWidth: 0 }}>
       <span style={{ fontSize: "1.4rem", lineHeight: 1.1 }}>{emoji}</span>
       <span style={{ fontWeight: 900, fontSize: "0.95rem", marginTop: 6, maxWidth: "100%", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
       <span style={{ fontSize: "0.74rem", fontWeight: 700, color: "var(--text-dim)", lineHeight: 1.3, maxWidth: "100%", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sub}</span>
       {dot && <span aria-hidden style={{ position: "absolute", top: 12, right: 12, width: 9, height: 9, borderRadius: 999, background: "var(--accent)" }} />}
+      {badge && <span style={{ position: "absolute", top: 12, right: 12 }}>{badge}</span>}
     </button>
   )
   return (
@@ -98,7 +100,7 @@ export function MeHome({ s, today, tipCount, onView, onSettings, onOpenLab, onAl
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
-        {btn("📊", t("Meine Auswertung"), t("Kurven, Muster, Verlauf"), () => onView("auswertung"))}
+        {btn("📊", t("Meine Auswertung"), t("Kurven, Muster, Verlauf"), () => onView("auswertung"), false, <NewBadge id="alcohol-pattern" />)}
         {btn("📚", t("Wissens-Album"), t("{n} von {total} entdeckt", { n: facts, total: FACT_COUNT }), () => onView("album"))}
         {btn("🧪", t("Kolbi & Hilfe"), tipCount ? (tipCount === 1 ? t("1 Tipp für dich") : t("{n} Tipps für dich", { n: tipCount })) : t("Tipps, Abzeichen, Fragen"), () => onView("kolbi"), tipCount > 0)}
         {btn("⚙️", t("Einstellungen"), t("Erinnerungen, Daten, Sprache"), onSettings)}

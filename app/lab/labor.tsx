@@ -188,7 +188,7 @@ export function LabPage({ s, today, suppId, libId, tab, setTab, onBack, onSelfTe
 
       <UnderTabs value={tab} onChange={setTab} options={[
         { id: "ueberblick", label: t("Überblick") },
-        ...(lib ? [{ id: "andere" as const, label: t("Was andere erlebt haben") }] : []),
+        ...(lib ? [{ id: "andere" as const, label: t("Erfahrungen") }] : []),
         { id: "wissen", label: t("Wissen") },
       ]} />
 
@@ -231,14 +231,13 @@ export function LabPage({ s, today, suppId, libId, tab, setTab, onBack, onSelfTe
           {x && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
               {!lib?.rx && <button className="lab-press" onClick={() => onDetails(x.id)} style={pill}>⚙️ {t("Dosis & Uhrzeit")}</button>}
-              {verdict && <button className="lab-press" onClick={() => onVerdict(x.id)} style={pill}>⚖️ {t("Urteil ändern")}</button>}
             </div>
           )}
         </div>
       )}
 
       {tab === "andere" && lib && (
-        <CommunityCard s={s} libId={lib.id} flat onJoin={() => onJoin(x && s.verdicts[x.id] ? x.id : null)} />
+        <CommunityCard s={s} libId={lib.id} onJoin={() => onJoin(x && s.verdicts[x.id] ? x.id : null)} />
       )}
 
       {tab === "wissen" && (

@@ -16,10 +16,10 @@ import { MorningPanel, type DayTab } from "./day"
 import { dayProgress, type RoundStep } from "./round"
 import { RoadPath } from "./path"
 import { ProfileCard } from "./profile"
+import { NewBadge, useMarkSeen } from "./newbadge"
+import { markSeen } from "@/lib/labNew"
 import { t, dec, clock, LOCALE } from "@/lib/labI18n"
 
-/** Platz für die „Neu“-Markierung (kommt aus newbadge.tsx der Pro-Instanz) – bis dahin bewusst leer. */
-export function NewSlot(_: { id: string }) { return null }
 
 const fmt = (n: number) => dec(n, 1)
 
@@ -138,6 +138,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, o
     : lockedUntil ? "locked" : "done"
 
   // Hüpfer, wenn sich Kolbi füllt
+  useMarkSeen("morning-question", main === "morning" && !!s.morning?.[today])
   const prevFill = useRef<number | null>(null)
   const [hop, setHop] = useState(0)
   useEffect(() => { if (prevFill.current != null && fill > prevFill.current + 0.001) setHop(h => h + 1); prevFill.current = fill }, [fill])
@@ -228,7 +229,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, o
         </>}
 
         {main === "morning" && <>
-          {title(<>{t("🌙 Wie hast du geschlafen?")}<NewSlot id="morning" /></>)}
+          {title(<>{t("🌙 Wie hast du geschlafen?")} <NewBadge id="morning-question" /></>)}
           {sub(t("1 Tipp genügt."))}
           <div style={{ marginTop: 16, width: "100%" }}>
             <MorningPanel entry={s.morning?.[today]} size={52} onSave={v => { setMHold(true); onMorning(v) }} onDone={() => setMHold(false)} />
@@ -325,9 +326,9 @@ export function QuickSheet({ s, today, now, checkinLocked, onClose, onTake, onDa
       {view === "menu" ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {tile("✓", t("Genommen"), intake.length ? t("{n} von {total} heute", { n: took.filter(id => intake.includes(id)).length, total: intake.length }) : t("Heute nichts geplant"), () => setView("take"))}
-            {tile("➕", t("Zusätzlich"), t("außerhalb deines Plans"), () => { onClose(); onDay("take") }, <>{count(nx)}<NewSlot id="extra" /></>)}
-            {tile("🤕", t("Beschwerde"), t("tagsüber notieren"), () => { onClose(); onDay("sides") }, <>{count(ns)}<NewSlot id="sides" /></>)}
+            {tile("✓", t("Genommen"), intake.length ? t("{n} von {total} heute", { n: took.filter(id => intake.includes(id)).length, total: intake.length }) : t("Heute nichts geplant"), () => { markSeen("taken-check"); setView("take") }, <NewBadge id="taken-check" style={{ position: "absolute", top: 14, right: 12 }} />)}
+            {tile("➕", t("Zusätzlich"), t("außerhalb deines Plans"), () => { markSeen("extra-taken"); onClose(); onDay("take") }, <>{count(nx)}<NewBadge id="extra-taken" style={{ position: "absolute", top: 14, right: nx ? 40 : 12 }} /></>)}
+            {tile("🤕", t("Beschwerde"), t("tagsüber notieren"), () => { markSeen("complaints"); onClose(); onDay("sides") }, <>{count(ns)}<NewBadge id="complaints" style={{ position: "absolute", top: 14, right: ns ? 40 : 12 }} /></>)}
             {tile("📝", t("Check-in"), checked ? t("Heute {v}★ · ändern", { v: fmt(daySum(checked)) }) : locked ? t("ab {time}", { time: clock(fromMin(checkinOpensMin(s))) }) : t("1 Minute"),
               () => { if (checked) { onClose(); onCheckin() } else if (!locked) { onClose(); onRound() } })}
           </div>
