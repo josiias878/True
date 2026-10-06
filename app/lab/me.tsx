@@ -1,29 +1,73 @@
 "use client"
 // ── Ich: Avatar (Kolbi) + generiertes Pseudonym + Supplement-Zeugnis, darunter wenige Knöpfe ──
-import React, { useMemo } from "react"
+import React, { useCallback, useEffect, useState, useSyncExternalStore } from "react"
 import { diffDays, levelFor, streak, type LabState } from "@/lib/supplementLab"
 import { FACT_COUNT, learnedFacts } from "@/lib/labKnowledge"
-import { avatarBg, pseudonym, reportCard, socialSeed, type GradeKind } from "@/lib/labSocial"
-import { DemoBadge, haptic } from "./ui"
+import { AVATAR_ACCESSORIES, AVATAR_COLORS, AVATAR_MOODS, DEFAULT_AVATAR, avatarBg, avatarColorBg, loadAvatar, pseudoSeed, pseudonym, reportCard, rerollPseudonym, saveAvatar, subscribeSocial, type GradeKind, type LabAvatar } from "@/lib/labSocial"
+import { Btn, DemoBadge, Sheet, haptic } from "./ui"
 import { Mascot } from "./mascot"
 import { NewBadge } from "./newbadge"
 import { t, isEn } from "@/lib/labI18n"
 
 export type MeView = "auswertung" | "album" | "kolbi"
 
-/** Kolbi im Marken-Kreis – Variante je nach Serie (leuchtet ab 3, Sonnenbrille ab 7). */
-export function Avatar({ s, size = 96 }: { s: LabState; size?: number }) {
-  const seed = useMemo(socialSeed, [])
+const noop = () => () => {}
+/** Gebauter Avatar (lokal) – null = noch nie gebaut. */
+export function useLabAvatar(): LabAvatar | null {
+  return useSyncExternalStore(subscribeSocial, loadAvatar, () => null)
+}
+
+/** Kolbi im Marken-Kreis – selbst gebaut, sonst Variante je nach Serie (leuchtet ab 3, Sonnenbrille ab 7). */
+export function Avatar({ s, size = 96, preview, shadow = true }: { s: LabState; size?: number; preview?: LabAvatar; shadow?: boolean }) {
+  const saved = useLabAvatar()
+  const seed = useSyncExternalStore(noop, pseudoSeed, () => "")
+  const av = preview ?? saved
   const st = streak(s)
+  const bg = av ? avatarColorBg(av.color) : avatarBg(seed)
+  const acc = av ? (av.accessory === "none" ? null : av.accessory) : st >= 7 ? "shades" : null
   return (
-    <div style={{ width: size, height: size, borderRadius: 999, background: avatarBg(seed), display: "flex", alignItems: "flex-end", justifyContent: "center", overflow: "hidden", flexShrink: 0, boxShadow: "0 10px 30px rgba(46,204,138,.25)" }}>
-      <div style={{ marginBottom: -size * 0.06 }}><Mascot mood="happy" size={size * 0.86} glow={st >= 3} accessory={st >= 7 ? "shades" : null} /></div>
+    <div style={{ width: size, height: size, borderRadius: 999, background: bg, display: "flex", alignItems: "flex-end", justifyContent: "center", overflow: "hidden", flexShrink: 0, boxShadow: shadow ? "0 10px 30px rgba(46,204,138,.25)" : undefined }}>
+      <div style={{ marginBottom: -size * 0.06 }}><Mascot mood={av?.mood ?? "happy"} size={size * 0.86} glow={st >= 3} accessory={acc} /></div>
     </div>
   )
 }
 
 export function usePseudonym() {
-  return useMemo(() => pseudonym(socialSeed(), isEn), [])
+  const seed = useSyncExternalStore(subscribeSocial, pseudoSeed, () => "")
+  return seed ? pseudonym(seed, isEn) : ""
+}
+
+/** Avatar-Baukasten: Farbe, Accessoire, Stimmung – nur feste Auswahl, Live-Vorschau oben. */
+function AvatarSheet({ s, open, onClose }: { s: LabState; open: boolean; onClose: () => void }) {
+  const saved = useLabAvatar()
+  const [d, setD] = useState<LabAvatar>(saved ?? DEFAULT_AVATAR)
+  useEffect(() => { if (open) setD(loadAvatar() ?? DEFAULT_AVATAR) }, [open])
+  const row = (label: string, children: React.ReactNode) => (
+    <div style={{ marginTop: 16 }}>
+      <div style={{ fontSize: "0.78rem", fontWeight: 900, color: "var(--text-dim)", marginBottom: 8 }}>{label}</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{children}</div>
+    </div>
+  )
+  const chip = (on: boolean, label: string, onClick: () => void) => (
+    <button key={label} onClick={() => { haptic(); onClick() }} aria-pressed={on} className="lab-press" style={{
+      minHeight: 44, padding: "0 14px", borderRadius: 999, fontWeight: 800, fontSize: "0.86rem",
+      background: on ? "var(--accent-dim)" : "var(--surface-2)", color: "var(--text)", border: on ? "2px solid var(--accent)" : "2px solid transparent",
+    }}>{label}</button>
+  )
+  return (
+    <Sheet open={open} onClose={onClose} title={t("Dein Kolbi")}>
+      <div style={{ display: "flex", justifyContent: "center" }}><Avatar s={s} size={120} preview={d} /></div>
+      {row(t("Farbe"), AVATAR_COLORS.map(c => (
+        <button key={c.id} onClick={() => { haptic(); setD({ ...d, color: c.id }) }} aria-label={c.label} aria-pressed={d.color === c.id} className="lab-press" style={{
+          width: 44, height: 44, borderRadius: 999, background: c.bg, padding: 0,
+          border: "3px solid var(--background)", boxShadow: d.color === c.id ? "0 0 0 2px var(--text)" : "none",
+        }} />
+      )))}
+      {row(t("Accessoire"), AVATAR_ACCESSORIES.map(a => chip(d.accessory === a.id, a.label, () => setD({ ...d, accessory: a.id }))))}
+      {row(t("Stimmung"), AVATAR_MOODS.map(m => chip(d.mood === m.id, m.label, () => setD({ ...d, mood: m.id }))))}
+      <Btn full onClick={() => { saveAvatar(d); onClose() }} style={{ marginTop: 20 }}>{t("Speichern")}</Btn>
+    </Sheet>
+  )
 }
 
 // Text immer gut lesbar (var(--text)/--text-dim); Farbe nur als Punkt + Rahmen
@@ -43,6 +87,9 @@ export function MeHome({ s, today, tipCount, onView, onSettings, onOpenLab, onAl
   onView: (v: MeView) => void; onSettings: () => void; onOpenLab: (suppId: string) => void; onAllLabs: () => void; footer?: React.ReactNode
 }) {
   const name = usePseudonym()
+  const [avOpen, setAvOpen] = useState(false)
+  const closeAv = useCallback(() => setAvOpen(false), [])
+  const [rollMsg, setRollMsg] = useState<string | null>(null)
   const lvl = levelFor(s.xp)
   const st = streak(s)
   const grades = reportCard(s, today)
@@ -68,9 +115,16 @@ export function MeHome({ s, today, tipCount, onView, onSettings, onOpenLab, onAl
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {s.demo && <div style={{ display: "flex", justifyContent: "flex-end" }}><DemoBadge /></div>}
       <div className="lab-rise" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, paddingTop: s.demo ? 0 : 12 }}>
-        <Avatar s={s} />
-        <div style={{ fontSize: "1.5rem", fontWeight: 900, marginTop: 6 }}>{name}</div>
+        <button onClick={() => { haptic(); setAvOpen(true) }} aria-label={t("Avatar ändern")} className="lab-press" style={{ position: "relative", background: "none", border: "none", padding: 0, borderRadius: 999 }}>
+          <Avatar s={s} />
+          <span aria-hidden style={{ position: "absolute", right: -2, bottom: -2, width: 32, height: 32, borderRadius: 999, background: "var(--surface)", border: "2px solid var(--background)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.9rem" }}>✏️</span>
+        </button>
+        <div style={{ fontSize: "1.5rem", fontWeight: 900, marginTop: 6, minHeight: "1.9rem" }}>{name}</div>
         <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-dim)" }}>{t("Pseudonym · niemand sieht deinen Namen")}</div>
+        <button onClick={() => { haptic(); setRollMsg(rerollPseudonym(today) ? null : t("Für heute genug gewürfelt – morgen wieder.")) }} className="lab-press" style={{
+          minHeight: 44, padding: "0 16px", borderRadius: 999, background: "none", border: "1px solid var(--border)", color: "var(--text)", fontWeight: 800, fontSize: "0.84rem",
+        }}>{t("🎲 Anderen Namen")}</button>
+        {rollMsg && <div role="status" style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-dim)", textAlign: "center" }}>{rollMsg}</div>}
         <div style={{ fontSize: "0.76rem", fontWeight: 800, padding: "4px 10px", borderRadius: 999, background: "var(--surface-2)", marginTop: 2 }}>{lvl.emoji} {lvl.name} · {s.xp} XP</div>
       </div>
 
@@ -108,6 +162,7 @@ export function MeHome({ s, today, tipCount, onView, onSettings, onOpenLab, onAl
         {btn("⚙️", t("Einstellungen"), t("Erinnerungen, Daten, Sprache"), onSettings)}
       </div>
       {footer}
+      <AvatarSheet s={s} open={avOpen} onClose={closeAv} />
     </div>
   )
 }

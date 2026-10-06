@@ -7,6 +7,7 @@ import { fetchOverview } from "@/lib/labCommunity"
 import { LAB_GROUPS, feedOrder, keepWords, labColor, labGroup, tierOf, WORDS_MIN, type FeedEntry } from "@/lib/labSocial"
 import { Btn, DemoBadge, TabHead, haptic } from "./ui"
 import { Mascot } from "./mascot"
+import { Avatar } from "./me"
 import { t } from "@/lib/labI18n"
 
 type Overview = { total: number; libs: Record<string, { n: number; keepPct: number | null }> }
@@ -87,7 +88,7 @@ export function DiscoverView({ s, today, recapReady, onRecap, onOpenLab, onSelfT
       {/* Stories: eigene Woche + Labs mit echten Daten */}
       <div className="lab-scroll" style={{ display: "flex", gap: 8, overflowX: "auto", margin: "-4px -16px 0", padding: "0 16px 2px" }}>
         <Story label={t("Deine Woche")} ring={recapReady ? "linear-gradient(135deg, #2ECC8A, #3987e5)" : undefined} dashed={!canRecap} dot={recapReady}
-          onClick={() => canRecap ? onRecap() : onFlash(t("📊 Deine Woche gibt's ab 3 Check-ins"))}>📊</Story>
+          onClick={() => canRecap ? onRecap() : onFlash(t("📊 Deine Woche gibt's ab 3 Check-ins"))}><Avatar s={s} size={50} shadow={false} /></Story>
         {myLabs.map(e => (
           <Story key={e.lib.id} label={e.lib.name} ring={labColor(e.lib)} onClick={() => onOpenLab(e.lib.id, "andere")}>{e.lib.emoji}</Story>
         ))}

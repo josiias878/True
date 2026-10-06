@@ -1,8 +1,9 @@
 // ── Kolbi Social S1: reine Anzeige-Helfer (Pseudonym, Lab-Farben, Schwellen, Zeugnis, Feed-Reihenfolge) ──
-// Keine Server-Aufrufe, keine Statistik. Pseudonym/Avatar werden lokal aus einer zufälligen ID erzeugt (kein Freitext).
+// Keine Server-Aufrufe, keine Statistik. Pseudonym/Avatar nur lokal – aus eigener Zufalls-ID bzw. fester Auswahl (kein Freitext).
 import { GOALS, LIB_BY_ID, diffDays, phaseAt, suppStatus, type Category, type LabState, type LibSupp, type MySupp } from "./supplementLab"
 import { COMMUNITY_MIN } from "./labCommunity"
 import { t } from "./labI18n"
+import type { Mood } from "./labCoach"
 
 // ── Schwellen (PLAN.md, Entscheidung 6. Okt 2026) ────────────────────────────
 /** ab hier grobe Worte („die meisten …“) */
@@ -62,21 +63,113 @@ export function labGroup(lib: LibSupp | undefined): LabGroup {
 export const labColor = (lib: LibSupp | undefined) => LAB_GROUPS[labGroup(lib)].color
 
 // ── Pseudonym + Avatar (generiert, kein Freitext) ─────────────────────────────
-const SEED_KEY = "lab-pseudo"
+// Eigene Zufalls-ID nur fürs Pseudonym – bewusst NICHT aus „lab-device“ (sonst mit geteilten Ergebnissen verknüpfbar).
+const PSEUDO_KEY = "lab-pseudo-seed"
+const OLD_PSEUDO_KEY = "lab-pseudo"
+const ROLL_KEY = "lab-pseudo-rolls"
+const AVATAR_KEY = "lab-avatar"
+const HEX = /^[a-f0-9]{8,32}$/
 
-/** Zufälliger, lokal gespeicherter Startwert – übernimmt einmalig die anonyme Geräte-ID, falls vorhanden. */
-export function socialSeed(): string {
+const listeners = new Set<() => void>()
+/** Für useSyncExternalStore: meldet Änderungen an Pseudonym/Avatar. */
+export function subscribeSocial(l: () => void) { listeners.add(l); return () => { listeners.delete(l) } }
+const emit = () => listeners.forEach(l => l())
+
+function randHex(bytes: number): string {
+  const b = new Uint8Array(bytes); crypto.getRandomValues(b)
+  return Array.from(b, x => x.toString(16).padStart(2, "0")).join("")
+}
+const nameKey = (seed: string) => { const h = hash(seed); return `${h % 16}.${(h >>> 4) % 16}.${(h >>> 8) % 100}` }
+
+/** Neue Zufalls-ID, die denselben Namen ergibt wie `old` – so bleibt das bisherige Pseudonym, die alte ID verschwindet. */
+function sameNameSeed(old: string): string {
+  const want = nameKey(old), base = randHex(12)
+  for (let i = 0; i < 2_000_000; i++) { const c = base + i.toString(16).padStart(8, "0"); if (nameKey(c) === want) return c }
+  return randHex(16)
+}
+
+/** Startwert fürs Pseudonym (lokal). Übernimmt beim ersten Start einmalig den bisherigen Namen. */
+export function pseudoSeed(): string {
   try {
-    let v = localStorage.getItem(SEED_KEY)
-    if (!v || !/^[a-f0-9]{8,32}$/.test(v)) {
-      const d = localStorage.getItem("lab-device")
-      if (d && /^[a-f0-9]{32}$/.test(d)) v = d
-      else { const b = new Uint8Array(16); crypto.getRandomValues(b); v = Array.from(b, x => x.toString(16).padStart(2, "0")).join("") }
-      localStorage.setItem(SEED_KEY, v)
-    }
+    let v = localStorage.getItem(PSEUDO_KEY)
+    if (v && HEX.test(v)) return v
+    const old = localStorage.getItem(OLD_PSEUDO_KEY)
+    v = old && HEX.test(old) ? sameNameSeed(old) : randHex(16)
+    localStorage.setItem(PSEUDO_KEY, v)
+    localStorage.removeItem(OLD_PSEUDO_KEY)
     return v
   } catch { return "5eed5eed" }
 }
+
+export const REROLL_MAX = 3
+function rollsToday(today: string): number {
+  try {
+    const r = JSON.parse(localStorage.getItem(ROLL_KEY) || "null")
+    return r && r.d === today && typeof r.n === "number" ? Math.max(0, Math.min(REROLL_MAX, r.n)) : 0
+  } catch { return 0 }
+}
+export const rerollsLeft = (today: string) => REROLL_MAX - rollsToday(today)
+
+/** „Anderen Namen“: neue Zufalls-ID (anderer Name), max. 3× pro Tag. false = heute keine mehr übrig. */
+export function rerollPseudonym(today: string): boolean {
+  const used = rollsToday(today)
+  if (used >= REROLL_MAX) return false
+  try {
+    const cur = nameKey(pseudoSeed())
+    let v = randHex(16)
+    for (let i = 0; i < 20 && nameKey(v) === cur; i++) v = randHex(16)
+    localStorage.setItem(PSEUDO_KEY, v)
+    localStorage.setItem(ROLL_KEY, JSON.stringify({ d: today, n: used + 1 }))
+  } catch { return false }
+  emit()
+  return true
+}
+
+// ── Avatar-Baukasten (nur Auswahl aus festen Listen) ─────────────────────────
+export const AVATAR_COLORS: { id: string; bg: string; label: string }[] = [
+  { id: "kolbi",    bg: "linear-gradient(135deg, #2ECC8A, #3987e5)", label: t("Kolbi-Verlauf") },
+  { id: "blau",     bg: "linear-gradient(135deg, #3987e5, #6c7cff)", label: t("Labor-Blau") },
+  { id: "violett",  bg: "linear-gradient(135deg, #9085e9, #6c7cff)", label: t("Violett") },
+  { id: "rosa",     bg: "linear-gradient(135deg, #e87ba4, #e27fb0)", label: t("Rosa") },
+  { id: "tuerkis",  bg: "linear-gradient(135deg, #2bb3a3, #2ECC8A)", label: t("Türkis") },
+  { id: "bernstein", bg: "linear-gradient(135deg, #e3c341, #e9a23b)", label: t("Bernstein") },
+  { id: "koralle",  bg: "linear-gradient(135deg, #f06a5a, #e87ba4)", label: t("Koralle") },
+  { id: "oliv",     bg: "linear-gradient(135deg, #8fb84a, #2bb3a3)", label: t("Oliv") },
+]
+export type AvatarAccessory = "none" | "shades" | "nightcap"
+export const AVATAR_ACCESSORIES: { id: AvatarAccessory; label: string }[] = [
+  { id: "none", label: t("Keins") }, { id: "shades", label: t("😎 Sonnenbrille") }, { id: "nightcap", label: t("🌙 Schlafmütze") },
+]
+export const AVATAR_MOODS: { id: Mood; label: string }[] = [
+  { id: "happy", label: t("Fröhlich") }, { id: "party", label: t("Feiernd") }, { id: "think", label: t("Grübelnd") },
+  { id: "sleepy", label: t("Verschlafen") }, { id: "alert", label: t("Überrascht") },
+]
+export interface LabAvatar { color: string; accessory: AvatarAccessory; mood: Mood }
+export const DEFAULT_AVATAR: LabAvatar = { color: "kolbi", accessory: "none", mood: "happy" }
+
+let avCache: { raw: string | null; v: LabAvatar | null } = { raw: null, v: null }
+/** Gespeicherter Avatar oder null (= noch nie gebaut). Unbekannte Werte werden verworfen. */
+export function loadAvatar(): LabAvatar | null {
+  let raw: string | null = null
+  try { raw = localStorage.getItem(AVATAR_KEY) } catch { return null }
+  if (raw === avCache.raw) return avCache.v
+  let v: LabAvatar | null = null
+  try {
+    const o = raw ? JSON.parse(raw) : null
+    if (o && typeof o === "object") v = {
+      color: AVATAR_COLORS.some(c => c.id === o.color) ? o.color : DEFAULT_AVATAR.color,
+      accessory: AVATAR_ACCESSORIES.some(a => a.id === o.accessory) ? o.accessory : DEFAULT_AVATAR.accessory,
+      mood: AVATAR_MOODS.some(m => m.id === o.mood) ? o.mood : DEFAULT_AVATAR.mood,
+    }
+  } catch { v = null }
+  avCache = { raw, v }
+  return v
+}
+export function saveAvatar(a: LabAvatar) {
+  try { localStorage.setItem(AVATAR_KEY, JSON.stringify({ color: a.color, accessory: a.accessory, mood: a.mood })) } catch { /* privat/voll */ }
+  emit()
+}
+export const avatarColorBg = (id: string) => (AVATAR_COLORS.find(c => c.id === id) ?? AVATAR_COLORS[0]).bg
 
 function hash(str: string): number {
   let h = 0x811c9dc5
