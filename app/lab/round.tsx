@@ -2,16 +2,19 @@
 // ── Tagesrunde: Kolbi führt Schritt für Schritt durch alles, was gerade dran ist ──
 import React, { useEffect, useRef, useState } from "react"
 import {
-  FACES, SIDE_BY_ID, SIDE_EFFECTS, DIM_BY_ID,
-  activeDims, intakeOn, knownSides, phaseWindows, addDays, signal, testResult, slotFor, slotMinutes, toMin, suppColor, streak, timeTip, relMin, suppMinutes,
+  FACES, SIDE_BY_ID, DIM_BY_ID,
+  intakeOn, phaseWindows, addDays, signal, testResult, suppColor, streak, timeTip, relMin, suppMinutes, extrasOn,
   type LabState, type CheckIn, type Scores, type Decision, type Dim,
 } from "@/lib/supplementLab"
-import { Btn, SideChips, Stars, TagChips } from "./ui"
+import { eveningDims, morningDue, morningAnswered, sidesOf, type ExtraInput } from "@/lib/labDay"
+import { Btn, Stars, TagChips } from "./ui"
+import { DaySheet, ExtraList, MorningPanel, SidesWithSuspect } from "./day"
 import { KolbiTip, Mascot } from "./mascot"
 import { FACT_COUNT, nextFact, type Fact } from "@/lib/labKnowledge"
 import { t, dec, clock } from "@/lib/labI18n"
 
 export type RoundStep =
+  | { kind: "morning" }
   | { kind: "take"; id: string }
   | { kind: "checkin"; date?: string }
   | { kind: "sides" }
@@ -29,15 +32,24 @@ export function roundSteps(s: LabState, today: string, now: Date, checkinLocked:
   // Gestern vergessen? Dann zuerst nachtragen (zählt sonst in der Auswertung als Lücke)
   const y = addDays(today, -1)
   const catchUp: RoundStep[] = !s.checkins[y] && y >= (phaseWindows(s)[0]?.start ?? today) ? [{ kind: "checkin", date: y }] : []
-  const steps: RoundStep[] = [...catchUp, ...dueIntakes(s, today, now).map(id => ({ kind: "take" as const, id }))]
+  // Morgen-Frage (Schlaf) zuerst – nur im Morgen-Fenster, danach fragt der Abend-Check-in den Schlaf mit
+  const morning: RoundStep[] = morningDue(s, today, now) ? [{ kind: "morning" }] : []
+  const steps: RoundStep[] = [...morning, ...catchUp, ...dueIntakes(s, today, now).map(id => ({ kind: "take" as const, id }))]
   if (!s.checkins[today] && !checkinLocked) {
     steps.push({ kind: "checkin" })
-    if (intakeOn(s, today).length) steps.push({ kind: "sides" })
+    // Beschwerden an jedem Tag anbieten – „Keine Beschwerden“ ist 1 Tipp
+    steps.push({ kind: "sides" })
   }
   for (const w of phaseWindows(s)) {
     if (w.kind === "test" && w.suppId && w.end < today && !s.verdicts[w.suppId]) steps.push({ kind: "reveal", suppId: w.suppId })
   }
   return steps
+}
+
+/** Morgen-Schritt erzwingen (Benachrichtigung ?morning=1), solange der Schlaf für heute noch fehlt. */
+export function withMorning(s: LabState, today: string, steps: RoundStep[]): RoundStep[] {
+  if (steps.some(x => x.kind === "morning") || morningAnswered(s, today) || s.checkins[today]?.scores.schlaf != null) return steps
+  return [{ kind: "morning" }, ...steps]
 }
 
 /** Tages-Fortschritt für Kolbis Füllstand: erledigte Einnahmen + Check-in. */
@@ -55,15 +67,20 @@ const DECISIONS: { id: Decision; emoji: string; label: string }[] = [
 ]
 const fmt = (n: number) => dec(n, 1)
 
-export function DailyRound({ s, today, steps, onTake, onCheckin, onVerdict, onLearn, onClose }: {
+export function DailyRound({ s, today, steps, onTake, onCheckin, onVerdict, onLearn, onClose, onMorning, onExtra, onExtraRemove }: {
   s: LabState; today: string; steps: RoundStep[]
   onTake: (id: string) => void; onCheckin: (c: CheckIn) => void; onVerdict: (id: string, d: Decision) => void
   onLearn: (factId: string) => void; onClose: () => void
+  onMorning: (v: { sleep?: number; fit?: number }) => void
+  onExtra: (date: string, item: ExtraInput, label: string) => void; onExtraRemove: (date: string, id: string) => void
 }) {
-  const [fact] = useState<Fact | null>(() => nextFact(s))
+  // Nur die Morgen-Frage (z. B. aus der Morgen-Benachrichtigung)? Dann ohne „Alles erledigt“-Bildschirm schließen.
+  const onlyMorning = steps.every(x => x.kind === "morning")
+  const [fact] = useState<Fact | null>(() => onlyMorning ? null : nextFact(s))
   const [i, setI] = useState(0)
   const [scores, setScores] = useState<Scores>({})
-  const [sides, setSides] = useState<Record<string, number>>({})
+  const [sides, setSides] = useState<Record<string, number>>(() => sidesOf(s, today).sides)
+  const [suspect, setSuspect] = useState<Record<string, string>>(() => sidesOf(s, today).suspect)
   // Störfaktoren („War heute was anders?“) – optional, gespeichert als deutsche Werte
   const [tags, setTags] = useState<string[]>([])
   const [flood, setFlood] = useState(true)
@@ -78,17 +95,18 @@ export function DailyRound({ s, today, steps, onTake, onCheckin, onVerdict, onLe
   }, [])
   const closeRef = useRef(onClose)
   closeRef.current = onClose
-  useEffect(() => { if (!done || fact) return; const t = setTimeout(() => closeRef.current(), 2600); return () => clearTimeout(t) }, [done, fact])
+  useEffect(() => { if (!done || fact) return; const t = setTimeout(() => closeRef.current(), onlyMorning ? 0 : 2600); return () => clearTimeout(t) }, [done, fact, onlyMorning])
   const learnRef = useRef(onLearn)
   learnRef.current = onLearn
   useEffect(() => { if (done && fact) learnRef.current(fact.id) }, [done, fact])
 
   const next = () => setI(n => n + 1)
-  const saveCheckin = (withSides: Record<string, number>, sc: Scores = scores, date = today, tg: string[] = tags) => {
-    const dims = activeDims(s)
+  // sides = undefined: tagsüber eingetragene Beschwerden übernehmen (putCheckin); sonst gilt genau diese Auswahl
+  const saveCheckin = (withSides: Record<string, number> | undefined, sc: Scores = scores, date = today, tg: string[] = tags, sus?: Record<string, string>) => {
+    const dims = eveningDims(s, date)
     const full: Scores = {}
     dims.forEach(d => { full[d.id] = sc[d.id] ?? 3 })
-    onCheckin({ date, scores: full, tags: tg, sides: withSides, note: "", quick: false })
+    onCheckin({ date, scores: full, tags: tg, ...(withSides ? { sides: withSides } : {}), ...(sus && Object.keys(sus).length ? { suspect: sus } : {}), note: "", quick: false })
   }
 
   return (
@@ -106,13 +124,16 @@ export function DailyRound({ s, today, steps, onTake, onCheckin, onVerdict, onLe
         </div>
 
         <div key={done ? "done" : i} className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 18, padding: "12px 0" }}>
-          {done ? <DoneStep s={s} fact={fact} onClose={onClose} />
+          {done ? (onlyMorning ? null : <DoneStep s={s} fact={fact} onClose={onClose} />)
+            : step.kind === "morning" ? <MorningStep s={s} today={today} onSave={onMorning} onDone={next} />
             : step.kind === "take" ? <TakeStep s={s} id={step.id} onDone={() => { onTake(step.id); setTimeout(next, 450) }} onSkip={next} />
-            : step.kind === "checkin" ? <CheckinStep s={s} scores={scores} setScores={setScores} tags={tags} setTags={setTags} yesterday={!!step.date && step.date !== today} onDone={(sc, tg) => {
-                if (step.date && step.date !== today) { saveCheckin({}, sc, step.date, tg); setScores({}); setTags([]); next(); return }
-                if (steps[i + 1]?.kind === "sides") next(); else { saveCheckin({}, sc, today, tg); next() }
+            : step.kind === "checkin" ? <CheckinStep key={step.date ?? today} s={s} date={step.date ?? today} scores={scores} setScores={setScores} tags={tags} setTags={setTags} yesterday={!!step.date && step.date !== today}
+                onExtra={onExtra} onExtraRemove={onExtraRemove} onDone={(sc, tg) => {
+                if (step.date && step.date !== today) { saveCheckin(undefined, sc, step.date, tg); setScores({}); setTags([]); next(); return }
+                if (steps[i + 1]?.kind === "sides") next(); else { saveCheckin(undefined, sc, today, tg); next() }
               }} />
-            : step.kind === "sides" ? <SidesStep s={s} today={today} value={sides} onChange={setSides} onDone={v => { saveCheckin(v); next() }} />
+            : step.kind === "sides" ? <SidesStep s={s} today={today} value={sides} suspect={suspect} onChange={setSides} onSuspect={setSuspect}
+                onDone={(v, sus) => { saveCheckin(v, scores, today, tags, sus); next() }} />
             : <RevealStep s={s} suppId={step.suppId} onDecide={d => { onVerdict(step.suppId, d); setTimeout(next, 500) }} />}
         </div>
       </div>
@@ -158,11 +179,24 @@ function TakeStep({ s, id, onDone, onSkip }: { s: LabState; id: string; onDone: 
 /** Nach der letzten Bewertung geht es von selbst weiter – lang genug, um noch einen Störfaktor anzutippen. */
 const AUTO_NEXT_MS = 2000
 
-function CheckinStep({ s, scores, setScores, tags, setTags, onDone, yesterday }: {
-  s: LabState; scores: Scores; setScores: React.Dispatch<React.SetStateAction<Scores>>
+function MorningStep({ s, today, onSave, onDone }: { s: LabState; today: string; onSave: (v: { sleep?: number; fit?: number }) => void; onDone: () => void }) {
+  return (
+    <>
+      <Title sub={t("1 Tipp genügt – so sehe ich, was dir nachts hilft.")}>{t("🌙 Wie hast du geschlafen?")}</Title>
+      <div className="lab-card" style={{ padding: 16 }}>
+        <MorningPanel entry={s.morning?.[today]} onSave={onSave} onDone={onDone} delay={900} size={60} />
+      </div>
+    </>
+  )
+}
+
+function CheckinStep({ s, date, scores, setScores, tags, setTags, onDone, yesterday, onExtra, onExtraRemove }: {
+  s: LabState; date: string; scores: Scores; setScores: React.Dispatch<React.SetStateAction<Scores>>
   tags: string[]; setTags: (v: string[]) => void; onDone: (sc: Scores, tags: string[]) => void; yesterday?: boolean
+  onExtra: (date: string, item: ExtraInput, label: string) => void; onExtraRemove: (date: string, id: string) => void
 }) {
-  const dims = activeDims(s)
+  const dims = eveningDims(s, date)
+  const [extraOpen, setExtraOpen] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [armed, setArmed] = useState(0) // > 0: alles bewertet, Auto-Weiter läuft (Zähler startet die Füll-Animation neu)
   const sent = useRef(false)
@@ -216,7 +250,16 @@ function CheckinStep({ s, scores, setScores, tags, setTags, onDone, yesterday }:
           <span style={{ display: "block", fontSize: "0.72rem", color: "var(--text-dim)" }}>{t("Optional – damit der Vergleich fair bleibt.")}</span>
         </div>
         <TagChips value={tags} onChange={toggleTags} />
+        {/* Extra-Einnahme (außerhalb des Plans) – optional, gleich neben den Störfaktoren */}
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 7, marginTop: 8 }}>
+          <button className="lab-press" onClick={() => { if (timer.current) clearTimeout(timer.current); setArmed(0); setExtraOpen(true) }} style={{
+            padding: "8px 12px", borderRadius: 999, fontSize: "0.8rem", fontWeight: 700, color: "var(--text)", border: "1px dashed var(--border)", background: "var(--surface)",
+          }}>{t("➕ Extra")}</button>
+          <ExtraList s={s} date={date} onRemove={id => onExtraRemove(date, id)} />
+        </div>
       </div>
+      {extraOpen && <DaySheet s={s} date={date} fixedDate onlyTake z={480} onAdd={onExtra} onRemove={onExtraRemove} onSides={() => {}}
+        onClose={() => { setExtraOpen(false); arm(scores, tags) }} />}
       {armed > 0 ? (
         <button className="lab-press" onClick={() => finish(scores, tags)} style={{
           position: "relative", overflow: "hidden", alignSelf: "stretch", border: "none", borderRadius: 16, padding: "14px 20px",
@@ -232,15 +275,19 @@ function CheckinStep({ s, scores, setScores, tags, setTags, onDone, yesterday }:
   )
 }
 
-function SidesStep({ s, today, value, onChange, onDone }: { s: LabState; today: string; value: Record<string, number>; onChange: (v: Record<string, number>) => void; onDone: (v: Record<string, number>) => void }) {
-  const known = knownSides(s, intakeOn(s, today)).map(id => SIDE_BY_ID[id]).filter(Boolean)
+function SidesStep({ s, today, value, suspect, onChange, onSuspect, onDone }: {
+  s: LabState; today: string; value: Record<string, number>; suspect: Record<string, string>
+  onChange: (v: Record<string, number>) => void; onSuspect: (v: Record<string, string>) => void; onDone: (v: Record<string, number>, sus: Record<string, string>) => void
+}) {
   const any = Object.values(value).some(Boolean)
+  const plan = intakeOn(s, today).length > 0 || extrasOn(s, today).length > 0
   return (
     <>
-      <Title sub={t("Einmal tippen = leicht, zweimal = stark.")}>{t("Nebenwirkungen heute?")}</Title>
-      <Btn full onClick={() => onDone({})} style={{ padding: "18px 20px", fontSize: "1.05rem" }}>{t("✓ Nein, alles gut")}</Btn>
-      <SideChips value={value} onChange={onChange} suggested={known.length ? known : SIDE_EFFECTS.slice(0, 6)} all={SIDE_EFFECTS} />
-      {any && <Btn full variant="soft" onClick={() => onDone(value)}>{t("Weiter")}</Btn>}
+      <Title sub={t("Einmal tippen = leicht, zweimal = stark.")}>{plan ? t("Nebenwirkungen heute?") : t("Beschwerden heute?")}</Title>
+      {any
+        ? <Btn full onClick={() => onDone(value, suspect)} style={{ padding: "18px 20px", fontSize: "1.05rem" }}>{t("Weiter")}</Btn>
+        : <Btn full onClick={() => onDone({}, {})} style={{ padding: "18px 20px", fontSize: "1.05rem" }}>{t("✓ Nein, alles gut")}</Btn>}
+      <SidesWithSuspect s={s} date={today} value={value} suspect={suspect} onChange={onChange} onSuspect={onSuspect} />
     </>
   )
 }

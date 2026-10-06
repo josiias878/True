@@ -161,7 +161,7 @@ export function Capsule({ supp, size = "md", onClick, right }: { supp: MySupp | 
   )
 }
 
-export function Sheet({ open, onClose, children, title }: { open: boolean; onClose: () => void; children: React.ReactNode; title?: string }) {
+export function Sheet({ open, onClose, children, title, z = 400 }: { open: boolean; onClose: () => void; children: React.ReactNode; title?: string; z?: number }) {
   useEffect(() => {
     if (!open) return
     const prev = document.body.style.overflow
@@ -173,7 +173,7 @@ export function Sheet({ open, onClose, children, title }: { open: boolean; onClo
   if (!open) return null
   return (
     <div className="lab-fade" onClick={onClose} style={{
-      position: "fixed", inset: 0, zIndex: 400, background: "rgba(5,5,12,.55)", backdropFilter: "blur(6px)",
+      position: "fixed", inset: 0, zIndex: z, background: "rgba(5,5,12,.55)", backdropFilter: "blur(6px)",
       display: "flex", alignItems: "flex-end", justifyContent: "center",
     }}>
       <div onClick={e => e.stopPropagation()} style={{

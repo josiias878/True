@@ -6,12 +6,15 @@ import {
   DIMS, FACES, FACE_LABELS, ONSET_INFO, SIDE_EFFECTS, SIDE_BY_ID, LIB_SIDES, knownSides, ROUTE_INFO, SLOTS, BADGES, GOALS,
   loadState, saveState, emptyState, demoState, computeBadges, levelFor, streak, hydrate,
   phaseWindows, phaseAt, testResult, checkinsIn, buildStack, allowedSlots, slotTime, slotFor, stackMembers, intakeOn,
-  STORE_MODE, LAB_BASE, todayIso, setDayBoundary, relMin, toMin, addDays, diffDays, fmtDate, suppColor, daySum, activeDims, signal, libOf, makeSupp, defaultCheckinTime,
+  STORE_MODE, LAB_BASE, todayIso, setDayBoundary, addDays, diffDays, fmtDate, suppColor, daySum, activeDims, signal, libOf, makeSupp, defaultCheckinTime,
   nextCandidates, suppStatus, takingInfo, avgIntakeMinutes, phaseEndsAt, fmtCountdown, nowTime, closeActive, looksPrescribed,
   startTest, startStack, startCheck, applyVerdict, resolveCheck, fromMin, timeTip, LIB_BY_ID, slotMinutes, libDoseLabel,
+  isCheckinLocked, checkinOpensMin, extrasOn, MORNING_DELAYS, MORNING_DELAY_DEFAULT, morningMin,
   type SlotId, type LabState, type Decision, type Dim, type PhaseWindow, type MySupp, type LibSupp, type Settings, type CheckIn, type Scores, type SuppStatusKey,
 } from "@/lib/supplementLab"
-import { checkLabReminders, downloadIcs, hasNativeReminders, syncNativeReminders } from "@/lib/labReminders"
+import { applyTaken, checkLabReminders, downloadIcs, hasNativeReminders, onNotifTaken, syncNativeReminders } from "@/lib/labReminders"
+import { addExtra, eveningDims, morningAnswered, putCheckin, removeExtra, saveMorning, setDaySides, sidesOf, type ExtraInput } from "@/lib/labDay"
+import { DaySheet, MorningPanel, SuspectCard, type DayTab } from "./day"
 import { enablePush, pushAvailable, pushState, syncPush, type PushState } from "@/lib/labPush"
 import { fetchHealthSince, healthVisible, healthCompare, mergeHealthDay, requestHealthPermission } from "@/lib/health"
 import { coach, type CoachAction, type CoachMsg } from "@/lib/labCoach"
@@ -20,7 +23,7 @@ import { CheckInSheet, Onboarding, SuppPicker } from "./flows"
 import { DeltaBars, DimLineChart, MoodCurve, ProCon } from "./charts"
 import { CoachBubble, HelpSheet, KolbiTip, MASCOT_NAME, Mascot } from "./mascot"
 import { InstallHint } from "./install"
-import { DailyRound, dayProgress, roundSteps, type RoundStep } from "./round"
+import { DailyRound, dayProgress, roundSteps, withMorning, type RoundStep } from "./round"
 import { factsFor, partnerTips, recentSides, sideCauses } from "@/lib/labKnowledge"
 import { openShop, refillStock, shoppingList, stockInfo } from "@/lib/labStock"
 import { ShopButton, ShoppingCard, StockCard, StockSheet } from "./stock"
@@ -91,7 +94,7 @@ const STATUS_STYLE: Record<SuppStatusKey, { bg: string; fg: string }> = {
 
 function quickCheckin(s: LabState, date: string, v: number): CheckIn {
   const scores: Scores = {}
-  activeDims(s).forEach(d => { scores[d.id] = v })
+  eveningDims(s, date).forEach(d => { scores[d.id] = v })
   return { date, scores, tags: [], note: "", quick: true, at: date === todayIso() ? nowTime() : undefined }
 }
 
@@ -108,10 +111,11 @@ function initialTab(): Tab {
 }
 
 /** Aktionen aus Benachrichtigungen (?rate=4, ?taken=id, ?checkin=1) direkt beim Öffnen ausführen. */
-function initialLoad(): { s: LabState; openCheckin: boolean; openRound: boolean; openRecap: boolean; flash: string | null } {
+function initialLoad(): { s: LabState; openCheckin: boolean; openRound: boolean; openMorning: boolean; openRecap: boolean; flash: string | null } {
   const s = loadState()
   let openCheckin = false
   let openRound = false
+  let openMorning = false
   let openRecap = false
   let flash: string | null = null
   try {
@@ -120,7 +124,7 @@ function initialLoad(): { s: LabState; openCheckin: boolean; openRound: boolean;
     const rate = Number(q.get("rate"))
     const taken = q.get("taken")
     if (rate >= 1 && rate <= 5 && s.startDate && !s.checkins[today]) {
-      s.checkins[today] = quickCheckin(s, today, rate)
+      putCheckin(s, quickCheckin(s, today, rate))
       s.xp += 20
       flash = t("{face} Check-in gespeichert (+20 XP)", { face: FACES[rate - 1] })
     }
@@ -132,13 +136,15 @@ function initialLoad(): { s: LabState; openCheckin: boolean; openRound: boolean;
     }
     if (q.get("checkin") === "1" && !s.checkins[today] && s.startDate) openRound = true
     if (q.get("round") === "1" && s.startDate) openRound = true
+    // Morgen-Benachrichtigung (?round=1&morning=1): direkt die Schlaf-Frage
+    if (q.get("morning") === "1" && s.startDate) openMorning = true
     if (q.get("recap") === "1" && s.startDate) openRecap = true
     if (rate || taken || q.get("checkin") || q.get("round") || q.get("recap")) {
       saveState(s)
       window.history.replaceState(null, "", window.location.pathname)
     }
   } catch {}
-  return { s, openCheckin, openRound, openRecap, flash }
+  return { s, openCheckin, openRound, openMorning, openRecap, flash }
 }
 
 // Echte Daten sichern, wenn man zwischendurch die Demo anschaut
@@ -327,10 +333,40 @@ export default function LabApp() {
     const isNew = !s.checkins[c.date]
     const refined = !isNew && s.checkins[c.date]?.quick && !c.quick
     const at = c.at ?? s.checkins[c.date]?.at ?? (c.date === todayIso() ? nowTime() : undefined)
-    update(p => { p.checkins[c.date] = { ...c, at }; return p },
+    update(p => {
+      // Beschwerden kommen vorbelegt (sidesOf) aus der UI → dann gilt genau diese Auswahl, auch „keine“
+      if (c.sides && p.daySides?.[c.date]) { const rest = { ...p.daySides }; delete rest[c.date]; p.daySides = rest }
+      return putCheckin(p, { ...c, at })
+    },
       isNew ? { amount: 20, label: t("Check-in") } : refined ? { amount: 10, label: t("Genauer bewertet") } : undefined)
     if (isNew) { setConfetti(true); trackCheckin(Object.keys(s.checkins).length + 1) }
   }, [s.checkins, update])
+
+  // Morgen-Frage, Extra-Einnahmen, Beschwerden tagsüber
+  const [dayOpen, setDayOpen] = useState<{ tab: DayTab; date?: string } | null>(null)
+  const saveMorningV = useCallback((v: { sleep?: number; fit?: number }) => {
+    const d = todayIso()
+    const first = v.sleep != null && !morningAnswered(s, d)
+    update(p => saveMorning(p, d, v), first ? { amount: 5, label: t("Schlaf notiert") } : undefined)
+  }, [s, update])
+  const addExtraV = useCallback((date: string, item: ExtraInput, label: string) => {
+    update(p => addExtra(p, date, item))
+    setFlash(t("✓ {name} eingetragen", { name: label }))
+  }, [update])
+  const removeExtraV = useCallback((date: string, id: string) => { update(p => removeExtra(p, date, id)) }, [update])
+  const saveSidesV = useCallback((date: string, sides: Record<string, number>, suspect: Record<string, string>) => {
+    update(p => setDaySides(p, date, sides, suspect))
+    setFlash(Object.keys(sides).length ? t("🤕 Notiert – ich zähle mit, ob es sich wiederholt") : t("✓ Keine Beschwerden notiert"))
+  }, [update])
+
+  // Store-App: „✓ Genommen“ direkt in der Benachrichtigung → hier übernehmen (im Web kommt nie etwas an)
+  const sRef = useRef(s)
+  sRef.current = s
+  useEffect(() => onNotifTaken(a => {
+    const names = a.ids.map(id => sRef.current.supps.find(x => x.id === id)?.name).filter(Boolean) as string[]
+    update(p => { applyTaken(p, a); return p })
+    if (names.length) setFlash(t("✓ {names} abgehakt", { names: names.join(" & ") }))
+  }), [update])
 
   // Kalender-Download zuerst (braucht die direkte Nutzer-Geste, v. a. auf iOS), dann Berechtigung anfragen
   const turnOnPush = useCallback(async () => {
@@ -499,15 +535,18 @@ export default function LabApp() {
   const kolbiTips = useMemo(() => msgs.filter(m => !m.id.startsWith("take-") && m.id !== "checkin"), [msgs])
 
   // Check-in erst ab der gewünschten Uhrzeit — früher nur per Long-Press entsperrbar
-  const checkinLocked = useMemo(() => {
-    if (!s.reminders.enabled || unlockedFor === today) return false
-    // relativ zum Lab-Tag: nach Mitternacht ist der Abend-Check-in natürlich offen
-    return relMin(now.getHours() * 60 + now.getMinutes(), s.settings) < relMin(toMin(s.reminders.checkin), s.settings)
-  }, [s.reminders.enabled, s.reminders.checkin, s.settings, unlockedFor, today, now])
+  const checkinLocked = useMemo(() => isCheckinLocked(s, now, unlockedFor, today), [s, unlockedFor, today, now])
   const pending = useMemo(() => roundSteps(s, today, now, checkinLocked), [s, today, now, checkinLocked])
 
   // Aus einer Benachrichtigung geöffnet → direkt in die Tagesrunde (Sperrzeit gilt dann nicht)
   useEffect(() => {
+    if (init.openMorning) {
+      // Morgens: Schlaf-Frage zuerst, Abend-Check-in bleibt (wie sonst) bis zum Nachmittag zu
+      const d = todayIso(), n = new Date()
+      const steps = withMorning(init.s, d, roundSteps(init.s, d, n, isCheckinLocked(init.s, n, null, d)))
+      if (steps.length) setRound(steps)
+      return
+    }
     if (!init.openRound) return
     const steps = roundSteps(init.s, todayIso(), new Date(), false)
     if (steps.length) { setUnlockedFor(todayIso()); setRound(steps) }
@@ -575,7 +614,8 @@ export default function LabApp() {
             onQuick={(d, v) => saveCheckin(quickCheckin(s, d, v))} onTake={toggleTook} onCheckin={setCheckinDate}
             onPhase={setPhaseSheet} goTab={goTab}
             pending={pending} onRound={() => setRound(pending)} checkinLocked={checkinLocked} pushOff={pushSt === "off"} onPush={turnOnPush}
-            onUnlock={() => { setUnlockedFor(today); setRound(roundSteps(s, today, now, false)) }} />}
+            onUnlock={() => { setUnlockedFor(today); setRound(roundSteps(s, today, now, false)) }}
+            onMorning={saveMorningV} onMorningOpen={() => setRound([{ kind: "morning" }])} onDay={tab => setDayOpen({ tab })} />}
           {tab === "meine" && <MineView s={s} today={today} view={mineView} setView={setMineView} update={update} onSupp={setSuppSheet}
             onAction={runAction} onVerdict={setVerdictFor} onStartStack={() => runAction({ kind: "startStack" }, "stack")} onExperiment={setExpOpen}
             adv={adv} onMore={() => { setAdvanced(true); setFlash(t("🧰 Alle Funktionen sind an – ausschalten in den Einstellungen")) }} />}
@@ -646,7 +686,9 @@ export default function LabApp() {
         onCheckin={saveCheckin}
         onVerdict={(id, d) => { update(p => applyVerdict(p, id, d, "In der Tagesrunde entschieden", today), { amount: 50, label: t("Urteil gefällt") }); if (d === "keep") setConfetti(true); afterVerdict(id) }}
         onLearn={fid => update(p => { if (!p.learned.includes(fid)) p.learned = [...p.learned, fid]; return p })}
-        onClose={() => setRound(null)} />}
+        onClose={() => setRound(null)}
+        onMorning={saveMorningV} onExtra={addExtraV} onExtraRemove={removeExtraV} />}
+      {dayOpen && <DaySheet s={s} tab={dayOpen.tab} date={dayOpen.date} onAdd={addExtraV} onRemove={removeExtraV} onSides={saveSidesV} onClose={() => setDayOpen(null)} />}
 
       {/* ── Overlays ── */}
       {checkinDate && (
@@ -655,6 +697,7 @@ export default function LabApp() {
           phaseLabel={(() => { const w = phaseAt(s, checkinDate); return w ? phaseTitle(s, w) : t("Zwischen zwei Schritten") })()}
           onClose={() => setCheckinDate(null)}
           onDone={c => { saveCheckin(c); setCheckinDate(null) }}
+          onAddExtra={addExtraV} onRemoveExtra={removeExtraV}
         />
       )}
       {verdictFor && <VerdictSheet key={verdictFor} s={s} suppId={verdictFor} onClose={() => setVerdictFor(null)} onSave={(id, decision, note) => {
@@ -796,12 +839,18 @@ function LockedCheckin({ unlockAt, now, onUnlock, inline }: { unlockAt: string; 
 }
 
 /** Kolbi oben auf „Heute“: Füllstand = Tagesfortschritt, darunter die heutigen Einnahmen als Bubbles. */
-function KolbiHero({ s, today, now, pending, sleepy, lockedUntil, notStarted, startIn, dropKey, onRound, onKolbi, onUnlock, onCheckin }: {
+function KolbiHero({ s, today, now, pending, sleepy, lockedUntil, notStarted, startIn, dropKey, onRound, onKolbi, onUnlock, onCheckin, onMorning }: {
   s: LabState; today: string; now: Date; pending: RoundStep[]; sleepy: boolean; lockedUntil: string | null
   notStarted: boolean; startIn: number | null; dropKey: string | null
   onRound: () => void; onKolbi: () => void; onUnlock: () => void; onCheckin: () => void
+  onMorning: (v: { sleep?: number; fit?: number }) => void
 }) {
   const [tapped, setTapped] = useState(false)
+  // Morgen-Frage direkt hier (1 Tipp) – bleibt nach dem Tipp kurz für Bestätigung und „Genauer“ stehen
+  const morningNow = pending.some(p => p.kind === "morning")
+  const [mHold, setMHold] = useState(false)
+  const showMorning = morningNow || mHold
+  const rest = pending.filter(p => p.kind !== "morning")
   const dropAt = dropKey
   // Hüpfer, wenn sich Kolbi füllt (Einnahme abgehakt, Check-in …)
   const prevFill = useRef<number | null>(null)
@@ -860,10 +909,20 @@ function KolbiHero({ s, today, now, pending, sleepy, lockedUntil, notStarted, st
         </div>
         {(tapped || dropAt) && [42, 50, 58].map((l, k) => <span key={l} className="lab-drip" style={{ left: `${l}%`, top: dropAt ? "-8%" : "86%", animationDelay: `${k * 0.07}s`, ...(dropAt ? { animationName: "labDropIn" } : {}) }} />)}
       </div>
-      <div style={{ fontSize: "1.3rem", fontWeight: 900, letterSpacing: "-.01em" }}>{title}</div>
-      <div style={{ fontSize: "0.86rem", color: "var(--text-dim)", marginTop: 3 }}>{sub}</div>
+      {showMorning ? <>
+        <div style={{ fontSize: "1.3rem", fontWeight: 900, letterSpacing: "-.01em" }}>{t("🌙 Wie hast du geschlafen?")}</div>
+        <div style={{ fontSize: "0.86rem", color: "var(--text-dim)", marginTop: 3, marginBottom: 12 }}>{t("1 Tipp genügt.")}</div>
+        <MorningPanel entry={s.morning?.[today]} size={52} onSave={v => { setMHold(true); onMorning(v) }} onDone={() => setMHold(false)} />
+      </> : <>
+        <div style={{ fontSize: "1.3rem", fontWeight: 900, letterSpacing: "-.01em" }}>{title}</div>
+        <div style={{ fontSize: "0.86rem", color: "var(--text-dim)", marginTop: 3 }}>{sub}</div>
+      </>}
 
-      {n > 0 && (
+      {showMorning ? rest.length > 0 && (
+        <button onClick={() => { haptic(); onRound() }} className="lab-press" style={{ marginTop: 12, display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text)", fontWeight: 800, fontSize: "0.88rem" }}>
+          ▶ {rest.length === 1 ? t("1 Sache für jetzt") : t("{n} Dinge für jetzt", { n: rest.length })}
+        </button>
+      ) : n > 0 && (
         <button onClick={() => { haptic(); go() }} className="lab-press lab-drop" style={{ marginTop: 16, display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 28px", borderRadius: 999, border: "none", background: "var(--lab-grad)", color: "#fff", fontWeight: 900, fontSize: "1.02rem", boxShadow: "inset 0 1px 0 rgba(255,255,255,.45), inset 0 -2px 0 rgba(0,0,0,.12), 0 12px 28px rgba(46,204,138,.4)" }}>
           ▶ {reveal && n === 1 ? t("Ergebnis aufdecken") : t("Los geht's")}
         </button>
@@ -926,13 +985,14 @@ function Row({ emoji, title, sub, right, progress, color, onClick }: {
   )
 }
 
-function Dashboard({ s, wins, today, now, msgs, onAction, onQuick, onTake, onPhase, goTab, pending, onRound, checkinLocked, onUnlock, pushOff, onPush, onCheckin }: {
+function Dashboard({ s, wins, today, now, msgs, onAction, onQuick, onTake, onPhase, goTab, pending, onRound, checkinLocked, onUnlock, pushOff, onPush, onCheckin, onMorning, onMorningOpen, onDay }: {
   s: LabState; wins: PhaseWindow[]; today: string; now: Date; msgs: CoachMsg[]
   onAction: (a: CoachAction, id: string) => void
   onQuick: (d: string, v: number) => void; onTake: (id: string) => void
   onPhase: (w: PhaseWindow) => void; goTab: (t: string) => void
   pending: RoundStep[]; onRound: () => void; checkinLocked: boolean; onUnlock: () => void
   pushOff: boolean; onPush: () => void; onCheckin: (d: string) => void
+  onMorning: (v: { sleep?: number; fit?: number }) => void; onMorningOpen: () => void; onDay: (tab: DayTab) => void
 }) {
   const w = wins.find(x => today >= x.start && today <= x.end) ?? null
   const first = wins[0]
@@ -960,6 +1020,7 @@ function Dashboard({ s, wins, today, now, msgs, onAction, onQuick, onTake, onPha
         if (st.state !== "done") { setDropKey(`${st.suppId}-${Date.now()}`); setTimeout(() => setDropKey(null), 700); try { navigator.vibrate?.(12) } catch {} }
         onTake(st.suppId); break
       }
+      case "morning": onMorningOpen(); break
       case "checkin": if (st.state === "now") onRound(); else if (st.state === "done") onCheckin(today); break
       case "result": if (st.date === today) onRound(); else if (w) onPhase(w); break
       case "startTest": if (st.suppId) onAction({ kind: "startTest", suppId: st.suppId }, "path"); break
@@ -978,8 +1039,8 @@ function Dashboard({ s, wins, today, now, msgs, onAction, onQuick, onTake, onPha
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <KolbiHero s={s} today={today} now={now} pending={pending} sleepy={missedYesterday && !checked}
-        lockedUntil={!checked && checkinLocked ? s.reminders.checkin : null} notStarted={notStarted} startIn={notStarted ? remaining : null}
-        dropKey={dropKey} onRound={onRound} onKolbi={() => goTab("kolbi")} onUnlock={onUnlock} onCheckin={() => onCheckin(today)} />
+        lockedUntil={!checked && checkinLocked ? fromMin(checkinOpensMin(s)) : null} notStarted={notStarted} startIn={notStarted ? remaining : null}
+        dropKey={dropKey} onRound={onRound} onKolbi={() => goTab("kolbi")} onUnlock={onUnlock} onCheckin={() => onCheckin(today)} onMorning={onMorning} />
 
       {first?.kind === "baseline" && !notStarted && today <= addDays(first.end, 3) && <ProfileCard s={s} first={first} today={today} onCheckin={() => checked ? onCheckin(today) : onRound()} />}
       {recap.ready && <RecapTeaser end={recap.end} onOpen={() => onAction({ kind: "recap" }, "recap")} />}
@@ -1006,6 +1067,23 @@ function Dashboard({ s, wins, today, now, msgs, onAction, onQuick, onTake, onPha
           <RoadPath stops={road.stops} goal={road.goal} today={today} onStop={onStop} />
         </div>
       )}
+
+      {/* Dezent: spontane Einnahme oder Beschwerde sofort notieren (auch für gestern) */}
+      {!notStarted && (() => {
+        const nx = extrasOn(s, today).length
+        const ns = Object.keys(sidesOf(s, today).sides).length
+        const pill: React.CSSProperties = {
+          flex: 1, minWidth: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 12px", borderRadius: 999,
+          border: "1px solid var(--glass-line)", background: "var(--surface)", color: "var(--text)", fontWeight: 800, fontSize: "0.82rem", whiteSpace: "nowrap",
+        }
+        const badge = (k: number) => k > 0 && <span style={{ minWidth: 18, height: 18, padding: "0 5px", borderRadius: 999, background: "var(--accent-dim)", color: "var(--accent)", fontSize: "0.7rem", fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{k}</span>
+        return (
+          <div className="lab-rise" style={{ display: "flex", gap: 8 }}>
+            <button className="lab-press" onClick={() => onDay("take")} style={pill}><span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{t("➕ Zusätzlich genommen")}</span>{badge(nx)}</button>
+            <button className="lab-press" onClick={() => onDay("sides")} style={{ ...pill, flex: "0 0 auto" }}><span>{t("🤕 Beschwerde")}</span>{badge(ns)}</button>
+          </div>
+        )
+      })()}
 
       {pushOff && (
         <div className="lab-card lab-rise" style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
@@ -1114,6 +1192,7 @@ function ResultsView({ s, wins, today, view, setView, adv, onVerdict, onCheckin,
       <Segmented value={view} onChange={setView} options={[{ id: "auswertung", label: t("📊 Auswertung") }, { id: "verlauf", label: t("🧭 Verlauf") }]} />
       {view === "verlauf" ? <JourneyView s={s} wins={wins} today={today} onPhase={onPhase} goTab={goTab} /> : <>
         {(adv || found) && <ProGate s={s} feature="patterns"><PatternStrip s={s} /></ProGate>}
+        <SuspectCard s={s} />
         {Object.keys(s.checkins).length >= 3 && (
           <button onClick={onRecap} className="lab-press" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 20, border: "none", color: "#fff", textAlign: "left",
             background: "linear-gradient(135deg, #9085e9 0%, #3987e5 60%, #2ECC8A 100%)" }}>
@@ -1640,6 +1719,7 @@ function PastDaysSheet({ s, days, today, onClose, onPick }: { s: LabState; days:
                 {w && <span style={{ display: "block", fontSize: "0.72rem", color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{phaseTitle(s, w)}</span>}
               </span>
               {c && c.tags.length > 0 && <span title={c.tags.map(x => t(x)).join(", ")} style={{ fontSize: "0.85rem", whiteSpace: "nowrap" }}>{c.tags.map(x => TAG_EMOJI[x] ?? "•").slice(0, 3).join("")}</span>}
+              {extrasOn(s, d).length > 0 && <span title={t("Extra genommen")} style={{ fontSize: "0.85rem", whiteSpace: "nowrap" }}>➕</span>}
               <span style={{ fontSize: "0.8rem", fontWeight: 800, whiteSpace: "nowrap", color: avg != null ? "var(--text)" : d === today ? "var(--text-dim)" : "var(--warning)" }}>
                 {avg != null ? <>{fmt(avg)}<span style={{ color: "#f5b400" }}> ★</span></> : d === today ? t("noch offen") : t("fehlt")}
               </span>
@@ -2063,6 +2143,14 @@ function TimeSettings({ settings, onChange }: { settings: Settings; onChange: (s
           <input type="time" value={settings[k]} onChange={e => onChange({ ...settings, [k]: e.target.value })} style={{ padding: "6px 10px", borderRadius: 10, fontWeight: 700 }} />
         </div>
       ))}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
+        <span style={{ fontWeight: 700, fontSize: "0.9rem", minWidth: 0 }}>{t("🌙 Morgen-Frage")}</span>
+        <select value={settings.morningDelay ?? MORNING_DELAY_DEFAULT} onChange={e => onChange({ ...settings, morningDelay: Number(e.target.value) })}
+          aria-label={t("Morgen-Frage")} style={{ padding: "6px 8px", borderRadius: 10, fontWeight: 700, maxWidth: "62%" }}>
+          {MORNING_DELAYS.map(m => <option key={m} value={m}>{t("{n} Min nach dem Aufstehen", { n: m })}</option>)}
+        </select>
+      </div>
+      <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: -2, marginBottom: 10 }}>{t("Um {time} frage ich kurz, wie du geschlafen hast.", { time: clock(fromMin(morningMin(settings))) })}</div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ fontWeight: 700, fontSize: "0.9rem" }}>{t("🏋️ Training")}</span>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>

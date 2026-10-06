@@ -19,7 +19,16 @@ Jeder Montags-Sprint nimmt die obersten offenen Punkte der aktuellen Phase.
 - [ ] 5 Gespräche mit echten Nutzern (Einladung nach 7 Check-ins)
 - [ ] 30–50 Beta-Nutzer; Kennzahlen: 2. Check-in ≥ 50 %, 7 Check-ins ≥ 25 %
 
+- [ ] **Täglich nützlich** (Inhaber-Feedback 6. Okt): Morgen-Frage nach dem Aufstehen, „Zusätzlich genommen“, Beschwerden + Vermutung an jedem Tag, „✓ Genommen“ aus der Benachrichtigung
+- [ ] **Community Stufe 1** (CEO-Entscheidung 6. Okt – Community ist der Kern, nicht ein Extra): Supplement-Seiten „Erfahrungen“
+  in der App (anonyme, strukturierte Testergebnisse anderer: behalten/weglassen, Bereiche, Beschwerden – ab n ≥ 5),
+  Lab-Pseudonym + Kolbi-Avatar, Feed „Neu im Lab“, Teilen nach jedem Test als sozialer Moment; dieselben Zahlen
+  öffentlich als SEO-Seiten „Erfahrungen mit X“ (Wachstumsschleife). Keine erfundenen Einträge – leerer Zustand ehrlich.
+
 ## Phase 1 · Dez 2026–Feb 2027 · Verkaufen lernen
+- [ ] Version 1.1 nach Store-Freigabe: Apple Health / Health Connect (Schlafdauer, Schritte, Ruhepuls automatisch)
+- [ ] **Community Stufe 2** (ab ~1.000 aktiven Nutzern, nach Fachperson F1): Erfahrungsberichte als Text zu jeder
+  Substanz, Antworten, Melden + Moderation, Forenregeln, ab 18 – Kolbi bleibt neutrale Plattform
 - [ ] Store-Start iOS/Android, Abo live, Store-Optimierung (Titel, Screenshots, Bewertungen)
 - [ ] Preis-/Testphasen-Vergleich (z. B. 7 Tage gratis vs. ohne), Pro-Umfang nach Daten anpassen
 - [ ] Content täglich, bester Kanal verdoppeln, Product Hunt + Show HN

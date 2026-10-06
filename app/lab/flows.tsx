@@ -2,15 +2,17 @@
 import React, { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import {
-  FACES, FACE_LABELS, LIBRARY, SIDE_EFFECTS, SIDE_BY_ID, knownSides, intakeOn, ROUTE_INFO, SUPP_COLORS, CATEGORIES, GOALS, RHYTHMS, TRAININGS,
-  todayIso, addDays, fmtDate, diffDays, makeSupp, autoOrder, parseSuppList, goalRelevance,
-  activeDims, defaultCheckinTime, libOf, daySum, libTimeTip, STORE_MODE,
+  FACES, FACE_LABELS, LIBRARY, ROUTE_INFO, SUPP_COLORS, CATEGORIES, GOALS, RHYTHMS, TRAININGS,
+  todayIso, addDays, fmtDate, diffDays, makeSupp, autoOrder, parseSuppList, goalRelevance, extrasOn,
+  defaultCheckinTime, libOf, daySum, libTimeTip, STORE_MODE,
   type CheckIn, type Dim, type LabState, type MySupp, type Settings, type LibSupp, type GoalId, type Scores,
 } from "@/lib/supplementLab"
 import { hasNativeReminders } from "@/lib/labReminders"
+import { eveningDims, morningAnswered, sidesOf, type ExtraInput } from "@/lib/labDay"
+import { DaySheet, ExtraList, SidesWithSuspect } from "./day"
 import { pairsWith } from "@/lib/labInteractions"
 import { fetchOverview } from "@/lib/labCommunity"
-import { Btn, Capsule, Card, FaceRow, Label, Segmented, SideChips, Stars, TagChips } from "./ui"
+import { Btn, Capsule, Card, FaceRow, Label, Segmented, Stars, TagChips } from "./ui"
 import { KolbiTip, MASCOT_NAME, Mascot } from "./mascot"
 import { InstallHint } from "./install"
 import type { Mood } from "@/lib/labCoach"
@@ -417,19 +419,23 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
 
 // ── Check-in: 1 Screen, Gesichter + Sterne ────────────────────────────────────
 
-export function CheckInSheet({ s, date, phaseLabel, onDone, onClose }: {
+export function CheckInSheet({ s, date, phaseLabel, onDone, onClose, onAddExtra, onRemoveExtra }: {
   s: LabState; date: string; phaseLabel: string; onDone: (c: CheckIn) => void; onClose: () => void
+  onAddExtra: (date: string, item: ExtraInput, label: string) => void; onRemoveExtra: (date: string, id: string) => void
 }) {
   const existing = s.checkins[date]
   const yesterday = s.checkins[addDays(date, -1)]
-  const dims = activeDims(s)
+  const dims = eveningDims(s, date)
+  const sleptMorning = morningAnswered(s, date)
+  const [extraOpen, setExtraOpen] = useState(false)
   const [scores, setScores] = useState<Scores>(existing?.scores ?? {})
   const [touched, setTouched] = useState<Set<Dim>>(new Set(existing && !existing.quick ? (Object.keys(existing.scores) as Dim[]) : []))
   const [overall, setOverall] = useState<number | undefined>(existing ? Math.round(daySum(existing)) : undefined)
   const [tags, setTags] = useState<string[]>(existing?.tags ?? [])
   const [note, setNote] = useState(existing?.note ?? "")
-  const [sides, setSides] = useState<Record<string, number>>(existing?.sides ?? {})
-  const suggestedSides = knownSides(s, intakeOn(s, date)).map(id => SIDE_BY_ID[id]).filter(Boolean)
+  // Beschwerden vorbelegen – auch die, die tagsüber schon eingetragen wurden
+  const [sides, setSides] = useState<Record<string, number>>(() => sidesOf(s, date).sides)
+  const [suspect, setSuspect] = useState<Record<string, string>>(() => sidesOf(s, date).suspect)
   const [showNote, setShowNote] = useState(!!existing?.note)
   const isToday = date === todayIso()
   const dayLabel = isToday ? t("Heute") : diffDays(date, todayIso()) === 1 ? t("Gestern") : fmtDate(date)
@@ -445,7 +451,7 @@ export function CheckInSheet({ s, date, phaseLabel, onDone, onClose }: {
   const save = () => {
     const full: Scores = {}
     dims.forEach(d => { full[d.id] = scores[d.id] ?? overall ?? 3 })
-    onDone({ date, scores: full, tags, sides, note: note.trim(), quick: touched.size === 0 })
+    onDone({ date, scores: full, tags, sides, ...(Object.keys(suspect).length ? { suspect } : {}), note: note.trim(), quick: touched.size === 0 })
   }
 
   return (
@@ -484,6 +490,7 @@ export function CheckInSheet({ s, date, phaseLabel, onDone, onClose }: {
               <Stars value={scores[d.id]} onChange={v => setDim(d.id, v)} size={22} />
             </div>
           ))}
+          {sleptMorning && <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", paddingTop: 6, borderTop: "1px solid var(--border)" }}>{t("🌙 Schlaf hast du schon morgens eingetragen.")}</div>}
         </Card>
 
         {/* Störfaktoren direkt sichtbar (auch beim Nachtragen vergangener Tage, z. B. Alkohol am Wochenende) */}
@@ -495,12 +502,25 @@ export function CheckInSheet({ s, date, phaseLabel, onDone, onClose }: {
           <TagChips value={tags} onChange={setTags} />
         </Card>
 
+        {/* Extra-Einnahmen (außerhalb des Plans) – werden sofort gespeichert */}
+        <Card style={{ marginBottom: 12, padding: "12px 14px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: extrasOn(s, date).length ? 8 : 0 }}>
+            <span style={{ minWidth: 0 }}>
+              <Label>{t("Zusätzlich genommen?")}</Label>
+              <span style={{ display: "block", fontSize: "0.72rem", color: "var(--text-dim)" }}>{t("Auch außerhalb deines Plans.")}</span>
+            </span>
+            <button className="lab-press" onClick={() => setExtraOpen(true)} style={{ flexShrink: 0, padding: "8px 12px", borderRadius: 999, border: "1px dashed var(--border)", background: "var(--surface)", color: "var(--text)", fontWeight: 800, fontSize: "0.8rem" }}>{t("➕ Extra")}</button>
+          </div>
+          <ExtraList s={s} date={date} onRemove={id => onRemoveExtra(date, id)} />
+        </Card>
+        {extraOpen && <DaySheet s={s} date={date} fixedDate onlyTake z={470} onAdd={onAddExtra} onRemove={onRemoveExtra} onSides={() => {}} onClose={() => setExtraOpen(false)} />}
+
         <Card style={{ marginBottom: 12, padding: "12px 14px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-            <Label>{t("Nebenwirkungen?")}</Label>
+            <Label>{t("Beschwerden?")}</Label>
             <span style={{ fontSize: "0.68rem", color: "var(--text-dim)" }}>{t("1× leicht · 2× stark")}</span>
           </div>
-          <SideChips value={sides} onChange={setSides} suggested={suggestedSides.length ? suggestedSides : SIDE_EFFECTS.slice(0, 6)} all={SIDE_EFFECTS} />
+          <SidesWithSuspect s={s} date={date} value={sides} suspect={suspect} onChange={setSides} onSuspect={setSuspect} />
         </Card>
 
         <button onClick={() => setShowNote(v => !v)} style={{ background: "none", border: "none", color: "var(--text-dim)", fontWeight: 800, fontSize: "0.85rem", padding: "4px 0 10px", cursor: "pointer" }}>
