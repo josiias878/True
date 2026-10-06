@@ -824,6 +824,7 @@ export interface LabState {
   review?: { asked: string[]; answer?: "love" | "ok" | "meh" } // Bewertungs-Moment
   src?: string        // Herkunftskanal beim Start (?src=reddit) – nur für die anonyme Statistik
   statsOff?: boolean  // anonyme Nutzungsstatistik abgeschaltet
+  migrated?: string[] // einmalige Umstellungen, die schon gelaufen sind (z. B. "store-dose")
 }
 
 export const STORAGE_KEY = "true-supplement-lab-v1"
@@ -834,20 +835,22 @@ export function emptyState(): LabState {
     slotOverrides: {}, took: {}, tookAt: {}, settings: { ...DEFAULT_SETTINGS },
     reminders: { enabled: false, checkin: "22:00", intake: true }, xp: 0, badges: [],
     health: {}, healthEnabled: false, learned: [],
+    migrated: STORE_MODE ? ["store-dose"] : undefined, // neue Nutzer: keine Altlasten → Umstellung nie nötig
   }
 }
 
 /** Liest & migriert gespeicherte Daten (v1 → v2). */
 /** Name/Dosis aus der Bibliothek in der aktuellen Sprache zeigen (auch nach Sprachwechsel); eigene Namen bleiben. */
-function libText(x: MySupp): Partial<MySupp> {
+function libText(x: MySupp, clearLibDose = false): Partial<MySupp> {
   const lib = x.lib ? LIB_BY_ID[x.lib] : undefined
   if (!lib) return {}
   const out: Partial<MySupp> = {}
   if (x.name !== lib.name && toDe(x.name) === toDe(lib.name)) out.name = lib.name
   // Store-Modus: ältere Einträge, bei denen makeSupp die Bibliotheks-Menge als „deine Dosis“ vorbelegt hat, leeren –
   // sonst stünde die übliche Menge weiter wie eine persönliche Empfehlung in Erinnerungen/Tagesrunde.
-  // Nur bei exakt gleicher Angabe (auch übersetzt); eigene/abweichende Eingaben bleiben unangetastet.
-  if (STORE_MODE && x.dose && lib.dose && (x.dose === lib.dose || toDe(x.dose) === toDe(lib.dose))) out.dose = ""
+  // Nur bei exakt gleicher Angabe (auch übersetzt) und nur EINMAL (Merker "store-dose" in hydrate) – danach selbst
+  // eingetippte Mengen wie „3 g“ bleiben erhalten, auch wenn sie zufällig der Bibliotheks-Angabe entsprechen.
+  if (clearLibDose && x.dose && lib.dose && (x.dose === lib.dose || toDe(x.dose) === toDe(lib.dose))) out.dose = ""
   else if (x.dose && lib.dose && x.dose !== lib.dose && toDe(x.dose) === toDe(lib.dose)) out.dose = lib.dose
   return out
 }
@@ -859,7 +862,8 @@ export function hydrate(raw: unknown): LabState {
     goals: p.goals ?? [],
     settings: { ...DEFAULT_SETTINGS, ...p.settings },
     reminders: { ...emptyState().reminders, ...p.reminders },
-    supps: (p.supps ?? []).map(x => ({ ...x, ...libText(x), mode: x.mode ?? "test" })),
+    supps: (p.supps ?? []).map(x => ({ ...x, ...libText(x, STORE_MODE && !p.migrated?.includes("store-dose")), mode: x.mode ?? "test" })),
+    migrated: STORE_MODE && !p.migrated?.includes("store-dose") ? [...(p.migrated ?? []), "store-dose"] : p.migrated,
     took: p.took ?? {},
     tookAt: p.tookAt ?? {},
     health: p.health ?? {},

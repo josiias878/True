@@ -263,7 +263,7 @@ It also shows what your supplements cost per month, so "drop" has a visible upsi
 - **Local-first:** no account, the data stays on your device. There's a backup export.
 - **No promises about supplements.** Kolbi doesn't tell you that something works – it helps you find out whether *you* notice a difference. A self-test isn't a study, and the app says so.
 - **Stack:** React + Vite, installable as a PWA, Capacitor for the store builds (in progress). The mascot is SVG, animated with CSS.
-- **Pricing:** free during the beta. After that there'll be a Pro tier (€2.99/month). Anyone who starts before Nov 30 keeps Pro for free.
+- **Pricing:** free during the beta. After that there'll be a Pro tier (€2.99/month). Anyone who starts by Nov 30 keeps Pro for free.
 
 **What I'd love feedback on**
 
