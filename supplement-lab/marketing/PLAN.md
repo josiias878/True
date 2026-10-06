@@ -21,6 +21,11 @@ Feedback aus `lab_feedback` einarbeiten; Store-Build vorbereiten, sobald der App
 
 ## Entscheidungen (vom Inhaber)
 
+- ✅ 6. Okt 2026 (CEO): **App-Richtung „Instagram trifft Reddit“** – Kolbi wird selbst die Plattform. Instagram-Teil:
+  Stories (Wochen-Story), Ergebnis-Posts als Bildkarte, Lab-Profil mit Pseudonym/Avatar. Reddit-Teil: pro Supplement eine
+  Community („Lab Magnesium“: Beitreten, Überblick/Beiträge/Fragen/Regeln), Abstimmen „hilfreich“, Antworten, Melden.
+  Neue Leiste: Heute · Entdecken · ＋ · Labor · Ich. Vorschau: https://claude.ai/artifact/AsWy1V5AFkxPznnbMJ37nQ.
+  Freitext-Beiträge/Antworten erst mit Moderation + Fachperson F1 (Stufe 2); strukturierte Ergebnis-Posts zuerst.
 - ✅ 6. Okt 2026 (CEO): **Community-Basis bleibt gratis** (Teilen + „Was andere erlebt haben“ in groben Worten), Pro bekommt
   die Tiefe (Verteilung, Bereiche, Filter). Schwellen: n 5–19 nur grobe Worte, ab n ≥ 20 Prozente; Beschwerden ab
   3 Nennungen; öffentliche SEO-Seiten ab n ≥ 20. Pseudonym wird generiert (kein Freitext). Feed ab Tag 1 mit Melden/Ausblenden.
