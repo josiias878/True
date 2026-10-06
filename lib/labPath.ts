@@ -69,7 +69,7 @@ export function pathStops(s: LabState, today: string, now: Date, checkinLocked: 
     // offen ab checkinOpensMin (6 h vor der Erinnerung, frühestens 8 h nach dem Aufstehen) – Frühaufsteher z. B. ab 16 Uhr
     const cm = checkinOpensMin(s)
     add({ key: "checkin", date: today, kind: "checkin", emoji: "⭐", title: t("Check-in"),
-      sub: checked ? t("✓ erledigt") : checkinLocked ? t("ab {time}", { time: clock(s.reminders.checkin) }) : t("Wie war dein Tag?"),
+      sub: checked ? t("✓ erledigt") : checkinLocked ? t("ab {time}", { time: clock(fromMin(cm)) }) : t("Wie war dein Tag?"),
       state: checked ? "done" : checkinLocked || nowRel < cm ? "future" : "now" })
     if (!w && next && !wins.some(p => p.kind === "stack"))
       add({ key: "start-next", date: today, kind: "startTest", emoji: "🔬", title: t("Test starten: {name}", { name: next.name }), sub: t("Mein Vorschlag"), suppId: next.id, state: "now", color: col(next.id) })

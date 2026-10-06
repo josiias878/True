@@ -1073,7 +1073,7 @@ function Dashboard({ s, wins, today, now, msgs, onAction, onQuick, onTake, onPha
         const nx = extrasOn(s, today).length
         const ns = Object.keys(sidesOf(s, today).sides).length
         const pill: React.CSSProperties = {
-          flex: 1, minWidth: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 8px", borderRadius: 999,
+          flex: "1 1 auto", minWidth: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 10px", borderRadius: 999,
           border: "1px solid var(--glass-line)", background: "var(--surface)", color: "var(--text)", fontWeight: 800, fontSize: "0.82rem", whiteSpace: "nowrap",
         }
         const badge = (k: number) => k > 0 && <span style={{ minWidth: 18, height: 18, padding: "0 5px", borderRadius: 999, background: "var(--accent-dim)", color: "var(--accent)", fontSize: "0.7rem", fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{k}</span>

@@ -54,7 +54,7 @@ export function buildIcs(s: LabState): string {
 
   // Morgen-Frage: Wie hast du geschlafen? (Aufstehzeit + morningDelay)
   ev.push(event("morning", icsDate(from, fromMin(morningMin(s.settings))), t("🌙 Wie hast du geschlafen? (1 Tipp)"),
-    t("Einmal tippen – so sehe ich, was dir nachts hilft."), icsDate(checkinUntil, "23:59")))
+    t("Einmal tippen – so sehe ich, was bei dir nachts einen Unterschied macht."), icsDate(checkinUntil, "23:59")))
 
   // Täglicher Check-in
   ev.push(event("checkin", icsDate(from, s.reminders.checkin), t("🧪 Supplement-Check-in (1 Klick)"),
@@ -223,7 +223,7 @@ export function notificationPlan(s: LabState, days = 7, now = new Date()): Plann
       const body = names.length
         ? t("1 Tipp für die Nacht – und jetzt {names}. Tippe „Genommen“ oder öffne deine Runde.", { names: joinNames(names) })
         : missedYesterday ? t("1 Tipp für die Nacht – und gestern fehlt noch der Check-in (10 Sekunden).")
-        : t("1 Tipp genügt – so sehe ich, was dir nachts hilft.")
+        : t("1 Tipp genügt – so sehe ich, was bei dir nachts einen Unterschied macht.")
       out.push({
         key: `morning-${date}`, kind: "morning", url: `${round}&morning=1`, at, title, body, date, ...(ids.length ? { suppIds: ids } : {}),
         generic: { title, body: names.length ? t("1 Tipp für die Nacht + deine Morgen-Einnahme.") : missedYesterday ? t("1 Tipp für die Nacht – und gestern nachtragen.") : t("1 Tipp genügt.") },

@@ -58,7 +58,8 @@ export function morningDue(s: LabState, today: string, now: Date): boolean {
   if (morningAnswered(s, today) || s.checkins[today]?.scores.schlaf != null) return false
   const nowRel = relMin(now.getHours() * 60 + now.getMinutes(), s.settings)
   const wake = relMin(toMin(s.settings.wake), s.settings)
-  return nowRel >= wake - 30 && nowRel < checkinOpensMin(s)
+  // spätestens 6 h nach dem Aufstehen – danach fragt der Abend-Check-in den Schlaf mit (kein „Wie hast du geschlafen?“ am Nachmittag)
+  return nowRel >= wake - 30 && nowRel < Math.min(checkinOpensMin(s), wake + 360)
 }
 
 /** Uhrzeit der Morgen-Frage als HH:MM (für Einstellungen/Erklärtexte). */
