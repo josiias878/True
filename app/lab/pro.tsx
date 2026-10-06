@@ -51,13 +51,15 @@ function Diverge({ v }: { v: number }) {
 
 // ── Die vier Beispiel-Ansichten ───────────────────────────────────────────────
 function PatternsView() {
+  // echte Störfaktor-Tags aus der Tagesrunde (TAGS), Werte nur Beispiel
   const rows = [
-    { e: "🏃", l: t("Mit Training"), d: t("Schlaf"), v: 0.4 },
-    { e: "☕", l: t("Kaffee nach 15 Uhr"), d: t("Schlaf"), v: -0.5 },
+    { e: "🏃", l: t("Training"), d: t("Schlaf"), v: 0.4 },
+    { e: "😤", l: t("Viel Stress"), d: t("Ruhe"), v: -0.6 },
+    { e: "🍽️", l: t("Spät gegessen"), d: t("Schlaf"), v: -0.3 },
   ]
   return (
     <>
-      <TopBar title={t("🔎 Muster-Detektor")} />
+      <TopBar title={t("🔎 Muster")} />
       <div style={mini}>
         <div style={{ fontWeight: 900, fontSize: "0.74rem" }}>🍷 {t("Am Tag nach Alkohol")}</div>
         <div style={{ ...dim, margin: "1px 0 7px" }}>{t("Energie · 6× beobachtet")}</div>
@@ -72,7 +74,7 @@ function PatternsView() {
           <div key={r.l} style={{ display: "flex", alignItems: "center", gap: 7 }}>
             <span style={{ width: 24, height: 24, borderRadius: 8, background: "var(--surface-2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", flexShrink: 0 }}>{r.e}</span>
             <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ display: "block", fontSize: "0.66rem", fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.l}</span>
+              <span style={{ display: "block", fontSize: "0.66rem", fontWeight: 800, lineHeight: 1.2 }}>{r.l}</span>
               <span style={{ ...dim, display: "block" }}>{r.d}</span>
             </span>
             <span style={{ fontSize: "0.68rem", fontWeight: 900, color: r.v >= 0 ? UP : DOWN }}>{signed(r.v)}★</span>
@@ -87,12 +89,12 @@ function CostsView() {
   const items = [
     { l: t("Supplement A"), v: 16, c: "#6c7cff" },
     { l: t("Supplement B"), v: 11, c: "#2bb3a3" },
-    { l: t("Supplement C"), v: 7, c: "#e9a23b" },
+    { l: t("Supplement C"), v: 12, c: "#e9a23b" },
   ]
   const sum = items.reduce((a, x) => a + x.v, 0)
   return (
     <>
-      <TopBar title={t("💸 Kosten & Sparen")} />
+      <TopBar title={t("💸 Kosten")} />
       <div style={mini}>
         <div style={dim}>{t("Dein Stack im Monat")}</div>
         <div style={{ fontSize: "1.55rem", fontWeight: 900, lineHeight: 1.1, margin: "1px 0 7px" }}>{euro(sum)}</div>
@@ -110,7 +112,7 @@ function CostsView() {
         </div>
       </div>
       <div style={{ ...mini, marginTop: 7, background: "var(--accent-dim)", border: "none", boxShadow: "none" }}>
-        <div style={{ fontSize: "0.7rem", fontWeight: 900 }}>{t("Spar-Chance: {p} im Monat", { p: euro(7) })}</div>
+        <div style={{ fontSize: "0.7rem", fontWeight: 900 }}>{t("Spar-Chance: {p} im Monat", { p: euro(12) })}</div>
         <div style={{ ...dim, marginTop: 2, lineHeight: 1.35 }}>{t("Supplement C: bei dir kein Unterschied zu deinem Normal")}</div>
       </div>
     </>
@@ -124,15 +126,15 @@ function CommunityView() {
   const dims = (["schlaf", "energie", "ruhe"] as const).map((id, i) => ({ d: DIMS.find(x => x.id === id)!, v: [0.6, 0.2, 0.3][i] }))
   return (
     <>
-      <TopBar title={t("👥 Supplement A")} />
+      <TopBar title={t("👥 Community")} />
       <div style={{ display: "flex", gap: 5, marginBottom: 7 }}>
         <span style={{ fontSize: "0.6rem", fontWeight: 800, padding: "3px 8px", borderRadius: 999, background: "var(--surface-2)", color: "var(--text-dim)" }}>{t("Alle")}</span>
         <span style={{ fontSize: "0.6rem", fontWeight: 900, padding: "3px 8px", borderRadius: 999, background: "color-mix(in srgb, #6c7cff 18%, var(--surface))", color: "#6c7cff", border: "1px solid color-mix(in srgb, #6c7cff 45%, transparent)" }}>{t("Ziel: Schlaf")} ✓</span>
       </div>
       <div style={mini}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <span style={{ fontSize: "0.68rem", fontWeight: 900 }}>{t("Verteilung")}</span>
-          <span style={dim}>{t("{n} Tests", { n: 48 })}</span>
+          <span style={{ fontSize: "0.68rem", fontWeight: 900, whiteSpace: "nowrap" }}>{t("Verteilung")}</span>
+          <span style={{ ...dim, whiteSpace: "nowrap" }}>{t("{n} Tests", { n: 48 })}</span>
         </div>
         <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 54, marginTop: 6 }}>
           {hist.map((h, i) => (
@@ -156,17 +158,22 @@ function CommunityView() {
   )
 }
 
+function Pair({ a, b, ok }: { a: string; b: string; ok: boolean }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "0.64rem", fontWeight: 800, whiteSpace: "nowrap" }}>
+      <span>{a}</span><span style={{ color: ok ? UP : DOWN }}>{ok ? "✨" : "⚡"}</span><span>{b}</span>
+    </div>
+  )
+}
+
 function TimingView() {
   const hours = [6, 10, 14, 18, 22]
   const pos = (h: number) => `${((h - 6) / 16) * 100}%`
   return (
     <>
-      <TopBar title={t("⏱️ Timing-Check")} />
+      <TopBar title={t("⏱️ Timing")} />
       <div style={mini}>
-        <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "0.68rem", fontWeight: 800 }}>
-          <span>{t("Supplement A")}</span><span style={{ color: DOWN }}>⚡</span><span style={{ flex: 1 }}>{t("Supplement B")}</span>
-          <span style={{ fontSize: "0.58rem", fontWeight: 900, color: DOWN }}>{t("nur {gap}", { gap: t("1 Std") })}</span>
-        </div>
+        <Pair a={t("Supplement A")} b={t("Supplement B")} ok={false} />
         <div style={{ position: "relative", height: 26, marginTop: 8 }}>
           <span style={{ position: "absolute", left: 0, right: 0, top: 8, height: 4, borderRadius: 2, background: "var(--surface-2)" }} />
           {[{ h: 8, c: "#6c7cff" }, { h: 9, c: "#2bb3a3" }].map(p => (
@@ -175,12 +182,14 @@ function TimingView() {
           <span style={{ position: "absolute", left: pos(20), top: 4, width: 12, height: 12, marginLeft: -6, borderRadius: 999, border: "2px dashed #2bb3a3", boxSizing: "border-box" }} />
           {hours.map(h => <span key={h} style={{ position: "absolute", left: pos(h), top: 17, transform: "translateX(-50%)", fontSize: "0.5rem", color: "var(--text-dim)", fontWeight: 700 }}>{h}</span>)}
         </div>
-        <div style={{ ...dim, lineHeight: 1.35, marginTop: 2 }}>{t("Lieber mit Abstand nehmen.")}</div>
-        <div style={{ marginTop: 7, padding: "6px 8px", borderRadius: 10, background: "var(--accent)", color: "#fff", fontSize: "0.64rem", fontWeight: 900, textAlign: "center" }}>⏰ {t("Supplement B")} → {clock("20:00")}</div>
+        <div style={{ fontSize: "0.6rem", fontWeight: 700, lineHeight: 1.35, marginTop: 3 }}>
+          <span style={{ color: DOWN, fontWeight: 900 }}>{t("nur {gap}", { gap: t("1 Std") })}</span><span style={{ color: "var(--text-dim)" }}> · {t("Lieber mit Abstand nehmen.")}</span>
+        </div>
+        <div style={{ marginTop: 7, padding: "6px 8px", borderRadius: 10, background: "var(--accent)", color: "#fff", fontSize: "0.62rem", fontWeight: 900, textAlign: "center", whiteSpace: "nowrap" }}>⏰ {t("Supplement B")} → {clock("20:00")}</div>
       </div>
-      <div style={{ ...mini, marginTop: 7, display: "flex", alignItems: "center", gap: 5, fontSize: "0.68rem", fontWeight: 800 }}>
-        <span>{t("Supplement C")}</span><span style={{ color: UP }}>✨</span><span style={{ flex: 1 }}>{t("Supplement D")}</span>
-        <span style={{ fontSize: "0.58rem", fontWeight: 900, color: UP }}>{t("zusammen ✓")}</span>
+      <div style={{ ...mini, marginTop: 7 }}>
+        <Pair a={t("Supplement C")} b={t("Supplement D")} ok />
+        <div style={{ fontSize: "0.6rem", fontWeight: 900, color: UP, marginTop: 3 }}>{t("zusammen ✓")}</div>
       </div>
     </>
   )
@@ -208,7 +217,7 @@ function useReducedMotion() {
 }
 
 /** Telefonrahmen; unten vom Kopf abgeschnitten (`visible` = sichtbare Höhe) */
-function PhoneFrame({ children, visible = 330, onPointerDown, onPointerUp }: {
+function PhoneFrame({ children, visible = 304, onPointerDown, onPointerUp }: {
   children: React.ReactNode; visible?: number; onPointerDown: (e: React.PointerEvent) => void; onPointerUp: (e: React.PointerEvent) => void
 }) {
   const W = 226
@@ -328,7 +337,7 @@ export function ProFeatureGrid({ pro, highlight }: { pro: boolean; highlight?: P
               <span aria-hidden style={{ width: 42, height: 42, borderRadius: 14, background: "var(--surface-2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.35rem", flexShrink: 0 }}>{f.emoji}</span>
               <span style={{ flex: 1 }} />
               <NewBadge id={f.id} />
-              {pro && <span aria-label={t("aktiv")} style={{ width: 22, height: 22, borderRadius: 999, background: "var(--accent)", color: "#fff", fontSize: "0.72rem", fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>✓</span>}
+              {pro && <span aria-label={t("aktiv")} style={{ width: 22, height: 22, borderRadius: 999, background: "var(--accent-dim)", color: "var(--accent)", fontSize: "0.72rem", fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>✓</span>}
             </div>
             <div style={{ fontWeight: 900, fontSize: "0.94rem", lineHeight: 1.2, marginTop: 10 }}>{f.title}</div>
             <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", lineHeight: 1.38, marginTop: 3 }}>{f.text}</div>
