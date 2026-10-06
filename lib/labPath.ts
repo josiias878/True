@@ -2,13 +2,14 @@
 // Was heute noch ansteht und was in den nächsten Tagen passiert — als Stationen auf einer Strecke.
 
 import {
-  addDays, diffDays, fromMin, intakeOn, nextCandidates, phaseWindows, relMin, stackMembers, streak, suppColor, suppMinutes, toMin,
+  addDays, checkinOpensMin, diffDays, fromMin, intakeOn, morningMin, nextCandidates, phaseWindows, relMin, stackMembers, streak, suppColor, suppMinutes,
   type LabState,
 } from "./supplementLab"
+import { morningAnswered, morningDue } from "./labDay"
 import { t, clock } from "./labI18n"
 import { LOW_DAYS, inUse, stockInfo } from "./labStock"
 
-export type StopKind = "take" | "checkin" | "result" | "lastDay" | "nextTest" | "startTest" | "stock" | "streak" | "stack" | "check" | "reset"
+export type StopKind = "morning" | "take" | "checkin" | "result" | "lastDay" | "nextTest" | "startTest" | "stock" | "streak" | "stack" | "check" | "reset"
 
 export interface Stop {
   key: string
@@ -43,6 +44,12 @@ export function pathStops(s: LabState, today: string, now: Date, checkinLocked: 
   if (!notStarted && yesterday >= first.start && !s.checkins[yesterday])
     out.push({ key: "catchup", date: today, kind: "checkin", emoji: "🌅", title: t("Gestern nachtragen"), sub: t("10 Sekunden"), state: "now" })
   if (!notStarted) {
+    // Morgen-Frage (Schlaf): offen ab dem Aufstehen bis der Abend-Check-in öffnet, danach fragt der Check-in mit
+    if (morningAnswered(s, today))
+      out.push({ key: "morning", date: today, kind: "morning", emoji: "🌙", title: t("Wie hast du geschlafen?"), sub: t("✓ erledigt"), state: "done" })
+    else if (morningDue(s, today, now))
+      out.push({ key: "morning", date: today, kind: "morning", emoji: "🌙", title: t("Wie hast du geschlafen?"), sub: t("1 Tipp"),
+        state: nowRel >= relMin(morningMin(s.settings), s.settings) - 30 ? "now" : "future" })
     const took = s.took[today] ?? []
     const ids = [...intakeOn(s, today)].sort((a, b) => suppMinutes(a, s) - suppMinutes(b, s))
     for (const id of ids) {
@@ -59,11 +66,11 @@ export function pathStops(s: LabState, today: string, now: Date, checkinLocked: 
         add({ key: `result-${p.id}`, date: today, kind: "result", emoji: "🎁", title: t("Ergebnis: {name}", { name: name(p.suppId) }), sub: t("Aufdecken!"), suppId: p.suppId, state: "now", color: col(p.suppId) })
     }
     const checked = !!s.checkins[today]
-    let cm = toMin(s.reminders.checkin)
-    cm = relMin(cm, s.settings)
+    // offen ab checkinOpensMin (6 h vor der Erinnerung, frühestens 8 h nach dem Aufstehen) – Frühaufsteher z. B. ab 16 Uhr
+    const cm = checkinOpensMin(s)
     add({ key: "checkin", date: today, kind: "checkin", emoji: "⭐", title: t("Check-in"),
       sub: checked ? t("✓ erledigt") : checkinLocked ? t("ab {time}", { time: clock(s.reminders.checkin) }) : t("Wie war dein Tag?"),
-      state: checked ? "done" : checkinLocked || nowRel < cm - 60 ? "future" : "now" })
+      state: checked ? "done" : checkinLocked || nowRel < cm ? "future" : "now" })
     if (!w && next && !wins.some(p => p.kind === "stack"))
       add({ key: "start-next", date: today, kind: "startTest", emoji: "🔬", title: t("Test starten: {name}", { name: next.name }), sub: t("Mein Vorschlag"), suppId: next.id, state: "now", color: col(next.id) })
     else if (!w && !next && stackMembers(s, false).length && !wins.some(p => p.kind === "stack"))

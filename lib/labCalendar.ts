@@ -37,7 +37,7 @@ export function calendarUrls() {
 // ── ICS ────────────────────────────────────────────────────────────────────────
 
 const NEUTRAL: Record<Stop["kind"], string> = {
-  take: t("💊 Einnahme"), checkin: t("⭐ Check-in"), result: t("🎁 Ein Test-Ergebnis ist da"), lastDay: t("🏁 Letzter Testtag"),
+  morning: t("🌙 Wie hast du geschlafen?"), take: t("💊 Einnahme"), checkin: t("⭐ Check-in"), result: t("🎁 Ein Test-Ergebnis ist da"), lastDay: t("🏁 Letzter Testtag"),
   nextTest: t("🔬 Nächster Test (Vorschlag)"), startTest: t("🔬 Test starten"), stock: t("🛒 Vorrat nachkaufen"), streak: t("🔥 Serien-Meilenstein"),
   stack: t("🏆 Stack starten"), check: t("🤔 Entscheidung fällig"), reset: t("🧘 Reset startet"),
 }
@@ -63,7 +63,7 @@ export function buildMilestoneIcs(s: LabState, opts: { names: boolean; origin: s
   if (s.startDate) {
     const { stops } = pathStops(s, today, new Date(), false, 60)
     for (const st of stops) {
-      if (st.date <= today || st.kind === "take" || st.kind === "checkin") continue
+      if (st.date <= today || st.kind === "take" || st.kind === "checkin" || st.kind === "morning") continue
       const title = opts.names ? `${st.emoji} ${st.title}` : NEUTRAL[st.kind]
       const desc = opts.names && st.sub ? st.sub : st.est ? t("Kolbis Vorschlag – du entscheidest in der App.") : t("Tippe auf den Link, um die App zu öffnen.")
       const min = st.kind === "result" ? wake + 60 : st.kind === "stock" ? wake + 150 : wake + 90
