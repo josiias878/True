@@ -102,6 +102,14 @@ EN: works/helps/boosts/improves/fixes/cures, proven, clinically, detox, hack you
   bei Ergebnis-Beispielen lieber „Supplement A/B“ als echte Namen. Echte Zahlen kommen in **[Klammern]** in den
   Entwurf und werden erst beim Posten eingetragen.
 
+### App-Layout: eine Hauptsache pro Bildschirm (Inhaber-Vorgabe, 6. Okt 2026)
+
+- **Jeder Bildschirm hat genau EINE Hauptsache**, groß und mittig (z. B. Heute: die eine fällige Frage; Lab-Seite: „58 % behalten“; Feed: ein Post nach dem anderen).
+- **Alles Weitere eine Ebene tiefer** – über wenige, kleine Knöpfe/Reiter (max. 3–4), nicht untereinander gestapelt.
+- **Keine Karten-Stapel** mit vielen Infos hintereinander. Lieber weglassen oder hinter „Mehr ›“.
+- Viel Luft, wenig Text, große Zahlen. Vorbild: Instagram (ein Blick) + Reddit (Ebenen über Reiter).
+- Vorschau: https://claude.ai/artifact/AsWy1V5AFkxPznnbMJ37nQ
+
 ## 6 · Health-Claims in Kürze (voll: `legal/health-claims-check.md`)
 
 - ✅ Über die **App** sprechen: testen, vergleichen, erinnern, sparen, „bei dir“.
