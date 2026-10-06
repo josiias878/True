@@ -109,6 +109,11 @@ EN: works/helps/boosts/improves/fixes/cures, proven, clinically, detox, hack you
 - **Keine Karten-Stapel** mit vielen Infos hintereinander. Lieber weglassen oder hinter „Mehr ›“.
 - Viel Luft, wenig Text, große Zahlen. Vorbild: Instagram (ein Blick) + Reddit (Ebenen über Reiter).
 - Vorschau: https://claude.ai/artifact/AsWy1V5AFkxPznnbMJ37nQ
+- **Farben nach Rolle (CEO, 6. Okt 2026):** Lese-Flächen (Feed, Labs, Ich) neutral wie Instagram – ruhiges Grafit bzw.
+  Weiß, keine Verläufe. **Grün→Blau nur für Selbsttest-Elemente** (Heute-Hauptsache, Test-Fortschritt, „Selbst testen“,
+  Aufdeck-Momente, ＋, Kolbi). **Jedes Lab/Ziel hat eine eigene ruhige Akzentfarbe** (Schlaf Indigo #6c7cff · Fokus
+  Bernstein #e9a23b · Ruhe Türkis #2bb3a3 · Training Korall #f06a5a · Energie Gelb #e3c341 · Verdauung Oliv #8fb84a ·
+  Haut/Haare Rosa #e27fb0 · Sonstiges Grau #8c8c99) – nur als Akzent, nie großflächig.
 
 ## 6 · Health-Claims in Kürze (voll: `legal/health-claims-check.md`)
 

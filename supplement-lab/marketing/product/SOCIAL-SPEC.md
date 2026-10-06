@@ -36,7 +36,7 @@ Kolbi (Maskottchen) bleibt der Begleiter: spricht auf Heute, kommentiert Ergebni
   nur von Community-Teilnehmern (Einwilligung), angezeigt ab 3.
 - **S2 (nach Fachperson F1, mit Moderation):** Konto ohne E-Mail (anonymes Konto), Folgen, kurzer Satz zum Ergebnis-Post,
   „Durchhalten“, ▲ hilfreich, Antworten, Melden/Blockieren, Startwellen mit Einladungslink.
-- **S3:** Beiträge & Fragen frei (Reddit-Teil), Lab-Wochen-Stories, öffentliche SEO-Seiten ab n ≥ 20.
+- **S3:** eigene Gruppen erstellen (Nutzer-Gruppen in eigenen Farben, moderiert), Beiträge & Fragen frei (Reddit-Teil), Lab-Wochen-Stories, öffentliche SEO-Seiten ab n ≥ 20.
 
 ## 4 · Kennzahlen
 
