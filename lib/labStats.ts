@@ -8,6 +8,9 @@ export type StatEvent =
   | "onboarding_view" | "demo" | "onboarded" | "onboarded_pwa" | "first_checkin" | "checkin" | "checkins_3" | "checkins_7" | "checkins_14" | "checkins_30"
   | "verdict" | "experiment" | "push_on" | "invite" | "share_card" | "recap" | "review_love" | "review_ok" | "review_meh" | "feedback"
   | "paywall_view" | "purchase" | "restore"
+  // Neu (Morgen-Frage / Extra-Einnahme): reine Zähler ohne Inhalte. Server-Allow-Liste (supabase/functions/lab-stats) muss
+  // noch ergänzt + deployt werden – bis dahin antwortet der Server mit 400 und es wird nichts gezählt (harmlos).
+  | "morning_checkin" | "extra_intake"
 
 let cfg = { off: false, src: "" }
 /** Feste Quelle für Test-Builds (z. B. VITE_STATS_SRC=playtest beim Build) – gilt nur, wenn kein Start-Link-Kanal da ist. */

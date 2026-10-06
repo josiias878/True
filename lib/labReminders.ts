@@ -4,8 +4,9 @@
 
 import {
   LIB_BY_ID, SLOTS, phaseWindows, intakeOn, slotFor, slotMinutes, suppMinutes, fromMin, toMin, todayIso, addDays, diffDays, libOf, streak,
-  STORAGE_KEY, hydrate, STORE_MODE, LAB_BASE, isHere, type LabState, type SlotId,
+  STORAGE_KEY, hydrate, saveState, STORE_MODE, LAB_BASE, isHere, morningMin, type LabState, type SlotId,
 } from "./supplementLab"
+import { morningAnswered } from "./labDay"
 import { partnerTips } from "./labKnowledge"
 import { LOW_DAYS, buyInfo, inUse, stockInfo } from "./labStock"
 import { t, clock } from "./labI18n"
@@ -50,6 +51,10 @@ export function buildIcs(s: LabState): string {
   const last = { end: lastEnd < horizon ? lastEnd : horizon }
   const checkinUntil = horizon
   const ev: string[] = []
+
+  // Morgen-Frage: Wie hast du geschlafen? (Aufstehzeit + morningDelay)
+  ev.push(event("morning", icsDate(from, fromMin(morningMin(s.settings))), t("🌙 Wie hast du geschlafen? (1 Tipp)"),
+    t("Einmal tippen – so sehe ich, was dir nachts hilft."), icsDate(checkinUntil, "23:59")))
 
   // Täglicher Check-in
   ev.push(event("checkin", icsDate(from, s.reminders.checkin), t("🧪 Supplement-Check-in (1 Klick)"),
@@ -125,7 +130,7 @@ export function downloadIcs(s: LabState) {
 // Max. ~3–4 am Tag: pro Tageszeit gebündelt, abends die Tagesrunde, Serien-Retter,
 // „Ergebnis ist da“ und sonntags ein Praxis-Tipp. Jede Nachricht führt direkt in die App.
 
-export type NotifKind = "take" | "checkin" | "streak" | "result" | "tip" | "stock"
+export type NotifKind = "morning" | "take" | "checkin" | "streak" | "result" | "tip" | "stock"
 
 export interface PlannedNotification {
   id: number
@@ -136,6 +141,8 @@ export interface PlannedNotification {
   at: Date
   url: string
   suppIds?: string[]
+  /** Lab-Tag, zu dem die Nachricht gehört (YYYY-MM-DD) – „✓ Genommen“ trägt die Einnahme für diesen Tag ein. */
+  date?: string
   /** Neutrale Fassung ohne Supplement-Namen/Gesundheitsdaten — nur die geht an den Push-Server. */
   generic: { title: string; body: string }
 }
@@ -190,7 +197,7 @@ export function notificationPlan(s: LabState, days = 7, now = new Date()): Plann
         const info = custom ? { emoji: "⏰", label: clock(fromMin(m)) } : SLOTS.find(x => x.id === slot)!
         const lib = libOf(supps[0])
         out.push({
-          key: `take-${date}-${m}`, kind: "take", suppIds: supps.map(x => x.id), url: round,
+          key: `take-${date}-${m}`, kind: "take", suppIds: supps.map(x => x.id), url: round, date,
           at: atDate(date, m),
           title: `${info.emoji} ${info.label}: ${joinNames(supps.map(x => x.name))}`,
           body: supps.length === 1 && lib ? shorten(`💡 ${lib.timing}`, 150) : `${supps.map(x => x.emoji).join(" ")} ${t("Tippe „Genommen“ oder öffne deine Runde.")}`,
@@ -199,14 +206,27 @@ export function notificationPlan(s: LabState, days = 7, now = new Date()): Plann
       }
     }
 
-    // Morgens: Check-in von gestern vergessen? (Wird beim nächsten Öffnen neu geplant – wer abends
-    // eincheckt, bekommt diese Nachricht also gar nicht erst.)
+    // Morgens EINE Nachricht (Aufstehzeit + morningDelay, Standard + 45 Min): „Wie hast du geschlafen?“ –
+    // fehlt der Check-in von gestern, wird das Nachtragen mit angeboten (früher eigene Nachricht um Aufstehzeit + 45).
+    // Einnahmen ±30 Min. davon werden mitgenommen (inkl. „✓ Genommen“). Wird beim nächsten Öffnen neu geplant –
+    // wer morgens schon geantwortet hat, bekommt sie heute nicht.
     const prevDay = addDays(date, -1)
-    if (prevDay >= wins[0].start && !s.checkins[prevDay]) {
+    const missedYesterday = prevDay >= wins[0].start && !s.checkins[prevDay]
+    if (!(date === today && (morningAnswered(s, date) || s.checkins[date]?.scores.schlaf != null))) {
+      const mm = morningMin(s.settings)
+      const at = atDate(date, mm)
+      const near = out.filter(n => n.kind === "take" && n.key.startsWith(`take-${date}-`) && Math.abs(+n.at - +at) <= 30 * 60_000)
+      const ids = near.flatMap(n => n.suppIds ?? [])
+      for (const n of near) out.splice(out.indexOf(n), 1)
+      const names = ids.map(id => s.supps.find(x => x.id === id)?.name).filter(Boolean) as string[]
+      const title = missedYesterday ? t("🌅 Guten Morgen! Wie hast du geschlafen?") : t("🌙 Wie hast du geschlafen?")
+      const body = names.length
+        ? t("1 Tipp für die Nacht – und jetzt {names}. Tippe „Genommen“ oder öffne deine Runde.", { names: joinNames(names) })
+        : missedYesterday ? t("1 Tipp für die Nacht – und gestern fehlt noch der Check-in (10 Sekunden).")
+        : t("1 Tipp genügt – so sehe ich, was dir nachts hilft.")
       out.push({
-        key: `catchup-${date}`, kind: "checkin", url: round, at: atDate(date, wake + 45),
-        title: t("🌅 Wie war gestern?"), body: t("Der Check-in fehlt noch – 10 Sekunden nachtragen, dann bleibt deine Auswertung genau."),
-        generic: { title: t("🌅 Wie war gestern?"), body: t("10 Sekunden nachtragen, dann bleibt deine Auswertung genau.") },
+        key: `morning-${date}`, kind: "morning", url: `${round}&morning=1`, at, title, body, date, ...(ids.length ? { suppIds: ids } : {}),
+        generic: { title, body: names.length ? t("1 Tipp für die Nacht + deine Morgen-Einnahme.") : missedYesterday ? t("1 Tipp für die Nacht – und gestern nachtragen.") : t("1 Tipp genügt.") },
       })
     }
 
@@ -223,7 +243,7 @@ export function notificationPlan(s: LabState, days = 7, now = new Date()): Plann
         ? { title: t("🧪 Deine Abendrunde"), body: t("{names} nehmen + 1 Minute Check-in. So sehe ich, was bei dir wirklich wirkt.", { names: joinNames(names) }) }
         : { title: t("🧪 Kolbi wartet auf dich"), body: t("1 Minute: Wie war dein Tag? So sehe ich, was bei dir wirklich wirkt.") }
       out.push({
-        key: `checkin-${date}`, kind: "checkin", url: round, at, ...text, ...(ids.length ? { suppIds: ids } : {}),
+        key: `checkin-${date}`, kind: "checkin", url: round, at, date, ...text, ...(ids.length ? { suppIds: ids } : {}),
         generic: names.length ? { title: t("🧪 Deine Abendrunde wartet"), body: t("Einnahme + 1 Minute Check-in.") } : text,
       })
       if (i === 0 && st >= 3) {
@@ -292,6 +312,48 @@ export function notificationPlan(s: LabState, days = 7, now = new Date()): Plann
 
 /** Für die native App (Store): Alias auf den gemeinsamen Plan. */
 export function upcomingNotifications(s: LabState, days = 10, now = new Date()) { return notificationPlan(s, days, now) }
+
+// ── „✓ Genommen“ aus der Benachrichtigung (native App) ────────────────────────
+// native.ts meldet die Aktion hier; die laufende App (LabApp) übernimmt sie per onNotifTaken in ihren Zustand.
+// Ist (noch) keine App angemeldet, wird direkt in den Speicher geschrieben und die Aktion vorgemerkt –
+// sobald sich die App anmeldet, bekommt sie alle Aktionen seit dem Start (applyTaken ist idempotent).
+
+export interface NotifTaken { date: string; ids: string[]; at?: string }
+
+/**
+ * Einnahmen als genommen markieren (wie Antippen in der App): took + tookAt (nur wenn noch keine Uhrzeit da ist).
+ * Nur IDs, die es im Plan noch gibt. Der Vorrat sinkt automatisch (labStock zählt abgehakte Tage). Gibt die neu markierten IDs zurück.
+ */
+export function applyTaken(s: LabState, a: NotifTaken): string[] {
+  const ids = a.ids.filter(id => s.supps.some(x => x.id === id) && !(s.took[a.date] ?? []).includes(id))
+  if (!ids.length) return []
+  s.took[a.date] = [...new Set([...(s.took[a.date] ?? []), ...ids])]
+  if (a.at) s.tookAt[a.date] = { ...Object.fromEntries(ids.map(id => [id, a.at!])), ...(s.tookAt[a.date] ?? {}) }
+  return ids
+}
+
+type TakenListener = (a: NotifTaken) => void
+let takenListener: TakenListener | null = null
+const takenSinceStart: NotifTaken[] = []
+
+/** LabApp: einmal anmelden, z. B. useEffect(() => onNotifTaken(a => update(p => { applyTaken(p, a); return p }, …)), []). */
+export function onNotifTaken(cb: TakenListener): () => void {
+  takenListener = cb
+  for (const a of takenSinceStart) cb(a)
+  return () => { if (takenListener === cb) takenListener = null }
+}
+
+/** Von native.ts aufgerufen. */
+export function emitNotifTaken(a: NotifTaken) {
+  takenSinceStart.push(a)
+  if (takenListener) { takenListener(a); return }
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return
+    const s = hydrate(JSON.parse(raw))
+    if (applyTaken(s, a).length) saveState(s)
+  } catch {}
+}
 
 // ── App-offen-Fallback (nur wenn kein Push aktiv ist) ─────────────────────────
 

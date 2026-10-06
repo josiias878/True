@@ -36,12 +36,13 @@ export function doseLabel(st: Pick<Stock, "form" | "perDay">) {
   return `${n} ml`
 }
 
-/** Einnahmetage seit dem Eintragen (ab dem Folgetag; geplant oder abgehakt). */
+/** Einnahmetage seit dem Eintragen (ab dem Folgetag; geplant, abgehakt oder als Extra-Einnahme eingetragen). */
 function usedSince(s: LabState, id: string, from: string) {
   const today = todayIso()
+  const lib = s.supps.find(x => x.id === id)?.lib
   let n = 0
   for (let d = addDays(from, 1), k = 0; d <= today && k < 800; d = addDays(d, 1), k++) {
-    if ((s.took[d] ?? []).includes(id) || intakeOn(s, d).includes(id)) n++
+    if ((s.took[d] ?? []).includes(id) || intakeOn(s, d).includes(id) || (s.extra?.[d] ?? []).some(e => e.supp === id || (!!lib && e.lib === lib))) n++
   }
   return n
 }
