@@ -16,7 +16,7 @@ export const labTitle = (lib: Pick<LibSupp, "name">) => t("Lab {name}", { name: 
 /** Runder Story-Kreis. */
 function Story({ label, ring, dashed, dot, onClick, children }: { label: string; ring?: string; dashed?: boolean; dot?: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button onClick={() => { haptic(); onClick() }} className="lab-press" style={{ flex: "none", width: 70, display: "flex", flexDirection: "column", alignItems: "center", gap: 5, background: "none", border: "none", color: "var(--text)", padding: 0 }}>
+    <button onClick={() => { haptic(); onClick() }} className="lab-press" style={{ flex: "none", width: 78, display: "flex", flexDirection: "column", alignItems: "center", gap: 5, background: "none", border: "none", color: "var(--text)", padding: 0 }}>
       <span style={{
         position: "relative", width: 62, height: 62, borderRadius: 999, padding: 3, display: "flex",
         background: dashed ? "transparent" : ring ?? "var(--border)", border: dashed ? "2px dashed var(--border)" : "none",
@@ -24,7 +24,7 @@ function Story({ label, ring, dashed, dot, onClick, children }: { label: string;
         <span style={{ flex: 1, borderRadius: 999, background: "var(--surface)", border: dashed ? "none" : "3px solid var(--background)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.45rem" }}>{children}</span>
         {dot && <span aria-hidden style={{ position: "absolute", right: 0, top: 2, width: 12, height: 12, borderRadius: 999, background: "var(--accent)", border: "2px solid var(--background)" }} />}
       </span>
-      <span style={{ fontSize: "0.7rem", fontWeight: 800, color: "var(--text-dim)", maxWidth: 70, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+      <span style={{ fontSize: "0.7rem", fontWeight: 800, color: "var(--text-dim)", maxWidth: 78, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
     </button>
   )
 }

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#0f0f1a" />
+    <meta name="theme-color" content="#111114" />
     <meta name="description" content="Finde heraus, welche Supplements bei dir wirklich wirken: Reset-Woche, Einzeltests, 1-Klick-Check-in und dein persönlicher Stack." />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -13,6 +13,23 @@
     <link rel="icon" href="./icon-192.png" type="image/png" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <title>Kolbi · Supplement Lab</title>
+    <link rel="preload" href="./fonts/Nunito-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <style>
+      /* Marke: Nunito (OFL, public/fonts) */
+      @font-face { font-family: "Nunito"; src: url("./fonts/Nunito-latin.woff2") format("woff2"); font-weight: 200 1000; font-style: normal; font-display: swap; }
+      html body { font-family: Nunito, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+      /* Farben nach Rolle (BRAND.md): neutrale Lese-Flächen, Grün→Blau nur für Selbsttest-Elemente.
+         Höhere Spezifität als src/app.css, damit hell/dunkel wie gewohnt umschaltet. */
+      :root.dark {
+        --background: #111114; --surface: #1c1c21; --surface-2: #26262d; --border: #2a2a31;
+        --text: #f2f2f5; --text-dim: #a0a0ab; --nav-bg: rgba(17, 17, 20, 0.95);
+      }
+      :root.light {
+        --background: #f6f6f8; --surface: #ffffff; --surface-2: #ececf0; --border: #dcdce2;
+        --text: #111114; --text-dim: #55555f; --nav-bg: rgba(246, 246, 248, 0.97);
+      }
+      :root.dark .lab { --glass: rgba(28, 28, 33, .72); --glass-line: rgba(255, 255, 255, .07); }
+    </style>
     <script>
       // Eigenständige App: Sprache nach Gerät bzw. Einstellung (lib/labI18n.ts)
       window.__LAB_STANDALONE__ = true

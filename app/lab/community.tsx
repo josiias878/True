@@ -69,7 +69,7 @@ export function CommunityCard({ s, suppId, libId: libId0, onJoin, flat }: { s: L
   const sides = st !== "loading" && st ? sidesShown(st.sides, st.n) : []
 
   return (
-    <div className={flat ? "lab-rise" : "lab-card lab-rise"} style={{ padding: flat ? 0 : 16, marginBottom: 12 }}>
+    <div className="lab-card lab-rise" style={{ padding: 16, marginBottom: 12 }}>
       {!flat && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
           <span style={{ fontWeight: 900, fontSize: "1rem", flex: 1 }}>{t("🌍 Was andere erlebt haben")}</span>

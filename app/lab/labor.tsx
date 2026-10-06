@@ -45,6 +45,16 @@ export function LaborHome({ s, today, adv, shopCount, onOpen, onOpenLib, onAdd, 
         {q && <button onClick={() => setQ("")} aria-label={t("Schließen")} style={{ background: "none", border: "none", color: "var(--text-dim)", fontSize: "0.95rem" }}>✕</button>}
       </label>
 
+      {!ql && (
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="lab-press" onClick={() => onView("stack")} style={small}>🏆 {t("Stack")}</button>
+          {adv && <button className="lab-press" onClick={() => onView("exp")} style={small}>🧪 {t("Experimente")}</button>}
+          <button className="lab-press" onClick={() => onView("vorrat")} style={small}>
+            🛒 {t("Vorrat")}
+            {shopCount > 0 && <span style={{ minWidth: 18, height: 18, padding: "0 5px", borderRadius: 999, background: "#eda100", color: "#fff", fontSize: "0.68rem", fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{shopCount}</span>}
+          </button>
+        </div>
+      )}
       {ql ? (
         <div className="lab-card lab-rise" style={{ padding: 4 }}>
           {hits.map(l => {
@@ -98,16 +108,6 @@ export function LaborHome({ s, today, adv, shopCount, onOpen, onOpenLib, onAdd, 
         </div>
       )}
 
-      {!ql && (
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className="lab-press" onClick={() => onView("stack")} style={small}>🏆 {t("Stack")}</button>
-          {adv && <button className="lab-press" onClick={() => onView("exp")} style={small}>🧪 {t("Experimente")}</button>}
-          <button className="lab-press" onClick={() => onView("vorrat")} style={small}>
-            🛒 {t("Vorrat")}
-            {shopCount > 0 && <span style={{ minWidth: 18, height: 18, padding: "0 5px", borderRadius: 999, background: "#eda100", color: "#fff", fontSize: "0.68rem", fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{shopCount}</span>}
-          </button>
-        </div>
-      )}
       {!ql && !adv && <button onClick={onMore} style={{ alignSelf: "center", background: "none", border: "none", color: "var(--text-dim)", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer", padding: "4px 8px" }}>{t("Mehr Funktionen anzeigen ›")}</button>}
     </div>
   )
@@ -238,7 +238,7 @@ export function LabPage({ s, today, suppId, libId, tab, setTab, onBack, onSelfTe
       )}
 
       {tab === "andere" && lib && (
-        <CommunityCard s={s} libId={lib.id} onJoin={() => onJoin(x && s.verdicts[x.id] ? x.id : null)} />
+        <CommunityCard s={s} libId={lib.id} flat onJoin={() => onJoin(x && s.verdicts[x.id] ? x.id : null)} />
       )}
 
       {tab === "wissen" && (
