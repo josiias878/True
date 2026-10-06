@@ -156,4 +156,5 @@ export const EN_F: Record<string, string> = {
   "➕ Extra": "➕ Extra",
   "🌙 Schlaf hast du schon morgens eingetragen.": "🌙 You already logged sleep this morning.",
   "Beschwerden heute?": "Any complaints today?",
+  "1 Tipp genügt – so sehe ich, was bei dir nachts einen Unterschied macht.": "One tap is enough – so I can see what makes a difference for you at night.",
 }

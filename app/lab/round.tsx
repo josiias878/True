@@ -182,7 +182,7 @@ const AUTO_NEXT_MS = 2000
 function MorningStep({ s, today, onSave, onDone }: { s: LabState; today: string; onSave: (v: { sleep?: number; fit?: number }) => void; onDone: () => void }) {
   return (
     <>
-      <Title sub={t("1 Tipp genügt – so sehe ich, was dir nachts hilft.")}>{t("🌙 Wie hast du geschlafen?")}</Title>
+      <Title sub={t("1 Tipp genügt – so sehe ich, was bei dir nachts einen Unterschied macht.")}>{t("🌙 Wie hast du geschlafen?")}</Title>
       <div className="lab-card" style={{ padding: 16 }}>
         <MorningPanel entry={s.morning?.[today]} onSave={onSave} onDone={onDone} delay={900} size={60} />
       </div>
