@@ -7,7 +7,7 @@ import { t } from "@/lib/labI18n"
 
 /**
  * Kleines „Neu“-Abzeichen. Zeigt sich nur, solange `isNew(id)` gilt (21 Tage ab `since`, bis zum ersten Öffnen).
- * - `tone="onColor"`: weiß, für farbige Flächen (Verläufe); sonst Akzentfarbe auf neutraler Fläche.
+ * - `tone="onColor"`: weiß, für farbige Flächen (Verläufe); sonst dunkles Grün auf neutraler Fläche.
  * - `force`: immer zeigen (z. B. Vorschau/Test).
  * Rendert erst nach dem Laden (localStorage) → keine Abweichung zwischen Server und Browser.
  */
@@ -20,7 +20,8 @@ export function NewBadge({ id, today, tone = "accent", force, style }: {
     <span className="lab-pop" style={{
       display: "inline-flex", alignItems: "center", flexShrink: 0, verticalAlign: "middle",
       fontSize: "0.62rem", fontWeight: 900, letterSpacing: ".04em", lineHeight: 1, padding: "4px 7px", borderRadius: 999,
-      ...(tone === "onColor" ? { background: "#fff", color: "#6f63d9" } : { background: "var(--accent)", color: "#fff" }),
+      // Kontrast ≥ 4.5:1 in hell und dunkel: Weiß auf dunklem Grün (5,3:1) bzw. dunkles Violett auf Weiß (6,2:1)
+      ...(tone === "onColor" ? { background: "#fff", color: "#5a4fc8" } : { background: "#0f7a52", color: "#fff" }),
       ...style,
     }}>{t("Neu")}</span>
   )

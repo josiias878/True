@@ -107,10 +107,11 @@ export function DiscoverView({ s, today, recapReady, onRecap, onOpenLab, onSelfT
       ) : (
         <div className="lab-card lab-rise" style={{ padding: "28px 20px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <div className="lab-float"><Mascot mood="think" size={104} /></div>
-          <div style={{ fontSize: "1.35rem", fontWeight: 900, marginTop: 8 }}>{t("Noch ist es hier ruhig")}</div>
+          {/* Ohne Verbindung eigener Zustand – nicht „leer“, sondern „gerade nicht erreichbar“ */}
+          <div style={{ fontSize: "1.35rem", fontWeight: 900, marginTop: 8 }}>{ov === null ? t("Gerade keine Verbindung") : t("Noch ist es hier ruhig")}</div>
           <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--text-dim)", marginTop: 6, lineHeight: 1.45 }}>
-            {t("Dein Ergebnis kann das erste sein.")}{" "}
-            {ov === null ? t("(Gerade keine Verbindung.)") : ov.total > 0 ? t("Schon {n} Selbsttests geteilt – ab {min} pro Supplement zeige ich sie hier.", { n: ov.total, min: WORDS_MIN }) : ""}
+            {ov === null ? t("Schau später wieder rein.")
+              : <>{t("Dein Ergebnis kann das erste sein.")}{ov.total > 0 ? <>{" "}{t("Schon {n} Selbsttests geteilt – ab {min} pro Supplement zeige ich sie hier.", { n: ov.total, min: WORDS_MIN })}</> : null}</>}
           </div>
           {w && (w.kind === "test" || w.kind === "baseline") && !w.open ? (
             <div style={{ width: "100%", marginTop: 18, padding: "14px 16px", borderRadius: 18, background: "var(--surface-2)", textAlign: "left" }}>
@@ -127,7 +128,7 @@ export function DiscoverView({ s, today, recapReady, onRecap, onOpenLab, onSelfT
           ) : (
             <Btn onClick={goLabor} style={{ marginTop: 18 }}>{t("🔬 Test starten")}</Btn>
           )}
-          {s.community !== true && <Btn variant="soft" onClick={onJoin} style={{ marginTop: 10, padding: "10px 14px", fontSize: "0.84rem" }}>{t("🌍 Anonym mitmachen")}</Btn>}
+          {s.community !== true && ov !== null && <Btn variant="soft" onClick={onJoin} style={{ marginTop: 10, minHeight: 44, padding: "10px 14px", fontSize: "0.84rem" }}>{t("🌍 Anonym mitmachen")}</Btn>}
         </div>
       )}
     </div>

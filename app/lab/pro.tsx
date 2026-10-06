@@ -11,6 +11,8 @@ import { haptic } from "./ui"
 const VIOLET = "#9085e9"
 const UP = "#1baf7a", DOWN = "#e34948"
 const signed = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : "±"}${dec(Math.abs(n))}`
+/** Farbe nur als Punkt – Text bleibt var(--text) (Kontrast) */
+const Dot = ({ c }: { c: string }) => <span aria-hidden style={{ display: "inline-block", width: 6, height: 6, borderRadius: 999, background: c, marginRight: 4, verticalAlign: "middle", flexShrink: 0 }} />
 
 // ── Bausteine der Mini-Ansichten ──────────────────────────────────────────────
 const mini: React.CSSProperties = { background: "var(--surface)", borderRadius: 14, padding: "9px 10px", border: "1px solid var(--glass-line, var(--border))", boxShadow: "0 1px 2px rgba(0,0,0,.04)" }
@@ -67,7 +69,7 @@ function PatternsView() {
           <Bar label={t("sonst")} v={3.8} color="color-mix(in srgb, var(--text-dim) 55%, transparent)" />
           <Bar label={t("danach")} v={2.9} color={DOWN} />
         </div>
-        <div style={{ marginTop: 7, fontSize: "0.66rem", fontWeight: 900, color: DOWN }}>{signed(-0.9)}★ {t("bei dir")}</div>
+        <div style={{ marginTop: 7, fontSize: "0.66rem", fontWeight: 900 }}><Dot c={DOWN} />{signed(-0.9)}★ {t("bei dir")}</div>
       </div>
       <div style={{ ...mini, marginTop: 7, display: "flex", flexDirection: "column", gap: 7 }}>
         {rows.map(r => (
@@ -77,7 +79,7 @@ function PatternsView() {
               <span style={{ display: "block", fontSize: "0.66rem", fontWeight: 800, lineHeight: 1.2 }}>{r.l}</span>
               <span style={{ ...dim, display: "block" }}>{r.d}</span>
             </span>
-            <span style={{ fontSize: "0.68rem", fontWeight: 900, color: r.v >= 0 ? UP : DOWN }}>{signed(r.v)}★</span>
+            <span style={{ fontSize: "0.68rem", fontWeight: 900, whiteSpace: "nowrap" }}><Dot c={r.v >= 0 ? UP : DOWN} />{signed(r.v)}★</span>
           </div>
         ))}
       </div>
@@ -127,10 +129,6 @@ function CommunityView() {
   return (
     <>
       <TopBar title={t("👥 Community")} />
-      <div style={{ display: "flex", gap: 5, marginBottom: 7 }}>
-        <span style={{ fontSize: "0.6rem", fontWeight: 800, padding: "3px 8px", borderRadius: 999, background: "var(--surface-2)", color: "var(--text-dim)" }}>{t("Alle")}</span>
-        <span style={{ fontSize: "0.6rem", fontWeight: 900, padding: "3px 8px", borderRadius: 999, background: "color-mix(in srgb, #6c7cff 18%, var(--surface))", color: "#6c7cff", border: "1px solid color-mix(in srgb, #6c7cff 45%, transparent)" }}>{t("Ziel: Schlaf")} ✓</span>
-      </div>
       <div style={mini}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <span style={{ fontSize: "0.68rem", fontWeight: 900, whiteSpace: "nowrap" }}>{t("Verteilung")}</span>
@@ -139,7 +137,7 @@ function CommunityView() {
         <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 54, marginTop: 6 }}>
           {hist.map((h, i) => (
             <span key={i} style={{ flex: 1, height: `${(h / max) * 100}%`, borderRadius: "4px 4px 2px 2px", position: "relative", background: i === 4 ? VIOLET : i < 3 ? "color-mix(in srgb, #e34948 45%, var(--surface-2))" : "color-mix(in srgb, #1baf7a 45%, var(--surface-2))" }}>
-              {i === 4 && <span style={{ position: "absolute", top: -13, left: "50%", transform: "translateX(-50%)", fontSize: "0.52rem", fontWeight: 900, color: VIOLET, whiteSpace: "nowrap" }}>{t("du")}</span>}
+              {i === 4 && <span style={{ position: "absolute", top: -13, left: "50%", transform: "translateX(-50%)", fontSize: "0.52rem", fontWeight: 900, color: "var(--text)", whiteSpace: "nowrap" }}>{t("du")}</span>}
             </span>
           ))}
         </div>
@@ -150,7 +148,7 @@ function CommunityView() {
           <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.62rem", fontWeight: 800 }}>
             <span style={{ width: 62, flexShrink: 0, whiteSpace: "nowrap" }}>{d.emoji} {d.label}</span>
             <Diverge v={v} />
-            <span style={{ width: 26, textAlign: "right", color: v >= 0 ? UP : DOWN }}>{signed(v)}</span>
+            <span style={{ width: 26, textAlign: "right" }}>{signed(v)}</span>
           </div>
         ))}
       </div>
@@ -183,13 +181,13 @@ function TimingView() {
           {hours.map(h => <span key={h} style={{ position: "absolute", left: pos(h), top: 17, transform: "translateX(-50%)", fontSize: "0.5rem", color: "var(--text-dim)", fontWeight: 700 }}>{h}</span>)}
         </div>
         <div style={{ fontSize: "0.6rem", fontWeight: 700, lineHeight: 1.35, marginTop: 3 }}>
-          <span style={{ color: DOWN, fontWeight: 900 }}>{t("nur {gap}", { gap: t("1 Std") })}</span><span style={{ color: "var(--text-dim)" }}> · {t("Lieber mit Abstand nehmen.")}</span>
+          <span style={{ fontWeight: 900 }}><Dot c={DOWN} />{t("nur {gap}", { gap: t("1 Std") })}</span><span style={{ color: "var(--text-dim)" }}> · {t("Lieber mit Abstand nehmen.")}</span>
         </div>
-        <div style={{ marginTop: 7, padding: "6px 8px", borderRadius: 10, background: "var(--accent)", color: "#fff", fontSize: "0.62rem", fontWeight: 900, textAlign: "center", whiteSpace: "nowrap" }}>⏰ {t("Supplement B")} → {clock("20:00")}</div>
+        <div style={{ marginTop: 7, padding: "6px 8px", borderRadius: 10, background: "#0f7a52", color: "#fff", fontSize: "0.62rem", fontWeight: 900, textAlign: "center", whiteSpace: "nowrap" }}>⏰ {t("Supplement B")} → {clock("20:00")}</div>
       </div>
       <div style={{ ...mini, marginTop: 7 }}>
         <Pair a={t("Supplement C")} b={t("Supplement D")} ok />
-        <div style={{ fontSize: "0.6rem", fontWeight: 900, color: UP, marginTop: 3 }}>{t("zusammen ✓")}</div>
+        <div style={{ fontSize: "0.6rem", fontWeight: 900, marginTop: 3 }}><Dot c={UP} />{t("zusammen ✓")}</div>
       </div>
     </>
   )
@@ -253,13 +251,16 @@ export function useProCarousel(from?: ProFeature) {
   const n = SLIDES.length
   const [idx, setIdx] = useState(() => Math.max(0, SLIDES.findIndex(x => x.id === from)))
   const reduced = useReducedMotion()
+  // Vorlesen nur nach Nutzer-Aktion – der Auto-Wechsel bleibt für Screenreader still (aria-live „off“)
+  const [manual, setManual] = useState(false)
   useEffect(() => {
     if (reduced) return
-    const tm = setTimeout(() => setIdx(i => (i + 1) % n), 4200)
+    const tm = setTimeout(() => { setManual(false); setIdx(i => (i + 1) % n) }, 4200)
     return () => clearTimeout(tm)
   }, [idx, reduced, n])
-  const go = (i: number) => setIdx(((i % n) + n) % n)
-  return { idx, go, reduced, feature: PRO_FEATURES.find(x => x.id === SLIDES[idx].id)! }
+  const go = (i: number) => { setManual(true); setIdx(((i % n) + n) % n) }
+  const live: "off" | "polite" = manual ? "polite" : "off"
+  return { idx, go, reduced, live, feature: PRO_FEATURES.find(x => x.id === SLIDES[idx].id)! }
 }
 type Carousel = ReturnType<typeof useProCarousel>
 
@@ -304,13 +305,13 @@ export function ProPhone({ c, visible }: { c: Carousel; visible?: number }) {
 /** Punkte unter dem Handy (Antippen springt zur Ansicht) */
 export function ProDots({ c }: { c: Carousel }) {
   return (
-    <div style={{ display: "flex", justifyContent: "center", gap: 2 }}>
+    <div style={{ display: "flex", justifyContent: "center", gap: 0 }}>
       {SLIDES.map(({ id }, i) => {
         const on = i === c.idx
         const f = PRO_FEATURES.find(x => x.id === id)
         return (
           <button key={id} onClick={() => { haptic(6); c.go(i) }} aria-label={t("Ansicht {n}: {f}", { n: i + 1, f: f?.title ?? "" })} aria-current={on || undefined} style={{
-            border: "none", background: "transparent", padding: "8px 4px", cursor: "pointer", display: "flex",
+            border: "none", background: "transparent", padding: 0, minWidth: 44, minHeight: 44, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <span style={{ display: "block", height: 8, width: on ? 22 : 8, borderRadius: 999, background: on ? VIOLET : "var(--border)", transition: c.reduced ? "none" : "width .3s ease, background-color .3s" }} />
           </button>

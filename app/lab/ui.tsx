@@ -299,7 +299,7 @@ export function TabHead({ kicker, title, right, onBack }: { kicker?: React.React
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 2px 16px", minWidth: 0 }}>
       {onBack && (
         <button onClick={onBack} className="lab-press" aria-label={t("Zurück")} style={{
-          width: 40, height: 40, marginLeft: -6, borderRadius: 999, border: "none", background: "transparent", color: "var(--text)",
+          width: 44, height: 44, marginLeft: -8, borderRadius: 999, border: "none", background: "transparent", color: "var(--text)",
           display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
         }}><Icon name="back" size={24} /></button>
       )}
@@ -325,7 +325,7 @@ export function UnderTabs<T extends string>({ value, options, onChange }: { valu
         const on = value === o.id
         return (
           <button key={o.id} role="tab" aria-selected={on} onClick={() => onChange(o.id)} style={{
-            flexShrink: 0, background: "none", border: "none", padding: "10px 10px 9px", fontSize: "0.92rem", fontWeight: on ? 900 : 800, whiteSpace: "nowrap",
+            flexShrink: 0, minHeight: 44, background: "none", border: "none", padding: "10px 10px 9px", fontSize: "0.92rem", fontWeight: on ? 900 : 800, whiteSpace: "nowrap",
             color: on ? "var(--text)" : "var(--text-dim)", borderBottom: `3px solid ${on ? "var(--accent)" : "transparent"}`, marginBottom: -1,
           }}>{o.label}</button>
         )

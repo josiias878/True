@@ -15,8 +15,6 @@ export const EN_H: Record<string, string> = {
   "Dein Stack im Monat": "Your stack per month",
   "Spar-Chance: {p} im Monat": "Chance to save: {p} a month",
   "Supplement C: bei dir kein Unterschied zu deinem Normal": "Supplement C: no difference from your normal for you",
-  "Alle": "All",
-  "Ziel: Schlaf": "Goal: sleep",
   "Verteilung": "Distribution",
   "du": "you",
   "1 Std": "1 hr",
@@ -29,5 +27,5 @@ export const EN_H: Record<string, string> = {
   "Alles in Lab Pro": "Everything in Lab Pro",
   "Muster in deinen eigenen Daten – z. B. am Tag nach Alkohol": "Patterns in your own data – e.g. the day after alcohol",
   "Community-Details": "Community details",
-  "Verteilung, einzelne Bereiche, Filter nach Ziel": "Distribution, individual areas, filter by goal",
+  "Verteilung und einzelne Bereiche": "Distribution and individual areas",
 }

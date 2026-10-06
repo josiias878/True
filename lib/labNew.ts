@@ -17,13 +17,13 @@ export const NEW_DAYS = 21
 
 export const NEW_FEATURES: NewFeature[] = [
   // Tagesrunde / Heute (Feedback-Runde Okt 2026)
-  { id: "morning-question", since: "2026-10-07" }, // Morgen-Frage (Nacht auf …)
-  { id: "extra-taken", since: "2026-10-07" }, // „Zusätzlich genommen“
-  { id: "complaints", since: "2026-10-07" }, // Beschwerden + Vermutungen
-  { id: "taken-check", since: "2026-10-07" }, // „✓ Genommen“
+  { id: "morning-question", since: "2026-10-06" }, // Morgen-Frage (Nacht auf …)
+  { id: "extra-taken", since: "2026-10-06" }, // „Zusätzlich genommen“
+  { id: "complaints", since: "2026-10-06" }, // Beschwerden + Vermutungen
+  { id: "taken-check", since: "2026-10-06" }, // „✓ Genommen“
   { id: "alcohol-pattern", since: "2026-10-06", parent: "patterns" }, // Muster „Am Tag nach Alkohol“
   // Lab Pro
-  { id: "community", since: "2026-10-06" }, // Community-Details (Verteilung, Bereiche, Filter nach Ziel)
+  { id: "community", since: "2026-10-06" }, // Community-Details (Verteilung und einzelne Bereiche)
 ]
 
 const KEY = "lab-new-seen"

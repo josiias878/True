@@ -176,7 +176,7 @@ export function LabPage({ s, today, suppId, libId, tab, setTab, onBack, onSelfTe
     : canStart ? { label: t("🔬 Selbst testen"), go: () => onSelfTest(x.lib ?? null, x.id) }
     : { label: w?.kind === "test" ? t("⏳ Nach deinem aktuellen Test") : t("⏳ Nach deiner Reset-Phase"), go: () => onSelfTest(x.lib ?? null, x.id), soft: true }
 
-  const pill: React.CSSProperties = { padding: "9px 14px", borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text)", fontWeight: 800, fontSize: "0.82rem" }
+  const pill: React.CSSProperties = { display: "inline-flex", alignItems: "center", minHeight: 44, padding: "9px 14px", borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text)", fontWeight: 800, fontSize: "0.82rem" }
   const mine = x ? (
     testing ? t("Bei dir: Test läuft") : st?.key === "verdict" ? t("Bei dir: Ergebnis wartet") : verdict ? `${t("Bei dir:")} ${VERDICT_TEXT()[verdict]}` : null
   ) : null

@@ -266,7 +266,22 @@ export function recapAvailable(s: LabState, now: Date, today: string) {
   return { end, ready: n >= 3 && s.recapSeen !== end && (s.startDate ?? "9") <= addDays(end, -3) && addDays(end, 3) >= today }
 }
 
-export function RecapTeaser({ end, onOpen }: { end: string; onOpen: () => void }) {
+export function RecapTeaser({ end, onOpen, slim }: { end: string; onOpen: () => void; slim?: boolean }) {
+  const range = `${fmtDate(addDays(end, -6)).replace(/^\w+\.?,\s*/, "")} – ${fmtDate(end).replace(/^\w+\.?,\s*/, "")}`
+  // Schmale Zeile (Heute): neutrale Fläche, Farbe nur im Symbol – die Hauptsache bleibt die Hauptsache
+  if (slim) return (
+    <button onClick={onOpen} className="lab-press lab-rise" style={{
+      display: "flex", alignItems: "center", gap: 12, width: "100%", minHeight: 56, padding: "8px 14px 8px 8px", borderRadius: 20, textAlign: "left",
+      border: "1px solid var(--glass-line)", background: "var(--surface)", color: "var(--text)",
+    }}>
+      <span aria-hidden style={{ width: 40, height: 40, borderRadius: 999, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", background: "linear-gradient(135deg, #9085e9, #3987e5 60%, #2ECC8A)" }}>📊</span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: "block", fontWeight: 900, fontSize: "0.94rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("Dein Wochenrückblick")}</span>
+        <span style={{ display: "block", fontSize: "0.76rem", fontWeight: 700, color: "var(--text-dim)", whiteSpace: "nowrap" }}>{range}</span>
+      </span>
+      <span aria-hidden style={{ color: "var(--text-dim)", fontWeight: 900 }}>›</span>
+    </button>
+  )
   return (
     <button onClick={onOpen} className="lab-press lab-rise" style={{
       display: "flex", alignItems: "center", gap: 14, padding: 16, borderRadius: 24, border: "none", width: "100%", textAlign: "left", color: "#fff",
@@ -279,7 +294,7 @@ export function RecapTeaser({ end, onOpen }: { end: string; onOpen: () => void }
         <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.7rem" }}>📊</span>
       </span>
       <span style={{ flex: 1 }}>
-        <span style={{ display: "block", fontSize: "0.7rem", fontWeight: 900, letterSpacing: ".1em", opacity: 0.9 }}>{t("NEU")} · {fmtDate(addDays(end, -6)).replace(/^\w+\.?,\s*/, "")} – {fmtDate(end).replace(/^\w+\.?,\s*/, "")}</span>
+        <span style={{ display: "block", fontSize: "0.7rem", fontWeight: 900, letterSpacing: ".1em", opacity: 0.9 }}>{t("NEU")} · {range}</span>
         <span style={{ display: "block", fontWeight: 900, fontSize: "1.15rem" }}>{t("Dein Wochenrückblick")}</span>
         <span style={{ display: "block", fontSize: "0.8rem", opacity: 0.9 }}>{t("Tippen zum Ansehen ▶")}</span>
       </span>

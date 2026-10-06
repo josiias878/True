@@ -49,7 +49,7 @@ export function MorningPanel({ entry, onSave, onDone, delay = 2500, size = 56 }:
       <FaceRow value={sleep} onPick={pickSleep} faces={FACES} labels={FACE_LABELS} size={size} />
       <div style={{ minHeight: 22, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontSize: "0.82rem", fontWeight: 800 }}>
         {sleep != null && <span className="lab-pop" style={{ color: "var(--accent)" }}>{t("✓ Gespeichert")}</span>}
-        {!more && <button onClick={openMore} style={{ background: "none", border: "none", color: "var(--text-dim)", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer", padding: "2px 4px" }}>{t("Genauer")} ›</button>}
+        {!more && <button onClick={openMore} style={{ background: "none", border: "none", color: "var(--text-dim)", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer", minHeight: 44, padding: "0 12px" }}>{t("Genauer")} ›</button>}
       </div>
       {more && (
         <div className="lab-rise" style={{ display: "flex", flexDirection: "column", gap: 8 }}>

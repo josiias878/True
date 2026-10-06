@@ -45,7 +45,7 @@ import { ExperimentSheet, ExperimentsView } from "./experiments"
 import { startExperiment, type Experiment } from "@/lib/labExperiments"
 import { removeMyResults, shareResult } from "@/lib/labCommunity"
 import { calendarNames, calendarOn, calendarUrls, disableCalendar, enableCalendar, setCalendarNames, syncCalendar } from "@/lib/labCalendar"
-import { CostCard, InteractionCard, PatternStrip, RecapTeaser, WeekRecap, recapAvailable, recapWeekEnd } from "./insights"
+import { CostCard, InteractionCard, PatternStrip, WeekRecap, recapAvailable, recapWeekEnd } from "./insights"
 import { interactionChecks } from "@/lib/labInteractions"
 import { TAG_EMOJI, findPatterns } from "@/lib/labPatterns"
 import { pathStops, type Stop } from "@/lib/labPath"
@@ -637,6 +637,8 @@ export default function LabApp() {
         <div key={`${tab}-${laborView ?? ""}-${lab ? "lab" : ""}-${meView ?? ""}`} className="lab-tabin" style={{ ["--dx" as string]: `${tabDir * 24}px` }}>
           {tab === "heute" && <TodayView s={s} wins={wins} today={today} now={now} pending={pending} checkinLocked={checkinLocked}
             tips={msgs.filter(m => !(m.id === "checkin" || m.id.startsWith("take-") || m.id.startsWith("verdict-") || m.id.startsWith("low-") || m.id.startsWith("phase-")))}
+            recap={recapAvailable(s, now, today)} onRecap={() => setRecapEnd(recapWeekEnd(now, today))}
+            pushHint={s.reminders.enabled && !hasNativeReminders() && (pushSt === "off" || pushSt === "denied") ? pushSt : null} onPush={turnOnPush}
             onAction={runAction} onRound={steps => setRound(steps)} onTakeAll={takeAll} onTake={toggleTook} onMorning={saveMorningV}
             onUnlock={() => { setUnlockedFor(today); setRound(roundSteps(s, today, now, false)) }}
             onCheckin={setCheckinDate} onPhase={setPhaseSheet} goTab={goTab} onVorrat={() => { setLab(null); setLaborView("vorrat"); goTab("labor") }} />}

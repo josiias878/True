@@ -333,7 +333,7 @@ export function PaywallSheet({ s, from, onClose, onPurchased, onFlash }: {
         <div style={{ position: "relative", marginTop: 16 }}><ProPhone c={car} /></div>
       </div>
       <div style={{ textAlign: "center", marginTop: 12 }}>
-        <div aria-live="polite" style={{ minHeight: 54 }}>
+        <div aria-live={car.live} style={{ minHeight: 54 }}>
           <div style={{ fontWeight: 900, fontSize: "1rem" }}>{car.feature.emoji} {car.feature.title}</div>
           <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", marginTop: 1 }}>{car.feature.text}</div>
         </div>

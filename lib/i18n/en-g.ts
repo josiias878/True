@@ -1,6 +1,7 @@
 // Englische Übersetzungen (Schlüssel = deutscher Originaltext, exakt wie im Code) – Kolbi Social S1 (Okt 2026)
 export const EN_G: Record<string, string> = {
-  "(Gerade keine Verbindung.)": "(No connection right now.)",
+  "Gerade keine Verbindung": "No connection right now",
+  "Schau später wieder rein.": "Check back later.",
   "1 Minute nachtragen – sonst fehlt der Tag im Vergleich.": "Add it in 1 minute – otherwise the day is missing from the comparison.",
   "1 Minute": "1 minute",
   "1 Minute. Ich vergleiche mit deinem Normal.": "1 minute. I compare it with your normal.",

@@ -45,7 +45,7 @@ export const PRO_FEATURES: { id: ProFeature; emoji: string; title: string; text:
   { id: "timing", emoji: "⏱️", title: t("Timing-Check"), text: t("Was mit Abstand, was zusammen – auf einen Blick") },
   { id: "calendar", emoji: "📅", title: t("Kalender-Abo"), text: t("Ergebnisse automatisch im Kalender") },
   // Community-Basis („Was andere erlebt haben“ in groben Worten) bleibt gratis – Pro bekommt die Tiefe (CEO, 6. Okt 2026)
-  { id: "community", emoji: "👥", title: t("Community-Details"), text: t("Verteilung, einzelne Bereiche, Filter nach Ziel") },
+  { id: "community", emoji: "👥", title: t("Community-Details"), text: t("Verteilung und einzelne Bereiche") },
 ]
 
 /** Pro-Seite von überall öffnen (LabApp hört auf das Ereignis) */

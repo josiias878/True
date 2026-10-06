@@ -26,9 +26,10 @@ export function usePseudonym() {
   return useMemo(() => pseudonym(socialSeed(), isEn), [])
 }
 
-const GRADE: Record<GradeKind, { label: string; bg: string; fg: string }> = {
-  keep:     { label: t("Behalten"),    bg: "var(--accent-dim)",  fg: "var(--accent)" },
-  maybe:    { label: t("Vielleicht"),  bg: "var(--warning-dim)", fg: "var(--warning)" },
+// Text immer gut lesbar (var(--text)/--text-dim); Farbe nur als Punkt + Rahmen
+const GRADE: Record<GradeKind, { label: string; bg: string; fg: string; dot?: string }> = {
+  keep:     { label: t("Behalten"),    bg: "var(--accent-dim)",  fg: "var(--text)", dot: "var(--accent)" },
+  maybe:    { label: t("Vielleicht"),  bg: "var(--warning-dim)", fg: "var(--text)", dot: "var(--warning)" },
   drop:     { label: t("Weggelassen"), bg: "var(--surface-2)",   fg: "var(--text-dim)" },
   running:  { label: t("Läuft"),       bg: "var(--surface-2)",   fg: "var(--text)" },
   constant: { label: t("Durchgehend"), bg: "var(--surface-2)",   fg: "var(--text-dim)" },
@@ -88,10 +89,11 @@ export function MeHome({ s, today, tipCount, onView, onSettings, onOpenLab, onAl
         {grades.slice(0, 6).map(g => {
           const c = GRADE[g.kind]
           return (
-            <button key={g.supp.id} onClick={() => onOpenLab(g.supp.id)} className="lab-press" style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 0", background: "none", border: "none", color: "var(--text)", textAlign: "left" }}>
+            <button key={g.supp.id} onClick={() => onOpenLab(g.supp.id)} className="lab-press" style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", minHeight: 44, padding: "9px 0", background: "none", border: "none", color: "var(--text)", textAlign: "left" }}>
               <span style={{ fontSize: "1.1rem" }}>{g.supp.emoji}</span>
               <span style={{ flex: 1, minWidth: 0, fontWeight: 800, fontSize: "0.95rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.supp.name}</span>
-              <span style={{ flexShrink: 0, fontSize: "0.74rem", fontWeight: 900, padding: "4px 10px", borderRadius: 999, background: c.bg, color: c.fg }}>
+              <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, fontSize: "0.74rem", fontWeight: 900, padding: "4px 10px", borderRadius: 999, background: c.bg, color: c.fg, border: c.dot ? `1px solid ${c.dot}` : "1px solid transparent" }}>
+                {c.dot && <span aria-hidden style={{ width: 7, height: 7, borderRadius: 999, background: c.dot }} />}
                 {g.kind === "running" && g.day ? t("Läuft · Tag {n}", { n: g.day }) : c.label}
               </span>
             </button>

@@ -189,7 +189,7 @@ Google kennt keine „Gruppen“; wir legen **zwei Abos** mit denselben IDs wie 
 | `Muster-Detektor` | 15 | `Pattern detector` | 16 |
 | `Kosten & Sparen` | 15 | `Cost & savings` | 14 |
 | `Alle Experimente & Timing-Check` | 31 | `All experiments & timing check` | 30 |
-| `Kalender-Abo & Community-Vergleich` | 34 | `Calendar sync & community comparison` | 36 |
+| `Kalender-Abo & Community-Details` | 32 | `Calendar sync & community details` | 33 |
 
 Englisch: oben rechts **Übersetzungen verwalten → Englisch (USA)** hinzufügen.
 

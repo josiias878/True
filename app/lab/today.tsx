@@ -17,6 +17,7 @@ import { dayProgress, type RoundStep } from "./round"
 import { RoadPath } from "./path"
 import { ProfileCard } from "./profile"
 import { NewBadge, useMarkSeen } from "./newbadge"
+import { RecapTeaser } from "./insights"
 import { markSeen } from "@/lib/labNew"
 import { t, dec, clock, LOCALE } from "@/lib/labI18n"
 
@@ -57,13 +58,13 @@ export function LockedCheckin({ unlockAt, now, onUnlock }: { unlockAt: string; n
 }
 
 /** Kolbis Sprechblase: ein Satz, ein Knopf – der Rest unter Ich → Kolbi & Hilfe. */
-export function KolbiSays({ msg, more, onAction, onMore }: { msg: CoachMsg; more: number; onAction: (a: CoachAction, id: string) => void; onMore: () => void }) {
+export function KolbiSays({ msg, more, onAction, onMore, tail = true }: { msg: CoachMsg; more: number; onAction: (a: CoachAction, id: string) => void; onMore: () => void; tail?: boolean }) {
   const [open, setOpen] = useState(false)
   const main = msg.actions?.find(a => a.primary) ?? msg.actions?.[0]
   const second = msg.actions?.find(a => a !== main)
   return (
     <div className="lab-rise" style={{ position: "relative", marginTop: 4 }}>
-      <span aria-hidden style={{ position: "absolute", left: "50%", top: -7, width: 14, height: 14, marginLeft: -7, background: "var(--surface)", borderLeft: "1px solid var(--border)", borderTop: "1px solid var(--border)", transform: "rotate(45deg)" }} />
+      {tail && <span aria-hidden style={{ position: "absolute", left: "50%", top: -7, width: 14, height: 14, marginLeft: -7, background: "var(--surface)", borderLeft: "1px solid var(--border)", borderTop: "1px solid var(--border)", transform: "rotate(45deg)" }} />}
       <div className="lab-card" style={{ padding: "14px 16px", textAlign: "left" }}>
         <div style={{ fontWeight: 900, fontSize: "0.98rem" }}>{msg.title}</div>
         <div onClick={() => setOpen(o => !o)} style={{
@@ -107,8 +108,12 @@ function Tile({ value, label, onClick, progress }: { value: React.ReactNode; lab
 
 type Main = "notStarted" | "reveal" | "morning" | "take" | "checkin" | "locked" | "done"
 
-export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, onAction, onRound, onTakeAll, onTake, onMorning, onUnlock, onCheckin, onPhase, goTab, onVorrat }: {
+export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, recap, onRecap, pushHint, onPush, onAction, onRound, onTakeAll, onTake, onMorning, onUnlock, onCheckin, onPhase, goTab, onVorrat }: {
   s: LabState; wins: PhaseWindow[]; today: string; now: Date; pending: RoundStep[]; checkinLocked: boolean; tips: CoachMsg[]
+  /** Wochenrückblick bereit und noch nicht gesehen → schmale Zeile unter der Hauptsache */
+  recap: { ready: boolean; end: string }; onRecap: () => void
+  /** Erinnerungen an, aber Push aus („off“: einschaltbar) bzw. blockiert („denied“) → dezenter Hinweis */
+  pushHint: "off" | "denied" | null; onPush: () => void
   onAction: (a: CoachAction, id: string) => void
   onRound: (steps: RoundStep[]) => void; onTakeAll: (ids: string[]) => void; onTake: (id: string) => void
   onMorning: (v: { sleep?: number; fit?: number }) => void; onUnlock: () => void; onCheckin: (d: string) => void
@@ -153,6 +158,17 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, o
   const startIn = notStarted ? new Date(first.start + "T00:00:00").getTime() - now.getTime() : null
   const tipsShown = main === "done" || main === "locked"
   const top = tips[0]
+  const showRecap = recap.ready && !notStarted
+  // „Ich melde mich …“ stimmt bei geschlossener App nur mit Push → genau dort dezent darauf hinweisen
+  const pushRow = tipsShown && pushHint ? (
+    <div style={{ marginTop: 16, width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "8px 8px 8px 12px", borderRadius: 16, background: "var(--surface-2)", textAlign: "left" }}>
+      {pushHint === "off" && <span aria-hidden style={{ fontSize: "1.1rem" }}>🔔</span>}
+      <span style={{ flex: 1, minWidth: 0, fontSize: "0.8rem", fontWeight: 700, lineHeight: 1.35, color: "var(--text-dim)", padding: pushHint === "denied" ? "6px 4px 6px 0" : undefined }}>
+        {pushHint === "denied" ? t("⚠️ Benachrichtigungen sind blockiert (Einstellungen → Mitteilungen)") : t("Erinnerungen, auch wenn die App zu ist")}
+      </span>
+      {pushHint === "off" && <Btn onClick={onPush} style={{ minHeight: 44, padding: "8px 16px", fontSize: "0.84rem", borderRadius: 12 }}>{t("An")}</Btn>}
+    </div>
+  ) : null
 
   // Kacheln
   const intake = intakeOn(s, today)
@@ -258,6 +274,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, o
           {title(t("Bis zum Check-in hast du frei"))}
           {sub(t("Ich melde mich am Abend für deine Minute."))}
           <div style={{ marginTop: 16, width: "100%" }}><LockedCheckin unlockAt={lockedUntil} now={now} onUnlock={onUnlock} /></div>
+          {pushRow}
         </>}
 
         {main === "done" && <>
@@ -268,10 +285,12 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, o
               {FACES[Math.round(daySum(checked)) - 1]} {t("Heute")} {fmt(daySum(checked))}★ · <span style={{ color: "var(--accent)" }}>{checked.quick ? t("genauer") : t("ändern")}</span>
             </button>
           )}
+          {pushRow}
         </>}
       </div>
 
-      {tipsShown && top && <KolbiSays msg={top} more={tips.length - 1} onAction={onAction} onMore={() => goTab("kolbi")} />}
+      {showRecap && <RecapTeaser slim end={recap.end} onOpen={onRecap} />}
+      {tipsShown && top && <KolbiSays msg={top} more={tips.length - 1} onAction={onAction} onMore={() => goTab("kolbi")} tail={!showRecap} />}
 
       {/* ── max. 3 kleine Kacheln ── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
