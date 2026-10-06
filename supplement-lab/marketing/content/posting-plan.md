@@ -5,6 +5,9 @@ in der App** drunterlegen (die Videos sind absichtlich stumm, damit es keine Mus
 
 ## Profile anlegen (einmalig, ~10 Min.)
 
+> **Aktuell gilt [`../channels/BIOS.md`](../channels/BIOS.md)** (neues Profilbild `profile/kolbi-avatar-1080.png`, Bios mit
+> Zeichenzahl, Kanal-Links `/tiktok` bzw. `/insta`, Hinweis zum TikTok-Unternehmenskonto). Die Tabelle unten ist veraltet.
+
 | | TikTok | Instagram |
 |---|---|---|
 | Name | `@kolbi.lab` (Alternativen: `@kolbi.app`, `@hallo.kolbi`) | gleich |
