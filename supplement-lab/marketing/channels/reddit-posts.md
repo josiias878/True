@@ -5,13 +5,22 @@ Stand 6. Okt 2026 · **Generiert** aus `reddit-posts.src.mjs` – Änderungen do
 
 ## So gehst du vor (pro Beitrag ca. 5 Minuten)
 
-1. **Reddit-Editor auf „Markdown“ umschalten** (unter dem Textfeld „Markdown Mode“ / „Switch to Markdown“), dann erst
-   einfügen. Sonst gehen Tabellen, Fettdruck und die Vorlage im Codeblock kaputt.
-2. Titel kopieren → Text kopieren → **Flair** wählen (siehe Hinweis) → absenden.
-3. Gibt es einen **ersten Kommentar**: direkt nach dem Absenden selbst unter den Beitrag schreiben (bei den 3
+Jeder Beitrag hat **genau ein Bild** (1200×1200, `content/reddit/reddit-0N.png`): Das Bild zieht im Feed den Blick,
+der Text liefert die Tiefe. Reddit erlaubt bei Bild-Beiträgen einen optionalen Text darunter (seit 2022; Mods können
+Bild-Beiträge oder den Text dazu pro Sub abschalten).
+
+1. **Beitragstyp „Bilder & Video“ („Images & Video“)** wählen → Titel einfügen → **Bild hochladen** → den Text in das
+   Feld darunter („Body text (optional)“) einfügen. Vorher im Textfeld auf **„Markdown“** umschalten
+   („Markdown Mode“ / „Switch to Markdown“), falls angeboten – sonst gehen Tabellen, Fettdruck und Codeblöcke kaputt.
+2. **Gibt es im Sub keinen Bild-Tab oder kein Textfeld darunter:** Beitragstyp **„Text“** wählen, Text im
+   Markdown-Modus einfügen, zurück auf den normalen Editor schalten und das Bild über das **Bild-Symbol im Editor ganz
+   oben** in den Beitrag hochladen. Geht auch das nicht: **ohne Bild** posten. Bild als Imgur-Link oder im
+   Kommentar ist keine Option (wirkt wie Spam/Werbung).
+3. **Flair** wählen (siehe Hinweis) → kurz in der Vorschau prüfen (Bild da, Tabelle ok) → absenden.
+4. Gibt es einen **ersten Kommentar**: direkt nach dem Absenden selbst unter den Beitrag schreiben (bei den 3
    Kolbi-Beiträgen steht der Link **nur dort**, nicht im Beitrag – das wirkt weniger nach Werbung).
-4. **3–6 Stunden dranbleiben** und jede Frage beantworten. Nie über eigene Ergebnisse oder Wirkungen schreiben.
-5. Wird ein Beitrag entfernt: **nicht neu posten**, sondern höflich per Modmail fragen, was nicht gepasst hat.
+5. **3–6 Stunden dranbleiben** und jede Frage beantworten. Nie über eigene Ergebnisse oder Wirkungen schreiben.
+6. Wird ein Beitrag entfernt: **nicht neu posten**, sondern höflich per Modmail fragen, was nicht gepasst hat.
 
 **Mischung:** 5 Mehrwert-Beiträge **ohne Link und ohne Kolbi** (Karma + Vertrauen aufbauen) · 3 Beiträge mit Kolbi,
 nur wo Eigenwerbung erlaubt ist (r/SideProject) bzw. **nach schriftlichem Mod-OK** (r/SelfExperiments, r/FitnessDE).
@@ -60,6 +69,9 @@ Antworten der Mods (Screenshot) in `PLAN.md` → Log notieren. Kein OK = kein Be
 - **Vorher:** Keine Mod-Rückfrage nötig. Vorher Sidebar/Regeln kurz lesen. Kein Link, Kolbi wird nicht erwähnt.
 - **Flair:** Falls Flair Pflicht: „Method“/„Protocol“/„Discussion“ – sonst ohne.
 - **Link:** keiner
+- **Bild:** `marketing/content/reddit/reddit-01.png` (hochladen, Text darunter)
+
+![Bild reddit-01](../content/reddit/reddit-01.png)
 
 **Titel**
 
@@ -121,6 +133,9 @@ Antworten der Mods (Screenshot) in `PLAN.md` → Log notieren. Kein OK = kein Be
 - **Vorher:** Keine Mod-Rückfrage nötig. Kein Link, Kolbi wird nicht erwähnt.
 - **Flair:** Falls angeboten: „Discussion“ oder „Method“.
 - **Link:** keiner
+- **Bild:** `marketing/content/reddit/reddit-02.png` (hochladen, Text darunter)
+
+![Bild reddit-02](../content/reddit/reddit-02.png)
 
 **Titel**
 
@@ -163,6 +178,9 @@ _keiner_
 - **Vorher:** Keine Mod-Rückfrage nötig. Regel dort: medizinischer Rat nur von Fachleuten, Empfehlungen mit Sicherheitshinweis – ist im Text drin. Kein Link. Am selben Tag die Modmails an r/SelfExperiments und r/FitnessDE schicken (Texte unten).
 - **Flair:** Falls Pflicht: „Discussion“ oder „Protocol“ – kein „Supplement Review“.
 - **Link:** keiner
+- **Bild:** `marketing/content/reddit/reddit-03.png` (hochladen, Text darunter)
+
+![Bild reddit-03](../content/reddit/reddit-03.png)
 
 **Titel**
 
@@ -211,6 +229,9 @@ _keiner_
 - **Vorher:** Keine Mod-Rückfrage nötig. Kein Link, Kolbi wird nicht erwähnt. Vorher Sidebar lesen (Flair-Pflicht? Wochen-Thread für Ernährung?).
 - **Flair:** „Ernährung“ (falls vorhanden), sonst „Diskussion“.
 - **Link:** keiner
+- **Bild:** `marketing/content/reddit/reddit-04.png` (hochladen, Text darunter)
+
+![Bild reddit-04](../content/reddit/reddit-04.png)
 
 **Titel**
 
@@ -262,6 +283,9 @@ _keiner_
 - **Vorher:** Keine Mod-Rückfrage nötig. Kein Link, Kolbi wird nicht erwähnt. Keine Dosen nennen – auch nicht in Antworten.
 - **Flair:** Falls angeboten: „Discussion“ oder „Question“.
 - **Link:** keiner
+- **Bild:** `marketing/content/reddit/reddit-05.png` (hochladen, Text darunter)
+
+![Bild reddit-05](../content/reddit/reddit-05.png)
 
 **Titel**
 
@@ -307,6 +331,9 @@ _keiner_
 - **Vorher:** r/SideProject ist für Projekt-Vorstellungen gedacht (Eigenwerbung erlaubt, aber nur mit Geschichte und Feedback-Frage; nackte Links fliegen raus). Vorher 2–3 andere Projekte dort ehrlich kommentieren. Konto sollte schon etwas Kommentar-Karma haben.
 - **Flair:** Falls Pflicht: „Feedback Request“ oder „Launch“ – das, was angeboten wird.
 - **Link:** `https://kolbi-smoky.vercel.app/en/reddit?utm_source=reddit&utm_medium=social&utm_campaign=sideproject&utm_content=reddit-06`
+- **Bild:** `marketing/content/reddit/reddit-06.png` (hochladen, Text darunter)
+
+![Bild reddit-06](../content/reddit/reddit-06.png)
 
 **Titel**
 
@@ -356,6 +383,9 @@ _keiner_
 - **Vorher:** NUR nach schriftlichem OK der Mods (Modmail ab 14.10., Text unten). Kein OK bis 27.10. → Beitrag ausfallen lassen (nicht „ohne Link“ trotzdem posten – der Text nennt Kolbi).
 - **Flair:** Falls Pflicht: „Method“/„Protocol“ – oder was die Mods im OK nennen.
 - **Link:** `https://kolbi-smoky.vercel.app/en/reddit?utm_source=reddit&utm_medium=social&utm_campaign=selfexperiments&utm_content=reddit-07`
+- **Bild:** `marketing/content/reddit/reddit-07.png` (hochladen, Text darunter)
+
+![Bild reddit-07](../content/reddit/reddit-07.png)
 
 **Titel**
 
@@ -395,6 +425,9 @@ _keiner_
 - **Vorher:** NUR nach schriftlichem OK der Mods (Modmail ab 14.10., Text unten). Kein OK bis 30.10. → nicht posten.
 - **Flair:** „Ernährung“ oder das Flair, das die Mods nennen (manche Subs wollen „Eigenwerbung“/„Projekt“).
 - **Link:** `https://kolbi-smoky.vercel.app/reddit?utm_source=reddit&utm_medium=social&utm_campaign=fitnessde&utm_content=reddit-08`
+- **Bild:** `marketing/content/reddit/reddit-08.png` (hochladen, Text darunter)
+
+![Bild reddit-08](../content/reddit/reddit-08.png)
 
 **Titel**
 

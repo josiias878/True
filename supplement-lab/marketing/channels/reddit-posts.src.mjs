@@ -17,6 +17,7 @@ const posts = [
     sub: "r/SelfExperiments",
     lang: "en",
     kind: "value",
+    image: "../content/reddit/reddit-01.png", // 1200×1200, gerendert mit content/reddit/render.mjs
     precondition: "Keine Mod-Rückfrage nötig. Vorher Sidebar/Regeln kurz lesen. Kein Link, Kolbi wird nicht erwähnt.",
     flair: "Falls Flair Pflicht: „Method“/„Protocol“/„Discussion“ – sonst ohne.",
     title: "A copy-paste template for n=1 supplement tests (one change at a time)",
@@ -72,6 +73,7 @@ What would you add or change? Curious which metrics people here keep fixed acros
     sub: "r/QuantifiedSelf",
     lang: "en",
     kind: "value",
+    image: "../content/reddit/reddit-02.png", // 1200×1200, gerendert mit content/reddit/render.mjs
     precondition: "Keine Mod-Rückfrage nötig. Kein Link, Kolbi wird nicht erwähnt.",
     flair: "Falls angeboten: „Discussion“ oder „Method“.",
     title: "The baseline week is the most underrated part of a self-experiment – a simple way to set one up",
@@ -109,6 +111,7 @@ How long do you run your baselines? Does anyone here re-baseline on a schedule?`
     sub: "r/Biohackers",
     lang: "en",
     kind: "value",
+    image: "../content/reddit/reddit-03.png", // 1200×1200, gerendert mit content/reddit/render.mjs
     precondition: "Keine Mod-Rückfrage nötig. Regel dort: medizinischer Rat nur von Fachleuten, Empfehlungen mit Sicherheitshinweis – ist im Text drin. Kein Link. Am selben Tag die Modmails an r/SelfExperiments und r/FitnessDE schicken (Texte unten).",
     flair: "Falls Pflicht: „Discussion“ oder „Protocol“ – kein „Supplement Review“.",
     title: "You can't fully rule out placebo in a self-test – but you can make it much harder for it to fool you",
@@ -151,6 +154,7 @@ Which of these do you actually use? Has anyone here done a proper blinded A-B-A-
     sub: "r/FitnessDE",
     lang: "de",
     kind: "value",
+    image: "../content/reddit/reddit-04.png", // 1200×1200, gerendert mit content/reddit/render.mjs
     precondition: "Keine Mod-Rückfrage nötig. Kein Link, Kolbi wird nicht erwähnt. Vorher Sidebar lesen (Flair-Pflicht? Wochen-Thread für Ernährung?).",
     flair: "„Ernährung“ (falls vorhanden), sonst „Diskussion“.",
     title: "Supplements selbst testen: 6 Störfaktoren, die euer Ergebnis verfälschen – und wie man sie im Griff behält",
@@ -197,6 +201,7 @@ Welche Störfaktoren habt ihr noch auf dem Schirm? Und haltet ihr beim Testen da
     sub: "r/vitamins",
     lang: "en",
     kind: "value",
+    image: "../content/reddit/reddit-05.png", // 1200×1200, gerendert mit content/reddit/render.mjs
     precondition: "Keine Mod-Rückfrage nötig. Kein Link, Kolbi wird nicht erwähnt. Keine Dosen nennen – auch nicht in Antworten.",
     flair: "Falls angeboten: „Discussion“ oder „Question“.",
     title: "What a self-test can (and can't) tell you about a vitamin – and when a blood test is the better tool",
@@ -236,6 +241,7 @@ Has anyone here combined lab values with daily ratings? How did you structure it
     sub: "r/SideProject",
     lang: "en",
     kind: "kolbi",
+    image: "../content/reddit/reddit-06.png", // 1200×1200, gerendert mit content/reddit/render.mjs
     precondition: "r/SideProject ist für Projekt-Vorstellungen gedacht (Eigenwerbung erlaubt, aber nur mit Geschichte und Feedback-Frage; nackte Links fliegen raus). Vorher 2–3 andere Projekte dort ehrlich kommentieren. Konto sollte schon etwas Kommentar-Karma haben.",
     flair: "Falls Pflicht: „Feedback Request“ oder „Launch“ – das, was angeboten wird.",
     title: "I'm building Kolbi – a little lab flask that helps you test supplements one at a time (free web app, feedback wanted)",
@@ -280,6 +286,7 @@ Not medical advice. If you take medication or have a condition, check with a doc
     sub: "r/SelfExperiments",
     lang: "en",
     kind: "kolbi",
+    image: "../content/reddit/reddit-07.png", // 1200×1200, gerendert mit content/reddit/render.mjs
     precondition: "NUR nach schriftlichem OK der Mods (Modmail ab 14.10., Text unten). Kein OK bis 27.10. → Beitrag ausfallen lassen (nicht „ohne Link“ trotzdem posten – der Text nennt Kolbi).",
     flair: "Falls Pflicht: „Method“/„Protocol“ – oder was die Mods im OK nennen.",
     title: "A simple n-of-1 protocol for supplements – and a free tool that runs it (feedback wanted)",
@@ -313,6 +320,7 @@ Not medical advice. If you take medication or have a condition, talk to a doctor
     sub: "r/FitnessDE",
     lang: "de",
     kind: "kolbi",
+    image: "../content/reddit/reddit-08.png", // 1200×1200, gerendert mit content/reddit/render.mjs
     precondition: "NUR nach schriftlichem OK der Mods (Modmail ab 14.10., Text unten). Kein OK bis 30.10. → nicht posten.",
     flair: "„Ernährung“ oder das Flair, das die Mods nennen (manche Subs wollen „Eigenwerbung“/„Projekt“).",
     title: "Supplements einzeln statt alle gleichzeitig testen – ich baue dafür eine kostenlose App (Feedback gesucht)",
@@ -352,6 +360,7 @@ for (const p of posts) {
   if (p.kind === "value" && (p.link || /kolbi/i.test(t))) throw new Error(`${p.id}: Mehrwert-Post darf weder Link noch Kolbi enthalten`)
   if (p.title.length > 300) throw new Error(`${p.id}: Titel > 300 Zeichen`)
   if (t.length > 40000) throw new Error(`${p.id}: Text > 40.000 Zeichen`)
+  if (!p.image || !fs.existsSync(dir + p.image)) throw new Error(`${p.id}: Bild fehlt (${p.image}) – node supplement-lab/marketing/content/reddit/render.mjs`)
 }
 
 const MODMAIL = {
@@ -359,8 +368,8 @@ const MODMAIL = {
   fitnessde: `Hallo Mods! Ich baue als Solo-Entwickler eine kostenlose App, mit der man Supplements nacheinander selbst testet (erst das eigene Normal, dann eins nach dem anderen, abends 1 Minute bewerten). Ohne Konto, keine Werbung, keine Partnerlinks, keine Wirkversprechen. Darf ich sie einmal vorstellen und um Feedback bitten (Link im Kommentar)? Wenn nicht, völlig okay. Danke!`,
 }
 
-fs.writeFileSync(dir + "reddit-posts.json", JSON.stringify(posts.map(({ id, date, day, time, sub, lang, kind, precondition, flair, title, body, firstComment, link }) =>
-  ({ id, date, sub, flair, title, body, firstComment, link, day, time, lang, kind, precondition })), null, 2) + "\n")
+fs.writeFileSync(dir + "reddit-posts.json", JSON.stringify(posts.map(({ id, date, day, time, sub, lang, kind, image, precondition, flair, title, body, firstComment, link }) =>
+  ({ id, date, sub, flair, title, body, firstComment, link, image, day, time, lang, kind, precondition })), null, 2) + "\n")
 
 const q = s => s.split("\n").map(l => (l ? "    " + l : "")).join("\n") // als Codeblock, damit Markdown beim Kopieren erhalten bleibt
 const md = `# Kolbi · Reddit-Beiträge Okt 2026 (8 Stück, kopierfertig)
@@ -370,13 +379,22 @@ Stand 6. Okt 2026 · **Generiert** aus \`reddit-posts.src.mjs\` – Änderungen 
 
 ## So gehst du vor (pro Beitrag ca. 5 Minuten)
 
-1. **Reddit-Editor auf „Markdown“ umschalten** (unter dem Textfeld „Markdown Mode“ / „Switch to Markdown“), dann erst
-   einfügen. Sonst gehen Tabellen, Fettdruck und die Vorlage im Codeblock kaputt.
-2. Titel kopieren → Text kopieren → **Flair** wählen (siehe Hinweis) → absenden.
-3. Gibt es einen **ersten Kommentar**: direkt nach dem Absenden selbst unter den Beitrag schreiben (bei den 3
+Jeder Beitrag hat **genau ein Bild** (1200×1200, \`content/reddit/reddit-0N.png\`): Das Bild zieht im Feed den Blick,
+der Text liefert die Tiefe. Reddit erlaubt bei Bild-Beiträgen einen optionalen Text darunter (seit 2022; Mods können
+Bild-Beiträge oder den Text dazu pro Sub abschalten).
+
+1. **Beitragstyp „Bilder & Video“ („Images & Video“)** wählen → Titel einfügen → **Bild hochladen** → den Text in das
+   Feld darunter („Body text (optional)“) einfügen. Vorher im Textfeld auf **„Markdown“** umschalten
+   („Markdown Mode“ / „Switch to Markdown“), falls angeboten – sonst gehen Tabellen, Fettdruck und Codeblöcke kaputt.
+2. **Gibt es im Sub keinen Bild-Tab oder kein Textfeld darunter:** Beitragstyp **„Text“** wählen, Text im
+   Markdown-Modus einfügen, zurück auf den normalen Editor schalten und das Bild über das **Bild-Symbol im Editor ganz
+   oben** in den Beitrag hochladen. Geht auch das nicht: **ohne Bild** posten. Bild als Imgur-Link oder im
+   Kommentar ist keine Option (wirkt wie Spam/Werbung).
+3. **Flair** wählen (siehe Hinweis) → kurz in der Vorschau prüfen (Bild da, Tabelle ok) → absenden.
+4. Gibt es einen **ersten Kommentar**: direkt nach dem Absenden selbst unter den Beitrag schreiben (bei den 3
    Kolbi-Beiträgen steht der Link **nur dort**, nicht im Beitrag – das wirkt weniger nach Werbung).
-4. **3–6 Stunden dranbleiben** und jede Frage beantworten. Nie über eigene Ergebnisse oder Wirkungen schreiben.
-5. Wird ein Beitrag entfernt: **nicht neu posten**, sondern höflich per Modmail fragen, was nicht gepasst hat.
+5. **3–6 Stunden dranbleiben** und jede Frage beantworten. Nie über eigene Ergebnisse oder Wirkungen schreiben.
+6. Wird ein Beitrag entfernt: **nicht neu posten**, sondern höflich per Modmail fragen, was nicht gepasst hat.
 
 **Mischung:** 5 Mehrwert-Beiträge **ohne Link und ohne Kolbi** (Karma + Vertrauen aufbauen) · 3 Beiträge mit Kolbi,
 nur wo Eigenwerbung erlaubt ist (r/SideProject) bzw. **nach schriftlichem Mod-OK** (r/SelfExperiments, r/FitnessDE).
@@ -418,6 +436,9 @@ ${posts.map((p, i) => `## ${i + 1} · ${p.day} · ${p.sub} · ${p.kind === "kolb
 - **Vorher:** ${p.precondition}
 - **Flair:** ${p.flair}
 - **Link:** ${p.link ? `\`${p.link}\`` : "keiner"}
+- **Bild:** \`${p.image.replace("../", "marketing/")}\` (hochladen, Text darunter)
+
+![Bild ${p.id}](${p.image})
 
 **Titel**
 
