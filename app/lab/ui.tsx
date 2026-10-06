@@ -1,7 +1,8 @@
 "use client"
 import React, { useEffect } from "react"
 import type { MySupp } from "@/lib/supplementLab"
-import { suppColor } from "@/lib/supplementLab"
+import { suppColor, TAGS, tagLabel } from "@/lib/supplementLab"
+import { TAG_EMOJI } from "@/lib/labPatterns"
 import { t } from "@/lib/labI18n"
 
 // ── Lab-Styles (Animationen & wiederverwendbare Klassen) ────────────────────────
@@ -336,6 +337,29 @@ export function SideChips({ value, onChange, suggested, all, compact }: {
         {list.map(chip)}
         {all && !more && <button onClick={() => setMore(true)} style={{ background: "none", border: "none", color: "var(--text-dim)", fontWeight: 800, fontSize: "0.8rem", cursor: "pointer" }}>{t("+ mehr")}</button>}
       </div>
+    </div>
+  )
+}
+
+/** Störfaktoren in Anzeige-Reihenfolge: 🍷 Alkohol zuerst (häufigster Grund für einen „unfairen“ Tag). */
+export const DAY_TAGS = ["Alkohol", ...TAGS.filter(x => x !== "Alkohol")]
+/** Störfaktor-Chips: ein Tipp = an, nochmal = aus. Gespeichert wird der deutsche Wert (tags im Check-in). */
+export function TagChips({ value, onChange, show = 5 }: { value: string[]; onChange: (v: string[]) => void; show?: number }) {
+  const [more, setMore] = React.useState(false)
+  const head = DAY_TAGS.slice(0, show)
+  const list = more ? DAY_TAGS : [...head, ...value.filter(x => !head.includes(x))]
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+      {list.map(tag => {
+        const on = value.includes(tag)
+        return (
+          <button key={tag} className="lab-press" aria-pressed={on} onClick={() => { haptic(); onChange(on ? value.filter(x => x !== tag) : [...value, tag]) }} style={{
+            padding: "8px 12px", borderRadius: 999, fontSize: "0.8rem", fontWeight: on ? 800 : 600, color: "var(--text)",
+            border: on ? "2px solid var(--accent)" : "1px solid var(--border)", background: on ? "var(--accent-dim)" : "var(--surface)",
+          }}>{TAG_EMOJI[tag] ? `${TAG_EMOJI[tag]} ` : ""}{tagLabel(tag)}</button>
+        )
+      })}
+      {!more && DAY_TAGS.length > list.length && <button onClick={() => setMore(true)} style={{ background: "none", border: "none", color: "var(--text-dim)", fontWeight: 800, fontSize: "0.8rem", cursor: "pointer" }}>{t("+ mehr")}</button>}
     </div>
   )
 }

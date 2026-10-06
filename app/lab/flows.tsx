@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import {
-  FACES, FACE_LABELS, TAGS, LIBRARY, SIDE_EFFECTS, SIDE_BY_ID, knownSides, intakeOn, ROUTE_INFO, SUPP_COLORS, CATEGORIES, GOALS, RHYTHMS, TRAININGS,
+  FACES, FACE_LABELS, LIBRARY, SIDE_EFFECTS, SIDE_BY_ID, knownSides, intakeOn, ROUTE_INFO, SUPP_COLORS, CATEGORIES, GOALS, RHYTHMS, TRAININGS,
   todayIso, addDays, fmtDate, diffDays, makeSupp, autoOrder, parseSuppList, goalRelevance,
   activeDims, defaultCheckinTime, libOf, daySum, libTimeTip, STORE_MODE,
   type CheckIn, type Dim, type LabState, type MySupp, type Settings, type LibSupp, type GoalId, type Scores,
@@ -10,7 +10,7 @@ import {
 import { hasNativeReminders } from "@/lib/labReminders"
 import { pairsWith } from "@/lib/labInteractions"
 import { fetchOverview } from "@/lib/labCommunity"
-import { Btn, Capsule, Card, FaceRow, Label, Segmented, SideChips, Stars } from "./ui"
+import { Btn, Capsule, Card, FaceRow, Label, Segmented, SideChips, Stars, TagChips } from "./ui"
 import { KolbiTip, MASCOT_NAME, Mascot } from "./mascot"
 import { InstallHint } from "./install"
 import type { Mood } from "@/lib/labCoach"
@@ -430,7 +430,7 @@ export function CheckInSheet({ s, date, phaseLabel, onDone, onClose }: {
   const [note, setNote] = useState(existing?.note ?? "")
   const [sides, setSides] = useState<Record<string, number>>(existing?.sides ?? {})
   const suggestedSides = knownSides(s, intakeOn(s, date)).map(id => SIDE_BY_ID[id]).filter(Boolean)
-  const [showTags, setShowTags] = useState(!!existing?.tags.length)
+  const [showNote, setShowNote] = useState(!!existing?.note)
   const isToday = date === todayIso()
   const dayLabel = isToday ? t("Heute") : diffDays(date, todayIso()) === 1 ? t("Gestern") : fmtDate(date)
 
@@ -486,6 +486,15 @@ export function CheckInSheet({ s, date, phaseLabel, onDone, onClose }: {
           ))}
         </Card>
 
+        {/* Störfaktoren direkt sichtbar (auch beim Nachtragen vergangener Tage, z. B. Alkohol am Wochenende) */}
+        <Card style={{ marginBottom: 12, padding: "12px 14px" }}>
+          <div style={{ marginBottom: 8 }}>
+            <Label>{isToday ? t("War heute was anders?") : t("War an dem Tag was anders?")}</Label>
+            <div style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>{t("Optional – damit der Vergleich fair bleibt.")}</div>
+          </div>
+          <TagChips value={tags} onChange={setTags} />
+        </Card>
+
         <Card style={{ marginBottom: 12, padding: "12px 14px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
             <Label>{t("Nebenwirkungen?")}</Label>
@@ -494,22 +503,11 @@ export function CheckInSheet({ s, date, phaseLabel, onDone, onClose }: {
           <SideChips value={sides} onChange={setSides} suggested={suggestedSides.length ? suggestedSides : SIDE_EFFECTS.slice(0, 6)} all={SIDE_EFFECTS} />
         </Card>
 
-        <button onClick={() => setShowTags(v => !v)} style={{ background: "none", border: "none", color: "var(--text-dim)", fontWeight: 800, fontSize: "0.85rem", padding: "4px 0 10px", cursor: "pointer" }}>
-          {showTags ? "▾" : "▸"} {t("Störfaktoren & Notiz")} {tags.length ? `(${tags.length})` : t("(Alkohol, Stress, krank …)")}
+        <button onClick={() => setShowNote(v => !v)} style={{ background: "none", border: "none", color: "var(--text-dim)", fontWeight: 800, fontSize: "0.85rem", padding: "4px 0 10px", cursor: "pointer" }}>
+          {showNote ? "▾" : "▸"} {t("Notiz (optional)")}
         </button>
-        {showTags && (
+        {showNote && (
           <div className="lab-rise" style={{ marginBottom: 12 }}>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 10 }}>
-              {TAGS.map(tag => {
-                const on = tags.includes(tag)
-                return (
-                  <button key={tag} className="lab-press" onClick={() => setTags(p => on ? p.filter(x => x !== tag) : [...p, tag])} style={{
-                    padding: "8px 12px", borderRadius: 999, fontSize: "0.8rem", fontWeight: on ? 800 : 600,
-                    border: on ? "2px solid var(--accent)" : "1px solid var(--border)", background: on ? "var(--accent-dim)" : "var(--surface)", color: "var(--text)",
-                  }}>{t(tag)}</button>
-                )
-              })}
-            </div>
             <textarea value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder={t("Notiz (optional)")}
               style={{ width: "100%", padding: 12, borderRadius: 14, fontSize: "0.92rem", resize: "none" }} />
           </div>

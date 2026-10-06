@@ -26,7 +26,7 @@ Neu erzeugen: im Ordner `marketing` → `node content/profile/render-avatars.mjs
 |---|---|---|
 | **Name** (max. 30 Zeichen) | `Kolbi 🧪 Supplement-Check` | `Kolbi 🧪 Supplement Check` |
 | **@-Name** | `@kolbi.lab` – Alternativen: `@kolbi.app`, `@hallo.kolbi` (falls schon vergeben/angelegt: so lassen) | `@kolbi.lab.en` oder `@kolbi.app.en` |
-| **Bio** (max. 80 Zeichen) | `Supplements einzeln testen. Finde raus, was bei DIR wirkt 🧪 Gratis-Beta 👇` (73 Zeichen) | `Test supplements one at a time. Find out what works for YOU 🧪 Free beta 👇` (73) |
+| **Bio** (max. 80 Zeichen) | `Supplements einzeln testen. Sieh, was bei DIR was bringt 🧪 Gratis-Beta 👇` (71 Zeichen) | `Test supplements one at a time. See what helps YOU 🧪 Free beta 👇` (66) |
 | Bio, Variante | `Ich teste mit dir, welche Supplements bei DIR was bringen 🧪 Gratis 👇` (68) | `I help you test which supplements make a difference for YOU 🧪 Free 👇` |
 | **Website** | `https://kolbi-smoky.vercel.app/tiktok` | `https://kolbi-smoky.vercel.app/en/tiktok` |
 | Kategorie (Unternehmenskonto) | die App-/Software-nahe Kategorie wählen, die TikTok anbietet (z. B. „Apps“ bzw. „Software & Apps“) | gleich |

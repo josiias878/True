@@ -39,7 +39,7 @@ import { removeMyResults, shareResult } from "@/lib/labCommunity"
 import { calendarNames, calendarOn, calendarUrls, disableCalendar, enableCalendar, setCalendarNames, syncCalendar } from "@/lib/labCalendar"
 import { CostCard, InteractionCard, PatternStrip, RecapTeaser, WeekRecap, recapAvailable, recapWeekEnd } from "./insights"
 import { interactionChecks } from "@/lib/labInteractions"
-import { findPatterns } from "@/lib/labPatterns"
+import { TAG_EMOJI, findPatterns } from "@/lib/labPatterns"
 import { pathStops, type Stop } from "@/lib/labPath"
 import { t, dec, clock, isEn, LANG, setLang, canSwitchLang } from "@/lib/labI18n"
 
@@ -1621,7 +1621,7 @@ function PhaseSheet({ s, w, today, onClose, update, onVerdict }: {
 function PastDaysSheet({ s, days, today, onClose, onPick }: { s: LabState; days: string[]; today: string; onClose: () => void; onPick: (d: string) => void }) {
   return (
     <Sheet open onClose={onClose} title={t("✏️ Tag bearbeiten")}>
-      <div style={{ color: "var(--text-dim)", fontSize: "0.85rem", marginBottom: 10 }}>{t("Tippe auf einen Tag, um den Check-in nachzutragen oder zu ändern.")}</div>
+      <div style={{ color: "var(--text-dim)", fontSize: "0.85rem", marginBottom: 10 }}>{t("Tippe auf einen Tag, um den Check-in nachzutragen oder zu ändern – auch Störfaktoren wie 🍷 Alkohol.")}</div>
       <div className="lab-card" style={{ padding: 4 }}>
         {days.map((d, i) => {
           const c = s.checkins[d]
@@ -1639,6 +1639,7 @@ function PastDaysSheet({ s, days, today, onClose, onPick }: { s: LabState; days:
                 <span style={{ display: "block", fontWeight: 800, fontSize: "0.9rem" }}>{d === today ? t("Heute") : fmtDate(d)}</span>
                 {w && <span style={{ display: "block", fontSize: "0.72rem", color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{phaseTitle(s, w)}</span>}
               </span>
+              {c && c.tags.length > 0 && <span title={c.tags.map(x => t(x)).join(", ")} style={{ fontSize: "0.85rem", whiteSpace: "nowrap" }}>{c.tags.map(x => TAG_EMOJI[x] ?? "•").slice(0, 3).join("")}</span>}
               <span style={{ fontSize: "0.8rem", fontWeight: 800, whiteSpace: "nowrap", color: avg != null ? "var(--text)" : d === today ? "var(--text-dim)" : "var(--warning)" }}>
                 {avg != null ? <>{fmt(avg)}<span style={{ color: "#f5b400" }}> ★</span></> : d === today ? t("noch offen") : t("fehlt")}
               </span>

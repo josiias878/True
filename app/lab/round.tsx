@@ -6,7 +6,7 @@ import {
   activeDims, intakeOn, knownSides, phaseWindows, addDays, signal, testResult, slotFor, slotMinutes, toMin, suppColor, streak, timeTip, relMin, suppMinutes,
   type LabState, type CheckIn, type Scores, type Decision, type Dim,
 } from "@/lib/supplementLab"
-import { Btn, SideChips, Stars } from "./ui"
+import { Btn, SideChips, Stars, TagChips } from "./ui"
 import { KolbiTip, Mascot } from "./mascot"
 import { FACT_COUNT, nextFact, type Fact } from "@/lib/labKnowledge"
 import { t, dec, clock } from "@/lib/labI18n"
@@ -64,6 +64,8 @@ export function DailyRound({ s, today, steps, onTake, onCheckin, onVerdict, onLe
   const [i, setI] = useState(0)
   const [scores, setScores] = useState<Scores>({})
   const [sides, setSides] = useState<Record<string, number>>({})
+  // Störfaktoren („War heute was anders?“) – optional, gespeichert als deutsche Werte
+  const [tags, setTags] = useState<string[]>([])
   const [flood, setFlood] = useState(true)
   const step = steps[i]
   const done = i >= steps.length
@@ -82,11 +84,11 @@ export function DailyRound({ s, today, steps, onTake, onCheckin, onVerdict, onLe
   useEffect(() => { if (done && fact) learnRef.current(fact.id) }, [done, fact])
 
   const next = () => setI(n => n + 1)
-  const saveCheckin = (withSides: Record<string, number>, sc: Scores = scores, date = today) => {
+  const saveCheckin = (withSides: Record<string, number>, sc: Scores = scores, date = today, tg: string[] = tags) => {
     const dims = activeDims(s)
     const full: Scores = {}
     dims.forEach(d => { full[d.id] = sc[d.id] ?? 3 })
-    onCheckin({ date, scores: full, tags: [], sides: withSides, note: "", quick: false })
+    onCheckin({ date, scores: full, tags: tg, sides: withSides, note: "", quick: false })
   }
 
   return (
@@ -106,9 +108,9 @@ export function DailyRound({ s, today, steps, onTake, onCheckin, onVerdict, onLe
         <div key={done ? "done" : i} className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 18, padding: "12px 0" }}>
           {done ? <DoneStep s={s} fact={fact} onClose={onClose} />
             : step.kind === "take" ? <TakeStep s={s} id={step.id} onDone={() => { onTake(step.id); setTimeout(next, 450) }} onSkip={next} />
-            : step.kind === "checkin" ? <CheckinStep s={s} scores={scores} setScores={setScores} yesterday={!!step.date && step.date !== today} onDone={sc => {
-                if (step.date && step.date !== today) { saveCheckin({}, sc, step.date); setScores({}); next(); return }
-                if (steps[i + 1]?.kind === "sides") next(); else { saveCheckin({}, sc); next() }
+            : step.kind === "checkin" ? <CheckinStep s={s} scores={scores} setScores={setScores} tags={tags} setTags={setTags} yesterday={!!step.date && step.date !== today} onDone={(sc, tg) => {
+                if (step.date && step.date !== today) { saveCheckin({}, sc, step.date, tg); setScores({}); setTags([]); next(); return }
+                if (steps[i + 1]?.kind === "sides") next(); else { saveCheckin({}, sc, today, tg); next() }
               }} />
             : step.kind === "sides" ? <SidesStep s={s} today={today} value={sides} onChange={setSides} onDone={v => { saveCheckin(v); next() }} />
             : <RevealStep s={s} suppId={step.suppId} onDecide={d => { onVerdict(step.suppId, d); setTimeout(next, 500) }} />}
@@ -153,15 +155,38 @@ function TakeStep({ s, id, onDone, onSkip }: { s: LabState; id: string; onDone: 
   )
 }
 
-function CheckinStep({ s, scores, setScores, onDone, yesterday }: { s: LabState; scores: Scores; setScores: React.Dispatch<React.SetStateAction<Scores>>; onDone: (sc: Scores) => void; yesterday?: boolean }) {
+/** Nach der letzten Bewertung geht es von selbst weiter – lang genug, um noch einen Störfaktor anzutippen. */
+const AUTO_NEXT_MS = 2000
+
+function CheckinStep({ s, scores, setScores, tags, setTags, onDone, yesterday }: {
+  s: LabState; scores: Scores; setScores: React.Dispatch<React.SetStateAction<Scores>>
+  tags: string[]; setTags: (v: string[]) => void; onDone: (sc: Scores, tags: string[]) => void; yesterday?: boolean
+}) {
   const dims = activeDims(s)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [armed, setArmed] = useState(0) // > 0: alles bewertet, Auto-Weiter läuft (Zähler startet die Füll-Animation neu)
+  const sent = useRef(false)
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
+  const finish = (sc: Scores, tg: string[]) => {
+    if (timer.current) clearTimeout(timer.current)
+    if (sent.current) return
+    sent.current = true
+    onDone(sc, tg)
+  }
+  const arm = (sc: Scores, tg: string[]) => {
+    if (timer.current) clearTimeout(timer.current)
+    if (!dims.every(x => sc[x.id] != null)) return
+    setArmed(a => a + 1)
+    timer.current = setTimeout(() => finish(sc, tg), AUTO_NEXT_MS)
+  }
   const set = (d: Dim, v: number) => {
     const n = { ...scores, [d]: v }
     setScores(n)
-    if (timer.current) clearTimeout(timer.current)
-    if (dims.every(x => n[x.id] != null)) timer.current = setTimeout(() => onDone(n), 650)
+    arm(n, tags)
+  }
+  const toggleTags = (v: string[]) => {
+    setTags(v)
+    arm(scores, v)
   }
   const filled = dims.filter(d => scores[d.id] != null)
   const avg = filled.length ? filled.reduce((a, d) => a + scores[d.id]!, 0) / filled.length : null
@@ -184,8 +209,24 @@ function CheckinStep({ s, scores, setScores, onDone, yesterday }: { s: LabState;
       <div style={{ textAlign: "center", fontSize: "0.85rem", fontWeight: 800, color: avg != null ? "#f5b400" : "var(--text-dim)", minHeight: 20 }}>
         {avg != null ? `${FACES[Math.round(avg) - 1]} Ø ★ ${fmt(avg)} · ${filled.length}/${dims.length}` : t("0/{n} bewertet", { n: dims.length })}
       </div>
-      {filled.length > 0 && filled.length < dims.length && (
-        <button onClick={() => { if (timer.current) clearTimeout(timer.current); onDone(scores) }} style={{ alignSelf: "center", background: "none", border: "none", color: "var(--text-dim)", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer" }}>{t("Rest überspringen →")}</button>
+      {/* Störfaktoren: optional, ein Tipp – damit Kolbi solche Tage im Vergleich fair einordnet */}
+      <div>
+        <div style={{ marginBottom: 8 }}>
+          <span style={{ display: "block", fontWeight: 800, fontSize: "0.92rem" }}>{yesterday ? t("War gestern was anders?") : t("War heute was anders?")}</span>
+          <span style={{ display: "block", fontSize: "0.72rem", color: "var(--text-dim)" }}>{t("Optional – damit der Vergleich fair bleibt.")}</span>
+        </div>
+        <TagChips value={tags} onChange={toggleTags} />
+      </div>
+      {armed > 0 ? (
+        <button className="lab-press" onClick={() => finish(scores, tags)} style={{
+          position: "relative", overflow: "hidden", alignSelf: "stretch", border: "none", borderRadius: 16, padding: "14px 20px",
+          background: "var(--surface-2)", color: "var(--text)", fontWeight: 800, fontSize: "0.95rem", cursor: "pointer",
+        }}>
+          <span key={armed} aria-hidden style={{ position: "absolute", left: 0, top: 0, bottom: 0, background: "var(--accent-dim)", animation: `labFill ${AUTO_NEXT_MS}ms linear forwards` }} />
+          <span style={{ position: "relative" }}>{tags.length ? t("Weiter · {n} markiert", { n: tags.length }) : t("Weiter")} →</span>
+        </button>
+      ) : filled.length > 0 && filled.length < dims.length && (
+        <button onClick={() => finish(scores, tags)} style={{ alignSelf: "center", background: "none", border: "none", color: "var(--text-dim)", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer" }}>{t("Rest überspringen →")}</button>
       )}
     </>
   )

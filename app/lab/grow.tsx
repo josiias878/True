@@ -3,7 +3,7 @@
 import React, { useState } from "react"
 import { todayIso, type LabState } from "@/lib/supplementLab"
 import { PRICES, PRICE_LABEL, PRO_FEATURES, SITE_URL, betaDaysLeft, betaEndLabel, betaOpen, freeForAll, inviteFriends, isPro, nativeReview, openPaywall, sendFeedback, type ProFeature } from "@/lib/labGrow"
-import { buy, paymentsReady, restorePurchases, storePrices, type Plan } from "@/lib/labBilling"
+import { buy, paymentsReady, restorePurchases, storeOffers, storePrices, type Plan } from "@/lib/labBilling"
 import { Btn, Sheet, haptic } from "./ui"
 import { Mascot } from "./mascot"
 import { track } from "@/lib/labStats"
@@ -241,7 +241,7 @@ export function appPlatform(): Platform {
  * Store-Preis lesen („19,99 €“, „$19.99“, „CHF 20.00“, „¥3,000“, „1.234,56 €“): Zahl + Formatierer, der
  * Währung, Trennzeichen und Nachkommastellen des Stores übernimmt (für „nur … im Monat“). Nicht lesbar → null.
  */
-export function readPrice(str?: string): { value: number; fmt: (n: number) => string } | null {
+export function readPrice(str?: string): { value: number; places: number; fmt: (n: number) => string } | null {
   if (!str) return null
   const m = str.match(/\d(?:[\d.,\s  ']*\d)?/)
   if (!m || m.index === undefined) return null
@@ -262,7 +262,7 @@ export function readPrice(str?: string): { value: number; fmt: (n: number) => st
     const int = group ? i.replace(/\B(?=(\d{3})+(?!\d))/g, group) : i
     return str.slice(0, at) + int + (frac ? d![1] + frac : "") + str.slice(at + raw.length)
   }
-  return { value, fmt }
+  return { value, places, fmt }
 }
 
 export function PaywallSheet({ s, from, onClose, onPurchased, onFlash }: {
@@ -270,9 +270,9 @@ export function PaywallSheet({ s, from, onClose, onPurchased, onFlash }: {
 }) {
   const [plan, setPlan] = useState<Plan>("yearly")
   const [busy, setBusy] = useState(false)
-  // Preise kommen aus dem Store (Währung/Land/Steuer). null = lädt noch.
+  // Preise kommen aus dem Store (Währung/Land/Steuer) samt Testphase/Monatspreis. null = lädt noch.
   const [store, setStore] = useState<StorePrices | null>(null)
-  React.useEffect(() => { storePrices().then(setStore) }, [])
+  React.useEffect(() => { storeOffers().then(setStore) }, [])
   const founder = !!s.pro?.founder
   const plat = appPlatform()
   const loading = paymentsReady() && store === null
@@ -288,7 +288,8 @@ export function PaywallSheet({ s, from, onClose, onPurchased, onFlash }: {
   // Ersparnis und „pro Monat“ nur, wenn beide Preise aus derselben Quelle stammen
   const sameSource = !!sp.yearly === !!sp.monthly
   const save = sameSource && yp && mp ? Math.round((1 - yp.value / (mp.value * 12)) * 100) : 0
-  const perMonth = storePerMonth(store?.yearly) ?? (yp ? yp.fmt(yp.value / 12) : "")
+  // Monatspreis: bevorzugt vom Store; selbst gerechnet nur bei Währungen mit höchstens 2 Nachkommastellen (KWD, BHD … → weglassen)
+  const perMonth = storePerMonth(store?.yearly) ?? (yp && yp.places <= 2 ? yp.fmt(yp.value / 12) : "")
   const dots = "…"
   const yearlySub = [trial ? t("7 Tage gratis") : "", perMonth && !loading ? t("nur {p} im Monat", { p: perMonth }) : ""].filter(Boolean).join(" · ")
   const plans: { id: Plan; title: string; price: string; sub: string; badge?: string }[] = [
