@@ -39,12 +39,13 @@ export const appVersion = () => (appPlatform && APP_VERSION !== "0.9-beta" ? `${
 
 export type ProFeature = "patterns" | "costs" | "experiments" | "timing" | "calendar" | "community"
 export const PRO_FEATURES: { id: ProFeature; emoji: string; title: string; text: string }[] = [
-  { id: "patterns", emoji: "🔎", title: t("Muster-Detektor"), text: t("Was deinen Schlaf & deine Energie beeinflusst") },
+  { id: "patterns", emoji: "🔎", title: t("Muster-Detektor"), text: t("Muster in deinen eigenen Daten – z. B. am Tag nach Alkohol") },
   { id: "costs", emoji: "💸", title: t("Kosten & Sparen"), text: t("Was dein Stack kostet – und was du sparst") },
   { id: "experiments", emoji: "🧭", title: t("Alle Experimente"), text: t("Schlaf, Fokus, Ruhe, Training und mehr") },
   { id: "timing", emoji: "⏱️", title: t("Timing-Check"), text: t("Was mit Abstand, was zusammen – auf einen Blick") },
   { id: "calendar", emoji: "📅", title: t("Kalender-Abo"), text: t("Ergebnisse automatisch im Kalender") },
-  { id: "community", emoji: "👥", title: t("Community-Vergleich"), text: t("Was andere mit demselben Supplement erlebt haben") },
+  // Community-Basis („Was andere erlebt haben“ in groben Worten) bleibt gratis – Pro bekommt die Tiefe (CEO, 6. Okt 2026)
+  { id: "community", emoji: "👥", title: t("Community-Details"), text: t("Verteilung, einzelne Bereiche, Filter nach Ziel") },
 ]
 
 /** Pro-Seite von überall öffnen (LabApp hört auf das Ereignis) */

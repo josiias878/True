@@ -6,6 +6,8 @@ import { PRICES, PRICE_LABEL, PRO_FEATURES, SITE_URL, betaDaysLeft, betaEndLabel
 import { buy, paymentsReady, restorePurchases, storeOffers, storePrices, type Plan } from "@/lib/labBilling"
 import { Btn, Sheet, haptic } from "./ui"
 import { Mascot } from "./mascot"
+import { NewBadge } from "./newbadge"
+import { ProDots, ProFeatureGrid, ProPhone, useProCarousel } from "./pro"
 import { track } from "@/lib/labStats"
 import { t, isEn, euro } from "@/lib/labI18n"
 
@@ -66,6 +68,8 @@ export function ProCard({ s, startOpen = false, onPlans }: { s: LabState; startO
             <div key={f.title} style={{ background: "rgba(255,255,255,.16)", borderRadius: 16, padding: "10px 11px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: "1.2rem" }}>{f.emoji}</span>
+                <span style={{ flex: 1 }} />
+                <NewBadge id={f.id} tone="onColor" style={{ marginRight: pro ? 5 : 0 }} />
                 {pro && <span style={{ width: 18, height: 18, borderRadius: 999, background: "#fff", color: "#9085e9", fontSize: "0.66rem", fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>✓</span>}
               </div>
               <div style={{ fontWeight: 900, fontSize: "0.8rem", marginTop: 2 }}>{f.title}</div>
@@ -314,23 +318,31 @@ export function PaywallSheet({ s, from, onClose, onPurchased, onFlash }: {
   }
   const hasSub = s.pro?.plan === "monthly" || s.pro?.plan === "yearly"
   const hl = from ? PRO_FEATURES.find(x => x.id === from) : undefined
+  const car = useProCarousel(from)
   const link: React.CSSProperties = { color: "inherit", fontWeight: 800 }
   return (
     <Sheet open onClose={onClose}>
-      <div style={{ margin: "-10px -18px 0", padding: "24px 20px 20px", borderRadius: "28px 28px 0 0", color: "#fff", textAlign: "center", background: GRAD, position: "relative", overflow: "hidden" }}>
-        <div className="lab-float" style={{ display: "inline-block" }}><Mascot mood="party" size={86} alive glow fill={0.9} accessory="shades" /></div>
-        <div style={{ fontSize: "1.6rem", fontWeight: 900, marginTop: 4 }}>Lab Pro</div>
-        <div style={{ fontSize: "0.88rem", opacity: 0.92 }}>{hl ? t("{f} und alles andere freischalten", { f: hl.title }) : t("Hol mehr aus deinen eigenen Daten")}</div>
+      {/* Kopf: Marken-Verlauf + Handy mit wechselnden Beispiel-Ansichten (die eine Hauptsache) */}
+      <div style={{ margin: "-10px -18px 0", padding: "20px 20px 0", borderRadius: "28px 28px 0 0", color: "#fff", textAlign: "center", background: GRAD, position: "relative", overflow: "hidden" }}>
+        <div aria-hidden style={{ position: "absolute", left: "50%", top: 60, width: 340, height: 340, marginLeft: -170, borderRadius: 999, background: "radial-gradient(circle, rgba(255,255,255,.32), rgba(255,255,255,0) 65%)", pointerEvents: "none" }} />
+        <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <Mascot mood="party" size={46} alive glow fill={0.9} accessory="shades" />
+          <span style={{ fontSize: "1.65rem", fontWeight: 900, letterSpacing: "-.01em" }}>Lab Pro</span>
+        </div>
+        <div style={{ position: "relative", fontSize: "0.9rem", opacity: 0.94, marginTop: 2 }}>{hl ? t("{f} und alles andere freischalten", { f: hl.title }) : t("Hol mehr aus deinen eigenen Daten")}</div>
+        <div style={{ position: "relative", marginTop: 16 }}><ProPhone c={car} /></div>
+      </div>
+      <div style={{ textAlign: "center", marginTop: 12 }}>
+        <div aria-live="polite" style={{ minHeight: 44 }}>
+          <div style={{ fontWeight: 900, fontSize: "1rem" }}>{car.feature.emoji} {car.feature.title}</div>
+          <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", marginTop: 1 }}>{car.feature.text}</div>
+        </div>
+        <ProDots c={car} />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, margin: "16px 0" }}>
-        {PRO_FEATURES.map(f => (
-          <div key={f.id} style={{ display: "flex", gap: 8, alignItems: "center", padding: "8px 10px", borderRadius: 14, background: f.id === from ? "var(--accent-dim)" : "var(--surface-2)" }}>
-            <span style={{ fontSize: "1.1rem" }}>{f.emoji}</span>
-            <span style={{ fontSize: "0.74rem", fontWeight: 800, lineHeight: 1.2 }}>{f.title}</span>
-          </div>
-        ))}
-      </div>
+      {/* Alle Funktionen als dicke Felder auf neutraler Fläche */}
+      <div style={{ fontWeight: 900, fontSize: "1.05rem", margin: "12px 2px 10px" }}>{t("Alles in Lab Pro")}</div>
+      <div style={{ marginBottom: 16 }}><ProFeatureGrid pro={isPro(s)} highlight={from} /></div>
 
       {founder && (
         <div style={{ textAlign: "center", padding: 12, borderRadius: 18, background: "var(--accent-dim)", marginBottom: 12 }}>

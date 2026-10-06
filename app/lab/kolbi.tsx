@@ -44,9 +44,6 @@ export function KolbiPage({ s, mood, fill, murky, msgs, onAction, onFlash, onFee
   const [panel, setPanel] = useState<Panel | null>(null)
   const lvl = levelFor(s.xp)
   const st = streak(s)
-  const facts = learnedFacts(s)
-  const next = nextFact(s)
-  const nextLib = next?.libId ? LIB_BY_ID[next.libId] : undefined
   const glow = st >= 3
   const pct = Math.round(fill * 100)
   const pro = isPro(s)
@@ -100,38 +97,6 @@ export function KolbiPage({ s, mood, fill, murky, msgs, onAction, onFlash, onFee
         )}
       </div>
 
-      {/* Wissens-Album: breit und prominent */}
-      <div className="lab-card lab-rise" style={{ padding: "14px 0 12px" }}>
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, padding: "0 14px" }}>
-          <span style={{ fontWeight: 900, fontSize: "1rem" }}>{t("📚 Wissens-Album")}</span>
-          <span style={{ fontSize: "0.78rem", fontWeight: 900, color: "var(--accent)", whiteSpace: "nowrap" }}>{t("{n} von {total} entdeckt", { n: facts.length, total: FACT_COUNT })}</span>
-        </div>
-        <div style={{ height: 6, borderRadius: 3, background: "var(--surface-2)", overflow: "hidden", margin: "8px 14px 12px" }}>
-          <div style={{ width: `${(facts.length / Math.max(1, FACT_COUNT)) * 100}%`, height: "100%", background: "var(--lab-grad)", borderRadius: 3 }} />
-        </div>
-        <div className="lab-scroll" style={{ display: "flex", gap: 10, overflowX: "auto", padding: "0 14px 4px", scrollSnapType: "x mandatory", scrollPaddingLeft: 14 }}>
-          {facts.slice(0, 20).map(f => {
-            const lib = f.libId ? LIB_BY_ID[f.libId] : undefined
-            return (
-              <div key={f.id} style={{ flexShrink: 0, width: 220, padding: 12, borderRadius: 16, background: "var(--surface-2)", scrollSnapAlign: "start" }}>
-                <div style={{ fontSize: "0.7rem", fontWeight: 900, color: "var(--accent)", marginBottom: 6 }}>{lib ? `${lib.emoji} ${lib.name.toUpperCase()}` : t("💡 ALLGEMEIN")}</div>
-                <div style={{ fontSize: "0.82rem", lineHeight: 1.5 }}>{f.text}</div>
-              </div>
-            )
-          })}
-          <div style={{ flexShrink: 0, width: 170, padding: 12, borderRadius: 16, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", border: "1.5px dashed var(--border)", scrollSnapAlign: "start" }}>
-            <div style={{ fontSize: "1.5rem" }}>🔒</div>
-            <div style={{ fontWeight: 900, fontSize: "0.82rem", marginTop: 4 }}>{t("Noch {n} zu entdecken", { n: Math.max(0, FACT_COUNT - facts.length) })}</div>
-            <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginTop: 4, lineHeight: 1.4 }}>{t("Nach der Tagesrunde und in deinen Supplements.")}</div>
-          </div>
-        </div>
-        {next && (
-          <div style={{ margin: "10px 14px 0", fontSize: "0.76rem", color: "var(--text-dim)", lineHeight: 1.4 }}>
-            🔓 {t("Als Nächstes: {what} – nach deiner nächsten Tagesrunde", { what: nextLib ? `${nextLib.emoji} ${nextLib.name}` : t("💡 ein allgemeiner Fakt") })}
-          </div>
-        )}
-      </div>
-
       {/* Ruhiges Raster: Details erst beim Antippen */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <Tile emoji={murky ? "🌫️" : glow ? "✨" : "💭"} title={t("So geht's mir")} sub={t("{n} % voll", { n: pct })} onClick={() => setPanel("mir")} />
@@ -179,20 +144,7 @@ export function KolbiPage({ s, mood, fill, murky, msgs, onAction, onFlash, onFee
       )}
       {panel === "badges" && (
         <Sheet open onClose={close} title={t("🏅 Abzeichen · {n}/{total}", { n: gotBadges.length, total: BADGES.length })}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))", gap: 12 }}>
-            {BADGES.map(b => {
-              const got = s.badges.includes(b.id)
-              return (
-                <div key={b.id} title={`${b.name}: ${b.desc}`} style={{ textAlign: "center" }}>
-                  <div style={{
-                    width: 56, height: 56, margin: "0 auto", borderRadius: 18, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.7rem",
-                    background: got ? "var(--accent-dim)" : "var(--surface-2)", filter: got ? undefined : "grayscale(1)", opacity: got ? 1 : 0.4,
-                  }}>{got ? b.emoji : "🔒"}</div>
-                  <div style={{ fontSize: "0.62rem", fontWeight: 700, marginTop: 4, color: got ? "var(--text)" : "var(--text-dim)", lineHeight: 1.2 }}>{got ? b.name : b.desc}</div>
-                </div>
-              )
-            })}
-          </div>
+          <BadgeGrid s={s} />
         </Sheet>
       )}
       {panel === "pro" && (
@@ -200,6 +152,65 @@ export function KolbiPage({ s, mood, fill, murky, msgs, onAction, onFlash, onFee
           <ProCard s={s} startOpen onPlans={close} />
         </Sheet>
       )}
+    </div>
+  )
+}
+
+/** Wissens-Album: entdeckte Fakten als Karten (Ich → Wissens-Album). */
+export function KnowledgeAlbum({ s }: { s: LabState }) {
+  const facts = learnedFacts(s)
+  const next = nextFact(s)
+  const nextLib = next?.libId ? LIB_BY_ID[next.libId] : undefined
+  return (
+      <div className="lab-card lab-rise" style={{ padding: "14px 0 12px" }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, padding: "0 14px" }}>
+        <span style={{ fontWeight: 900, fontSize: "1rem" }}>{t("📚 Wissens-Album")}</span>
+        <span style={{ fontSize: "0.78rem", fontWeight: 900, color: "var(--accent)", whiteSpace: "nowrap" }}>{t("{n} von {total} entdeckt", { n: facts.length, total: FACT_COUNT })}</span>
+      </div>
+      <div style={{ height: 6, borderRadius: 3, background: "var(--surface-2)", overflow: "hidden", margin: "8px 14px 12px" }}>
+        <div style={{ width: `${(facts.length / Math.max(1, FACT_COUNT)) * 100}%`, height: "100%", background: "var(--lab-grad)", borderRadius: 3 }} />
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "0 14px 4px" }}>
+        {facts.map(f => {
+          const lib = f.libId ? LIB_BY_ID[f.libId] : undefined
+          return (
+            <div key={f.id} style={{ padding: 12, borderRadius: 16, background: "var(--surface-2)" }}>
+              <div style={{ fontSize: "0.7rem", fontWeight: 900, color: "var(--accent)", marginBottom: 6 }}>{lib ? `${lib.emoji} ${lib.name.toUpperCase()}` : t("💡 ALLGEMEIN")}</div>
+              <div style={{ fontSize: "0.82rem", lineHeight: 1.5 }}>{f.text}</div>
+            </div>
+          )
+        })}
+        <div style={{ padding: 14, borderRadius: 16, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", border: "1.5px dashed var(--border)" }}>
+          <div style={{ fontSize: "1.5rem" }}>🔒</div>
+          <div style={{ fontWeight: 900, fontSize: "0.82rem", marginTop: 4 }}>{t("Noch {n} zu entdecken", { n: Math.max(0, FACT_COUNT - facts.length) })}</div>
+          <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginTop: 4, lineHeight: 1.4 }}>{t("Nach der Tagesrunde und in deinen Supplements.")}</div>
+        </div>
+      </div>
+      {next && (
+        <div style={{ margin: "10px 14px 0", fontSize: "0.76rem", color: "var(--text-dim)", lineHeight: 1.4 }}>
+          🔓 {t("Als Nächstes: {what} – nach deiner nächsten Tagesrunde", { what: nextLib ? `${nextLib.emoji} ${nextLib.name}` : t("💡 ein allgemeiner Fakt") })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Alle Abzeichen (erreicht farbig, offen mit Schloss). */
+export function BadgeGrid({ s }: { s: LabState }) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))", gap: 12 }}>
+      {BADGES.map(b => {
+        const got = s.badges.includes(b.id)
+        return (
+          <div key={b.id} title={`${b.name}: ${b.desc}`} style={{ textAlign: "center" }}>
+            <div style={{
+              width: 56, height: 56, margin: "0 auto", borderRadius: 18, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.7rem",
+              background: got ? "var(--accent-dim)" : "var(--surface-2)", filter: got ? undefined : "grayscale(1)", opacity: got ? 1 : 0.4,
+            }}>{got ? b.emoji : "🔒"}</div>
+            <div style={{ fontSize: "0.62rem", fontWeight: 700, marginTop: 4, color: got ? "var(--text)" : "var(--text-dim)", lineHeight: 1.2 }}>{got ? b.name : b.desc}</div>
+          </div>
+        )
+      })}
     </div>
   )
 }
