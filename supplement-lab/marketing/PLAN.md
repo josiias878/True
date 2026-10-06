@@ -21,6 +21,10 @@ Feedback aus `lab_feedback` einarbeiten; Store-Build vorbereiten, sobald der App
 
 ## Entscheidungen (vom Inhaber)
 
+- ✅ 6. Okt 2026 (CEO): **Community-Basis bleibt gratis** (Teilen + „Was andere erlebt haben“ in groben Worten), Pro bekommt
+  die Tiefe (Verteilung, Bereiche, Filter). Schwellen: n 5–19 nur grobe Worte, ab n ≥ 20 Prozente; Beschwerden ab
+  3 Nennungen; öffentliche SEO-Seiten ab n ≥ 20. Pseudonym wird generiert (kein Freitext). Feed ab Tag 1 mit Melden/Ausblenden.
+  Partnerlinks nie aus Community-Daten. Quelle: `research/2026-10-community.md`.
 - ✅ 6. Okt 2026 (CEO-Entscheidung nach Inhaber-Input): **Community = neutrale Plattform für Erfahrungsberichte**, wie Reddit –
   Kolbi rät, dosiert und empfiehlt nichts; Nutzer teilen eigene Erfahrungen, auch zu Peptiden (z. B. BPC-157).
   Reihenfolge: (1) Store-1.0 ohne Peptide in Bibliothek/Kolbi-Texten (Store-Freigabe zuerst); privat als eigener
