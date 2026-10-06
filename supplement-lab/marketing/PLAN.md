@@ -21,6 +21,10 @@ Feedback aus `lab_feedback` einarbeiten; Store-Build vorbereiten, sobald der App
 
 ## Entscheidungen (vom Inhaber)
 
+- ✅ 6. Okt 2026 (Inhaber-Vorgabe, gilt vorrangig): **Sicher zuerst, nichts Riskantes, nichts Teures.** Kein Freitext von Nutzern
+  (Beiträge, Antworten, eigene Namen, eigene Gruppen) und keine Peptid-Inhalte, solange keine Rechtsprüfung bezahlt/erfolgt ist.
+  Stufe 2 nur mit sicheren Bausteinen: generiertes Pseudonym + Kolbi-Avatar-Baukasten, vorgefertigte Reaktionen („Durchhalten“,
+  „hilfreich“), strukturierte Ergebnis-Posts, gemeinsame Startwellen, Melden. Freitext/Gruppen/Peptide = später (nach Prüfung + Einnahmen).
 - ✅ 6. Okt 2026 (CEO): **App-Richtung „Instagram trifft Reddit“** – Kolbi wird selbst die Plattform. Instagram-Teil:
   Stories (Wochen-Story), Ergebnis-Posts als Bildkarte, Lab-Profil mit Pseudonym/Avatar. Reddit-Teil: pro Supplement eine
   Community („Lab Magnesium“: Beitreten, Überblick/Beiträge/Fragen/Regeln), Abstimmen „hilfreich“, Antworten, Melden.

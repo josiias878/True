@@ -30,6 +30,10 @@ Kolbi (Maskottchen) bleibt der Begleiter: spricht auf Heute, kommentiert Ergebni
 
 ## 3 · Stufen
 
+> **Vorrang (Inhaber, 6. Okt):** sicher zuerst, kein Geld-/Rechtsrisiko. Alles mit Freitext von Nutzern, eigenen Gruppen
+> oder Peptid-Themen wartet auf Rechtsprüfung und erste Einnahmen. S2 enthält nur vorgefertigte Bausteine (siehe PLAN).
+
+
 - **S1 (jetzt, bis Store-Start):** neue 5-Reiter-Struktur + Layout-Regel in der echten App; Heute fokussiert; Entdecken mit
   Ergebnis-Posts aus der vorhandenen anonymen Community (n-Schwellen aus PLAN) + eigener Wochen-Story + ehrlichen Leerzuständen;
   Labor = Lab-Seiten pro Supplement mit Hauptzahl; Ich = Avatar/Pseudonym (generiert) + Zeugnis. Zähler „testen gerade“
