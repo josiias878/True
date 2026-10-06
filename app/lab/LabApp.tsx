@@ -356,7 +356,7 @@ export default function LabApp() {
   const removeExtraV = useCallback((date: string, id: string) => { update(p => removeExtra(p, date, id)) }, [update])
   const saveSidesV = useCallback((date: string, sides: Record<string, number>, suspect: Record<string, string>) => {
     update(p => setDaySides(p, date, sides, suspect))
-    setFlash(Object.keys(sides).length ? t("🤕 Notiert – ich zähle mit, ob es sich wiederholt") : t("✓ Keine Beschwerden notiert"))
+    setFlash(Object.keys(sides).length ? t("🤕 Notiert – ich zähle mit") : t("✓ Keine Beschwerden notiert"))
   }, [update])
 
   // Store-App: „✓ Genommen“ direkt in der Benachrichtigung → hier übernehmen (im Web kommt nie etwas an)
@@ -1073,14 +1073,14 @@ function Dashboard({ s, wins, today, now, msgs, onAction, onQuick, onTake, onPha
         const nx = extrasOn(s, today).length
         const ns = Object.keys(sidesOf(s, today).sides).length
         const pill: React.CSSProperties = {
-          flex: 1, minWidth: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 12px", borderRadius: 999,
+          flex: 1, minWidth: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 8px", borderRadius: 999,
           border: "1px solid var(--glass-line)", background: "var(--surface)", color: "var(--text)", fontWeight: 800, fontSize: "0.82rem", whiteSpace: "nowrap",
         }
         const badge = (k: number) => k > 0 && <span style={{ minWidth: 18, height: 18, padding: "0 5px", borderRadius: 999, background: "var(--accent-dim)", color: "var(--accent)", fontSize: "0.7rem", fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{k}</span>
         return (
           <div className="lab-rise" style={{ display: "flex", gap: 8 }}>
-            <button className="lab-press" onClick={() => onDay("take")} style={pill}><span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{t("➕ Zusätzlich genommen")}</span>{badge(nx)}</button>
-            <button className="lab-press" onClick={() => onDay("sides")} style={{ ...pill, flex: "0 0 auto" }}><span>{t("🤕 Beschwerde")}</span>{badge(ns)}</button>
+            <button className="lab-press" onClick={() => onDay("take")} style={pill}><span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{t("➕ Extra genommen")}</span>{badge(nx)}</button>
+            <button className="lab-press" onClick={() => onDay("sides")} style={pill}><span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{t("🤕 Beschwerde")}</span>{badge(ns)}</button>
           </div>
         )
       })()}
@@ -2143,14 +2143,14 @@ function TimeSettings({ settings, onChange }: { settings: Settings; onChange: (s
           <input type="time" value={settings[k]} onChange={e => onChange({ ...settings, [k]: e.target.value })} style={{ padding: "6px 10px", borderRadius: 10, fontWeight: 700 }} />
         </div>
       ))}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
-        <span style={{ fontWeight: 700, fontSize: "0.9rem", minWidth: 0 }}>{t("🌙 Morgen-Frage")}</span>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 6, marginBottom: 6 }}>
+        <span style={{ fontWeight: 700, fontSize: "0.9rem" }}>{t("🌙 Morgen-Frage")}</span>
         <select value={settings.morningDelay ?? MORNING_DELAY_DEFAULT} onChange={e => onChange({ ...settings, morningDelay: Number(e.target.value) })}
-          aria-label={t("Morgen-Frage")} style={{ padding: "6px 8px", borderRadius: 10, fontWeight: 700, maxWidth: "62%" }}>
+          aria-label={t("Morgen-Frage")} style={{ padding: "8px 10px", borderRadius: 10, fontWeight: 700, width: "100%" }}>
           {MORNING_DELAYS.map(m => <option key={m} value={m}>{t("{n} Min nach dem Aufstehen", { n: m })}</option>)}
         </select>
       </div>
-      <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: -2, marginBottom: 10 }}>{t("Um {time} frage ich kurz, wie du geschlafen hast.", { time: clock(fromMin(morningMin(settings))) })}</div>
+      <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginBottom: 10 }}>{t("Um {time} frage ich kurz, wie du geschlafen hast.", { time: clock(fromMin(morningMin(settings))) })}</div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ fontWeight: 700, fontSize: "0.9rem" }}>{t("🏋️ Training")}</span>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>

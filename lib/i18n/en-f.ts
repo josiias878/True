@@ -129,7 +129,6 @@ export const EN_F: Record<string, string> = {
   "✓ {name} eingetragen": "✓ {name} added",
   "➕ Zusätzlich genommen": "➕ Took something extra",
   "🤕 Beschwerde": "🤕 Complaint",
-  "🤕 Notiert – ich zähle mit, ob es sich wiederholt": "🤕 Noted – I'll keep count in case it happens again",
   " · {n}× stark": " · {n}× strong",
   "+ „{name}“ eintragen": "+ Add “{name}”",
   "An dem Tag ist noch keine Einnahme eingetragen.": "Nothing taken is logged for that day yet.",
@@ -157,4 +156,6 @@ export const EN_F: Record<string, string> = {
   "🌙 Schlaf hast du schon morgens eingetragen.": "🌙 You already logged sleep this morning.",
   "Beschwerden heute?": "Any complaints today?",
   "1 Tipp genügt – so sehe ich, was bei dir nachts einen Unterschied macht.": "One tap is enough – so I can see what makes a difference for you at night.",
+  "🤕 Notiert – ich zähle mit": "🤕 Noted – I'll keep count",
+  "➕ Extra genommen": "➕ Took extra",
 }
