@@ -18,6 +18,13 @@ Check-ins, Bewertungen, Nebenwirkungen, Notizen, Vorrat, Preise, Ziele – wird 
 löschst oder in den Einstellungen „Zurücksetzen“ wählst, sind die Daten weg. Ein Backup kannst du selbst als
 Datei sichern oder teilen; wohin die Datei geht, entscheidest du.
 
+**System-Backups:** Auf dem iPhone kann das Betriebssystem App-Daten – auch deine Kolbi-Einträge – in ein
+Geräte-Backup aufnehmen (iCloud-Backup oder Backup auf deinem Mac/PC), wenn du solche Backups in deinen
+Geräteeinstellungen eingeschaltet hast. Dieses Backup verwaltest du bei Apple bzw. auf deinem Computer; wir haben
+darauf keinen Zugriff, und beim Wiederherstellen eines solchen Backups können die Einträge zurückkommen. In der
+Android-App ist das System-Backup für Kolbi abgeschaltet: Die Einträge gehen weder in ein Google-Backup noch werden
+sie beim Umzug auf ein neues Gerät übertragen.
+
 Daten an einen Server gehen nur in diesen Fällen:
 
 - **ohne Schalter, technisch nötig:** Auslieferung der Website und Web-App (Abschnitt 4) und in den Store-Apps die
@@ -189,7 +196,8 @@ Inhalte gehen, entscheidest du.
 
 ## 14. Speicherdauer
 
-- Lokale Daten auf deinem Gerät: bis du sie löschst (App löschen oder „Zurücksetzen“).
+- Lokale Daten auf deinem Gerät: bis du sie löschst (App löschen oder „Zurücksetzen“). Eine Kopie in einem
+  iPhone-Geräte-Backup (Abschnitt 2) bleibt, bis du dieses Backup löschst oder es ersetzt wird.
 - Statistik: nur Tageszähler ohne Personenbezug; sie werden nicht einzelnen Personen zugeordnet.
 - Web-Push: versendete Einträge höchstens 2 Tage, Push-Adresse bis zum Ausschalten bzw. bis sie ungültig wird.
 - Kalender-Abo: bis „Abo beenden“ oder bis du uns den Abo-Link zum Löschen schickst.

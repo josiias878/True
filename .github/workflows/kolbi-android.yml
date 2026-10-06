@@ -37,6 +37,20 @@ jobs:
       # Secrets dürfen nicht direkt in "if:" stehen → hier einmal prüfen, unten env.HAS_UPLOAD_KEY nutzen.
       HAS_UPLOAD_KEY: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
     steps:
+      - name: RevenueCat-Schlüssel vorhanden? (nur signierter Store-Build)
+        # Ein signiertes AAB ohne VITE_RC_ANDROID_KEY hätte keine Kaufseite (Lab Pro für alle gratis) und
+        # dürfte nicht in die Play Console. Unsignierte Prüf-Builds laufen ohne Schlüssel weiter.
+        if: env.HAS_UPLOAD_KEY == 'true'
+        working-directory: .
+        env:
+          VITE_RC_ANDROID_KEY: ${{ secrets.VITE_RC_ANDROID_KEY }}
+        run: |
+          if [ -z "${VITE_RC_ANDROID_KEY// /}" ]; then
+            echo "::error title=RevenueCat-Schlüssel fehlt::Secret VITE_RC_ANDROID_KEY (goog_…) ist leer. Ein signierter Play-Build braucht ihn, sonst gibt es keine Käufe. Secret setzen (supplement-lab/STORE.md) oder Upload-Schlüssel-Secrets entfernen für einen reinen Prüf-Build."
+            exit 1
+          fi
+          echo "RevenueCat-Schlüssel (Android) gesetzt."
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
@@ -60,7 +74,8 @@ jobs:
 
       - name: Web-App bauen (Vite)
         env:
-          # Öffentlicher RevenueCat-Schlüssel (goog_…), optional. Ohne Schlüssel bleibt Lab Pro gratis.
+          # Öffentlicher RevenueCat-Schlüssel (goog_…). Pflicht für den signierten Build (Prüfung oben),
+          # im unsignierten Prüf-Build optional – ohne Schlüssel bleibt Lab Pro gratis.
           VITE_RC_ANDROID_KEY: ${{ secrets.VITE_RC_ANDROID_KEY }}
         run: npx vite build
 

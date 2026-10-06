@@ -1,8 +1,15 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+    <!-- Kein System-Backup: Kolbi-Daten (Einnahmen, Notizen, Werte) bleiben nur auf diesem Gerät.
+         allowBackup=false greift bis Android 11; ab Android 12 schließen dataExtractionRules auch
+         Cloud-Backup UND Geräte-Übertragung aus; fullBackupContent schließt für ältere Geräte alles aus.
+         tools:replace: falls eine Bibliothek andere Werte mitbringt, gilt die App. -->
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        tools:replace="android:allowBackup,android:fullBackupContent,android:dataExtractionRules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"

@@ -442,7 +442,7 @@ const ALL_LIBRARY: LibSupp[] = [
     timing: t("Täglich zur gleichen Zeit, kurz vor oder zum Frühstück."), aliases: ["probiotika", "probiotic", "probiotikum", "darmbakterien", "kefir"] },
   { id: "kreatin", name: t("Kreatin"), emoji: "🏋️", category: "Training", onset: "langsam",
     slots: ["fruehstueck", "training"], dose: "3–5 g", watch: ["koerper", "fokus", "energie"],
-    effect: t("Gut untersucht für kurze, intensive Belastungen wie Krafttraining (meist 3–5 g/Tag). Leichte Wassereinlagerung ist normal."),
+    effect: t("Gut untersucht für kurze, intensive Belastungen wie Krafttraining. Leichte Wassereinlagerung ist normal."),
     timing: t("Timing egal — Hauptsache jeden Tag. Bei Kreatin rechnen viele mit mehreren Wochen, bevor sie etwas merken – wenn überhaupt."), aliases: ["kreatin", "creatin", "creatine", "monohydrat"] },
   { id: "citrullin", name: t("L-Citrullin"), emoji: "🔥", category: "Training", onset: "schnell",
     slots: ["training"], dose: "6–8 g", watch: ["koerper", "energie"],
@@ -844,7 +844,11 @@ function libText(x: MySupp): Partial<MySupp> {
   if (!lib) return {}
   const out: Partial<MySupp> = {}
   if (x.name !== lib.name && toDe(x.name) === toDe(lib.name)) out.name = lib.name
-  if (x.dose && lib.dose && x.dose !== lib.dose && toDe(x.dose) === toDe(lib.dose)) out.dose = lib.dose
+  // Store-Modus: ältere Einträge, bei denen makeSupp die Bibliotheks-Menge als „deine Dosis“ vorbelegt hat, leeren –
+  // sonst stünde die übliche Menge weiter wie eine persönliche Empfehlung in Erinnerungen/Tagesrunde.
+  // Nur bei exakt gleicher Angabe (auch übersetzt); eigene/abweichende Eingaben bleiben unangetastet.
+  if (STORE_MODE && x.dose && lib.dose && (x.dose === lib.dose || toDe(x.dose) === toDe(lib.dose))) out.dose = ""
+  else if (x.dose && lib.dose && x.dose !== lib.dose && toDe(x.dose) === toDe(lib.dose)) out.dose = lib.dose
   return out
 }
 

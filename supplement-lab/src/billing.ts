@@ -16,11 +16,11 @@ type Pkg = {
   product?: {
     identifier?: string; priceString?: string; pricePerMonthString?: string | null
     introPrice?: { price?: number } | null                 // iOS: Einführungsangebot (Preis 0 = Gratis-Testphase)
-    defaultOption?: { freePhase?: unknown } | null          // Android: nur Angebote, für die der Nutzer berechtigt ist
+    defaultOption?: { freePhase?: unknown } | null          // Android: Play liefert nur Angebote, für die der Nutzer berechtigt ist
   }
   webBillingProduct?: {
     currentPrice?: { formattedPrice?: string }
-    freeTrialPhase?: unknown                                // Web: aus getOfferings nur berechtigte Angebote
+    freeTrialPhase?: unknown                                // Web: Testphase des Standardangebots (Berechtigung unbekannt)
     defaultSubscriptionOption?: { base?: { pricePerMonth?: { formattedPrice?: string } | null } | null } | null
   }
 }
@@ -46,7 +46,8 @@ function offersOf(list: Pkg[], platform: string, iosEligible: Record<string, boo
       } else if (platform === "android") {
         if (p.product && "defaultOption" in p.product) trial = !!p.product.defaultOption?.freePhase
       } else if (p.webBillingProduct && "freeTrialPhase" in p.webBillingProduct) {
-        trial = !!p.webBillingProduct.freeTrialPhase
+        // Web: purchases-js sagt nicht verlässlich, ob DIESER Nutzer die Testphase bekommt → nur „keine“ ist gesichert
+        if (!p.webBillingProduct.freeTrialPhase) trial = false
       }
       if (trial !== undefined) o.trial = trial
     }

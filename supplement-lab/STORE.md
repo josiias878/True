@@ -248,7 +248,15 @@ Sobald RevenueCat eingerichtet ist, trägt Claude die **öffentlichen** Schlüss
 |---|---|---|
 | `VITE_RC_IOS_KEY` | `appl_…` | iOS-Build |
 | `VITE_RC_ANDROID_KEY` | `goog_…` | Android-Build |
-| `VITE_RC_WEB_KEY` | `rcb_…` (optional, Web über Stripe) | Vercel → Projekt supplement-lab → Environment Variables |
+| `VITE_RC_WEB_KEY` | `rcb_…` (optional, Web über Stripe) – **erst setzen, wenn** Datenschutz §10 und die Nutzungsbedingungen Web-Käufe (RevenueCat Web Billing/Stripe, Zahlungsdaten, Widerruf/Kündigung im Web) beschreiben | Vercel → Projekt supplement-lab → Environment Variables |
 
 RevenueCat-Offering „default“ mit den Paketen `$rc_monthly`, `$rc_annual`, `$rc_lifetime` (→ Produkte `kolbi_pro_monthly`,
 `kolbi_pro_yearly`, `kolbi_pro_lifetime`), Entitlement `pro`. Ohne Schlüssel bleibt alles gratis.
+
+- **Pflicht für Store-Builds:** Der signierte Android-Build (Upload-Schlüssel gesetzt) und der TestFlight-Job brechen ab,
+  wenn `VITE_RC_ANDROID_KEY` bzw. `VITE_RC_IOS_KEY` leer ist. Unsignierte Prüf-Builds und der Simulator-Build laufen ohne.
+- **Web-Schlüssel noch nicht setzen:** Solange Datenschutz (§10) und Bedingungen nur App-Store-/Google-Play-Käufe
+  beschreiben, bleibt `VITE_RC_WEB_KEY` leer – die Web-Version bleibt dann gratis, ohne Kaufseite.
+- **Gratis-Woche:** Die App zeigt „7 Tage gratis“ nur, wenn der Store sie für diesen Nutzer bestätigt
+  (iOS: Einführungsangebot 0 € + Berechtigung; Android: Gratis-Phase im Standard-Angebot). Ohne eingerichtete
+  Testphase im Store erscheint kein Gratis-Text.

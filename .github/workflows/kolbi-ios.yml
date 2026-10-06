@@ -128,6 +128,19 @@ jobs:
       # Die Versionsnummer (1.0.0) steht als MARKETING_VERSION im Xcode-Projekt.
       BUILD_NUMBER: ${{ github.run_number }}
     steps:
+      - name: RevenueCat-Schlüssel vorhanden?
+        # Ein TestFlight-/App-Store-Build ohne VITE_RC_IOS_KEY hätte keine Kaufseite (Lab Pro für alle gratis).
+        # Der Simulator-Build oben läuft ohne Schlüssel weiter.
+        working-directory: .
+        env:
+          VITE_RC_IOS_KEY: ${{ secrets.VITE_RC_IOS_KEY }}
+        run: |
+          if [ -z "${VITE_RC_IOS_KEY// /}" ]; then
+            echo "::error title=RevenueCat-Schlüssel fehlt::Secret VITE_RC_IOS_KEY (appl_…) ist leer. Ein TestFlight-/App-Store-Build braucht ihn, sonst gibt es keine Käufe. Secret setzen (supplement-lab/STORE.md) oder den Workflow mit testflight=false starten."
+            exit 1
+          fi
+          echo "RevenueCat-Schlüssel (iOS) gesetzt."
+
       - uses: actions/checkout@v4
 
       - name: Xcode wählen
@@ -148,7 +161,7 @@ jobs:
 
       - name: Web-App bauen + Capacitor sync
         env:
-          # Öffentlicher RevenueCat-Schlüssel (appl_…), optional. Ohne Schlüssel bleibt Lab Pro gratis.
+          # Öffentlicher RevenueCat-Schlüssel (appl_…) – Pflicht, Prüfung im ersten Schritt dieses Jobs.
           VITE_RC_IOS_KEY: ${{ secrets.VITE_RC_IOS_KEY }}
         run: |
           npx vite build

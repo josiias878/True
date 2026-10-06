@@ -20,6 +20,12 @@ check-ins, ratings, side effects, notes, stock, prices, goals – is stored **on
 storage or app storage). We have no access to it. If you delete the app or choose “Reset” in the settings, the data
 is gone. You can save or share a backup as a file yourself; you decide where the file goes.
 
+**System backups:** On iPhone, the operating system may include app data – including your Kolbi entries – in a
+device backup (iCloud Backup or a backup on your Mac/PC) if you have turned such backups on in your device settings.
+You manage that backup with Apple or on your computer; we have no access to it, and restoring such a backup can bring
+the entries back. In the Android app, system backup is turned off for Kolbi: your entries are not included in a
+Google backup and are not transferred when you move to a new device.
+
 Data is sent to a server only in these cases:
 
 - **no switch, technically necessary:** delivery of the website and web app (section 4) and, in the store apps,
@@ -179,7 +185,8 @@ If you share a result card or an invitation, the app uses your device’s share 
 
 ## 14. Storage period
 
-- Local data on your device: until you delete it (delete the app or “Reset”).
+- Local data on your device: until you delete it (delete the app or “Reset”). A copy in an iPhone device backup
+  (section 2) remains until you delete that backup or it is replaced.
 - Stats: only daily counters without personal reference; they are not linked to individual people.
 - Web push: sent entries at most 2 days, push address until you switch it off or it becomes invalid.
 - Calendar subscription: until “End subscription” or until you send us the subscription link for deletion.

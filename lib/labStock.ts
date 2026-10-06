@@ -105,6 +105,9 @@ export function guessForm(x: MySupp): StockForm {
 }
 
 export function guessPerDay(x: MySupp, form: StockForm) {
+  // Store-Modus: keine Menge aus der Bibliothek ableiten (keine Dosis-Empfehlung) – neutral der kleinste
+  // Auswahl-Chip der Form: 1 Stück / 1 g / 1 Tropfen, bei Flüssigem 5 ml (wie bisher, nicht bibliotheksabhängig)
+  if (STORE_MODE) return FORMS[form]?.doseChips[0] ?? 1
   if (form === "pulver") {
     const r = doseRange(libOf(x))
     return r?.unit === "mg" && r.max >= 500 ? Math.min(30, Math.round(r.max / 1000) || 1) : 5

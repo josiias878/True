@@ -3,14 +3,14 @@
 // ausgelassene Einnahmen und Einnahme-Uhrzeit. Nur Hinweise – keine Beweise.
 
 import {
-  DIMS, TAGS, daySum, tagLabel, intakeOn, libOf, relMin, toMin, fromMin,
+  DIMS, TAGS, addDays, daySum, tagLabel, intakeOn, libOf, relMin, toMin, fromMin,
   type CheckIn, type Dim, type LabState,
 } from "./supplementLab"
 import { t } from "./labI18n"
 
 export interface Pattern {
   id: string
-  kind: "tag" | "weekday" | "skip" | "time"
+  kind: "tag" | "nextday" | "weekday" | "skip" | "time"   // nextday = Tag NACH einem Störfaktor (z. B. Alkohol)
   emoji: string
   title: string       // z. B. „Nach Alkohol“
   dim: Dim | null     // null = Gesamtgefühl
@@ -30,6 +30,8 @@ const WEEKDAYS = [t("Sonntags"), t("Montags"), t("Dienstags"), t("Mittwochs"), t
 const WEEKDAY = [t("Sonntag"), t("Montag"), t("Dienstag"), t("Mittwoch"), t("Donnerstag"), t("Freitag"), t("Samstag")]
 const MIN_N = 3
 const MIN_DELTA = 0.4
+/** Störfaktoren, die oft erst am Folgetag spürbar sind (Schlaf/Energie am Morgen danach) → zusätzlich „Am Tag nach …“ */
+const NEXT_DAY_TAGS = ["Alkohol"]
 
 const mean = (a: number[]) => a.reduce((x, y) => x + y, 0) / a.length
 const score = (c: CheckIn, dim: Dim | null) => dim ? c.scores[dim] : daySum(c)
@@ -61,6 +63,20 @@ export function findPatterns(s: LabState): Pattern[] {
     const b = bestSplit(yes, no, allDims)
     if (b) out.push({ id: `tag:${tag}`, kind: "tag", emoji: TAG_EMOJI[tag] ?? "🏷️", title: tag === "Training" ? t("An Trainingstagen") : tag === "Reise" ? t("An Reisetagen") : t("Bei „{tag}“", { tag: tagLabel(tag) }),
       dim: b.dim, delta: b.d, with: b.w, without: b.wo, labelWith: t("mit"), labelWithout: t("ohne"), n: yes.length })
+  }
+
+  // Folgetag: Check-ins, deren VORTAG den Störfaktor hatte, gegen Check-ins mit Vortag ohne ihn.
+  // Nur Tage, deren Vortag selbst einen Check-in hat (sonst ist unbekannt, ob der Störfaktor da war).
+  // Rein beschreibend, gleiche Mindestmengen wie oben (bestSplit: je Gruppe mind. MIN_N Tage, Unterschied ≥ MIN_DELTA).
+  const byDate = new Map(cs.map(c => [c.date, c]))
+  for (const tag of NEXT_DAY_TAGS) {
+    const after = cs.map(c => ({ c, prev: byDate.get(addDays(c.date, -1)) })).filter((x): x is { c: CheckIn; prev: CheckIn } => !!x.prev)
+    const yes = after.filter(x => x.prev.tags.includes(tag)).map(x => x.c)
+    const no = after.filter(x => !x.prev.tags.includes(tag)).map(x => x.c)
+    const b = bestSplit(yes, no, allDims)
+    if (b) out.push({ id: `nextday:${tag}`, kind: "nextday", emoji: TAG_EMOJI[tag] ?? "🏷️",
+      title: tag === "Alkohol" ? t("Am Tag nach Alkohol") : t("Am Tag nach „{tag}“", { tag: tagLabel(tag) }),
+      dim: b.dim, delta: b.d, with: b.w, without: b.wo, labelWith: t("Tag danach"), labelWithout: t("sonst"), n: yes.length })
   }
 
   // Wochentage: schwächster bzw. stärkster Tag gegen den Rest
