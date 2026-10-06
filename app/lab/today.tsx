@@ -72,11 +72,11 @@ export function KolbiSays({ msg, more, onAction, onMore, tail = true }: { msg: C
           ...(open ? {} : { display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }),
         }}>{msg.text}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-          {main && <Btn onClick={() => onAction(main.action, msg.id)} style={{ padding: "9px 14px", fontSize: "0.84rem", borderRadius: 12 }}>{main.label}</Btn>}
-          {open && second && <Btn variant="soft" onClick={() => onAction(second.action, msg.id)} style={{ padding: "9px 12px", fontSize: "0.82rem", borderRadius: 12 }}>{second.label}</Btn>}
+          {main && <Btn onClick={() => onAction(main.action, msg.id)} style={{ minHeight: 44, padding: "9px 14px", fontSize: "0.84rem", borderRadius: 12 }}>{main.label}</Btn>}
+          {open && second && <Btn variant="soft" onClick={() => onAction(second.action, msg.id)} style={{ minHeight: 44, padding: "9px 12px", fontSize: "0.82rem", borderRadius: 12 }}>{second.label}</Btn>}
           <span style={{ flex: 1 }} />
-          {!open && (msg.actions?.length ?? 0) > 1 && <button onClick={() => setOpen(true)} style={{ background: "none", border: "none", color: "var(--text-dim)", fontWeight: 800, fontSize: "0.8rem", cursor: "pointer" }}>{t("Mehr")}</button>}
-          {more > 0 && <button onClick={onMore} style={{ background: "none", border: "none", color: "var(--text-dim)", fontWeight: 800, fontSize: "0.8rem", cursor: "pointer" }}>+{more} ›</button>}
+          {!open && (msg.actions?.length ?? 0) > 1 && <button onClick={() => setOpen(true)} style={{ background: "none", border: "none", color: "var(--text-dim)", fontWeight: 800, fontSize: "0.8rem", cursor: "pointer", minWidth: 44, minHeight: 44, padding: "0 8px" }}>{t("Mehr")}</button>}
+          {more > 0 && <button onClick={onMore} style={{ background: "none", border: "none", color: "var(--text-dim)", fontWeight: 800, fontSize: "0.8rem", cursor: "pointer", minWidth: 44, minHeight: 44, padding: "0 8px" }}>+{more} ›</button>}
         </div>
       </div>
     </div>
@@ -159,6 +159,8 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
   const tipsShown = main === "done" || main === "locked"
   const top = tips[0]
   const showRecap = recap.ready && !notStarted
+  // Eine Hauptsache pro Bildschirm: Push-Hinweis + Rückblick reichen – dann kein Kolbi-Tipp (Kacheln bleiben sichtbar)
+  const showTip = tipsShown && !!top && !(pushHint && showRecap)
   // „Ich melde mich …“ stimmt bei geschlossener App nur mit Push → genau dort dezent darauf hinweisen
   const pushRow = tipsShown && pushHint ? (
     <div style={{ marginTop: 16, width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "8px 8px 8px 12px", borderRadius: 16, background: "var(--surface-2)", textAlign: "left" }}>
@@ -281,7 +283,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
           {title(fill >= 1 ? t("Heute alles erledigt") : t("Gerade nichts zu tun"))}
           {sub(fill >= 1 ? (st > 1 ? t("{n} Tage am Stück. Stark!", { n: st }) : t("Bis morgen!")) : t("Ich melde mich, wenn wieder etwas dran ist."))}
           {checked && (
-            <button onClick={() => onCheckin(today)} className="lab-press" style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text)", fontWeight: 800, fontSize: "0.82rem" }}>
+            <button onClick={() => onCheckin(today)} className="lab-press" style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 8, minHeight: 44, padding: "8px 16px", borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text)", fontWeight: 800, fontSize: "0.82rem" }}>
               {FACES[Math.round(daySum(checked)) - 1]} {t("Heute")} {fmt(daySum(checked))}★ · <span style={{ color: "var(--accent)" }}>{checked.quick ? t("genauer") : t("ändern")}</span>
             </button>
           )}
@@ -290,7 +292,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
       </div>
 
       {showRecap && <RecapTeaser slim end={recap.end} onOpen={onRecap} />}
-      {tipsShown && top && <KolbiSays msg={top} more={tips.length - 1} onAction={onAction} onMore={() => goTab("kolbi")} tail={!showRecap} />}
+      {showTip && <KolbiSays msg={top} more={tips.length - 1} onAction={onAction} onMore={() => goTab("kolbi")} tail={!showRecap} />}
 
       {/* ── max. 3 kleine Kacheln ── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>

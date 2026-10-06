@@ -221,7 +221,11 @@ export default function LabApp() {
   const [toast, setToast] = useState<{ amount: number; label: string; k: number } | null>(null)
   const [flash, setFlash] = useState<string | null>(init.flash)
   const [newBadge, setNewBadge] = useState<string | null>(null)
-  const [confetti, setConfetti] = useState(false)
+  const [confetti, setConfettiRaw] = useState(false)
+  // Zentral: Konfetti nur ohne „Bewegung reduzieren“ (prefers-reduced-motion)
+  const setConfetti = useCallback((on: boolean) => {
+    setConfettiRaw(on && !(typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches))
+  }, [])
   const [round, setRound] = useState<RoundStep[] | null>(null)
   const [unlockedFor, setUnlockedFor] = useState<string | null>(null)
   const [stockFor, setStockFor] = useState<string | null>(null)

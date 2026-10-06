@@ -314,7 +314,7 @@ export function TabHead({ kicker, title, right, onBack }: { kicker?: React.React
 
 /** Kleines „BEISPIEL“-Schild für die Demo. */
 export function DemoBadge() {
-  return <span style={{ flexShrink: 0, fontSize: "0.66rem", fontWeight: 900, background: "var(--warning-dim)", color: "var(--warning)", padding: "4px 9px", borderRadius: 999 }}>{t("BEISPIEL")}</span>
+  return <span style={{ flexShrink: 0, fontSize: "0.66rem", fontWeight: 900, background: "var(--warning)", color: "#1a1200", padding: "4px 9px", borderRadius: 999 }}>{t("BEISPIEL")}</span>
 }
 
 /** Reiter mit Unterstrich (Lab-Seite): max. 3–4 Einträge. */

@@ -82,9 +82,9 @@ export function InstallHint({ compact }: { compact?: boolean }) {
             <>{t("Öffne diesen Link auf deinem Handy und füge ihn dort zum Home-Bildschirm hinzu.")}</>
           )}
         </div>
-        {canPrompt && <Btn onClick={install} style={{ marginTop: 10, padding: "9px 14px", fontSize: "0.82rem", borderRadius: 12 }}>{t("📲 Jetzt installieren")}</Btn>}
+        {canPrompt && <Btn onClick={install} style={{ marginTop: 10, minHeight: 44, padding: "9px 14px", fontSize: "0.82rem", borderRadius: 12 }}>{t("📲 Jetzt installieren")}</Btn>}
       </div>
-      <button onClick={dismiss} aria-label={t("Hinweis schließen")} style={{ background: "none", border: "none", color: "var(--text-dim)", fontSize: "1rem", cursor: "pointer", padding: 2 }}>✕</button>
+      <button onClick={dismiss} aria-label={t("Hinweis schließen")} style={{ background: "none", border: "none", color: "var(--text-dim)", fontSize: "1rem", cursor: "pointer", padding: 0, minWidth: 44, minHeight: 44, margin: "-10px -10px -10px -4px", flexShrink: 0 }}>✕</button>
     </div>
   )
 }
