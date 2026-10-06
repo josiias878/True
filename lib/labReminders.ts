@@ -215,7 +215,8 @@ export function notificationPlan(s: LabState, days = 7, now = new Date()): Plann
     if (!(date === today && (morningAnswered(s, date) || s.checkins[date]?.scores.schlaf != null))) {
       const mm = morningMin(s.settings)
       const at = atDate(date, mm)
-      const near = out.filter(n => n.kind === "take" && n.key.startsWith(`take-${date}-`) && Math.abs(+n.at - +at) <= 30 * 60_000)
+      // nur zusammenführen, wenn die Sammel-Nachricht noch kommt – sonst gingen die Einnahme-Erinnerungen mit ihr verloren
+      const near = +at > +now ? out.filter(n => n.kind === "take" && n.key.startsWith(`take-${date}-`) && Math.abs(+n.at - +at) <= 30 * 60_000) : []
       const ids = near.flatMap(n => n.suppIds ?? [])
       for (const n of near) out.splice(out.indexOf(n), 1)
       const names = ids.map(id => s.supps.find(x => x.id === id)?.name).filter(Boolean) as string[]
@@ -235,7 +236,7 @@ export function notificationPlan(s: LabState, days = 7, now = new Date()): Plann
       let m = toMin(s.reminders.checkin)
       if (m < wake) m += 1440
       const at = atDate(date, m)
-      const near = out.filter(n => n.kind === "take" && n.key.startsWith(`take-${date}-`) && Math.abs(+n.at - +at) <= 60 * 60_000)
+      const near = +at > +now ? out.filter(n => n.kind === "take" && n.key.startsWith(`take-${date}-`) && Math.abs(+n.at - +at) <= 60 * 60_000) : []
       const ids = near.flatMap(n => n.suppIds ?? [])
       for (const n of near) out.splice(out.indexOf(n), 1)
       const names = ids.map(id => s.supps.find(x => x.id === id)?.name).filter(Boolean) as string[]

@@ -271,11 +271,12 @@ export function morningMin(s: Settings) {
 
 /**
  * Ab wann der Abend-Check-in offen ist (Minuten im Lab-Tag, vgl. relMin): 6 h vor der Check-in-Erinnerung
- * (reminders.checkin = „Tag ist vorbei ab“), aber nie früher als 8 h nach dem Aufstehen.
+ * (reminders.checkin = „Tag ist vorbei ab“), aber nie früher als 8 h nach dem Aufstehen – und nie später als die Erinnerung selbst.
  * Beispiele: Aufstehen 4:00 / Erinnerung 22:00 → ab 16:00 · 7:00 / 22:00 → ab 16:00 · 9:00 / 0:30 → ab 18:30.
  */
 export function checkinOpensMin(s: Pick<LabState, "settings" | "reminders">) {
-  return Math.max(relMin(toMin(s.reminders.checkin), s.settings) - 360, toMin(s.settings.wake) + 480)
+  const r = relMin(toMin(s.reminders.checkin), s.settings)
+  return Math.min(r, Math.max(r - 360, relMin(toMin(s.settings.wake), s.settings) + 480))
 }
 
 /**
@@ -970,7 +971,13 @@ function sanitizeDayData(s: LabState) {
     const out: Record<string, ExtraIntake[]> = {}
     if (isObj(s.extra)) for (const [d, list] of Object.entries(s.extra)) {
       if (!DATE_RE.test(d) || !Array.isArray(list)) continue
-      const ok = list.filter((x): x is ExtraIntake => isObj(x) && typeof x.id === "string" && typeof x.name === "string" && !!x.name.trim())
+      const ok: ExtraIntake[] = []
+      for (const x of list) {
+        if (!isObj(x) || typeof x.id !== "string" || typeof x.name !== "string" || !x.name.trim()) continue
+        const e: ExtraIntake = { id: x.id, name: x.name }
+        for (const k of ["lib", "supp", "emoji", "dose", "at"] as const) if (typeof x[k] === "string") e[k] = x[k] as string
+        ok.push(e)
+      }
       if (ok.length) out[d] = ok
     }
     s.extra = out
@@ -979,7 +986,17 @@ function sanitizeDayData(s: LabState) {
     const out: Record<string, DaySides> = {}
     if (isObj(s.daySides)) for (const [d, e] of Object.entries(s.daySides)) {
       if (!DATE_RE.test(d) || !isObj(e) || !isObj(e.sides)) continue
-      out[d] = e as unknown as DaySides
+      const sides: Record<string, number> = {}
+      for (const [k, v] of Object.entries(e.sides)) if (v === 1 || v === 2) sides[k] = v
+      if (!Object.keys(sides).length) continue
+      const x: DaySides = { sides }
+      if (isObj(e.suspect)) {
+        const sus: Record<string, string> = {}
+        for (const [k, v] of Object.entries(e.suspect)) if (typeof v === "string" && sides[k]) sus[k] = v
+        if (Object.keys(sus).length) x.suspect = sus
+      }
+      if (typeof e.at === "string") x.at = e.at
+      out[d] = x
     }
     s.daySides = out
   }
@@ -1684,7 +1701,8 @@ export function demoState(): LabState {
     bpc157: { gelenke: 1.1, koerper: 0.5, verdauung: 0.4 },
     ashwagandha: { ruhe: 0.8, schlaf: 0.6, gelenke: 0.3 },
   }
-  let seed = 7
+  // Seeds so gewählt, dass die Demo-Geschichte stimmt: Magnesium → Schlaf am stärksten, L-Theanin → Ruhe/Fokus, Test 3 → seine Bereiche
+  let seed = STORE_MODE ? 2136 : 1369
   const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280 }
   const windows = phaseWindows(s)
   const dims = activeDims(s)

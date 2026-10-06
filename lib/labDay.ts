@@ -11,9 +11,10 @@
 
 import {
   LIB_BY_ID, activeDims, extraEmoji, extraKey, extraLabel, extrasOn, intakeOn, morningMin, nowTime, phaseWindows,
-  relMin, suppName, todayIso, toMin, fromMin, checkinOpensMin,
+  relMin, suppName, todayIso, toMin, fromMin, checkinOpensMin, addDays, fmtDate,
   type CheckIn, type DaySides, type DimInfo, type ExtraIntake, type LabState, type MorningEntry,
 } from "./supplementLab"
+import { t } from "./labI18n"
 
 // ── Morgen-Frage ─────────────────────────────────────────────────────────────
 
@@ -65,10 +66,19 @@ export function morningDue(s: LabState, today: string, now: Date): boolean {
 /** Uhrzeit der Morgen-Frage als HH:MM (für Einstellungen/Erklärtexte). */
 export function morningTime(s: Pick<LabState, "settings">) { return fromMin(morningMin(s.settings)) }
 
-/** Bereiche für den ABEND-Check-in: wie activeDims, aber ohne Schlaf, wenn er für diesen Tag morgens schon beantwortet wurde. */
-export function eveningDims(s: LabState, date: string): DimInfo[] {
+/**
+ * Bereiche für den ABEND-Check-in: wie activeDims, aber ohne Schlaf, wenn er für diesen Tag morgens schon beantwortet wurde.
+ * Nachtrag (date < today): Schlaf an date = Nacht date−1 → date. Ist die Nacht DANACH (morning/checkin von date+1) schon
+ * beantwortet – z. B. gerade in der Morgen-Frage –, wird nicht noch einmal gefragt (sonst landet „letzte Nacht“ beim
+ * falschen Tag); ein schon gespeicherter Wert bleibt beim Bearbeiten sichtbar. Sonst sagt der Hinweis, welche Nacht gemeint ist.
+ */
+export function eveningDims(s: LabState, date: string, today = todayIso()): DimInfo[] {
   const dims = activeDims(s)
-  return morningAnswered(s, date) ? dims.filter(d => d.id !== "schlaf") : dims
+  if (morningAnswered(s, date)) return dims.filter(d => d.id !== "schlaf")
+  if (date >= today) return dims
+  const next = addDays(date, 1)
+  if (s.checkins[date]?.scores.schlaf == null && (morningAnswered(s, next) || s.checkins[next]?.scores.schlaf != null)) return dims.filter(d => d.id !== "schlaf")
+  return dims.map(d => d.id === "schlaf" ? { ...d, hint: t("Nacht auf {day}: Einschlafen, Durchschlafen, Aufwachen", { day: fmtDate(date) }) } : d)
 }
 
 /**

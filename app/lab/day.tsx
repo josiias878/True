@@ -167,13 +167,16 @@ export function DaySheet({ s, tab: tab0 = "take", date: date0, fixedDate, onlyTa
   const [suspect, setSuspect] = useState(init.suspect)
   useEffect(() => { setSides(init.sides); setSuspect(init.suspect) }, [init])
 
-  // Schnellauswahl: zuletzt genutzt + eigene Supplements (ohne Doppelte)
+  // Schnellauswahl: zuletzt genutzt + eigene Supplements (ohne Doppelte). Was an dem Tag im Plan fällig ist (auch der Test),
+  // fehlt hier – das wird in der Runde abgehakt, sonst zählte die Plan-Einnahme als „Extra“ und der Tag als gestört.
+  const planned = useMemo(() => new Set(intakeOn(s, date)), [s, date])
   const quick = useMemo(() => {
     const out: { key: string; item: ExtraInput; label: string; emoji: string }[] = []
     const seen = new Set<string>()
+    for (const x of s.supps) if (planned.has(x.id)) { seen.add(x.id); if (x.lib) seen.add(x.lib) }
     for (const r of recentExtras(s, 8)) {
       const k = r.lib ?? r.supp ?? r.key
-      if (seen.has(k)) continue
+      if (seen.has(k) || (r.supp && seen.has(r.supp))) continue
       seen.add(k)
       out.push({ key: r.key, item: { ...(r.lib ? { lib: r.lib } : {}), ...(r.supp ? { supp: r.supp } : {}), name: r.name }, label: r.name, emoji: r.emoji })
     }
@@ -183,7 +186,7 @@ export function DaySheet({ s, tab: tab0 = "take", date: date0, fixedDate, onlyTa
       out.push({ key: x.id, item: { supp: x.id }, label: x.name, emoji: x.emoji })
     }
     return out.slice(0, 14)
-  }, [s])
+  }, [s, planned])
   const ql = q.trim().toLowerCase()
   const hits = ql ? LIBRARY.filter(l => l.name.toLowerCase().includes(ql) || l.aliases.some(a => a.includes(ql))).slice(0, 10) : []
   const exact = !!ql && LIBRARY.some(l => l.name.toLowerCase() === ql)
@@ -229,7 +232,7 @@ export function DaySheet({ s, tab: tab0 = "take", date: date0, fixedDate, onlyTa
               </div>
             )}
           </div>
-          <div style={{ fontSize: "0.74rem", color: "var(--text-dim)", lineHeight: 1.45 }}>{t("Auch außerhalb deines Plans – z. B. Vitamin D am Wochenende. Ich markiere solche Tage, damit der Vergleich fair bleibt.")}</div>
+          <div style={{ fontSize: "0.74rem", color: "var(--text-dim)", lineHeight: 1.45 }}>{t("Auch außerhalb deines Plans – z. B. Vitamin D am Wochenende. Ich markiere solche Tage, damit der Vergleich fair bleibt.")}{planned.size > 0 && <> {t("Geplantes hakst du wie gewohnt ab – hier nur, was zusätzlich dazukam.")}</>}</div>
         </> : <>
           <SidesWithSuspect s={s} date={date} value={sides} suspect={suspect} onChange={setSides} onSuspect={setSuspect} />
           <Btn full onClick={() => { onSides(date, sides, suspect); onClose() }}>{Object.keys(sides).length ? t("Speichern") : t("✓ Keine Beschwerden")}</Btn>

@@ -157,4 +157,6 @@ export const EN_F: Record<string, string> = {
   "Beschwerden heute?": "Any complaints today?",
   "🤕 Notiert – ich zähle mit": "🤕 Noted – I'll keep count",
   "➕ Extra genommen": "➕ Took extra",
+  "Nacht auf {day}: Einschlafen, Durchschlafen, Aufwachen": "Night before {day}: falling asleep, staying asleep, waking up",
+  "Geplantes hakst du wie gewohnt ab – hier nur, was zusätzlich dazukam.": "Tick off planned ones as usual – this is only for extras.",
 }

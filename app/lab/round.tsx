@@ -234,7 +234,7 @@ function CheckinStep({ s, date, scores, setScores, tags, setTags, onDone, yester
           <div key={d.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "10px 0", borderTop: k ? "1px solid var(--border)" : "none" }}>
             <span style={{ minWidth: 0 }}>
               <span style={{ display: "block", fontWeight: 800, fontSize: "0.92rem", whiteSpace: "nowrap" }}>{d.emoji} {d.label}</span>
-              <span style={{ display: "block", fontSize: "0.68rem", color: "var(--text-dim)", lineHeight: 1.25 }}>{DIM_BY_ID[d.id].hint}</span>
+              <span style={{ display: "block", fontSize: "0.68rem", color: "var(--text-dim)", lineHeight: 1.25 }}>{d.hint}</span>
             </span>
             <Stars value={scores[d.id]} onChange={v => set(d.id, v)} size={24} />
           </div>
