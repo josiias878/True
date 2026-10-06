@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react"
 import { DIMS, LIB_BY_ID, SIDE_BY_ID, testResult, type LabState } from "@/lib/supplementLab"
 import { COMMUNITY_MIN, communityPayload, fetchStats, percentile, type CommunityStats } from "@/lib/labCommunity"
 import { Btn, Sheet } from "./ui"
+import { ProGate } from "./grow"
+import { keepWords, sidesShown, tierOf } from "@/lib/labSocial"
 import { Mascot } from "./mascot"
 import { t, dec } from "@/lib/labI18n"
 
@@ -17,7 +19,7 @@ function KeepRing({ pct, size = 92 }: { pct: number; size?: number }) {
     <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
       <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--surface-2)" strokeWidth={stroke} />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#1baf7a" strokeWidth={stroke} strokeLinecap="round"
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--accent)" strokeWidth={stroke} strokeLinecap="round"
           strokeDasharray={C} strokeDashoffset={on ? C * (1 - pct / 100) : C} style={{ transition: "stroke-dashoffset 1s cubic-bezier(.3,.9,.3,1)" }} />
       </svg>
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
@@ -51,72 +53,109 @@ function Spread({ q, mine }: { q: number[]; mine: number | null }) {
   )
 }
 
-export function CommunityCard({ s, suppId, onJoin }: { s: LabState; suppId: string; onJoin?: () => void }) {
-  const x = s.supps.find(q => q.id === suppId)
-  const libId = x?.lib
+/**
+ * „Was andere erlebt haben“ – gestuft nach Datenmenge (PLAN.md): unter 5 nur „x von 5“, 5–19 grobe Worte,
+ * ab 20 Prozente; Verteilung und Bereiche (Tiefe) mit Lab Pro; Beschwerden erst ab 3 Nennungen.
+ */
+export function CommunityCard({ s, suppId, libId: libId0, onJoin, flat }: { s: LabState; suppId?: string; libId?: string; onJoin?: () => void; flat?: boolean }) {
+  const x = suppId ? s.supps.find(q => q.id === suppId) : s.supps.find(q => q.lib === libId0)
+  const libId = libId0 ?? x?.lib
   const [st, setSt] = useState<CommunityStats | null | "loading">("loading")
-  useEffect(() => { if (!libId) return; let on = true; fetchStats(libId).then(v => { if (on) setSt(v) }); return () => { on = false } }, [libId])
-  if (!libId || !LIB_BY_ID[libId] || st === null) return null
-  const r = testResult(s, suppId)
-  const mineDelta = s.verdicts[suppId] && r?.overall.base != null && r.overall.test != null ? r.overall.test - r.overall.base : null
+  useEffect(() => { if (!libId) return; let on = true; setSt("loading"); fetchStats(libId).then(v => { if (on) setSt(v) }); return () => { on = false } }, [libId])
+  if (!libId || !LIB_BY_ID[libId]) return null
+  const r = x ? testResult(s, x.id) : null
+  const mineDelta = x && s.verdicts[x.id] && r?.overall.base != null && r.overall.test != null ? r.overall.test - r.overall.base : null
+  const tier = st !== "loading" && st ? tierOf(st.n) : "none"
+  const sides = st !== "loading" && st ? sidesShown(st.sides, st.n) : []
 
   return (
-    <div className="lab-card lab-rise" style={{ padding: 16, marginBottom: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-        <span style={{ fontWeight: 900, fontSize: "1rem", flex: 1 }}>{t("🌍 Was andere erlebt haben")}</span>
-        {st !== "loading" && st.n >= COMMUNITY_MIN && <span style={{ fontSize: "0.7rem", fontWeight: 800, color: "var(--text-dim)" }}>{t("{n} Tests", { n: st.n })}</span>}
-      </div>
+    <div className={flat ? "lab-rise" : "lab-card lab-rise"} style={{ padding: flat ? 0 : 16, marginBottom: 12 }}>
+      {!flat && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <span style={{ fontWeight: 900, fontSize: "1rem", flex: 1 }}>{t("🌍 Was andere erlebt haben")}</span>
+          {tier !== "none" && st !== "loading" && st && <span style={{ fontSize: "0.7rem", fontWeight: 800, color: "var(--text-dim)" }}>{t("{n} Tests", { n: st.n })}</span>}
+        </div>
+      )}
       {st === "loading" ? (
         <div className="lab-shine" style={{ height: 80, borderRadius: 16, background: "linear-gradient(90deg, var(--surface-2), color-mix(in srgb, var(--surface-2) 50%, var(--surface)), var(--surface-2))" }} />
-      ) : st.n < COMMUNITY_MIN ? (
+      ) : st === null ? (
+        <div style={{ fontSize: "0.84rem", color: "var(--text-dim)", lineHeight: 1.45 }}>{t("Gerade keine Verbindung – ich zeige es dir, sobald du wieder online bist.")}</div>
+      ) : tier === "none" ? (
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ display: "flex", gap: 5 }}>
             {Array.from({ length: COMMUNITY_MIN }, (_, k) => (
-              <span key={k} className="lab-pop" style={{ animationDelay: `${k * 60}ms`, width: 16, height: 16, borderRadius: 999, background: k < st.n ? "#3987e5" : "var(--surface-2)" }} />
+              <span key={k} className="lab-pop" style={{ animationDelay: `${k * 60}ms`, width: 16, height: 16, borderRadius: 999, background: k < st.n ? "var(--accent)" : "var(--surface-2)" }} />
             ))}
           </div>
           <span style={{ flex: 1, fontSize: "0.8rem", color: "var(--text-dim)", lineHeight: 1.4 }}>
             {st.n ? t("Erst {n} von {min} Tests", { n: st.n, min: COMMUNITY_MIN }) : t("Noch niemand")}{t(" – ab {min} zeige ich, was andere erlebt haben.", { min: COMMUNITY_MIN })}{s.community !== true && onJoin ? t(" Sei einer der Ersten!") : ""}
           </span>
         </div>
+      ) : tier === "words" ? (
+        <>
+          {st.keepPct != null && (() => { const w = keepWords(st.keepPct); return (
+            <div>
+              <div style={{ fontSize: "1.9rem", fontWeight: 900, lineHeight: 1.1 }}>{w.big}</div>
+              <div style={{ fontSize: "1rem", fontWeight: 800, color: "var(--text-dim)", marginTop: 2 }}>{w.rest}</div>
+            </div>
+          ) })()}
+          <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", marginTop: 10, lineHeight: 1.45 }}>
+            {t("{n} Selbsttests · noch wenige Daten, deshalb nur grob", { n: st.n })}{st.avgDays ? ` · ${t("Ø {n} Tage getestet", { n: st.avgDays })}` : ""}
+          </div>
+          {sides.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+              <span style={{ fontSize: "0.74rem", fontWeight: 800, color: "var(--text-dim)", padding: "4px 0" }}>{t("Genannt:")}</span>
+              {sides.slice(0, 4).map(([id]) => (
+                <span key={id} style={{ fontSize: "0.74rem", fontWeight: 800, padding: "4px 9px", borderRadius: 999, background: "var(--surface-2)" }}>{SIDE_BY_ID[id]?.emoji} {SIDE_BY_ID[id]?.label ?? id}</span>
+              ))}
+            </div>
+          )}
+          <div style={{ fontSize: "0.68rem", color: "var(--text-dim)", marginTop: 10 }}>{t("Anonyme Selbstversuche anderer Nutzer – keine Studie, aber ein ehrliches Bild.")}</div>
+        </>
       ) : (
         <>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <KeepRing pct={st.keepPct ?? 0} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: "0.72rem", fontWeight: 800, color: "var(--text-dim)" }}>{t("Im Schnitt")}</div>
-              <div style={{ fontSize: "1.9rem", fontWeight: 900, lineHeight: 1.05, color: (st.avg ?? 0) >= 0 ? "#1baf7a" : "#e34948" }}>{fmt1(st.avg ?? 0)}★</div>
+              <div style={{ fontSize: "1.9rem", fontWeight: 900, lineHeight: 1.05 }}>{fmt1(st.avg ?? 0)}★</div>
               <div style={{ fontSize: "0.74rem", color: "var(--text-dim)" }}>{t("Gesamtgefühl · Ø {n} Tage getestet", { n: st.avgDays ?? "" })}</div>
             </div>
           </div>
-          {st.quantiles && <Spread q={st.quantiles} mine={mineDelta} />}
-          {mineDelta != null && st.quantiles && (
-            <div className="lab-pop" style={{ marginTop: 6, padding: "8px 12px", borderRadius: 14, background: "var(--accent-dim)", fontSize: "0.82rem", fontWeight: 800 }}>
-              {t("Bei dir {d}★ – besser als ca. {p} % der anderen", { d: fmt1(mineDelta), p: percentile(mineDelta, st.quantiles) ?? "" })}
-            </div>
-          )}
-          {st.dims && Object.keys(st.dims).length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 12 }}>
-              {Object.entries(st.dims).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, 3).map(([d, v]) => {
-                const info = DIMS.find(q => q.id === d)
-                const len = Math.min(1, Math.abs(v) / 1.5) * 50
-                return (
-                  <div key={d} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.78rem", fontWeight: 800 }}>
-                    <span style={{ width: 92, flexShrink: 0 }}>{info?.emoji} {info?.label ?? d}</span>
-                    <span style={{ flex: 1, position: "relative", height: 10, borderRadius: 5, background: "var(--surface-2)" }}>
-                      <span style={{ position: "absolute", top: 0, bottom: 0, borderRadius: 5, background: v >= 0 ? "#1baf7a" : "#e34948", ...(v >= 0 ? { left: "50%", width: `${len}%` } : { right: "50%", width: `${len}%` }) }} />
-                      <span style={{ position: "absolute", left: "50%", top: -2, bottom: -2, width: 2, background: "var(--text-dim)", opacity: 0.4 }} />
-                    </span>
-                    <span style={{ width: 40, textAlign: "right", color: v >= 0 ? "#1baf7a" : "#e34948" }}>{fmt1(v)}</span>
+          {(st.quantiles || (st.dims && Object.keys(st.dims).length > 0)) && (
+            <div style={{ marginTop: 10 }}>
+              <ProGate s={s} feature="community">
+                {st.quantiles && <Spread q={st.quantiles} mine={mineDelta} />}
+                {mineDelta != null && st.quantiles && (
+                  <div className="lab-pop" style={{ marginTop: 6, padding: "8px 12px", borderRadius: 14, background: "var(--surface-2)", fontSize: "0.82rem", fontWeight: 800 }}>
+                    {t("Bei dir {d}★ – besser als ca. {p} % der anderen", { d: fmt1(mineDelta), p: percentile(mineDelta, st.quantiles) ?? "" })}
                   </div>
-                )
-              })}
+                )}
+                {st.dims && Object.keys(st.dims).length > 0 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 12 }}>
+                    {Object.entries(st.dims).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, 3).map(([d, v]) => {
+                      const info = DIMS.find(q => q.id === d)
+                      const len = Math.min(1, Math.abs(v) / 1.5) * 50
+                      return (
+                        <div key={d} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.78rem", fontWeight: 800 }}>
+                          <span style={{ width: 92, flexShrink: 0 }}>{info?.emoji} {info?.label ?? d}</span>
+                          <span style={{ flex: 1, position: "relative", height: 10, borderRadius: 5, background: "var(--surface-2)" }}>
+                            <span style={{ position: "absolute", top: 0, bottom: 0, borderRadius: 5, background: v >= 0 ? "#1baf7a" : "#e34948", ...(v >= 0 ? { left: "50%", width: `${len}%` } : { right: "50%", width: `${len}%` }) }} />
+                            <span style={{ position: "absolute", left: "50%", top: -2, bottom: -2, width: 2, background: "var(--text-dim)", opacity: 0.4 }} />
+                          </span>
+                          <span style={{ width: 40, textAlign: "right" }}>{fmt1(v)}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </ProGate>
             </div>
           )}
-          {st.sides && Object.keys(st.sides).length > 0 && (
+          {sides.length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
-              {Object.entries(st.sides).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([id, p]) => (
-                <span key={id} style={{ fontSize: "0.74rem", fontWeight: 800, padding: "4px 9px", borderRadius: 999, background: "var(--warning-dim)", color: "var(--warning)" }}>{SIDE_BY_ID[id]?.emoji} {SIDE_BY_ID[id]?.label ?? id} · {p} %</span>
+              {sides.slice(0, 4).map(([id, p]) => (
+                <span key={id} style={{ fontSize: "0.74rem", fontWeight: 800, padding: "4px 9px", borderRadius: 999, background: "var(--surface-2)" }}>{SIDE_BY_ID[id]?.emoji} {SIDE_BY_ID[id]?.label ?? id} · {p} %</span>
               ))}
             </div>
           )}

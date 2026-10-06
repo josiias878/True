@@ -83,6 +83,12 @@ const ICONS: Record<string, React.ReactNode> = {
   pill: <><rect x="2.5" y="8" width="19" height="8" rx="4" transform="rotate(-45 12 12)" /><path d="M9.2 9.2 14.8 14.8" /></>,
   flask: <><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3" /><path d="M7.5 15h9" /></>,
   settings: <><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></>,
+  sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
+  compass: <><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2 5-5 2 2-5z" /></>,
+  user: <><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" /></>,
+  plus: <><path d="M12 5v14M5 12h14" /></>,
+  back: <><path d="M15 18l-6-6 6-6" /></>,
+  search: <><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></>,
 }
 
 export function Icon({ name, size = 22 }: { name: keyof typeof ICONS | string; size?: number }) {
@@ -281,6 +287,47 @@ export function FaceRow({ value, onPick, faces, labels, size = 60 }: { value?: n
             <span style={{ fontSize: size * 0.5, lineHeight: 1.1 }}>{f}</span>
             {labels && <span style={{ fontSize: "0.62rem", fontWeight: 800 }}>{labels[i]}</span>}
           </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** Kopf eines Bildschirms: kleine Zeile darüber, großer Titel, rechts optional etwas (z. B. „BEISPIEL“), links optional „zurück“. */
+export function TabHead({ kicker, title, right, onBack }: { kicker?: React.ReactNode; title: React.ReactNode; right?: React.ReactNode; onBack?: () => void }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 2px 16px", minWidth: 0 }}>
+      {onBack && (
+        <button onClick={onBack} className="lab-press" aria-label={t("Zurück")} style={{
+          width: 40, height: 40, marginLeft: -6, borderRadius: 999, border: "none", background: "transparent", color: "var(--text)",
+          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+        }}><Icon name="back" size={24} /></button>
+      )}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {kicker && <div style={{ fontSize: "0.74rem", fontWeight: 800, color: "var(--text-dim)", letterSpacing: ".07em", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{kicker}</div>}
+        <h1 style={{ margin: 0, fontSize: "1.6rem", fontWeight: 900, lineHeight: 1.15, letterSpacing: "-.01em", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</h1>
+      </div>
+      {right}
+    </div>
+  )
+}
+
+/** Kleines „BEISPIEL“-Schild für die Demo. */
+export function DemoBadge() {
+  return <span style={{ flexShrink: 0, fontSize: "0.66rem", fontWeight: 900, background: "var(--warning-dim)", color: "var(--warning)", padding: "4px 9px", borderRadius: 999 }}>{t("BEISPIEL")}</span>
+}
+
+/** Reiter mit Unterstrich (Lab-Seite): max. 3–4 Einträge. */
+export function UnderTabs<T extends string>({ value, options, onChange }: { value: T; options: { id: T; label: string }[]; onChange: (v: T) => void }) {
+  return (
+    <div role="tablist" style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--border)", overflowX: "auto" }} className="lab-scroll">
+      {options.map(o => {
+        const on = value === o.id
+        return (
+          <button key={o.id} role="tab" aria-selected={on} onClick={() => onChange(o.id)} style={{
+            flexShrink: 0, background: "none", border: "none", padding: "10px 10px 9px", fontSize: "0.92rem", fontWeight: on ? 900 : 800, whiteSpace: "nowrap",
+            color: on ? "var(--text)" : "var(--text-dim)", borderBottom: `3px solid ${on ? "var(--accent)" : "transparent"}`, marginBottom: -1,
+          }}>{o.label}</button>
         )
       })}
     </div>
