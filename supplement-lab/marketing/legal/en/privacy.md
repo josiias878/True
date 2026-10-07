@@ -15,7 +15,8 @@ Email: [E-Mail-Adresse]
 
 ## 2. Principle: your entries stay on your device
 
-Supplement Lab works without an account and without signing in. Everything you enter – supplements, intakes,
+Supplement Lab works without an account and without signing in. A pseudonymous social account without an email
+address only exists if you switch on the optional social features (section 8a). Everything you enter – supplements, intakes,
 check-ins, ratings, side effects, notes, stock, prices, goals – is stored **only locally on your device** (browser
 storage or app storage). We have no access to it. If you delete the app or choose “Reset” in the settings, the data
 is gone. You can save or share a backup as a file yourself; you decide where the file goes.
@@ -32,7 +33,8 @@ Data is sent to a server only in these cases:
   purchase verification via RevenueCat (section 10);
 - **on by default, can be turned off at any time:** the anonymous usage stats without a device ID (section 5);
 - **only if you use or switch on the feature yourself:** push reminders in the web app (section 6), calendar
-  subscription (section 7), community (section 8, with explicit consent) and feedback (section 9).
+  subscription (section 7), community (section 8, with explicit consent), social features (section 8a, with
+  explicit consent) and feedback (section 9).
 
 **Not included:** version 1.0 does not read any data from Apple Health or Google Health Connect. If such a connection
 is offered later, we will update this policy beforehand; it would only become active after your explicit consent in
@@ -42,8 +44,8 @@ tracking SDKs, no location data and no access to contacts, camera, microphone or
 ## 3. Storage on your device (Section 25 TDDDG)
 
 The app stores data in your device’s local storage and reads it back: your entries and settings and – only if you use
-the respective feature – random identifiers for the community (section 8), calendar subscription (section 7) and web
-push (section 6). This storage is **strictly necessary** so that the app can provide the feature you asked for
+the respective feature – random identifiers for the community (section 8), social features (profile ID and device key,
+section 8a), calendar subscription (section 7) and web push (section 6). This storage is **strictly necessary** so that the app can provide the feature you asked for
 (Section 25(2) no. 2 of the German TDDDG); no consent is required for it. In the store apps, RevenueCat’s purchase
 system stores a random app user ID on the device (section 10). For the stats, see section 5. We don’t set cookies for
 advertising or analytics purposes.
@@ -129,6 +131,57 @@ remove all your contributions there with “Delete my shared results”.
 
 To show the aggregated numbers, the app fetches them from Supabase. Nothing about you is stored in the process.
 
+You don’t need a social account for this anonymous sharing. If you also share a result as a result post in the social
+features, section 8a applies: the post is then visible to other users of the app under your pseudonym.
+
+## 8a. Social features (optional, with explicit consent)
+
+If you switch on the social features in the app, you can share result posts under a pseudonym, follow others, react
+and join communities. Nothing is transferred for this without your consent; all other features of the app work
+without it. The social features are for people aged 18 and over.
+
+**Purpose:** sharing your test results with other users of the app under a pseudonym, following their results and
+reacting to them – and protecting the community against spam and abuse (reporting, blocking, moderation).
+
+The following is stored with Supabase (Frankfurt, section 11):
+
+- **Social account without email:** a random profile ID and a hashed (non-reversible) value of a secret key that only
+  your device knows. No name, no email address, no phone number, no password.
+- **Profile:** a pseudonym that the app generates from fixed word lists (you cannot enter your own text) and your
+  Kolbi avatar (colour, accessory, mood).
+- **Result posts you share:** which supplement from the library was tested, test duration, your verdict (keep / maybe
+  / out) and the difference in your ratings compared with your reset phase (overall and per area). **No daily data
+  and no notes.**
+- **Following:** whom you follow and who follows you.
+- **Reactions:** which reaction (“Keep going”, “Helpful”) you gave on which post.
+- **Communities:** which predefined communities you have joined (labs for a supplement or goal communities such as
+  sleep or focus).
+- **Reports and blocks:** what you reported, with the reason from a predefined list, and whom you blocked.
+- **Moderation:** if we hide content or suspend an account, the decision with its reason.
+- in each case, the time something was created.
+
+**Visibility:** your pseudonym, avatar, result posts and activity (following, reactions, community memberships) are
+visible to **other users of the app – always only under your pseudonym**. We don’t publish them outside the app, e.g.
+on our website. Only we see reports; nobody except you and us sees your blocks. We don’t know your name. If you tell
+someone your pseudonym, that person can link your shared results to you – think about this beforehand.
+
+**Legal basis:** your consent (Art. 6(1)(a) GDPR). Because results and community memberships may allow conclusions
+about your health, we ask for your **explicit consent** (Art. 9(2)(a) GDPR) – when you switch the feature on in the
+app. We also handle reports and moderation on the basis of Art. 6(1)(f) GDPR (legitimate interest in a safe community
+without abuse). We review reports ourselves; no automated system decides.
+
+**Recipients:** Supabase as a processor (section 11) and – for the visible information above – the other users of
+the app.
+
+**Storage period and deletion:** the data remains stored until you delete your social account. “Delete social
+account” in the app deletes the account, profile, result posts, following and followers, reactions, community
+memberships, reports and blocks **immediately**. Delete your social account before you delete the app or choose
+“Reset”: without the key on your device, nobody can access it any more, not even you. In that case, write to us at
+[E-Mail-Adresse].
+
+**Withdrawal:** you can withdraw your consent at any time with effect for the future – with “Delete social account”
+in the app. Processing carried out lawfully until then remains unaffected.
+
 ## 9. Feedback to Kolbi (optional)
 
 If you send feedback in the app, we store only the following with Supabase (Frankfurt): your choice (😍/🙂/😕), your
@@ -157,9 +210,9 @@ There are currently no purchases in the web app. If they are offered there, we w
 The store apps may show Apple’s or Google’s rating dialog. A rating goes directly to the store; we only see what is
 publicly shown there.
 
-## 11. Supabase (server for sections 5–9)
+## 11. Supabase (server for sections 5–9 including 8a)
 
-Stats, web push, calendar subscription, community and feedback run on **Supabase** (Supabase, Inc., USA) as a
+Stats, web push, calendar subscription, community, social features and feedback run on **Supabase** (Supabase, Inc., USA) as a
 processor. The database is located in a data centre in **Frankfurt am Main (EU)**. As with any internet request, the
 server technically receives your IP address; our functions do not store it in the data described. All connections
 are encrypted via HTTPS.
@@ -191,6 +244,7 @@ If you share a result card or an invitation, the app uses your device’s share 
 - Web push: sent entries at most 2 days, push address until you switch it off or it becomes invalid.
 - Calendar subscription: until “End subscription” or until you send us the subscription link for deletion.
 - Community: until you delete your contributions.
+- Social features: until you delete your social account (then immediately).
 - Feedback: at most 12 months.
 - RevenueCat: as long as needed to verify your purchases.
 - Hosting logs at Vercel: according to Vercel’s retention periods.
@@ -200,7 +254,7 @@ If you share a result card or an invitation, the app uses your device’s share 
 You have the right of access, rectification, erasure, restriction of processing and data portability, as well as the
 right to withdraw consent at any time with effect for the future.
 
-**Right to object:** insofar as we process data on the basis of Art. 6(1)(f) GDPR (sections 4, 5, 10, 12), you can
+**Right to object:** insofar as we process data on the basis of Art. 6(1)(f) GDPR (sections 4, 5, 8a, 10, 12), you can
 object at any time on grounds relating to your particular situation (Art. 21 GDPR). For the stats, simply turn them
 off in the settings.
 

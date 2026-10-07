@@ -24,6 +24,34 @@ Information on supplements, facts and tips has been compiled carefully, but may 
 incomplete or change as new findings emerge. Community values show the experiences of
 other users and are not representative.
 
+## Community rules (social features)
+
+The social features – result posts, following, reactions, communities – are optional and **only allowed from the age
+of 18**. By switching them on, you confirm that you are at least 18. Which data is processed is described in the
+privacy policy (section 8a).
+
+**Please follow these rules:**
+
+- **No spam:** no advertising, no mass actions (e.g. automated following or reacting).
+- **No insults:** don’t insult, harass, threaten or expose anyone.
+- **No health or efficacy promises:** results are personal observations. Don’t present them as proof that a
+  supplement works or prevents, relieves or cures a disease.
+- **No abuse:** no deliberately false results, no multiple accounts for manipulation, no attempts to identify other
+  users, no getting around suspensions, no exploiting bugs in the app.
+
+**Reporting and blocking:** you can report any post or profile in the app (reason from a list) or block it. Content
+from profiles you block is no longer shown to you. You can also report illegal content without the app by email to
+[E-Mail-Adresse] (contact details in the legal notice).
+
+**Moderation:** we review reports ourselves. If content or an account breaks these rules or the law, we may hide
+content and suspend accounts temporarily or permanently. Those affected see the decision **with its reason in the
+app**. If you disagree, write to us at [E-Mail-Adresse]; we will then look at the decision again.
+
+**No medical advice:** result posts and community values show subjective observations of individual users. They are
+not medical advice, not a recommendation and not evidence that a supplement does anything for you. We don’t adopt
+other users’ content as our own. We may change or discontinue the social features; your entries on your device are
+not affected.
+
 ## Liability
 
 You use the app at your own risk. We are only liable for intent and gross negligence
@@ -51,7 +79,7 @@ one-time purchase (“lifetime”). There are currently no purchases in the web 
   or Google account.
 - **Refunds** follow Apple’s or Google’s rules and are requested there.
 - **Founders:** anyone who starts using the app on or before 30 November 2026 gets Lab Pro permanently at no cost.
-  Because there is no account, founder status is tied to the app data on your device; it cannot be transferred via
+  Founder status is not tied to any account but to the app data on your device; it cannot be transferred via
   “Restore purchases”.
 
 ## Test versions (beta)

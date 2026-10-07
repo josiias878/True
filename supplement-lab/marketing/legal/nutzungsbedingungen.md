@@ -22,6 +22,35 @@ Informationen zu Supplements, Fakten und Tipps wurden sorgfältig zusammengestel
 unvollständig sein oder sich durch neue Erkenntnisse ändern. Community-Werte zeigen Erfahrungen
 anderer Nutzer und sind nicht repräsentativ.
 
+## Community-Regeln (Social-Funktionen)
+
+Die Social-Funktionen – Ergebnis-Posts, Folgen, Reaktionen, Communities – sind freiwillig und **erst ab 18 Jahren**
+erlaubt. Mit dem Einschalten bestätigst du, dass du mindestens 18 bist. Welche Daten dabei verarbeitet werden, steht
+in der Datenschutzerklärung (Abschnitt 8a).
+
+**Bitte halte dich an diese Regeln:**
+
+- **Kein Spam:** keine Werbung, keine Massen-Aktionen (z. B. automatisiertes Folgen oder Reagieren).
+- **Keine Beleidigungen:** niemanden beleidigen, belästigen, bedrohen oder bloßstellen.
+- **Keine Heil- oder Wirkversprechen:** Ergebnisse sind persönliche Beobachtungen. Stell sie nicht als Beweis dar,
+  dass ein Supplement wirkt oder eine Krankheit verhindert, lindert oder heilt.
+- **Kein Missbrauch:** keine absichtlich falschen Ergebnisse, keine Mehrfach-Konten zum Manipulieren, keine Versuche,
+  andere Nutzer zu identifizieren, kein Umgehen von Sperren, kein Ausnutzen von Fehlern der App.
+
+**Melden und Blockieren:** Jeden Post und jedes Profil kannst du in der App melden (Grund aus einer Liste) oder
+blockieren. Inhalte von Profilen, die du blockierst, werden dir nicht mehr angezeigt. Rechtswidrige Inhalte kannst du
+auch ohne App per E-Mail an [E-Mail-Adresse] melden (Kontakt siehe Impressum).
+
+**Moderation:** Wir prüfen Meldungen selbst. Verstößt ein Inhalt oder Konto gegen diese Regeln oder gegen Gesetze,
+können wir Inhalte ausblenden und Konten vorübergehend oder dauerhaft sperren. Betroffene sehen die Entscheidung
+**mit Begründung in der App**. Bist du anderer Meinung, schreib uns an [E-Mail-Adresse]; wir sehen uns die
+Entscheidung dann noch einmal an.
+
+**Keine medizinische Beratung:** Ergebnis-Posts und Community-Werte zeigen subjektive Beobachtungen einzelner Nutzer.
+Sie sind keine medizinische Beratung, keine Empfehlung und kein Beleg dafür, dass ein Supplement bei dir etwas
+bewirkt. Inhalte anderer Nutzer machen wir uns nicht zu eigen. Wir können die Social-Funktionen ändern oder
+einstellen; deine Einträge auf deinem Gerät bleiben davon unberührt.
+
 ## Haftung
 
 Die Nutzung erfolgt auf eigene Verantwortung. Wir haften nur für Vorsatz und grobe Fahrlässigkeit
@@ -50,8 +79,7 @@ einmaligen Kauf („für immer“). In der Web-App gibt es derzeit keine Käufe.
   derselben Apple-ID bzw. demselben Google-Konto.
 - **Erstattungen** richten sich nach den Regeln von Apple bzw. Google und werden dort beantragt.
 - **Gründer:** Wer bis einschließlich 30. November 2026 mit der App startet, erhält Lab Pro dauerhaft ohne Kosten.
-  Weil es kein Konto gibt, ist der Gründer-Status an die App-Daten auf deinem Gerät gebunden; er lässt sich nicht
-  über „Käufe wiederherstellen“ übertragen.
+  Der Gründer-Status ist an kein Konto gebunden, sondern an die App-Daten auf deinem Gerät; er lässt sich nicht über „Käufe wiederherstellen“ übertragen.
 
 ## Test-Versionen (Beta)
 

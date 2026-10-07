@@ -13,7 +13,8 @@ E-Mail: [E-Mail-Adresse]
 
 ## 2. Grundsatz: Deine Einträge bleiben auf deinem Gerät
 
-Supplement Lab funktioniert ohne Konto und ohne Anmeldung. Alles, was du einträgst – Supplements, Einnahmen,
+Supplement Lab funktioniert ohne Konto und ohne Anmeldung. Ein pseudonymes Social-Konto ohne E-Mail gibt es nur,
+wenn du die freiwilligen Social-Funktionen einschaltest (Abschnitt 8a). Alles, was du einträgst – Supplements, Einnahmen,
 Check-ins, Bewertungen, Nebenwirkungen, Notizen, Vorrat, Preise, Ziele – wird **ausschließlich lokal auf deinem Gerät** gespeichert (Browser-Speicher bzw. App-Speicher). Wir haben keinen Zugriff darauf. Wenn du die App
 löschst oder in den Einstellungen „Zurücksetzen“ wählst, sind die Daten weg. Ein Backup kannst du selbst als
 Datei sichern oder teilen; wohin die Datei geht, entscheidest du.
@@ -31,7 +32,8 @@ Daten an einen Server gehen nur in diesen Fällen:
   Prüfung von Käufen über RevenueCat (Abschnitt 10);
 - **standardmäßig an, jederzeit abschaltbar:** die anonyme Nutzungsstatistik ohne Geräte-ID (Abschnitt 5);
 - **nur wenn du die Funktion selbst nutzt bzw. einschaltest:** Push-Erinnerungen in der Web-App (Abschnitt 6),
-  Kalender-Abo (Abschnitt 7), Community (Abschnitt 8, mit ausdrücklicher Einwilligung) und Feedback (Abschnitt 9).
+  Kalender-Abo (Abschnitt 7), Community (Abschnitt 8, mit ausdrücklicher Einwilligung), Social-Funktionen
+  (Abschnitt 8a, mit ausdrücklicher Einwilligung) und Feedback (Abschnitt 9).
 
 **Nicht enthalten:** Version 1.0 liest keine Daten aus Apple Health oder Google Health Connect. Sollte eine solche
 Anbindung später angeboten werden, passen wir diese Erklärung vorher an; die Anbindung würde nur nach deiner
@@ -42,8 +44,8 @@ Kamera, Mikrofon oder deinen Kalender.
 ## 3. Speicherung auf deinem Gerät (§ 25 TDDDG)
 
 Die App legt Daten im lokalen Speicher deines Geräts ab und liest sie wieder aus: deine Einträge und Einstellungen
-sowie – nur wenn du die jeweilige Funktion nutzt – zufällige Kennungen für Community (Abschnitt 8), Kalender-Abo
-(Abschnitt 7) und Web-Push (Abschnitt 6). Diese Speicherung ist **unbedingt erforderlich**, damit die App die von
+sowie – nur wenn du die jeweilige Funktion nutzt – zufällige Kennungen für Community (Abschnitt 8), Social-Funktionen
+(Profil-ID und Geräte-Schlüssel, Abschnitt 8a), Kalender-Abo (Abschnitt 7) und Web-Push (Abschnitt 6). Diese Speicherung ist **unbedingt erforderlich**, damit die App die von
 dir gewünschte Funktion bereitstellen kann (§ 25 Abs. 2 Nr. 2 TDDDG); eine Einwilligung ist dafür nicht nötig.
 In den Store-Apps speichert das Kauf-System von RevenueCat eine zufällige App-Nutzer-ID auf dem Gerät
 (Abschnitt 10). Zur Statistik siehe Abschnitt 5. Wir setzen keine Cookies zu Werbe- oder Analysezwecken.
@@ -136,6 +138,61 @@ deine Beiträge entfernen.
 Um die zusammengefassten Zahlen anzuzeigen, ruft die App sie bei Supabase ab. Dabei wird nichts über dich
 gespeichert.
 
+Für dieses anonyme Teilen brauchst du kein Social-Konto. Teilst du ein Ergebnis zusätzlich als Ergebnis-Post in den
+Social-Funktionen, gilt dafür Abschnitt 8a: Der Post ist dann für andere Nutzer der App unter deinem Pseudonym
+sichtbar.
+
+## 8a. Social-Funktionen (freiwillig, mit ausdrücklicher Einwilligung)
+
+Wenn du in der App die Social-Funktionen einschaltest, kannst du unter einem Pseudonym Ergebnis-Posts teilen, anderen
+folgen, reagieren und Communities beitreten. Ohne deine Zustimmung wird dafür nichts übertragen; alle anderen
+Funktionen der App laufen auch ohne. Die Social-Funktionen sind ab 18 Jahren.
+
+**Zweck:** deine Test-Ergebnisse unter einem Pseudonym mit anderen Nutzern der App teilen, ihren Ergebnissen folgen
+und darauf reagieren – und die Community vor Spam und Missbrauch schützen (Melden, Blockieren, Moderation).
+
+Gespeichert wird bei Supabase (Frankfurt, Abschnitt 11):
+
+- **Social-Konto ohne E-Mail:** eine zufällige Profil-ID und ein gehashter (nicht rückrechenbarer) Wert eines
+  geheimen Schlüssels, den nur dein Gerät kennt. Kein Name, keine E-Mail-Adresse, keine Telefonnummer, kein Passwort.
+- **Profil:** ein Pseudonym, das die App aus festen Wortlisten erzeugt (du kannst keinen eigenen Text eingeben), und
+  dein Kolbi-Avatar (Farbe, Accessoire, Stimmung).
+- **Ergebnis-Posts, die du teilst:** welches Supplement aus der Bibliothek getestet wurde, Testdauer, dein Urteil
+  (behalten / vielleicht / raus) und der Unterschied deiner Bewertungen gegenüber deiner Reset-Phase (gesamt und je
+  Bereich). **Keine Tagesdaten und keine Notizen.**
+- **Folgen:** wem du folgst und wer dir folgt.
+- **Reaktionen:** welche Reaktion („Durchhalten“, „Hilfreich“) du bei welchem Post gegeben hast.
+- **Communities:** welchen vorgegebenen Communities du beigetreten bist (Labs zu einem Supplement oder
+  Ziel-Communities wie Schlaf oder Fokus).
+- **Meldungen und Blockierungen:** was du gemeldet hast, mit dem Grund aus einer vorgegebenen Liste, und wen du
+  blockiert hast.
+- **Moderation:** wenn wir einen Inhalt ausblenden oder ein Konto sperren, die Entscheidung mit Begründung.
+- jeweils der Zeitpunkt, zu dem etwas angelegt wurde.
+
+**Sichtbarkeit:** Pseudonym, Avatar, deine Ergebnis-Posts und deine Aktivität (Folgen, Reaktionen,
+Community-Mitgliedschaften) sehen **andere Nutzer der App – immer nur unter deinem Pseudonym**. Außerhalb der App,
+z. B. auf unserer Website, veröffentlichen wir sie nicht. Meldungen sehen nur wir; deine Blockierungen sieht niemand
+außer dir und uns. Wir kennen deinen Namen nicht. Wenn du jemandem dein Pseudonym verrätst, kann diese Person deine
+geteilten Ergebnisse dir zuordnen – überleg dir das vorher.
+
+**Rechtsgrundlage:** deine Einwilligung (Art. 6 Abs. 1 lit. a DSGVO). Weil Ergebnisse und Community-Mitgliedschaften
+Rückschlüsse auf deine Gesundheit zulassen können, holen wir dafür deine **ausdrückliche Einwilligung** ein (Art. 9
+Abs. 2 lit. a DSGVO) – beim Einschalten in der App. Meldungen und Moderation bearbeiten wir außerdem auf Grundlage
+von Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einer sicheren Community ohne Missbrauch). Meldungen prüfen
+wir selbst; es entscheidet kein Automat.
+
+**Empfänger:** Supabase als Auftragsverarbeiter (Abschnitt 11) und – für die sichtbaren Angaben oben – die anderen
+Nutzer der App.
+
+**Speicherdauer und Löschung:** Die Daten bleiben gespeichert, bis du dein Social-Konto löschst. Mit „Social-Konto
+löschen“ in der App werden Konto, Profil, Ergebnis-Posts, Folgen und Follower, Reaktionen, Community-Mitgliedschaften,
+Meldungen und Blockierungen **sofort** gelöscht. Lösch das Social-Konto, bevor du die App löschst oder „Zurücksetzen“
+wählst: Ohne den Schlüssel auf deinem Gerät kann niemand mehr darauf zugreifen, auch du nicht. Schreib uns in dem
+Fall unter [E-Mail-Adresse].
+
+**Widerruf:** Du kannst deine Einwilligung jederzeit mit Wirkung für die Zukunft widerrufen – mit „Social-Konto
+löschen“ in der App. Was bis dahin rechtmäßig verarbeitet wurde, bleibt davon unberührt.
+
 ## 9. Feedback an Kolbi (optional)
 
 Wenn du in der App Feedback abschickst, speichern wir bei Supabase (Frankfurt) nur: deine Auswahl (😍/🙂/😕), deinen
@@ -165,9 +222,9 @@ In der Web-App gibt es derzeit keine Käufe. Sollten sie dort angeboten werden, 
 Die Store-Apps können das Bewertungsfenster von Apple bzw. Google anzeigen. Eine Bewertung geht direkt an den Store;
 wir sehen nur, was dort öffentlich erscheint.
 
-## 11. Supabase (Server für die Abschnitte 5–9)
+## 11. Supabase (Server für die Abschnitte 5–9 einschließlich 8a)
 
-Statistik, Web-Push, Kalender-Abo, Community und Feedback laufen über **Supabase** (Supabase, Inc., USA) als
+Statistik, Web-Push, Kalender-Abo, Community, Social-Funktionen und Feedback laufen über **Supabase** (Supabase, Inc., USA) als
 Auftragsverarbeiter. Die Datenbank liegt in einem Rechenzentrum in **Frankfurt am Main (EU)**. Wie bei jedem
 Internet-Aufruf erreicht der Server technisch deine IP-Adresse; unsere Funktionen speichern sie nicht in den
 genannten Daten. Alle Verbindungen sind per HTTPS verschlüsselt.
@@ -202,6 +259,7 @@ Inhalte gehen, entscheidest du.
 - Web-Push: versendete Einträge höchstens 2 Tage, Push-Adresse bis zum Ausschalten bzw. bis sie ungültig wird.
 - Kalender-Abo: bis „Abo beenden“ oder bis du uns den Abo-Link zum Löschen schickst.
 - Community: bis du deine Beiträge löschst.
+- Social-Funktionen: bis du das Social-Konto löschst (dann sofort).
 - Feedback: höchstens 12 Monate.
 - RevenueCat: solange es für die Prüfung deiner Käufe nötig ist.
 - Hosting-Logs bei Vercel: nach den Fristen von Vercel.
@@ -212,7 +270,7 @@ Du hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Vera
 sowie das Recht, eine Einwilligung jederzeit mit Wirkung für die Zukunft zu widerrufen.
 
 **Widerspruchsrecht:** Soweit wir Daten auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO verarbeiten (Abschnitte 4, 5,
-10, 12), kannst du aus Gründen, die sich aus deiner besonderen Situation ergeben, jederzeit widersprechen (Art. 21
+8a, 10, 12), kannst du aus Gründen, die sich aus deiner besonderen Situation ergeben, jederzeit widersprechen (Art. 21
 DSGVO). Bei der Statistik genügt es, sie in den Einstellungen abzuschalten.
 
 Da wir die Server-Daten keiner Person zuordnen können, nutze bitte die Lösch- und Ausschalt-Funktionen in der App

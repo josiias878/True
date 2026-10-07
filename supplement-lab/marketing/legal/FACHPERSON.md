@@ -172,6 +172,23 @@ Beta-Test über Google Play/TestFlight ab Ende Oktober.
   wenn die App kostenpflichtig ist? Braucht es eine Altersprüfung? Was ist bei strukturierten Auswertungen
   („58 % behalten“) zu beachten – gilt das als unsere eigene Aussage?
 
+**F2. S2 umgesetzt (Stand 7. Okt 2026) – bitte mitprüfen**
+- Neu, nur nach Opt-in in der App: pseudonymes Social-Konto ohne E-Mail (Profil-ID + gehashtes Geräte-Geheimnis),
+  generiertes Pseudonym aus Wortlisten (kein Freitext), Kolbi-Avatar, strukturierte Ergebnis-Posts (Supplement, Dauer,
+  Urteil, Unterschied gesamt/je Bereich – keine Tagesdaten, keine Notizen), Folgen, Reaktionen („Durchhalten“,
+  „Hilfreich“), Beitritt zu vorgegebenen Labs/Ziel-Communities, Melden (Grund aus Liste), Blockieren; Moderation durch
+  den Inhaber (Ausblenden, Sperren, Begründung in der App). Speicherort Supabase Frankfurt. „Social-Konto löschen“
+  löscht sofort alles. Texte: `datenschutz.md` §8a (+ `en/privacy.md`), `nutzungsbedingungen.md` „Community-Regeln“
+  (+ `en/terms.md`).
+- Fragen: (a) Reicht der Opt-in-Dialog als ausdrückliche Einwilligung nach Art. 9 Abs. 2 lit. a – auch für die
+  Sichtbarkeit gegenüber allen App-Nutzern und für Ziel-Communities (z. B. „Schlaf“) als Gesundheitsbezug?
+  (b) Moderation zusätzlich auf Art. 6 Abs. 1 lit. f gestützt – richtig? (c) DSA: genügen Melde-Weg in der App +
+  E-Mail für Nicht-Nutzer, Begründung in der App (Art. 16/17) und E-Mail-Widerspruch; sind wir als Kleinstanbieter von
+  Art. 20 ausgenommen? (d) „Ab 18“ nur per Selbstbestätigung – reicht das (Apple-Altersfreigabe ist 13+, Google
+  Zielgruppe 18+, siehe A8)? (e) „Sofort gelöscht“ – wie mit Sicherungskopien bei Supabase umgehen, und braucht es
+  eine Frist für verwaiste Konten (App gelöscht, Social-Konto nicht)? (f) Sperr-/Moderationsdaten nach Löschung des
+  Kontos ebenfalls sofort löschen, oder kurz aufbewahren, um Sperr-Umgehung zu verhindern?
+
 ---
 
 ## Antworten der Fachperson (hier eintragen)
@@ -197,3 +214,5 @@ Beta-Test über Google Play/TestFlight ab Ende Oktober.
 | E2 | | | |
 | E3 | | | |
 | E4 | | | |
+| F1 | | | |
+| F2 | | | |
