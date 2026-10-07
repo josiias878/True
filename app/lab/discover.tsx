@@ -11,10 +11,10 @@ import { Avatar } from "./me"
 import { t } from "@/lib/labI18n"
 import { markSeen } from "@/lib/labNew"
 import { JoinRow, PostFeed, SwitchTabs, useSocialOn } from "./social"
-import * as socialApi from "./socialStub"
+import * as socialApi from "@/lib/labSocialApi"
 
-type FeedMode = "fuerdich" | "gefolgt"
-let lastMode: FeedMode = "fuerdich" // bleibt beim Zurückkommen aus Profil/Community erhalten
+type FeedMode = "neueste" | "gefolgt"
+let lastMode: FeedMode = "neueste" // bleibt beim Zurückkommen aus Profil/Community erhalten
 
 type Overview = { total: number; libs: Record<string, { n: number; keepPct: number | null }> }
 
@@ -134,11 +134,11 @@ export function DiscoverView({ s, today, recapReady, onRecap, onOpenLab, onSelfT
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <TabHead kicker={t("Entdecken")} title={t("Gerade im Labor")} right={s.demo ? <DemoBadge /> : undefined} />
       {social && <SwitchTabs value={mode} onChange={setMode} options={[
-        { id: "fuerdich", label: t("Für dich"), badge: "reactions" },
+        { id: "neueste", label: t("Neueste"), badge: "reactions" },
         { id: "gefolgt", label: t("Gefolgt"), badge: "follow" },
       ]} />}
       {social && <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-dim)", marginTop: -6, textAlign: "center" }}>
-        {mode === "gefolgt" ? t("Neueste zuerst · nur Leute, denen du folgst") : t("Neueste zuerst · nicht nach deinem Verhalten sortiert")}
+        {mode === "gefolgt" ? t("Neueste zuerst · nur Leute, denen du folgst") : t("Alle Ergebnisse, neueste zuerst – kein Ranking")}
       </div>}
 
       {/* Stories: eigene Woche + Labs mit echten Daten */}
@@ -158,15 +158,15 @@ export function DiscoverView({ s, today, recapReady, onRecap, onOpenLab, onSelfT
             empty={<div className="lab-card lab-rise" style={{ padding: "26px 20px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
               <div className="lab-float"><Mascot mood="happy" size={92} /></div>
               <div style={{ fontSize: "1.25rem", fontWeight: 900, marginTop: 8 }}>{t("Du folgst noch niemandem")}</div>
-              <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--text-dim)", marginTop: 6, lineHeight: 1.45 }}>{t("Tipp in „Für dich“ auf einen Namen und dann auf „Folgen“.")}</div>
-              <Btn variant="soft" onClick={() => setMode("fuerdich")} style={{ marginTop: 14, minHeight: 44 }}>{t("Zu „Für dich“")}</Btn>
+              <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--text-dim)", marginTop: 6, lineHeight: 1.45 }}>{t("Tipp in „Neueste“ auf einen Namen und dann auf „Folgen“.")}</div>
+              <Btn variant="soft" onClick={() => setMode("neueste")} style={{ marginTop: 14, minHeight: 44 }}>{t("Zu „Neueste“")}</Btn>
             </div>} />
         ) : (
           <PostFeed feedKey="discover" load={c => socialApi.feed("discover", c)} onSelfTest={onSelfTest} empty={s1}
-            offline={<>
+            offline={feed.length ? <>
               <div role="status" style={{ fontSize: "0.8rem", fontWeight: 800, color: "var(--text-dim)", textAlign: "center" }}>{t("Beiträge gerade nicht erreichbar – hier die anonymen Ergebnisse:")}</div>
               {s1}
-            </>} />
+            </> : undefined} />
         )}
 
     </div>

@@ -2,15 +2,14 @@
 // ── Kolbi Social S2: Einwilligung, Ergebnis-Posts, Profile, Folgen, Communities, Melden/Blockieren ──
 // „Sicher zuerst“: kein Freitext, keine Bilder – nur strukturierte Ergebnisse, Pseudonym und Kolbi-Avatar.
 // Lese-Flächen neutral (Grafit/Weiß), Lab-/Ziel-Farben nur als Akzent, Grün→Blau nur für „Selbst testen“.
-// Server-Aufrufe ausschließlich über ./socialStub (einzige Import-Stelle; später → lib/labSocialApi).
+// Server-Aufrufe ausschließlich über lib/labSocialApi (Edge Function „lab-social“).
 import React, { useCallback, useEffect, useState, useSyncExternalStore } from "react"
 import { DIMS, GOALS, LIB_BY_ID, type LabState, type LibSupp } from "@/lib/supplementLab"
-import { communityPayload } from "@/lib/labCommunity"
 import { AVATAR_ACCESSORIES, AVATAR_COLORS, AVATAR_MOODS, DEFAULT_AVATAR, LAB_GROUPS, avatarColorBg, labColor, loadAvatar, pseudoSeed, pseudonym, type LabAvatar, type LabGroup } from "@/lib/labSocial"
 import { SITE_URL } from "@/lib/labGrow"
 import { markSeen } from "@/lib/labNew"
-import * as api from "./socialStub"
-import type { ReactionKind, ReportReason, SocialCommunity, SocialPage, SocialPost, SocialProfile } from "./socialStub"
+import * as api from "@/lib/labSocialApi"
+import type { ReactionKind, ReportReason, SocialCommunity, SocialPage, SocialPost, SocialProfile } from "@/lib/labSocialApi"
 import { Btn, Icon, Sheet, TabHead, haptic } from "./ui"
 import { Mascot } from "./mascot"
 import { NewBadge } from "./newbadge"
@@ -30,19 +29,22 @@ export function useSocialOn(): boolean {
   return useSyncExternalStore(subscribe, api.socialConsent, () => false)
 }
 
-// Konto-Merker (nur UI): gab es auf diesem Gerät ein Social-Konto? → Löschen auch nach „Aus“ anbieten
-const ACCOUNT_KEY = "lab-social-account"
+// Gibt es auf diesem Gerät ein Social-Konto? (Profil-ID von lib/labSocialApi) → Löschen auch nach „Aus“ anbieten
+const hadAccount = () => { try { return !!localStorage.getItem("lab-social-id") } catch { return false } }
 let myId: string | null = null
-const hadAccount = () => { try { return localStorage.getItem(ACCOUNT_KEY) === "1" } catch { return false } }
+let restricted = false
 /** Eigenes Konto (legt es bei Einwilligung an). null = offline/keine Einwilligung. */
 export async function ensureMe(): Promise<string | null> {
   if (myId) return myId
   if (!api.socialConsent()) return null
   const a = await api.ensureAccount()
   myId = a?.id ?? null
-  if (myId) { try { localStorage.setItem(ACCOUNT_KEY, "1") } catch {} emit() }
+  if (a && !!a.restricted !== restricted) restricted = !!a.restricted
+  if (myId) emit()
   return myId
 }
+/** Vom Betreiber gesperrt → nur noch „Konto löschen“. */
+const useRestricted = () => useSyncExternalStore(subscribe, () => restricted, () => false)
 const publicAvatar = (): LabAvatar => loadAvatar() ?? DEFAULT_AVATAR
 /** Pseudonym/Avatar geändert → öffentliches Profil nachziehen (nur mit Einwilligung). */
 export function syncPublicProfile() {
@@ -99,8 +101,7 @@ export async function deleteSocialAccount(): Promise<boolean> {
   const ok = !!(await api.deleteAccount())
   if (ok) {
     api.setSocialConsent(false)
-    myId = null
-    try { localStorage.removeItem(ACCOUNT_KEY) } catch {}
+    myId = null; restricted = false
     setBlocked([])
   }
   return ok
@@ -377,6 +378,7 @@ export function PostFeed({ feedKey, load, empty, offline, onSelfTest }: {
   const [retry, setRetry] = useState(0)
   useHideVersion()
   useBlocked()
+  useRestricted()
   useEffect(() => {
     let on = true
     setSt({ state: "loading", posts: [] })
@@ -394,6 +396,7 @@ export function PostFeed({ feedKey, load, empty, offline, onSelfTest }: {
     if (!r) { flash(OFFLINE()); return }
     setSt(s => ({ state: "ok", posts: [...s.posts, ...r.posts.filter(p => !s.posts.some(q => q.id === p.id))], next: r.next }))
   }
+  if (restricted) return <Empty mood="think" title={t("Dein Social-Konto ist gesperrt")} text={t("Du kannst es in den Einstellungen löschen. Deine eigenen Daten auf dem Gerät bleiben.")} />
   if (st.state === "loading") return <Loading />
   if (st.state === "offline") return <>{offline ?? <Offline onRetry={() => setRetry(x => x + 1)} />}</>
   const posts = st.posts.filter(visible)
@@ -498,7 +501,8 @@ function ConsentSheet({ then, onClose }: { then?: () => void; onClose: () => voi
 
 // ═══ Ergebnis posten (Vorschau) ══════════════════════════════════════════════════════════════
 function SharePostSheet({ s, suppId, onClose }: { s: LabState; suppId: string; onClose: () => void }) {
-  const p = s.demo ? null : communityPayload(s, suppId) // Demo-Daten werden nie gepostet
+  const p = s.demo ? null : api.resultPostPayload(s, suppId) // Demo-Daten werden nie gepostet
+  const locked = useRestricted()
   const [busy, setBusy] = useState(false)
   const preview: SocialPost | null = p ? {
     id: "preview", author: { id: "me", name: pseudonym(pseudoSeed(), isEn), avatar: publicAvatar() }, lib: p.lib, days: p.days, decision: p.decision,
@@ -507,9 +511,9 @@ function SharePostSheet({ s, suppId, onClose }: { s: LabState; suppId: string; o
   const post = async () => {
     setBusy(true)
     await ensureMe()
-    const r = await api.shareResultPost(s, suppId)
+    const r = restricted ? false : await api.shareResultPost(s, suppId)
     setBusy(false)
-    if (!r) { flash(OFFLINE()); return }
+    if (!r) { flash(restricted ? t("Dein Social-Konto ist gesperrt") : OFFLINE()); return }
     flash(t("✓ Gepostet – zu sehen in Entdecken"))
     onClose()
   }
@@ -523,10 +527,10 @@ function SharePostSheet({ s, suppId, onClose }: { s: LabState; suppId: string; o
         </div>
         <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
           <Btn variant="soft" onClick={onClose} style={{ flex: 1, minHeight: 48 }}>{t("Abbrechen")}</Btn>
-          <InkBtn onClick={() => void post()} disabled={busy} style={{ flex: 2 }}>{busy ? t("Lädt …") : t("📣 Jetzt posten")}</InkBtn>
+          <InkBtn onClick={() => void post()} disabled={busy || locked} style={{ flex: 2 }}>{busy ? t("Lädt …") : t("📣 Jetzt posten")}</InkBtn>
         </div>
       </> : (
-        <Empty mood="think" title={t("Noch nichts zum Posten")} text={s.demo ? t("Demo-Daten kann man nicht posten – nur echte Ergebnisse.") : t("Posten geht mit einem fertigen Test zu einem Supplement aus der Bibliothek.")} />
+        <Empty mood="think" title={t("Noch nichts zum Posten")} text={s.demo ? t("Demo-Daten kann man nicht posten – nur echte Ergebnisse.") : t("Posten geht mit einem fertigen Test zu einem Supplement aus der Bibliothek (keine Peptide, nichts Verschriebenes).")} />
       )}
     </Sheet>
   )
@@ -562,6 +566,13 @@ function ProfileScreen({ id, onSelfTest }: { id: string; onSelfTest?: (libId: st
   const [open, setOpen] = useState<SocialPost | null>(null)
   useHideVersion()
   useEffect(() => { let on = true; setP("loading"); void ensureMe().then(() => api.getProfile(id)).then(v => { if (on) setP(v ?? null) }); return () => { on = false } }, [id, retry])
+  const unblockHere = async () => {
+    if (!p || p === "loading") return
+    if (!(await api.unblock(p.id))) { flash(OFFLINE()); return }
+    setBlocked(blockedList().filter(x => x.id !== p.id)); hideVer++; emit()
+    flash(t("{name} ist nicht mehr blockiert", { name: p.name }))
+    setRetry(x => x + 1)
+  }
   const toggleFollow = async () => {
     if (!p || p === "loading") return
     const was = p.isFollowing
@@ -576,7 +587,7 @@ function ProfileScreen({ id, onSelfTest }: { id: string; onSelfTest?: (libId: st
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <TabHead onBack={backSocial} kicker={p.isMe ? t("Mein öffentliches Profil") : t("Profil")} title={p.name}
-        right={!p.isMe ? <button className="lab-press" onClick={() => setMenu(true)} aria-label={t("Mehr Optionen")} style={{ width: 44, height: 44, borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text)", fontSize: "1.3rem", fontWeight: 900, flexShrink: 0 }}>⋯</button> : undefined} />
+        right={!p.isMe && !p.blocked ? <button className="lab-press" onClick={() => setMenu(true)} aria-label={t("Mehr Optionen")} style={{ width: 44, height: 44, borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text)", fontSize: "1.3rem", fontWeight: 900, flexShrink: 0 }}>⋯</button> : undefined} />
       <div className="lab-card lab-rise" style={{ padding: "22px 16px 18px", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, borderRadius: 28 }}>
         <PublicAvatar avatar={p.avatar} size={112} />
         <div style={{ fontSize: "1.45rem", fontWeight: 900, textAlign: "center", wordBreak: "break-word" }}>{p.name}</div>
@@ -585,7 +596,10 @@ function ProfileScreen({ id, onSelfTest }: { id: string; onSelfTest?: (libId: st
           <Stat v={p.following} l={t("Gefolgt")} />
           <Stat v={posts.length} l={posts.length === 1 ? t("Ergebnis") : t("Ergebnisse")} />
         </div>
-        {p.isMe
+        {p.blocked
+          ? <><div style={{ fontSize: "0.86rem", fontWeight: 800, color: "var(--text-dim)", textAlign: "center" }}>{t("Du hast {name} blockiert.", { name: p.name })}</div>
+            <InkBtn on onClick={() => void unblockHere()} style={{ width: "100%", maxWidth: 320 }}>{t("Blockierung aufheben")}</InkBtn></>
+          : p.isMe
           ? <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-dim)", textAlign: "center" }}>{t("So sehen andere dich in der App.")}</div>
           : <InkBtn on={p.isFollowing} onClick={() => void toggleFollow()} style={{ width: "100%", maxWidth: 320 }}>{p.isFollowing ? t("✓ Gefolgt") : t("Folgen")}</InkBtn>}
       </div>
@@ -771,7 +785,7 @@ function useLabCommunity(lib: LibSupp | undefined, on: boolean) {
   useEffect(() => {
     if (!lib || !on) return
     let alive = true
-    void ensureMe().then(() => api.communities(lib.name)).then(v => {
+    void ensureMe().then(() => api.communities(lib.id)).then(v => { // Suche trifft auch den Schlüssel (= Bibliotheks-ID)
       const hit = Array.isArray(v) ? v.find(x => x.kind === "lab" && x.key === lib.id) ?? null : null
       if (Array.isArray(v)) labCache.set(lib.id, hit)
       if (alive) setC(Array.isArray(v) ? hit ?? "none" : null)
@@ -826,7 +840,9 @@ export function SocialSettingsCard() {
   const on = useSocialOn()
   const blocked = useBlocked()
   const [del, setDel] = useState(false)
+  const [off, setOff] = useState(false)
   const [busy, setBusy] = useState(false)
+  const locked = useRestricted()
   const account = on || hadAccount()
   const unblockOne = async (b: Blocked) => {
     const ok = await api.unblock(b.id)
@@ -840,7 +856,7 @@ export function SocialSettingsCard() {
     const ok = await deleteSocialAccount()
     setBusy(false)
     if (!ok) { flash(t("Gerade keine Verbindung – nichts gelöscht. Versuch es später nochmal.")); return }
-    setDel(false); clearSocial()
+    setDel(false); setOff(false); clearSocial()
     flash(t("✓ Social-Konto gelöscht"))
   }
   return (
@@ -851,7 +867,7 @@ export function SocialSettingsCard() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 6 }}>
         <span style={{ fontWeight: 800, fontSize: "0.9rem" }}>{t("Sichtbar mitmachen")}</span>
         <button className="lab-press" role="switch" aria-checked={on} aria-label={t("Sichtbar mitmachen")} onClick={() => {
-          if (on) { api.setSocialConsent(false); emit(); clearSocial(); flash(t("Sichtbar mitmachen ist aus. Ganz entfernen: „Social-Konto löschen“.")) } else askSocial()
+          if (on) setOff(true); else askSocial()
         }} style={{ width: 60, height: 44, border: "none", background: "none", padding: "7px 4px", flexShrink: 0 }}>
           <span style={{ display: "block", position: "relative", width: 52, height: 30, borderRadius: 999, background: on ? "var(--accent)" : "var(--surface-2)", transition: "background .25s" }}>
             <span style={{ position: "absolute", top: 3, left: on ? 25 : 3, width: 24, height: 24, borderRadius: 999, background: "#fff", transition: "left .3s cubic-bezier(.34,1.56,.64,1)", boxShadow: "0 1px 4px rgba(0,0,0,.25)" }} />
@@ -859,10 +875,12 @@ export function SocialSettingsCard() {
         </button>
       </div>
       <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", lineHeight: 1.45 }}>
-        {on ? t("Andere sehen dein Pseudonym, deinen Kolbi-Avatar und was du postest. Tagesdaten und Notizen bleiben privat.")
-          : t("Aus: Folgen, Reaktionen und Communities sind pausiert. Deine Daten bleiben auf dem Gerät.")}
+        {locked ? t("Dein Social-Konto ist gesperrt. Du kannst es nur noch löschen.")
+          : on ? t("Andere sehen dein Pseudonym, deinen Kolbi-Avatar und was du postest. Tagesdaten und Notizen bleiben privat.")
+          : account ? t("Aus: Du machst gerade nicht mit. Dein Profil und bisherige Posts bleiben gespeichert, bis du das Social-Konto löschst.")
+          : t("Aus: Niemand sieht dich. Deine Daten bleiben auf dem Gerät.")}
       </div>
-      {blocked.length > 0 && <>
+      {on && !locked && blocked.length > 0 && <>
         <div style={{ fontSize: "0.78rem", fontWeight: 900, color: "var(--text-dim)", marginTop: 14 }}>{t("Blockiert ({n})", { n: blocked.length })}</div>
         {blocked.map(b => (
           <div key={b.id} style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 48, marginTop: 4 }}>
@@ -874,6 +892,16 @@ export function SocialSettingsCard() {
       </>}
       {account && (
         <button className="lab-press" onClick={() => setDel(true)} style={{ marginTop: 10, minHeight: 44, padding: 0, background: "none", border: "none", color: "var(--danger)", fontSize: "0.84rem", fontWeight: 800 }}>{t("Social-Konto löschen")}</button>
+      )}
+      {off && (
+        <Sheet open onClose={() => setOff(false)} z={460} title={t("Sichtbar mitmachen ausschalten?")}>
+          <div style={{ fontSize: "0.9rem", lineHeight: 1.5, fontWeight: 700 }}>{t("Ausschalten pausiert nur: Dein Profil, deine Posts, Follower und Communities bleiben gespeichert und für andere sichtbar. Wenn du alles entfernen willst, lösch dein Social-Konto.")}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 18 }}>
+            <Btn variant="danger" full disabled={busy} onClick={() => void doDelete()} style={{ minHeight: 48 }}>{busy ? t("Lädt …") : t("Social-Konto löschen")}</Btn>
+            <Btn variant="soft" full onClick={() => { api.setSocialConsent(false); emit(); clearSocial(); setOff(false); flash(t("Sichtbar mitmachen ist aus. Ganz entfernen: „Social-Konto löschen“.")) }} style={{ minHeight: 48 }}>{t("Nur ausschalten")}</Btn>
+            <Btn variant="ghost" full onClick={() => setOff(false)} style={{ minHeight: 48 }}>{t("Abbrechen")}</Btn>
+          </div>
+        </Sheet>
       )}
       {del && (
         <Sheet open onClose={() => setDel(false)} z={460} title={t("Social-Konto löschen?")}>
