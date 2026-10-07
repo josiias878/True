@@ -5,17 +5,23 @@
 // Anmeldung: Gerät erzeugt ein zufälliges 32-Byte-Geheimnis (64 hex). Der Server speichert nur SHA-256 davon.
 //   Header  x-social-id: <Profil-UUID>   x-social-secret: <64 hex>
 // POST {action, lang?, ...}
-//   ensure {nameIdx?, avatar?}           → {id, name, avatar, restricted?}   (legt beim ersten Mal an; id-Header optional)
+//   ensure {nameIdx?, avatar?}           → {id, name, avatar, restricted?, decisions}   (legt beim ersten Mal an; id-Header optional)
+//     decisions: [{target: post|profile, action: hidden|banned, lib?, note, at}] – Entscheidungen des Inhabers über
+//     mich/meine Posts mit Begründung (DSA Art. 17), neueste zuerst, max. 10
 //   updateProfile {nameIdx?, avatar?}    → {ok}
 //   getProfile {id}                      → {id, name, avatar, followers, following, isFollowing, isMe, posts, blocked?}
 //   follow|unfollow|block|unblock {id}   → {ok}
 //   feed {kind: following|discover, cursor?}  ·  communityFeed {id, cursor?}  → {posts, next?}
 //   communities {query?}                 → {communities: [{id, kind, key, name, members, joined}]}
 //   join|leave {id}                      → {ok}
-//   shareResult {lib, days, decision, delta, dims}  → {ok}
+//   shareResult {lib, days, decision, delta, dims}  → {ok} · 403 {error:"hidden"} · 409 {error:"pending"}
+//     (erneutes Teilen aktualisiert den Post an Ort und Stelle – gleiche ID, Reaktionen weg; bei offenen Meldungen gesperrt)
 //   react|unreact {post, kind}           → {ok}
 //   report {type: post|profile, id, reason}          → {ok}
 //   deleteAccount                        → {ok}   (löscht ALLES des Profils)
+// Fehler 401: {error:"noprofile"} = zu diesem Geheimnis gibt es (k)ein Profil mehr → Client darf neu anfangen;
+//             {error:"auth"} = Geheimnis/ID ungültig oder passen nicht zusammen → Client behält seine Schlüssel.
+// Anfragen > 8 KB → 413 {error:"size"}.
 // Nie ausgeliefert: ausgeblendete/gesperrte Inhalte, Inhalte blockierter Profile (beide Richtungen).
 // Kein automatisches Ausblenden nach Meldungen – nur der Inhaber entscheidet (SQL: moderate()).
 import { createClient } from "npm:@supabase/supabase-js@2"
@@ -30,14 +36,16 @@ const fail = (error: string, status = 400) => json({ error }, status)
 
 // ── Grenzen ──────────────────────────────────────────────────────────────────
 const WRITE_PER_MIN = 30, READ_PER_MIN = 120, REPORTS_PER_DAY = 10
-const NEW_PROFILES_PER_HOUR = 300 // grobe Bremse gegen Massen-Anlage (keine IPs gespeichert)
+const NEW_PROFILES_PER_HOUR = 300, NEW_PROFILES_PER_5MIN = 30 // grobe Bremse gegen Massen-Anlage (keine IPs gespeichert)
+const MAX_BODY = 8192
 const MAX_FOLLOWS = 2000, MAX_MEMBERSHIPS = 100, PAGE = 20
 
 // ── Validierung ──────────────────────────────────────────────────────────────
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const SECRET = /^[a-f0-9]{64}$/, LIB = /^[a-z0-9-]{2,40}$/, COMMUNITY = /^(lab|goal)-[a-z0-9-]{2,40}$/
 const PEPTIDES = new Set(["bpc157", "tb500", "ghkcu", "cjc-ipa", "semax", "selank", "motsc", "epitalon", "ta1", "kpv", "glp1"])
-const DIMS = new Set(["energie", "fokus", "stimmung", "ruhe", "schlaf", "koerper", "verdauung", "appetit", "haut", "gelenke", "libido"])
+// ohne „libido“: wird nie veröffentlicht (Art. 9 DSGVO, Sexualleben) – die DB lehnt es ebenfalls ab (social_dims_ok)
+const DIMS = new Set(["energie", "fokus", "stimmung", "ruhe", "schlaf", "koerper", "verdauung", "appetit", "haut", "gelenke"])
 const COLORS = ["kolbi", "blau", "violett", "rosa", "tuerkis", "bernstein", "koralle", "oliv"]
 const ACCESSORIES = ["none", "shades", "nightcap"], MOODS = ["happy", "party", "think", "sleepy", "alert"]
 const REACTIONS = ["durchhalten", "hilfreich"], DECISIONS = ["keep", "maybe", "drop"]
@@ -90,14 +98,36 @@ interface FeedRow {
   dims: Record<string, number>; created_at: string; n_durchhalten: number; n_hilfreich: number; mine: string[]
 }
 
+/** Body lesen, aber höchstens MAX_BODY Bytes (auch ohne/mit falschem Content-Length) – null = zu groß */
+async function readCapped(req: Request): Promise<string | null> {
+  const len = Number(req.headers.get("content-length") ?? "0")
+  if (len > MAX_BODY) return null
+  if (!req.body) return ""
+  const reader = req.body.getReader(), parts: Uint8Array[] = []
+  let size = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    size += value.byteLength
+    if (size > MAX_BODY) { try { await reader.cancel() } catch { /* egal */ } return null }
+    parts.push(value)
+  }
+  const all = new Uint8Array(size)
+  let o = 0
+  for (const p of parts) { all.set(p, o); o += p.byteLength }
+  return new TextDecoder().decode(all)
+}
+
 const WRITES = new Set(["updateProfile", "follow", "unfollow", "shareResult", "react", "unreact", "report", "block", "unblock", "join", "leave"])
 const READS = new Set(["getProfile", "feed", "communityFeed", "communities"])
 
 Deno.serve(async req => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS })
   if (req.method !== "POST") return fail("method", 405)
+  const raw = await readCapped(req)
+  if (raw === null) return fail("size", 413)
   let b: Record<string, unknown>
-  try { b = await req.json() } catch { return fail("json") }
+  try { b = JSON.parse(raw) } catch { return fail("json") }
   if (!b || typeof b !== "object") return fail("json")
   const action = String(b.action ?? "")
   if (action !== "ensure" && action !== "deleteAccount" && !WRITES.has(action) && !READS.has(action)) return fail("action")
@@ -114,15 +144,21 @@ Deno.serve(async req => {
   const { data: meRow, error: meErr } = await db.from("social_profiles").select(ME_COLS).eq("secret_hash", hash).maybeSingle()
   if (meErr) return fail("db", 500)
   let me = meRow as Me | null
-  if (me && hdrId && me.id !== hdrId) return fail("auth", 401)
+  // Geheimnis passt zu einem anderen Profil als die mitgeschickte ID: nur ensure meldet sich über das Geheimnis an
+  // (Client übernimmt dann die richtige ID); alle anderen Aktionen → "auth" (Client behält seine Schlüssel).
+  if (me && hdrId && me.id !== hdrId && action !== "ensure") return fail("auth", 401)
 
   // ── ensure: anmelden oder (erstes Mal) anlegen ─────────────────────────────
   if (action === "ensure") {
     if (!me) {
-      if (hdrId) return fail("auth", 401) // Profil gelöscht oder Geheimnis passt nicht → Client fängt neu an
-      const { count } = await db.from("social_profiles").select("id", { count: "exact", head: true })
-        .gte("created_at", new Date(Date.now() - 3600_000).toISOString())
-      if ((count ?? 0) >= NEW_PROFILES_PER_HOUR) return fail("busy", 429)
+      if (hdrId) return fail("noprofile", 401) // Profil gelöscht → Client fängt mit neuem Geheimnis neu an
+      const since = (ms: number) => new Date(Date.now() - ms).toISOString()
+      const [hour, burst] = await Promise.all([
+        db.from("social_profiles").select("id", { count: "exact", head: true }).gte("created_at", since(3600_000)),
+        db.from("social_profiles").select("id", { count: "exact", head: true }).gte("created_at", since(300_000)),
+      ])
+      if (hour.error || burst.error) return fail("db", 500)
+      if ((hour.count ?? 0) >= NEW_PROFILES_PER_HOUR || (burst.count ?? 0) >= NEW_PROFILES_PER_5MIN) return fail("busy", 429)
       const idx = nameIdxOf(b.nameIdx) ?? Math.floor(Math.random() * 25600)
       const avatar = avatarOf(b.avatar) ?? DEFAULT_AVATAR
       const { data, error } = await db.from("social_profiles")
@@ -133,10 +169,14 @@ Deno.serve(async req => {
       const today = new Date().toISOString().slice(0, 10)
       if (me.last_seen_on !== today) await db.from("social_profiles").update({ last_seen_on: today }).eq("id", me.id)
     }
-    return json({ id: me.id, name: nameAt(me.name_idx, en), avatar: me.avatar, ...(me.banned ? { restricted: true } : {}) })
+    const { data: dec, error: decErr } = await db.rpc("social_decisions", { p_me: me.id })
+    if (decErr) return fail("db", 500)
+    const decisions = ((dec ?? []) as { target: string; action: string; lib: string | null; note: string; at: string }[])
+      .map(d => ({ target: d.target, action: d.action, ...(d.lib ? { lib: d.lib } : {}), note: d.note ?? "", at: d.at }))
+    return json({ id: me.id, name: nameAt(me.name_idx, en), avatar: me.avatar, ...(me.banned ? { restricted: true } : {}), decisions })
   }
 
-  if (!me) return fail("auth", 401)
+  if (!me) return fail("noprofile", 401)
   const myId = me.id
   if (action === "deleteAccount") {
     const { error } = await db.rpc("social_delete_profile", { p: myId })
@@ -308,12 +348,16 @@ Deno.serve(async req => {
       if (!DECISIONS.includes(decision)) return fail("decision")
       const dimsIn = (b.dims && typeof b.dims === "object" && !Array.isArray(b.dims) ? b.dims : {}) as Record<string, unknown>
       const dims = Object.fromEntries(Object.entries(dimsIn).filter(([k, v]) => DIMS.has(k) && Number.isFinite(Number(v))).slice(0, 11).map(([k, v]) => [k, r2(clamp(v, -4, 4))]))
-      const row = { author: myId, kind: "result", lib, days: Math.round(clamp(b.days, 1, 120)), decision, delta: r2(clamp(b.delta, -4, 4)), dims }
-      const { data: old } = await db.from("social_posts").select("id, hidden").eq("author", myId).eq("lib", lib).maybeSingle()
-      if (old?.hidden) return fail("hidden", 403) // vom Inhaber ausgeblendet → nicht durch Neu-Teilen umgehen
-      if (old) await db.from("social_posts").delete().eq("id", old.id) // neues Ergebnis ersetzt altes (inkl. Reaktionen)
-      const { error } = await db.from("social_posts").insert(row)
-      return error ? fail("db", 500) : json({ ok: true })
+      // Erneutes Teilen: gleicher Post (gleiche ID) wird aktualisiert, Reaktionen gelöscht – Meldungen bleiben dran.
+      // Ausgeblendet → "hidden"; offene Meldungen → "pending" (erst nach Entscheidung des Inhabers wieder teilbar).
+      const { data: res, error } = await db.rpc("social_share", {
+        p_me: myId, p_lib: lib, p_days: Math.round(clamp(b.days, 1, 120)), p_decision: decision, p_delta: r2(clamp(b.delta, -4, 4)), p_dims: dims,
+      })
+      if (error) return fail("db", 500)
+      if (res === "ok") return json({ ok: true })
+      if (res === "hidden") return fail("hidden", 403)
+      if (res === "pending") return fail("pending", 409)
+      return fail("busy", 409)
     }
 
     case "react":
@@ -339,10 +383,12 @@ Deno.serve(async req => {
       if (!type) return fail("type")
       if (!REASONS.includes(reason)) return fail("reason")
       if (!UUID.test(targetId) || targetId === myId) return fail("id")
+      let author = targetId, postAt = ""
       if (type === "post") {
-        const { data: p } = await db.from("social_posts").select("author").eq("id", targetId).maybeSingle()
+        const { data: p } = await db.from("social_posts").select("author, created_at").eq("id", targetId).maybeSingle()
         if (!p) return fail("notfound", 404)
         if (p.author === myId) return fail("own")
+        author = p.author; postAt = p.created_at
       } else {
         const { data: p } = await db.from("social_profiles").select("id").eq("id", targetId).maybeSingle()
         if (!p) return fail("notfound", 404)
@@ -350,8 +396,21 @@ Deno.serve(async req => {
       const { count } = await db.from("social_reports").select("id", { count: "exact", head: true })
         .eq("reporter", myId).gte("created_at", new Date(Date.now() - 86400_000).toISOString())
       if ((count ?? 0) >= REPORTS_PER_DAY) return fail("rate", 429)
+      const { data: prev } = await db.from("social_reports").select("id, status, decided_at")
+        .eq("reporter", myId).eq("target_type", type).eq("target_id", targetId).maybeSingle()
+      if (prev) {
+        // Schon gemeldet. Nur wenn der Inhaber „bleibt“ entschieden hat und der Post seitdem neu geteilt wurde
+        // (gleiche ID, neuer Inhalt), wird die Meldung wieder offen.
+        if (type === "post" && prev.status === "kept" && prev.decided_at && Date.parse(postAt) > Date.parse(prev.decided_at)) {
+          const { error } = await db.from("social_reports").update({
+            status: "open", reason, target_author: author, created_at: new Date().toISOString(), decided_at: null, note: null,
+          }).eq("id", prev.id)
+          if (error) return fail("db", 500)
+        }
+        return json({ ok: true })
+      }
       const { error } = await db.from("social_reports").upsert(
-        { reporter: myId, target_type: type, target_id: targetId, reason },
+        { reporter: myId, target_type: type, target_id: targetId, target_author: author, reason },
         { onConflict: "reporter,target_type,target_id", ignoreDuplicates: true })
       return error ? fail("db", 500) : json({ ok: true })
     }

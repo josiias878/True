@@ -17,6 +17,8 @@ const SECRET_KEY = "lab-social-secret"
 const ID_KEY = "lab-social-id"
 const SECRET_RE = /^[a-f0-9]{64}$/
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+/** Bereiche, die nie veröffentlicht werden (Art. 9 DSGVO: Sexualleben) – Server und DB lehnen sie ebenfalls ab. */
+const PRIVATE_DIMS = new Set(["libido"])
 /** Nie teilen (auch wenn die Bibliothek sie im Web noch kennt) – der Server lehnt sie ebenfalls ab. */
 const BLOCKED_LIBS = new Set(["bpc157", "tb500", "ghkcu", "cjc-ipa", "semax", "selank", "motsc", "epitalon", "ta1", "kpv", "glp1"])
 
@@ -39,11 +41,28 @@ export interface SocialProfile {
 }
 export interface SocialPage { posts: Post[]; next?: string }
 export interface SocialCommunity { id: string; kind: "lab" | "goal"; key: string; name: string; members: number; joined: boolean }
+/** Entscheidung des Betreibers über mich bzw. einen meiner Posts, mit Begründung (DSA Art. 17). */
+export interface SocialDecision {
+  target: "post" | "profile"
+  /** hidden = ausgeblendet · banned = Konto gesperrt */
+  action: "hidden" | "banned"
+  /** bei target "post": betroffenes Supplement (Bibliotheks-ID), sofern noch bekannt */
+  lib?: string
+  /** Begründung des Betreibers (kann leer sein) */
+  note: string
+  /** Zeitpunkt der Entscheidung (ISO) */
+  at: string
+}
 export interface SocialAccount {
   id: string; name: string; avatar: Avatar
   /** vom Betreiber gesperrt: nur noch Konto löschen möglich */
   restricted?: boolean
+  /** Entscheidungen über mich/meine Posts, neueste zuerst (max. 10; leer = keine) */
+  decisions: SocialDecision[]
 }
+/** Ergebnis von shareResultPost: true = geteilt · false = nicht möglich/Fehler ·
+ *  "hidden" = dieser Post wurde vom Betreiber ausgeblendet · "pending" = Post ist gemeldet, Entscheidung steht aus */
+export type ShareResult = true | false | "hidden" | "pending"
 
 // ── Einwilligung ──────────────────────────────────────────────────────────────
 export function socialConsent(): boolean {
@@ -100,6 +119,16 @@ function postOf(v: unknown): Post | null {
   }
 }
 const postsOf = (v: unknown): Post[] => (Array.isArray(v) ? v : []).map(postOf).filter((p): p is Post => !!p)
+function decisionsOf(v: unknown): SocialDecision[] {
+  return (Array.isArray(v) ? v : []).flatMap((d: unknown): SocialDecision[] => {
+    if (!isObj(d) || (d.target !== "post" && d.target !== "profile") || (d.action !== "hidden" && d.action !== "banned")) return []
+    if (typeof d.at !== "string") return []
+    return [{
+      target: d.target, action: d.action, ...(typeof d.lib === "string" && d.lib ? { lib: d.lib } : {}),
+      note: typeof d.note === "string" ? d.note.slice(0, 500) : "", at: d.at,
+    }]
+  }).slice(0, 10)
+}
 function pageOf(v: unknown): SocialPage | null {
   if (!isObj(v) || !Array.isArray(v.posts)) return null
   return { posts: postsOf(v.posts), ...(typeof v.next === "string" && v.next ? { next: v.next } : {}) }
@@ -122,6 +151,9 @@ async function send(action: string, body: Record<string, unknown> = {}, withId =
   } catch { return null }
 }
 
+/** Server sagt eindeutig: zu diesem Geheimnis gibt es kein Profil (mehr). */
+const noProfile = (r: Res) => r?.status === 401 && isObj(r.body) && r.body.error === "noprofile"
+
 let accountP: Promise<SocialAccount | null> | null = null
 
 /** Konto anmelden bzw. beim ersten Mal anlegen (mit aktuellem Pseudonym + Avatar). Pro Sitzung einmal. */
@@ -131,15 +163,19 @@ export function ensureAccount(): Promise<SocialAccount | null> {
     accountP = (async () => {
       const first = { nameIdx: pseudonymIndex(pseudoSeed()), avatar: loadAvatar() ?? DEFAULT_AVATAR }
       let r = await send("ensure", first)
-      if (r?.status === 401 && get(ID_KEY)) {
-        // Profil gibt es nicht mehr (gelöscht) → neu anfangen, mit neuem Geheimnis
+      if (noProfile(r) && get(ID_KEY)) {
+        // Profil gibt es nicht mehr (gelöscht) → neu anfangen, mit neuem Geheimnis.
+        // NUR bei {error:"noprofile"} – andere 401 (z. B. Gateway) lassen Geheimnis und ID unangetastet.
         set(ID_KEY, null); set(SECRET_KEY, null)
         r = await send("ensure", first, false)
       }
       const b = r?.status === 200 && isObj(r.body) ? r.body : null
       if (!b || typeof b.id !== "string" || !UUID_RE.test(b.id) || typeof b.name !== "string") return null
       set(ID_KEY, b.id)
-      return { id: b.id, name: b.name, avatar: avatarOf(b.avatar), ...(b.restricted ? { restricted: true } : {}) }
+      return {
+        id: b.id, name: b.name, avatar: avatarOf(b.avatar), ...(b.restricted ? { restricted: true } : {}),
+        decisions: decisionsOf(b.decisions),
+      }
     })()
     accountP.then(a => { if (!a) accountP = null }, () => { accountP = null })
   }
@@ -206,12 +242,20 @@ export function resultPostPayload(s: LabState, suppId: string) {
   if (!p) return null
   const lib = LIB_BY_ID[p.lib]
   if (!lib || BLOCKED_LIBS.has(p.lib) || lib.rx || lib.category === "Peptide" || lib.category === "Verschriebene Medikamente") return null
-  return { lib: p.lib, days: p.days, decision: p.decision, delta: p.delta, dims: p.dims }
+  const dims: Record<string, number> = {}
+  for (const [k, v] of Object.entries(p.dims ?? {})) if (!PRIVATE_DIMS.has(k)) dims[k] = v
+  return { lib: p.lib, days: p.days, decision: p.decision, delta: p.delta, dims }
 }
-export async function shareResultPost(s: LabState, suppId: string): Promise<boolean> {
+/** Teilen bzw. erneut teilen (aktualisiert den bestehenden Post zu diesem Supplement). */
+export async function shareResultPost(s: LabState, suppId: string): Promise<ShareResult> {
   const p = resultPostPayload(s, suppId)
   if (!p) return false
-  return ok(await authed("shareResult", p))
+  const r = await authed("shareResult", p)
+  if (ok(r)) return true
+  const err = isObj(r?.body) ? r.body.error : null
+  if (r?.status === 403 && err === "hidden") return "hidden"
+  if (r?.status === 409 && err === "pending") return "pending"
+  return false
 }
 
 // ── Communities (nur vordefiniert: Labs + Ziele) ─────────────────────────────
@@ -243,9 +287,10 @@ export async function deleteAccount(): Promise<boolean> {
   const clear = () => { set(ID_KEY, null); set(SECRET_KEY, null); setSocialConsent(false) }
   const s = get(SECRET_KEY)
   if (!s || !SECRET_RE.test(s)) { clear(); return true } // nie ein Konto angelegt
-  // nur mit Geheimnis (ohne ID-Header): 401 heißt dann sicher „zu diesem Geheimnis gibt es nichts (mehr)“
+  // nur mit Geheimnis (ohne ID-Header). Erfolg nur bei 200 oder 401 {error:"noprofile"} (= gibt es nicht mehr);
+  // jede andere Antwort (auch ein 401 vom Gateway) → false, Geheimnis bleibt für einen neuen Versuch.
   const r = await send("deleteAccount", {}, false, false)
-  const done = ok(r) || r?.status === 401
+  const done = ok(r) || noProfile(r)
   if (done) clear()
   return done
 }

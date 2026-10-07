@@ -35,7 +35,7 @@ export function communityPayload(s: LabState, suppId: string) {
   const r = testResult(s, suppId)
   if (!x || !lib || !v || !r || r.overall.base == null || r.overall.test == null) return null
   if (STORE_MODE && lib.category === "Peptide") return null
-  const dims = Object.fromEntries(((r.dims ?? []) as string[]).map(d => [d, Math.round((((r.delta as Record<string, number> | null)?.[d]) ?? 0) * 100) / 100]))
+  const dims = Object.fromEntries(((r.dims ?? []) as string[]).filter(d => d !== "libido").map(d => [d, Math.round((((r.delta as Record<string, number> | null)?.[d]) ?? 0) * 100) / 100]))
   return {
     lib: lib.id, days: r.n || r.window.days, decision: v, delta: Math.round((r.overall.test - r.overall.base) * 100) / 100,
     dims, sides: r.sides.list.map((q: { id: string }) => q.id).slice(0, 8),

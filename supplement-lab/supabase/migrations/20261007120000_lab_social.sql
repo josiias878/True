@@ -22,15 +22,16 @@ returns boolean language sql immutable set search_path = public as $$
   false)
 $$;
 
--- Bereiche eines Ergebnisses: nur bekannte Bereichs-IDs (lib/supplementLab.ts: Dim), Werte -4..4
+-- Bereiche eines Ergebnisses: nur bekannte Bereichs-IDs (lib/supplementLab.ts: Dim), Werte -4..4.
+-- „libido“ wird bewusst NIE veröffentlicht (Art. 9 DSGVO: Sexualleben) – auch nicht, wenn ein Client es schickt.
 create or replace function public.social_dims_ok(d jsonb)
 returns boolean language sql immutable set search_path = public as $$
   select coalesce(
     jsonb_typeof(d) = 'object'
-    and (select count(*) from jsonb_object_keys(d)) <= 11
+    and (select count(*) from jsonb_object_keys(d)) <= 10
     and coalesce((
       select bool_and(
-        k in ('energie','fokus','stimmung','ruhe','schlaf','koerper','verdauung','appetit','haut','gelenke','libido')
+        k in ('energie','fokus','stimmung','ruhe','schlaf','koerper','verdauung','appetit','haut','gelenke')
         and case when jsonb_typeof(v) = 'number' then (v::text)::numeric between -4 and 4 else false end)
       from jsonb_each(d) as e(k, v)), true),
   false)
@@ -76,7 +77,8 @@ create table public.social_posts (
   dims jsonb not null default '{}'::jsonb check (public.social_dims_ok(dims)),
   created_at timestamptz not null default now(),
   hidden boolean not null default false,
-  unique (author, lib)                                  -- je Supplement ein Ergebnis pro Profil (neues ersetzt altes)
+  unique (author, lib)                                  -- je Supplement ein Ergebnis pro Profil (neues aktualisiert
+                                                        -- das alte an Ort und Stelle, gleiche ID – siehe social_share)
 );
 create index social_posts_feed_idx on public.social_posts (created_at desc, id desc);
 create index social_posts_author_idx on public.social_posts (author, created_at desc);
@@ -118,6 +120,9 @@ create table public.social_reports (
   reporter uuid not null references public.social_profiles(id) on delete cascade,
   target_type text not null check (target_type in ('post','profile')),
   target_id uuid not null,
+  -- Autor des Ziels zum Zeitpunkt der Meldung (bei 'profile' = target_id). Damit trifft eine Sperre den Autor
+  -- auch dann, wenn das Ziel inzwischen weg ist, und „Konto löschen“ entfernt alle Meldungen über mich.
+  target_author uuid not null references public.social_profiles(id) on delete cascade,
   reason text not null check (reason in ('spam','beleidigung','gesundheitsversprechen','sonstiges')),
   status text not null default 'open' check (status in ('open','kept','hidden','banned')),
   created_at timestamptz not null default now(),
@@ -128,6 +133,7 @@ create table public.social_reports (
 create index social_reports_open_idx on public.social_reports (status, created_at);
 create index social_reports_target_idx on public.social_reports (target_type, target_id);
 create index social_reports_reporter_idx on public.social_reports (reporter, created_at);
+create index social_reports_author_idx on public.social_reports (target_author, decided_at desc);
 
 -- ── Blockierungen (sieht niemand sonst) ───────────────────────────────────────
 create table public.social_blocks (
@@ -139,7 +145,7 @@ create table public.social_blocks (
 );
 create index social_blocks_blocked_idx on public.social_blocks (blocked);
 
--- ── Bremse: Aktionen je Profil und Zeitfenster (Zeilen > 2 Tage werden gelöscht) ──
+-- ── Bremse: Aktionen je Profil und Zeitfenster (Zeilen > 2 Tage löscht social_hit, alle Profile) ──
 create table public.social_rate (
   profile uuid not null references public.social_profiles(id) on delete cascade,
   bucket text not null check (bucket ~ '^[a-z]{1,12}$'),
@@ -147,6 +153,7 @@ create table public.social_rate (
   n int not null default 0,
   primary key (profile, bucket, win)
 );
+create index social_rate_win_idx on public.social_rate (win);
 
 -- ── RLS an, keine Policies; Rechte für anon/authenticated komplett entzogen ───
 alter table public.social_profiles   enable row level security;
@@ -179,7 +186,8 @@ begin
   insert into social_rate (profile, bucket, win, n) values (p_profile, p_bucket, w, 1)
   on conflict (profile, bucket, win) do update set n = social_rate.n + 1
   returning n into c;
-  if c = 1 then delete from social_rate where profile = p_profile and win < now() - interval '2 days'; end if;
+  -- neues Zeitfenster → alte Zeilen ALLER Profile aufräumen (über Index auf win, meist 0 Zeilen)
+  if c = 1 then delete from social_rate where win < now() - interval '2 days'; end if;
   return c <= p_max;
 end $$;
 
@@ -228,14 +236,53 @@ language sql stable set search_path = public as $$
   order by c.sort, c.id
 $$;
 
+-- Ergebnis teilen: je (Autor, Supplement) genau ein Post. Erneutes Teilen aktualisiert den Post AN ORT UND STELLE
+-- (gleiche ID → Meldungen und Entscheidungen bleiben daran hängen), setzt created_at = now() und löscht Reaktionen.
+-- Rückgabe: 'ok' · 'hidden' (vom Inhaber ausgeblendet) · 'pending' (offene Meldungen – erst nach Entscheidung)
+--           · 'busy' (gleichzeitiges Erst-Teilen, sehr selten)
+create or replace function public.social_share(
+  p_me uuid, p_lib text, p_days int, p_decision text, p_delta numeric, p_dims jsonb)
+returns text language plpgsql set search_path = public as $$
+declare v_id uuid; v_hidden boolean;
+begin
+  select id, hidden into v_id, v_hidden from social_posts where author = p_me and lib = p_lib for update;
+  if found then
+    if v_hidden then return 'hidden'; end if;
+    if exists (select 1 from social_reports where target_type = 'post' and target_id = v_id and status = 'open') then
+      return 'pending';
+    end if;
+    update social_posts set days = p_days, decision = p_decision, delta = p_delta, dims = p_dims, created_at = now()
+     where id = v_id;
+    delete from social_reactions where post = v_id;
+    return 'ok';
+  end if;
+  insert into social_posts (author, lib, days, decision, delta, dims)
+  values (p_me, p_lib, p_days, p_decision, p_delta, p_dims)
+  on conflict (author, lib) do nothing;
+  return case when found then 'ok' else 'busy' end;
+end $$;
+
+-- Entscheidungen des Inhabers, die MICH betreffen (DSA Art. 17: Begründung an Betroffene), neueste zuerst.
+-- Eine Zeile je Ziel und Entscheidung (mehrere Meldungen zum selben Ziel → eine Entscheidung). Nie: wer gemeldet hat.
+create or replace function public.social_decisions(p_me uuid)
+returns table (target text, action text, lib text, note text, at timestamptz)
+language sql stable set search_path = public as $$
+  select d.target_type, d.status, p.lib, coalesce(d.note, ''), d.decided_at
+  from (select distinct on (r.target_type, r.target_id, r.status, r.decided_at)
+               r.target_type, r.target_id, r.status, r.note, r.decided_at
+          from social_reports r
+         where r.target_author = p_me and r.status in ('hidden', 'banned') and r.decided_at is not null
+         order by r.target_type, r.target_id, r.status, r.decided_at, r.id) d
+  left join social_posts p on d.target_type = 'post' and p.id = d.target_id
+  order by d.decided_at desc
+  limit 10
+$$;
+
 -- Konto löschen: ALLES des Profils (Posts, Reaktionen, Folgen, Mitgliedschaften, Blockierungen,
--- eigene Meldungen) und Meldungen, die sich auf das Profil oder seine Posts beziehen.
+-- eigene Meldungen) und alle Meldungen über das Profil oder seine Posts (target_author).
 create or replace function public.social_delete_profile(p uuid)
 returns void language sql set search_path = public as $$
-  delete from social_reports
-   where reporter = p
-      or (target_type = 'profile' and target_id = p)
-      or (target_type = 'post' and target_id in (select id from social_posts where author = p));
+  delete from social_reports where reporter = p or target_author = p;
   delete from social_profiles where id = p;  -- übrige Tabellen per ON DELETE CASCADE
 $$;
 
@@ -254,46 +301,43 @@ select
     where x.target_type = r.target_type and x.target_id = r.target_id and x.status = 'open')::int as offene_meldungen,
   (select count(*) from social_reports x
     where x.target_type = r.target_type and x.target_id = r.target_id)::int                       as meldungen_gesamt,
-  coalesce(pa.handle, pr.handle)  as profil,
-  coalesce(pa.id, pr.id)          as profil_id,
-  coalesce(pa.banned, pr.banned)  as profil_gesperrt,
-  coalesce(pa.hidden, pr.hidden)  as profil_ausgeblendet,
-  coalesce(pa.avatar, pr.avatar)  as avatar,
+  a.handle            as profil,
+  r.target_author     as profil_id,
+  a.banned            as profil_gesperrt,
+  a.hidden            as profil_ausgeblendet,
+  a.avatar,
   p.lib, p.days as tage, p.decision as urteil, p.delta, p.dims, p.created_at as post_vom, p.hidden as post_ausgeblendet,
-  (select count(*) from social_posts q where q.author = coalesce(pa.id, pr.id))::int as posts_des_profils
+  (select count(*) from social_posts q where q.author = r.target_author)::int as posts_des_profils
 from social_reports r
-left join social_posts p     on r.target_type = 'post' and p.id = r.target_id
-left join social_profiles pa on pa.id = p.author
-left join social_profiles pr on r.target_type = 'profile' and pr.id = r.target_id
+left join social_profiles a on a.id = r.target_author
+left join social_posts p    on r.target_type = 'post' and p.id = r.target_id
 where r.status = 'open'
 order by offene_meldungen desc, r.created_at;
-comment on view public.moderation_queue is 'Offene Meldungen mit Ziel-Inhalt. Entscheidung über moderate(report_id, kept|hidden|banned, note).';
+comment on view public.moderation_queue is 'Offene Meldungen mit Ziel-Inhalt. Entscheidung über moderate(report_id, kept|hidden|banned, note) – bei hidden/banned ist note (Begründung, sieht der Betroffene) Pflicht.';
 
 -- Entscheidung gilt für ALLE offenen Meldungen zum selben Ziel. Rückgabe: Anzahl erledigter Meldungen.
 --   kept   → Inhalt bleibt
 --   hidden → Post bzw. Profil (inkl. seiner Posts) wird ausgeblendet
---   banned → Autor/Profil gesperrt + ausgeblendet; gemeldeter Post ausgeblendet
+--   banned → Autor (target_author, auch wenn das Ziel weg ist) gesperrt + ausgeblendet; gemeldeter Post ausgeblendet
+-- hidden/banned brauchen eine Begründung (p_note): der Betroffene sieht sie in der App (DSA Art. 17).
 -- Rückgängig (manuell): update social_posts/social_profiles set hidden=false, banned=false where id = …
 create or replace function public.moderate(p_report bigint, p_action text, p_note text default null)
 returns int language plpgsql security definer set search_path = public as $$
 declare
   r social_reports%rowtype;
-  v_author uuid;
   n int;
 begin
   if p_action not in ('kept','hidden','banned') then raise exception 'action must be kept|hidden|banned'; end if;
+  if p_action <> 'kept' and nullif(trim(coalesce(p_note, '')), '') is null then
+    raise exception 'note (Begründung für den Betroffenen) ist bei % Pflicht', p_action;
+  end if;
   select * into r from social_reports where id = p_report;
   if not found then raise exception 'report % not found', p_report; end if;
-  if r.target_type = 'post' then
-    select author into v_author from social_posts where id = r.target_id;
-  else
-    v_author := r.target_id;
-  end if;
   if p_action = 'hidden' then
     if r.target_type = 'post' then update social_posts set hidden = true where id = r.target_id;
     else update social_profiles set hidden = true where id = r.target_id; end if;
   elsif p_action = 'banned' then
-    if v_author is not null then update social_profiles set banned = true, hidden = true where id = v_author; end if;
+    update social_profiles set banned = true, hidden = true where id = r.target_author;
     if r.target_type = 'post' then update social_posts set hidden = true where id = r.target_id; end if;
   end if;
   update social_reports
@@ -303,7 +347,9 @@ begin
   return n;
 end $$;
 
--- Optional (nicht eingeplant): Profile ohne Besuch seit p_months Monaten löschen (Speicherbegrenzung).
+-- Optional, NICHT eingeplant (kein pg_cron): Profile ohne Besuch seit p_months Monaten (mind. 3) vollständig löschen
+-- (Speicherbegrenzung, Art. 5 Abs. 1 e DSGVO). Manuell im SQL-Editor: select public.social_cleanup_inactive(12);
+-- Rückgabe: Anzahl gelöschter Profile. Vor einer Einplanung Frist in der Datenschutzerklärung nennen.
 create or replace function public.social_cleanup_inactive(p_months int default 12)
 returns int language plpgsql set search_path = public as $$
 declare v uuid; n int := 0;
@@ -313,8 +359,20 @@ begin
   end loop;
   return n;
 end $$;
+comment on function public.social_cleanup_inactive(int) is
+  'Nicht eingeplant. Manuell: select social_cleanup_inactive(12); löscht Profile ohne Besuch seit 12 Monaten (min. 3) samt allem.';
 
--- Funktionen: nur service_role
+-- Funktionen: nur service_role (CHECK-Funktionen ebenfalls: Supabase gibt neuen Funktionen sonst EXECUTE für anon)
+revoke all on function public.social_avatar_ok(jsonb) from public, anon, authenticated;
+revoke all on function public.social_dims_ok(jsonb) from public, anon, authenticated;
+revoke all on function public.social_share(uuid, text, int, text, numeric, jsonb) from public, anon, authenticated;
+revoke all on function public.social_decisions(uuid) from public, anon, authenticated;
+grant execute on function public.social_avatar_ok(jsonb) to service_role;
+grant execute on function public.social_dims_ok(jsonb) to service_role;
+grant execute on function public.social_share(uuid, text, int, text, numeric, jsonb) to service_role;
+grant execute on function public.social_decisions(uuid) to service_role;
+revoke all on sequence public.social_reports_id_seq from anon, authenticated;
+grant usage, select on sequence public.social_reports_id_seq to service_role;
 revoke all on function public.social_hit(uuid, text, int, int) from public, anon, authenticated;
 revoke all on function public.social_feed(uuid, text, text, uuid, timestamptz, uuid, int) from public, anon, authenticated;
 revoke all on function public.social_delete_profile(uuid) from public, anon, authenticated;
