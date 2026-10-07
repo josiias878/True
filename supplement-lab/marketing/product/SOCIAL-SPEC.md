@@ -46,3 +46,18 @@ Kolbi (Maskottchen) bleibt der Begleiter: spricht auf Heute, kommentiert Ergebni
 
 Leitzahl: **Tage pro Woche mit App-Öffnung** (Ziel erst nach 4 Wochen Messung). Dazu: Teilen-Quote nach Testende,
 7-Check-ins-Quote mit vs. ohne Community-Kontakt, Anteil Feed-Besuche → „Selbst testen“.
+
+## 5 · Zielbild „Creator-Plattform“ (Inhaber-Wunsch, 7. Okt 2026) – Reihenfolge nach Risiko
+
+| Baustein | Stufe | Warum erst dann |
+|---|---|---|
+| Konto ohne Hürde (anonym), Folgen/Follower, Reaktionen, strukturierte Ergebnis-Posts | **S2** | nur pseudonyme Daten, keine fremden Texte/Bilder |
+| Offizielle Communities: Labs pro Supplement + Ziel-Communities (Schlaf, Fokus …) – **suchen & beitreten** | **S2** | Inhalte = strukturierte Ergebnisse, kein Freitext |
+| Gemeinsame Startwellen, Melden/Blockieren, Moderations-Zentrale für den Inhaber | **S2** | Pflicht-Unterbau für alles Weitere |
+| Eigener (echter) Anzeigename, Profilfoto, Bio | **S3** | Freitext/Bild → Moderation, Bildprüfung, Gesundheitsdaten + Klarname = DSGVO Art. 9 |
+| Freie Beiträge, Antworten, Foto-Posts, Stories | **S3** | nutzergenerierte Inhalte → Apple 1.2, DSA, Health-Claims durch Nutzer |
+| **Eigene Communities erstellen** (Ersteller = Moderator, öffentlich/privat) | **S3** | fremde Regeln/Namen, Missbrauchsrisiko |
+| Creator-Funktionen (Top-Tester nach Durchhalten/Hilfsbereitschaft – nie nach „Wirkung“, Verifizierung) | **S4** | erst mit stabiler Moderation |
+
+S3 startet erst nach Rechtsprüfung (legal/ANGEBOTE-RECHTSPRUEFUNG.md) und ersten Einnahmen (Inhaber-Vorgabe „sicher zuerst“).
+Standard bleibt privat: Wer seinen echten Namen zeigt, entscheidet das aktiv (Opt-in), Gesundheitsdaten nie automatisch öffentlich.
