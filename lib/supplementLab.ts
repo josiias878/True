@@ -1088,6 +1088,18 @@ export function diffDays(a: string, b: string) {
   const [y2, m2, d2] = b.split("-").map(Number)
   return Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86400000)
 }
+/** „Gestern · Montag, 6. Oktober“ – damit bei jeder Frage klar ist, welcher Tag gemeint ist. */
+export function dayRef(iso: string, today = todayIso()) {
+  const [y, m, d] = iso.split("-").map(Number)
+  const long = new Date(y, m - 1, d).toLocaleDateString(LOCALE, { weekday: "long", day: "numeric", month: "long" })
+  const k = diffDays(iso, today)
+  return k === 0 ? `${t("Heute")} · ${long}` : k === 1 ? `${t("Gestern")} · ${long}` : long
+}
+/** Schlaf-Frage: „Nacht auf Dienstag, 7. Oktober“. */
+export function nightRef(iso: string) {
+  const [y, m, d] = iso.split("-").map(Number)
+  return t("Nacht auf {day}", { day: new Date(y, m - 1, d).toLocaleDateString(LOCALE, { weekday: "long", day: "numeric", month: "long" }) })
+}
 export function fmtDate(iso: string) {
   const [y, m, d] = iso.split("-").map(Number)
   return new Date(y, m - 1, d).toLocaleDateString(LOCALE, { weekday: "short", day: "numeric", month: "short" })

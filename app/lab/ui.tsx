@@ -413,3 +413,8 @@ export function TagChips({ value, onChange, show = 5 }: { value: string[]; onCha
     </div>
   )
 }
+
+/** Welcher Tag ist gemeint? Klein über der Frage. */
+export function DayKicker({ children }: { children: React.ReactNode }) {
+  return <div style={{ display: "inline-block", marginBottom: 8, padding: "4px 12px", borderRadius: 999, background: "var(--surface-2)", color: "var(--text-dim)", fontSize: "0.78rem", fontWeight: 800 }}>📅 {children}</div>
+}

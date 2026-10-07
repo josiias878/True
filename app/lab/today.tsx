@@ -4,13 +4,13 @@
 import React, { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import {
-  FACES, STORE_MODE, addDays, checkinOpensMin, daySum, diffDays, fmtCountdown, fromMin, intakeOn, streak, extrasOn,
+  FACES, STORE_MODE, addDays, dayRef, nightRef, checkinOpensMin, daySum, diffDays, fmtCountdown, fromMin, intakeOn, streak, extrasOn,
   type LabState, type PhaseWindow,
 } from "@/lib/supplementLab"
 import { sidesOf } from "@/lib/labDay"
 import type { CoachAction, CoachMsg } from "@/lib/labCoach"
 import { pathStops, type Stop } from "@/lib/labPath"
-import { Btn, Capsule, DemoBadge, Sheet, TabHead, haptic } from "./ui"
+import { Btn, Capsule, DayKicker, DemoBadge, Sheet, TabHead, haptic } from "./ui"
 import { Mascot, MASCOT_NAME } from "./mascot"
 import { MorningPanel, type DayTab } from "./day"
 import { dayProgress, type RoundStep } from "./round"
@@ -247,6 +247,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
         </>}
 
         {main === "morning" && <>
+          <DayKicker>{nightRef(today)}</DayKicker>
           {title(<>{t("🌙 Wie hast du geschlafen?")} <NewBadge id="morning-question" /></>)}
           {sub(t("1 Tipp genügt."))}
           <div style={{ marginTop: 16, width: "100%" }}>
@@ -267,6 +268,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
         </>}
 
         {main === "checkin" && <>
+          <DayKicker>{dayRef(catchUp ? yesterday : today, today)}</DayKicker>
           {title(catchUp ? t("Gestern fehlt noch") : t("Wie war dein Tag?"))}
           {sub(catchUp ? t("1 Minute nachtragen – sonst fehlt der Tag im Vergleich.") : t("1 Minute. Ich vergleiche mit deinem Normal."))}
           <button onClick={() => { haptic(); onRound(checks) }} className="lab-press lab-drop" style={bigBtn}>▶ {catchUp ? t("Nachtragen") : t("Check-in starten")}</button>

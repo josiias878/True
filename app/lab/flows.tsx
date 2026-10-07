@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import {
   FACES, FACE_LABELS, LIBRARY, ROUTE_INFO, SUPP_COLORS, CATEGORIES, GOALS, RHYTHMS, TRAININGS,
-  todayIso, addDays, fmtDate, diffDays, makeSupp, autoOrder, parseSuppList, goalRelevance, extrasOn,
+  todayIso, addDays, dayRef, makeSupp, autoOrder, parseSuppList, goalRelevance, extrasOn,
   defaultCheckinTime, libOf, daySum, libTimeTip, STORE_MODE,
   type CheckIn, type Dim, type LabState, type MySupp, type Settings, type LibSupp, type GoalId, type Scores,
 } from "@/lib/supplementLab"
@@ -438,7 +438,6 @@ export function CheckInSheet({ s, date, phaseLabel, onDone, onClose, onAddExtra,
   const [suspect, setSuspect] = useState<Record<string, string>>(() => sidesOf(s, date).suspect)
   const [showNote, setShowNote] = useState(!!existing?.note)
   const isToday = date === todayIso()
-  const dayLabel = isToday ? t("Heute") : diffDays(date, todayIso()) === 1 ? t("Gestern") : fmtDate(date)
 
   const pickOverall = (v: number) => {
     setOverall(v)
@@ -459,8 +458,8 @@ export function CheckInSheet({ s, date, phaseLabel, onDone, onClose, onAddExtra,
       <div style={{ maxWidth: 560, margin: "0 auto", padding: "14px 18px calc(24px + env(safe-area-inset-bottom))" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <div>
-            <div style={{ fontSize: "1.3rem", fontWeight: 900 }}>Check-in · {dayLabel}</div>
-            <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", fontWeight: 700 }}>{phaseLabel}</div>
+            <div style={{ fontSize: "1.15rem", fontWeight: 900 }}>📅 {dayRef(date)}</div>
+            <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", fontWeight: 700 }}>Check-in{phaseLabel ? <> · {phaseLabel}</> : null}</div>
           </div>
           <button className="lab-press" onClick={onClose} aria-label={t("Schließen")} style={{ width: 38, height: 38, borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text)" }}>✕</button>
         </div>

@@ -3,11 +3,11 @@
 import React, { useEffect, useRef, useState } from "react"
 import {
   FACES, SIDE_BY_ID, DIM_BY_ID,
-  intakeOn, phaseWindows, addDays, signal, testResult, suppColor, streak, timeTip, relMin, suppMinutes, extrasOn,
+  intakeOn, phaseWindows, addDays, dayRef, nightRef, signal, testResult, suppColor, streak, timeTip, relMin, suppMinutes, extrasOn,
   type LabState, type CheckIn, type Scores, type Decision, type Dim,
 } from "@/lib/supplementLab"
 import { eveningDims, morningDue, morningAnswered, sidesOf, type ExtraInput } from "@/lib/labDay"
-import { Btn, Stars, TagChips } from "./ui"
+import { Btn, DayKicker, Stars, TagChips } from "./ui"
 import { DaySheet, ExtraList, MorningPanel, SidesWithSuspect } from "./day"
 import { KolbiTip, Mascot } from "./mascot"
 import { FACT_COUNT, nextFact, type Fact } from "@/lib/labKnowledge"
@@ -143,9 +143,10 @@ export function DailyRound({ s, today, steps, onTake, onCheckin, onVerdict, onLe
 
 // ── Einzelne Schritte ──────────────────────────────────────────────────────────
 
-function Title({ children, sub }: { children: React.ReactNode; sub?: React.ReactNode }) {
+function Title({ children, sub, kicker }: { children: React.ReactNode; sub?: React.ReactNode; kicker?: string }) {
   return (
     <div style={{ textAlign: "center" }}>
+      {kicker && <DayKicker>{kicker}</DayKicker>}
       <div style={{ fontSize: "1.55rem", fontWeight: 900, letterSpacing: "-.01em", lineHeight: 1.15 }}>{children}</div>
       {sub && <div style={{ fontSize: "0.9rem", color: "var(--text-dim)", marginTop: 6, lineHeight: 1.45 }}>{sub}</div>}
     </div>
@@ -182,7 +183,7 @@ const AUTO_NEXT_MS = 2000
 function MorningStep({ s, today, onSave, onDone }: { s: LabState; today: string; onSave: (v: { sleep?: number; fit?: number }) => void; onDone: () => void }) {
   return (
     <>
-      <Title sub={t("1 Tipp genügt – so sehe ich, was bei dir nachts einen Unterschied macht.")}>{t("🌙 Wie hast du geschlafen?")}</Title>
+      <Title kicker={nightRef(today)} sub={t("1 Tipp genügt – so sehe ich, was bei dir nachts einen Unterschied macht.")}>{t("🌙 Wie hast du geschlafen?")}</Title>
       <div className="lab-card" style={{ padding: 16 }}>
         <MorningPanel entry={s.morning?.[today]} onSave={onSave} onDone={onDone} delay={900} size={60} />
       </div>
@@ -227,8 +228,8 @@ function CheckinStep({ s, date, scores, setScores, tags, setTags, onDone, yester
   return (
     <>
       {yesterday
-        ? <Title sub={t("Gestern ist der Check-in durchgerutscht – kurz nachtragen, dann fehlt nichts in deiner Auswertung.")}>{t("🌅 Wie war gestern?")}</Title>
-        : <Title sub={t("Tippe die Sterne pro Bereich — alles auf einem Blick.")}>{t("Wie war dein Tag?")}</Title>}
+        ? <Title kicker={dayRef(date)} sub={t("Gestern ist der Check-in durchgerutscht – kurz nachtragen, dann fehlt nichts in deiner Auswertung.")}>{t("🌅 Wie war gestern?")}</Title>
+        : <Title kicker={dayRef(date)} sub={t("Tippe die Sterne pro Bereich — alles auf einem Blick.")}>{t("Wie war dein Tag?")}</Title>}
       <div className="lab-card" style={{ padding: "4px 16px" }}>
         {dims.map((d, k) => (
           <div key={d.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "10px 0", borderTop: k ? "1px solid var(--border)" : "none" }}>

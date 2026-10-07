@@ -154,5 +154,6 @@ export const EN_I: Record<string, string> = {
   "Achtung: Wenn du trotzdem nur auf dem Gerät löschst, bleibt dein öffentliches Profil bestehen, bis du es später löschst (Einstellungen › Social-Konto › „Social-Konto löschen“).": "Heads-up: if you delete only on this device anyway, your public profile stays up until you delete it later (Settings › Social account › “Delete social account”).",
   "Später nochmal versuchen": "Try again later",
   "Trotzdem nur auf dem Gerät löschen": "Delete on this device only anyway",
-  "Nichts gelöscht. Versuch es später nochmal, wenn du online bist.": "Nothing was deleted. Try again later when you're online."
+  "Nichts gelöscht. Versuch es später nochmal, wenn du online bist.": "Nothing was deleted. Try again later when you're online.",
+  "Nacht auf {day}": "Night before {day}"
 }
