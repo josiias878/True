@@ -41,6 +41,7 @@ import { configureStats, srcFromUrl, track, trackCheckin, trackOnce } from "@/li
 import { RoadPath } from "./path"
 import { ShareButton, makeResultCard } from "./share"
 import { CommunityConsent } from "./community"
+import { SocialHost, SocialScreen, SocialSettingsCard, clearSocial, deleteSocialAccount, hasSocialAccount, startPost, useSocialView } from "./social"
 import { ExperimentSheet, ExperimentsView } from "./experiments"
 import { startExperiment, type Experiment } from "@/lib/labExperiments"
 import { removeMyResults, shareResult } from "@/lib/labCommunity"
@@ -203,6 +204,7 @@ export default function LabApp() {
   const [init] = useState(initialLoad)
   const [s, setS] = useState<LabState>(init.s)
   const [tab, setTab] = useState<Tab>(initialTab)
+  const socialView = useSocialView() // Profil-/Community-Seite über dem aktuellen Reiter
   const [checkinDate, setCheckinDate] = useState<string | null>(init.openCheckin ? todayIso() : null)
   const [verdictFor, setVerdictFor] = useState<string | null>(null)
   const [phaseSheet, setPhaseSheet] = useState<PhaseWindow | null>(null)
@@ -276,6 +278,7 @@ export default function LabApp() {
     if (to === "daten" || to === "ergebnisse") { setMeView("auswertung"); setResView("auswertung") }
     if (to === "reise") { setMeView("auswertung"); setResView("verlauf") }
     if (to === "kolbi") setMeView("kolbi")
+    clearSocial()
     setTab(prev => { setTabDir(NAV.indexOf(next) >= NAV.indexOf(prev) ? 1 : -1); return next })
     window.scrollTo({ top: 0 })
   }, [])
@@ -638,7 +641,8 @@ export default function LabApp() {
       <style>{LAB_CSS}</style>
 
       <main style={{ maxWidth: 640, margin: "0 auto", padding: "14px 16px calc(120px + env(safe-area-inset-bottom))" }}>
-        <div key={`${tab}-${laborView ?? ""}-${lab ? "lab" : ""}-${meView ?? ""}`} className="lab-tabin" style={{ ["--dx" as string]: `${tabDir * 24}px` }}>
+        <div key={`${tab}-${laborView ?? ""}-${lab ? "lab" : ""}-${meView ?? ""}-${socialView ? `${socialView.kind}:${socialView.id}` : ""}`} className="lab-tabin" style={{ ["--dx" as string]: `${tabDir * 24}px` }}>
+          {socialView ? <SocialScreen v={socialView} onSelfTest={libId => selfTest(libId)} /> : <>
           {tab === "heute" && <TodayView s={s} wins={wins} today={today} now={now} pending={pending} checkinLocked={checkinLocked}
             tips={msgs.filter(m => !(m.id === "checkin" || m.id.startsWith("take-") || m.id.startsWith("verdict-") || m.id.startsWith("low-") || m.id.startsWith("phase-")))}
             recap={recapAvailable(s, now, today)} onRecap={() => setRecapEnd(recapWeekEnd(now, today))}
@@ -697,6 +701,7 @@ export default function LabApp() {
               onOpenLab={id => { setLaborView(null); setLab({ suppId: id, tab: "ueberblick" }); goTab("labor") }} onAllLabs={() => goTab("meine")}
               footer={STORE_MODE && !hasNativeReminders() ? <InstallHint compact /> : undefined} />
           ))}
+          </>}
         </div>
       </main>
 
@@ -730,7 +735,7 @@ export default function LabApp() {
             const dot = (id === "ich" && kolbiTips.length > 0) || (id === "entdecken" && recapAvailable(s, now, today).ready)
             return (
               <button key={id} onClick={() => {
-                if (on) { if (id === "labor") { setLab(null); setLaborView(null) } if (id === "ich") setMeView(null); window.scrollTo({ top: 0, behavior: "smooth" }); return }
+                if (on) { clearSocial(); if (id === "labor") { setLab(null); setLaborView(null) } if (id === "ich") setMeView(null); window.scrollTo({ top: 0, behavior: "smooth" }); return }
                 haptic(6); goTab(id)
               }} className="lab-press" aria-current={on ? "page" : undefined} aria-label={l} style={{
                 position: "relative", zIndex: 1, flex: 1, minWidth: 0, height: navMini ? 44 : 58, border: "none", borderRadius: 24, background: "transparent",
@@ -789,12 +794,14 @@ export default function LabApp() {
           onAddExtra={addExtraV} onRemoveExtra={removeExtraV}
         />
       )}
-      {verdictFor && <VerdictSheet key={verdictFor} s={s} suppId={verdictFor} onClose={() => setVerdictFor(null)} onSave={(id, decision, note) => {
+      {verdictFor && <VerdictSheet key={verdictFor} s={s} suppId={verdictFor} onClose={() => setVerdictFor(null)} onSave={(id, decision, note, post) => {
         const isNew = !s.verdicts[id]
         update(p => applyVerdict(p, id, decision, note, today), isNew ? { amount: 50, label: t("Urteil gefällt") } : undefined)
-        afterVerdict(id)
+        if (post) startPost(id) // Vorschau (nach Einwilligung) – anonymes Teilen (S1) läuft unabhängig davon
+        else afterVerdict(id)
         setVerdictFor(null)
       }} />}
+      <SocialHost s={s} onFlash={setFlash} />
       <PhaseSheet s={s} w={phaseSheet} today={today} onClose={() => setPhaseSheet(null)} update={update} onVerdict={id => { setPhaseSheet(null); setVerdictFor(id) }} />
       {suppSheet && <SuppSheet s={s} id={suppSheet} today={today} adv={adv} onClose={() => setSuppSheet(null)} update={update} onAction={a => { setSuppSheet(null); runAction(a, "supp") }} onVerdict={id => { setSuppSheet(null); setVerdictFor(id) }} onStock={id => setStockFor(id)} onJoin={() => setAskCommunity(s.verdicts[suppSheet] ? suppSheet : null)} />}
       {stockFor && <StockSheet s={s} suppId={stockFor} onClose={() => setStockFor(null)} onSave={(stock, dose) => {
@@ -1580,7 +1587,7 @@ function DataView({ s, wins, onVerdict, onCheckin }: { s: LabState; wins: PhaseW
 // URTEIL
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function VerdictSheet({ s, suppId, onClose, onSave }: { s: LabState; suppId: string; onClose: () => void; onSave: (id: string, d: Decision, note: string) => void }) {
+function VerdictSheet({ s, suppId, onClose, onSave }: { s: LabState; suppId: string; onClose: () => void; onSave: (id: string, d: Decision, note: string, post?: boolean) => void }) {
   const sig = signal(s, suppId)
   const [decision, setDecision] = useState<Decision | null>(s.verdicts[suppId]?.decision ?? sig.suggestion)
   const [note, setNote] = useState(() => { const n = s.verdicts[suppId]?.note; return n ? t(n) : "" }) // gespeicherte Auto-Notizen sind deutsch → nur anzeigen übersetzt
@@ -1643,6 +1650,12 @@ function VerdictSheet({ s, suppId, onClose, onSave }: { s: LabState; suppId: str
       <textarea value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder={t("Warum? (optional)")}
         style={{ width: "100%", padding: 12, borderRadius: 14, fontSize: "0.92rem", marginTop: 12, resize: "none" }} />
       <div style={{ marginTop: 14 }}><Btn full disabled={!decision} onClick={() => decision && onSave(suppId, decision, note.trim())}>{t("Urteil speichern")}</Btn></div>
+      {/* Ergebnis-Post (Social S2): nur mit Testergebnis zu einem Bibliotheks-Supplement; Notiz wird nie gepostet */}
+      {r?.overall.base != null && r.overall.test != null && lib && !lib.rx && !s.demo && (
+        <button className="lab-press" disabled={!decision} onClick={() => decision && onSave(suppId, decision, note.trim(), true)} style={{
+          width: "100%", minHeight: 48, marginTop: 8, borderRadius: 16, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontWeight: 900, fontSize: "0.92rem", opacity: decision ? 1 : 0.45,
+        }}>{t("📣 Speichern & im Feed posten")}</button>
+      )}
       {r?.overall.base != null && r.overall.test != null && supp && (
         <div style={{ marginTop: 10 }}><ShareButton make={() => makeResultCard(s, suppId)} name={t("mein-{lib}-ergebnis.png", { lib: supp.lib ?? "test" })} text={t("Mein {name}-Selbstversuch 🧪", { name: supp.name })} label={t("📤 Ergebnis als Bild teilen")} style={{ width: "100%" }} /></div>
       )}
@@ -1919,6 +1932,7 @@ function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnable
 }) {
   const [confirm, setConfirm] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
+  const [resetErr, setResetErr] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const perm = typeof Notification === "undefined" ? "unsupported" : Notification.permission
 
@@ -2009,6 +2023,8 @@ function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnable
         <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", lineHeight: 1.45 }}>{t("Testergebnisse anonym teilen (Supplement, Dauer, ±★, Urteil, Nebenwirkungen – keine Namen, kein Konto). Dafür siehst du bei jedem Supplement, was andere erlebt haben.")}</div>
         <button onClick={async () => { await removeMyResults(); update(p => { p.community = false; return p }); alert(t("Deine geteilten Ergebnisse wurden gelöscht.")) }} style={{ marginTop: 8, background: "none", border: "none", color: "var(--text-dim)", fontSize: "0.76rem", fontWeight: 700, cursor: "pointer", padding: 0 }}>{t("Meine geteilten Ergebnisse löschen")}</button>
       </Card>}
+
+      <SocialSettingsCard />
 
       {/* Lab Pro & Käufe: Tarife, Kauf, „Käufe wiederherstellen“ – sobald gekauft werden kann; in der Store-App immer (Store-Prüfung), im Web nur mit Bezahl-Schlüssel */}
       {(paymentsReady() || appPlatform() !== "web") && <button className="lab-card lab-press" onClick={() => { haptic(); onClose(); openPaywall() }} style={{
@@ -2111,9 +2127,17 @@ function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnable
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
         {s.demo && <Btn full onClick={onReset}>{t("Demo beenden")}</Btn>}
         {!s.demo && <Btn full variant="ghost" onClick={onDemo}>{t("Demo-Daten ansehen (deine Daten werden gesichert)")}</Btn>}
+        {!s.demo && confirm && hasSocialAccount() && (
+          <div role="note" style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-dim)", lineHeight: 1.45, textAlign: "center" }}>{t("Dabei wird auch dein Social-Konto gelöscht (Profil, Posts, Reaktionen, Follower, Communities).")}</div>
+        )}
         {!s.demo && (confirm
-          ? <Btn full variant="danger" onClick={onReset}>{t("Wirklich alles löschen?")}</Btn>
+          ? <Btn full variant="danger" onClick={async () => {
+              // Mit Social-Konto: zuerst dort löschen – ohne Verbindung nicht still weitermachen
+              if (hasSocialAccount() && !(await deleteSocialAccount())) { setResetErr(t("⚠️ Social-Konto gerade nicht erreichbar – nichts gelöscht. Versuch es später nochmal.")); return }
+              onReset()
+            }}>{t("Wirklich alles löschen?")}</Btn>
           : <Btn full variant="ghost" onClick={() => setConfirm(true)}>{t("Experiment zurücksetzen")}</Btn>)}
+        {resetErr && <div role="alert" style={{ fontSize: "0.8rem", fontWeight: 800, textAlign: "center" }}>{resetErr}</div>}
       </div>
     </Sheet>
   )

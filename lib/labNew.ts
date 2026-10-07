@@ -24,6 +24,10 @@ export const NEW_FEATURES: NewFeature[] = [
   { id: "alcohol-pattern", since: "2026-10-06", parent: "patterns" }, // Muster „Am Tag nach Alkohol“
   // Lab Pro
   { id: "community", since: "2026-10-06" }, // Community-Details (Verteilung und einzelne Bereiche)
+  // Social S2
+  { id: "follow", since: "2026-10-07" }, // Folgen / „Gefolgt“-Feed / Sichtbar mitmachen
+  { id: "communities", since: "2026-10-07" }, // Communities suchen & beitreten
+  { id: "reactions", since: "2026-10-07" }, // Reaktionen „Durchhalten“ / „Hilfreich“
 ]
 
 const KEY = "lab-new-seen"

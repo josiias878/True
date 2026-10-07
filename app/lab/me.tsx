@@ -8,6 +8,7 @@ import { Btn, DemoBadge, Sheet, haptic } from "./ui"
 import { Mascot } from "./mascot"
 import { NewBadge } from "./newbadge"
 import { t, isEn } from "@/lib/labI18n"
+import { MySocialStats, syncPublicProfile } from "./social"
 
 export type MeView = "auswertung" | "album" | "kolbi"
 
@@ -65,7 +66,7 @@ function AvatarSheet({ s, open, onClose }: { s: LabState; open: boolean; onClose
       )))}
       {row(t("Accessoire"), AVATAR_ACCESSORIES.map(a => chip(d.accessory === a.id, a.label, () => setD({ ...d, accessory: a.id }))))}
       {row(t("Stimmung"), AVATAR_MOODS.map(m => chip(d.mood === m.id, m.label, () => setD({ ...d, mood: m.id }))))}
-      <Btn full onClick={() => { saveAvatar(d); onClose() }} style={{ marginTop: 20 }}>{t("Speichern")}</Btn>
+      <Btn full onClick={() => { saveAvatar(d); syncPublicProfile(); onClose() }} style={{ marginTop: 20 }}>{t("Speichern")}</Btn>
     </Sheet>
   )
 }
@@ -121,10 +122,11 @@ export function MeHome({ s, today, tipCount, onView, onSettings, onOpenLab, onAl
         </button>
         <div style={{ fontSize: "1.5rem", fontWeight: 900, marginTop: 6, minHeight: "1.9rem" }}>{name}</div>
         <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-dim)" }}>{t("Pseudonym · niemand sieht deinen Namen")}</div>
-        <button onClick={() => { haptic(); setRollMsg(rerollPseudonym(today) ? null : t("Für heute genug gewürfelt – morgen wieder.")) }} className="lab-press" style={{
+        <button onClick={() => { haptic(); const ok = rerollPseudonym(today); if (ok) syncPublicProfile(); setRollMsg(ok ? null : t("Für heute genug gewürfelt – morgen wieder.")) }} className="lab-press" style={{
           minHeight: 44, padding: "0 16px", borderRadius: 999, background: "none", border: "1px solid var(--border)", color: "var(--text)", fontWeight: 800, fontSize: "0.84rem",
         }}>{t("🎲 Anderen Namen")}</button>
         {rollMsg && <div role="status" style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-dim)", textAlign: "center" }}>{rollMsg}</div>}
+        <MySocialStats />
         <div style={{ fontSize: "0.76rem", fontWeight: 800, padding: "4px 10px", borderRadius: 999, background: "var(--surface-2)", marginTop: 2 }}>{lvl.emoji} {lvl.name} · {s.xp} XP</div>
       </div>
 

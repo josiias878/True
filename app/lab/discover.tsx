@@ -9,6 +9,12 @@ import { Btn, DemoBadge, TabHead, haptic } from "./ui"
 import { Mascot } from "./mascot"
 import { Avatar } from "./me"
 import { t } from "@/lib/labI18n"
+import { markSeen } from "@/lib/labNew"
+import { JoinRow, PostFeed, SwitchTabs, useSocialOn } from "./social"
+import * as socialApi from "./socialStub"
+
+type FeedMode = "fuerdich" | "gefolgt"
+let lastMode: FeedMode = "fuerdich" // bleibt beim Zurückkommen aus Profil/Community erhalten
 
 type Overview = { total: number; libs: Record<string, { n: number; keepPct: number | null }> }
 
@@ -80,21 +86,12 @@ export function DiscoverView({ s, today, recapReady, onRecap, onOpenLab, onSelfT
   const w = phaseAt(s, today)
   const wName = w?.suppId ? s.supps.find(x => x.id === w.suppId)?.name : undefined
   const day = w ? diffDays(w.start, today) + 1 : 0
+  const social = useSocialOn()
+  const [mode, setModeRaw] = useState<FeedMode>(lastMode)
+  const setMode = (m: FeedMode) => { lastMode = m; setModeRaw(m); if (m === "gefolgt") markSeen("follow") }
 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <TabHead kicker={t("Entdecken")} title={t("Gerade im Labor")} right={s.demo ? <DemoBadge /> : undefined} />
-
-      {/* Stories: eigene Woche + Labs mit echten Daten */}
-      <div className="lab-scroll" style={{ display: "flex", gap: 8, overflowX: "auto", margin: "-4px -16px 0", padding: "0 16px 2px" }}>
-        <Story label={t("Deine Woche")} ring={recapReady ? "linear-gradient(135deg, #2ECC8A, #3987e5)" : undefined} dashed={!canRecap} dot={recapReady}
-          onClick={() => canRecap ? onRecap() : onFlash(t("📊 Deine Woche gibt's ab 3 Check-ins"))}><Avatar s={s} size={50} shadow={false} /></Story>
-        {myLabs.map(e => (
-          <Story key={e.lib.id} label={e.lib.name} ring={labColor(e.lib)} onClick={() => onOpenLab(e.lib.id, "andere")}>{e.lib.emoji}</Story>
-        ))}
-      </div>
-
-      {ov === "loading" ? (
+  // S1-Inhalt: anonyme Ergebnis-Karten pro Supplement (ohne Einwilligung = alles wie bisher)
+  const s1 = ov === "loading" ? (
         <div className="lab-card lab-shine" style={{ height: 320, background: "linear-gradient(90deg, var(--surface-2), var(--surface), var(--surface-2))" }} />
       ) : feed.length ? (
         <>
@@ -131,7 +128,47 @@ export function DiscoverView({ s, today, recapReady, onRecap, onOpenLab, onSelfT
           )}
           {s.community !== true && ov !== null && <Btn variant="soft" onClick={onJoin} style={{ marginTop: 10, minHeight: 44, padding: "10px 14px", fontSize: "0.84rem" }}>{t("🌍 Anonym mitmachen")}</Btn>}
         </div>
-      )}
+      )
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <TabHead kicker={t("Entdecken")} title={t("Gerade im Labor")} right={s.demo ? <DemoBadge /> : undefined} />
+      {social && <SwitchTabs value={mode} onChange={setMode} options={[
+        { id: "fuerdich", label: t("Für dich"), badge: "reactions" },
+        { id: "gefolgt", label: t("Gefolgt"), badge: "follow" },
+      ]} />}
+      {social && <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-dim)", marginTop: -6, textAlign: "center" }}>
+        {mode === "gefolgt" ? t("Neueste zuerst · nur Leute, denen du folgst") : t("Neueste zuerst · nicht nach deinem Verhalten sortiert")}
+      </div>}
+
+      {/* Stories: eigene Woche + Labs mit echten Daten */}
+      <div className="lab-scroll" style={{ display: "flex", gap: 8, overflowX: "auto", margin: "-4px -16px 0", padding: "0 16px 2px" }}>
+        <Story label={t("Deine Woche")} ring={recapReady ? "linear-gradient(135deg, #2ECC8A, #3987e5)" : undefined} dashed={!canRecap} dot={recapReady}
+          onClick={() => canRecap ? onRecap() : onFlash(t("📊 Deine Woche gibt's ab 3 Check-ins"))}><Avatar s={s} size={50} shadow={false} /></Story>
+        {myLabs.map(e => (
+          <Story key={e.lib.id} label={e.lib.name} ring={labColor(e.lib)} onClick={() => onOpenLab(e.lib.id, "andere")}>{e.lib.emoji}</Story>
+        ))}
+      </div>
+
+      {!social && <JoinRow />}
+
+      {!social ? s1
+        : mode === "gefolgt" ? (
+          <PostFeed feedKey="following" load={c => socialApi.feed("following", c)} onSelfTest={onSelfTest}
+            empty={<div className="lab-card lab-rise" style={{ padding: "26px 20px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <div className="lab-float"><Mascot mood="happy" size={92} /></div>
+              <div style={{ fontSize: "1.25rem", fontWeight: 900, marginTop: 8 }}>{t("Du folgst noch niemandem")}</div>
+              <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--text-dim)", marginTop: 6, lineHeight: 1.45 }}>{t("Tipp in „Für dich“ auf einen Namen und dann auf „Folgen“.")}</div>
+              <Btn variant="soft" onClick={() => setMode("fuerdich")} style={{ marginTop: 14, minHeight: 44 }}>{t("Zu „Für dich“")}</Btn>
+            </div>} />
+        ) : (
+          <PostFeed feedKey="discover" load={c => socialApi.feed("discover", c)} onSelfTest={onSelfTest} empty={s1}
+            offline={<>
+              <div role="status" style={{ fontSize: "0.8rem", fontWeight: 800, color: "var(--text-dim)", textAlign: "center" }}>{t("Beiträge gerade nicht erreichbar – hier die anonymen Ergebnisse:")}</div>
+              {s1}
+            </>} />
+        )}
+
     </div>
   )
 }

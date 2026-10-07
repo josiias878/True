@@ -13,8 +13,11 @@ import { Mascot } from "./mascot"
 import { CommunityCard } from "./community"
 import { labTitle } from "./discover"
 import { t, dec } from "@/lib/labI18n"
+import { CommunitiesView, LabJoinPill, LabPosts, SwitchTabs, startPost } from "./social"
 
-export type LabTab = "ueberblick" | "andere" | "wissen"
+export type LabTab = "ueberblick" | "andere" | "beitraege" | "wissen"
+type LaborMode = "labs" | "communities"
+let lastLaborMode: LaborMode = "labs" // bleibt beim Zurückkommen aus einer Community erhalten
 export type LaborView = "stack" | "exp" | "vorrat"
 
 const ORDER: SuppStatusKey[] = ["testing", "verdict", "observing", "waiting", "kept", "constant", "maybe", "away", "paused", "dropped"]
@@ -25,6 +28,8 @@ export function LaborHome({ s, today, adv, shopCount, onOpen, onOpenLib, onAdd, 
   s: LabState; today: string; adv: boolean; shopCount: number
   onOpen: (suppId: string) => void; onOpenLib: (libId: string) => void; onAdd: () => void; onView: (v: LaborView) => void; onMore: () => void
 }) {
+  const [mode, setModeRaw] = useState<LaborMode>(lastLaborMode)
+  const setMode = (m: LaborMode) => { lastLaborMode = m; setModeRaw(m) }
   const [q, setQ] = useState("")
   const ql = q.trim().toLowerCase()
   const hits = useMemo(() => ql ? LIBRARY.filter(l => l.name.toLowerCase().includes(ql) || l.aliases.some(a => a.includes(ql))).slice(0, 8) : [], [ql])
@@ -36,7 +41,12 @@ export function LaborHome({ s, today, adv, shopCount, onOpen, onOpenLib, onAdd, 
   }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <TabHead kicker={t("Labor")} title={t("Deine Labs")} right={s.demo ? <DemoBadge /> : undefined} />
+      <TabHead kicker={t("Labor")} title={mode === "communities" ? t("Communities") : t("Deine Labs")} right={s.demo ? <DemoBadge /> : undefined} />
+      <SwitchTabs value={mode} onChange={setMode} options={[
+        { id: "labs", label: t("Meine Labs") },
+        { id: "communities", label: t("Communities"), badge: "communities" },
+      ]} />
+      {mode === "communities" ? <CommunitiesView /> : <>
 
       <label style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 14px", borderRadius: 16, background: "var(--surface)", border: "1px solid var(--glass-line)", color: "var(--text-dim)" }}>
         <Icon name="search" size={18} />
@@ -109,6 +119,7 @@ export function LaborHome({ s, today, adv, shopCount, onOpen, onOpenLib, onAdd, 
       )}
 
       {!ql && !adv && <button onClick={onMore} style={{ alignSelf: "center", background: "none", border: "none", color: "var(--text-dim)", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer", padding: "4px 8px" }}>{t("Mehr Funktionen anzeigen ›")}</button>}
+      </>}
     </div>
   )
 }
@@ -188,7 +199,7 @@ export function LabPage({ s, today, suppId, libId, tab, setTab, onBack, onSelfTe
 
       <UnderTabs value={tab} onChange={setTab} options={[
         { id: "ueberblick", label: t("Überblick") },
-        ...(lib ? [{ id: "andere" as const, label: t("Erfahrungen") }] : []),
+        ...(lib ? [{ id: "andere" as const, label: t("Erfahrungen") }, { id: "beitraege" as const, label: t("Beiträge") }] : []),
         { id: "wissen", label: t("Wissen") },
       ]} />
 
@@ -228,9 +239,11 @@ export function LabPage({ s, today, suppId, libId, tab, setTab, onBack, onSelfTe
 
           {mine && tier !== "none" && <span style={{ fontSize: "0.8rem", fontWeight: 800, padding: "6px 12px", borderRadius: 999, background: "var(--surface-2)" }}>{mine}</span>}
 
-          {x && (
+          {(x || lib) && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
-              {!lib?.rx && <button className="lab-press" onClick={() => onDetails(x.id)} style={pill}>⚙️ {t("Dosis & Uhrzeit")}</button>}
+              {x && !lib?.rx && <button className="lab-press" onClick={() => onDetails(x.id)} style={pill}>⚙️ {t("Dosis & Uhrzeit")}</button>}
+              {x && verdict && lib && !lib.rx && !s.demo && <button className="lab-press" onClick={() => { haptic(); startPost(x.id) }} style={pill}>📣 {t("Ergebnis posten")}</button>}
+              {lib && <LabJoinPill lib={lib} style={pill} />}
             </div>
           )}
         </div>
@@ -239,6 +252,8 @@ export function LabPage({ s, today, suppId, libId, tab, setTab, onBack, onSelfTe
       {tab === "andere" && lib && (
         <CommunityCard s={s} libId={lib.id} onJoin={() => onJoin(x && s.verdicts[x.id] ? x.id : null)} />
       )}
+
+      {tab === "beitraege" && lib && <LabPosts lib={lib} onSelfTest={id => onSelfTest(id)} />}
 
       {tab === "wissen" && (
         <div className="lab-card lab-rise" style={{ padding: 18, fontSize: "0.9rem", lineHeight: 1.55, display: "flex", flexDirection: "column", gap: 10 }}>

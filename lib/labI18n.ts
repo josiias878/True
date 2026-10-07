@@ -11,6 +11,7 @@ import { EN_E } from "./i18n/en-e"
 import { EN_F } from "./i18n/en-f"
 import { EN_G } from "./i18n/en-g"
 import { EN_H } from "./i18n/en-h"
+import { EN_I } from "./i18n/en-i"
 
 export type Lang = "de" | "en"
 const KEY = "lab-lang"
@@ -30,7 +31,7 @@ export const isEn = LANG === "en"
 /** Für Datums- und Zahlenformate */
 export const LOCALE = isEn ? "en-US" : "de-DE"
 
-const ALL: Record<string, string> = { ...EN_A, ...EN_B, ...EN_C, ...EN_D, ...EN_E, ...EN_F, ...EN_G, ...EN_H }
+const ALL: Record<string, string> = { ...EN_A, ...EN_B, ...EN_C, ...EN_D, ...EN_E, ...EN_F, ...EN_G, ...EN_H, ...EN_I }
 const DICT: Record<string, string> = isEn ? ALL : {}
 let REV: Record<string, string> | null = null
 /** Englischen Text auf den deutschen Originaltext zurückführen (z. B. gespeicherte Namen nach Sprachwechsel). */
