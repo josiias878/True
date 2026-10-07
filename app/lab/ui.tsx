@@ -1,5 +1,6 @@
 "use client"
 import React, { useEffect } from "react"
+import { createPortal } from "react-dom"
 import type { MySupp } from "@/lib/supplementLab"
 import { suppColor, TAGS, tagLabel } from "@/lib/supplementLab"
 import { TAG_EMOJI } from "@/lib/labPatterns"
@@ -167,7 +168,8 @@ export function Capsule({ supp, size = "md", onClick, right }: { supp: MySupp | 
   )
 }
 
-export function Sheet({ open, onClose, children, title, z = 400 }: { open: boolean; onClose: () => void; children: React.ReactNode; title?: string; z?: number }) {
+/** portal: für ein Sheet IN einem Sheet – sonst hängt es am (animierten) Eltern-Sheet statt am Bildschirm. */
+export function Sheet({ open, onClose, children, title, z = 400, portal }: { open: boolean; onClose: () => void; children: React.ReactNode; title?: string; z?: number; portal?: boolean }) {
   useEffect(() => {
     if (!open) return
     const prev = document.body.style.overflow
@@ -177,7 +179,7 @@ export function Sheet({ open, onClose, children, title, z = 400 }: { open: boole
     return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", onKey) }
   }, [open, onClose])
   if (!open) return null
-  return (
+  const node = (
     <div className="lab-fade" onClick={onClose} style={{
       position: "fixed", inset: 0, zIndex: z, background: "rgba(5,5,12,.55)", backdropFilter: "blur(6px)",
       display: "flex", alignItems: "flex-end", justifyContent: "center",
@@ -200,6 +202,7 @@ export function Sheet({ open, onClose, children, title, z = 400 }: { open: boole
       </div>
     </div>
   )
+  return portal && typeof document !== "undefined" ? createPortal(node, document.body) : node
 }
 
 export function Stepper({ value, min, max, onChange, suffix }: { value: number; min: number; max: number; onChange: (v: number) => void; suffix?: string }) {

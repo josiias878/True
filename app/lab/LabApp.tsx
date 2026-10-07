@@ -41,7 +41,7 @@ import { configureStats, srcFromUrl, track, trackCheckin, trackOnce } from "@/li
 import { RoadPath } from "./path"
 import { ShareButton, makeResultCard } from "./share"
 import { CommunityConsent } from "./community"
-import { SocialHost, SocialScreen, SocialSettingsCard, clearSocial, deleteSocialAccount, hasSocialAccount, startPost, useSocialView } from "./social"
+import { SocialHost, SocialScreen, SocialSettingsCard, clearSocial, deleteSocialAccount, hasSocialAccount, pauseSocial, startPost, useSocialSheetOpen, useSocialView } from "./social"
 import { ExperimentSheet, ExperimentsView } from "./experiments"
 import { startExperiment, type Experiment } from "@/lib/labExperiments"
 import { removeMyResults, shareResult } from "@/lib/labCommunity"
@@ -250,6 +250,8 @@ export default function LabApp() {
   const [reviewCheck, setReviewCheck] = useState(false) // nach Erfolgserlebnis prüfen, ob Kolbi nach einer Bewertung fragt
   const [askCommunity, setAskCommunity] = useState<string | null | false>(false) // false = zu · null = allgemein · id = nach Urteil
   const [pendingShare, setPendingShare] = useState<string | null>(null)
+  const [postAfter, setPostAfter] = useState<string | null>(null) // Ergebnis posten, sobald Abzeichen/Community-Frage zu sind
+  const socialSheet = useSocialSheetOpen()
   const [laborView, setLaborView] = useState<LaborView | null>(null)
   const [lab, setLab] = useState<{ suppId?: string; libId?: string; tab: LabTab } | null>(null)
   const [meView, setMeView] = useState<MeView | null>(null)
@@ -344,6 +346,13 @@ export default function LabApp() {
     if (communityRef.current === true) setPendingShare(id)
     else if (communityRef.current === undefined) setAskCommunity(id)
   }, [])
+  // Sheets nacheinander, nie zwei gleichzeitig: Abzeichen → anonyme Community-Frage → Einwilligung/Posten-Vorschau → Bewertung
+  useEffect(() => {
+    if (!postAfter || newBadge || round || recapEnd || askCommunity !== false) return
+    const id = postAfter
+    setPostAfter(null)
+    startPost(id)
+  }, [postAfter, newBadge, round, recapEnd, askCommunity])
   useEffect(() => {
     if (!pendingShare || !s.verdicts[pendingShare]) return
     const id = pendingShare
@@ -763,7 +772,7 @@ export default function LabApp() {
       {founderHello && !newBadge && <FounderWelcome onFlash={setFlash} onClose={() => setFounderHello(false)} />}
       {paywall && <PaywallSheet s={s} from={paywall.from} onFlash={setFlash} onClose={() => setPaywall(false)}
         onPurchased={plan => { update(p => markPurchased(p, plan, today)); setPaywall(false); setConfetti(true); track(plan === "restored" ? "restore" : "purchase") }} />}
-      {reviewOpen && !round && !newBadge && !recapEnd && askCommunity === false && <ReviewSheet start={reviewOpen} where={reviewCtx.where} initialMood={reviewCtx.mood} onFlash={setFlash}
+      {reviewOpen && !round && !newBadge && !recapEnd && askCommunity === false && !postAfter && !socialSheet && <ReviewSheet start={reviewOpen} where={reviewCtx.where} initialMood={reviewCtx.mood} onFlash={setFlash}
         onAnswer={m => update(p => markReviewAsked(p, today, m))} onClose={() => { setReviewOpen(false); setReviewCtx({}) }} />}
       {expOpen && <ExperimentSheet s={s} e={expOpen} onClose={() => setExpOpen(null)} onStart={away => {
         const e = expOpen
@@ -797,11 +806,11 @@ export default function LabApp() {
       {verdictFor && <VerdictSheet key={verdictFor} s={s} suppId={verdictFor} onClose={() => setVerdictFor(null)} onSave={(id, decision, note, post) => {
         const isNew = !s.verdicts[id]
         update(p => applyVerdict(p, id, decision, note, today), isNew ? { amount: 50, label: t("Urteil gefällt") } : undefined)
-        if (post) startPost(id) // Vorschau (nach Einwilligung) – anonymes Teilen (S1) läuft unabhängig davon
-        else afterVerdict(id)
+        afterVerdict(id) // auch beim Posten: Statistik, Bewertungs-Moment, anonymes Teilen (S1)
+        if (post) setPostAfter(id) // Vorschau (nach Einwilligung) – erst wenn die Community-Frage zu ist
         setVerdictFor(null)
       }} />}
-      <SocialHost s={s} onFlash={setFlash} />
+      <SocialHost s={s} onFlash={setFlash} hold={!!newBadge || !!round || !!recapEnd || askCommunity !== false} />
       <PhaseSheet s={s} w={phaseSheet} today={today} onClose={() => setPhaseSheet(null)} update={update} onVerdict={id => { setPhaseSheet(null); setVerdictFor(id) }} />
       {suppSheet && <SuppSheet s={s} id={suppSheet} today={today} adv={adv} onClose={() => setSuppSheet(null)} update={update} onAction={a => { setSuppSheet(null); runAction(a, "supp") }} onVerdict={id => { setSuppSheet(null); setVerdictFor(id) }} onStock={id => setStockFor(id)} onJoin={() => setAskCommunity(s.verdicts[suppSheet] ? suppSheet : null)} />}
       {stockFor && <StockSheet s={s} suppId={stockFor} onClose={() => setStockFor(null)} onSave={(stock, dose) => {
@@ -1933,6 +1942,7 @@ function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnable
   const [confirm, setConfirm] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [resetErr, setResetErr] = useState<string | null>(null)
+  const [resetOffline, setResetOffline] = useState(false) // Social-Konto nicht erreichbar → Wahl: später oder nur auf dem Gerät
   const fileRef = useRef<HTMLInputElement>(null)
   const perm = typeof Notification === "undefined" ? "unsupported" : Notification.permission
 
@@ -2133,12 +2143,25 @@ function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnable
         {!s.demo && (confirm
           ? <Btn full variant="danger" onClick={async () => {
               // Mit Social-Konto: zuerst dort löschen – ohne Verbindung nicht still weitermachen
-              if (hasSocialAccount() && !(await deleteSocialAccount())) { setResetErr(t("⚠️ Social-Konto gerade nicht erreichbar – nichts gelöscht. Versuch es später nochmal.")); return }
+              setResetErr(null)
+              if (hasSocialAccount() && !(await deleteSocialAccount())) { setResetOffline(true); return }
               onReset()
             }}>{t("Wirklich alles löschen?")}</Btn>
           : <Btn full variant="ghost" onClick={() => setConfirm(true)}>{t("Experiment zurücksetzen")}</Btn>)}
         {resetErr && <div role="alert" style={{ fontSize: "0.8rem", fontWeight: 800, textAlign: "center" }}>{resetErr}</div>}
       </div>
+      {resetOffline && (
+        <Sheet open onClose={() => setResetOffline(false)} z={470} portal title={t("Social-Konto gerade nicht erreichbar")}>
+          <div style={{ fontSize: "0.9rem", lineHeight: 1.5, fontWeight: 700 }}>{t("Ohne Verbindung kann ich dein Social-Konto nicht löschen. Bisher wurde nichts gelöscht.")}</div>
+          <div role="note" data-reset-warning style={{ marginTop: 12, padding: "12px 14px", borderRadius: 14, background: "var(--warning-dim)", border: "1px solid var(--warning)", fontSize: "0.86rem", lineHeight: 1.5, fontWeight: 800 }}>
+            {t("Achtung: Wenn du trotzdem nur auf dem Gerät löschst, bleibt dein öffentliches Profil bestehen, bis du es später löschst (Einstellungen › Social-Konto › „Social-Konto löschen“).")}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
+            <Btn variant="soft" full onClick={() => { setResetOffline(false); setResetErr(t("Nichts gelöscht. Versuch es später nochmal, wenn du online bist.")) }} style={{ minHeight: 48 }}>{t("Später nochmal versuchen")}</Btn>
+            <Btn variant="danger" full onClick={() => { pauseSocial(); setResetOffline(false); onReset() }} style={{ minHeight: 48 }}>{t("Trotzdem nur auf dem Gerät löschen")}</Btn>
+          </div>
+        </Sheet>
+      )}
     </Sheet>
   )
 }

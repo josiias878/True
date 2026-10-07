@@ -33,6 +33,26 @@ export function useSocialOn(): boolean {
 const hadAccount = () => { try { return !!localStorage.getItem("lab-social-id") } catch { return false } }
 let myId: string | null = null
 let restricted = false
+
+// Entscheidungen der Moderation über eigene Posts/das eigene Profil (kommen mit dem Konto, lib/labSocialApi)
+export type ModDecision = { target: "post" | "profile"; action: "hidden" | "banned"; lib?: string; note: string; at: string }
+let decisions: ModDecision[] = []
+function decisionsOf(v: unknown): ModDecision[] {
+  if (!Array.isArray(v)) return []
+  return v.flatMap((d): ModDecision[] => {
+    if (!d || typeof d !== "object") return []
+    const o = d as Record<string, unknown>
+    if ((o.target !== "post" && o.target !== "profile") || (o.action !== "hidden" && o.action !== "banned") || typeof o.at !== "string" || !Number.isFinite(Date.parse(o.at))) return []
+    return [{ target: o.target, action: o.action, ...(typeof o.lib === "string" && o.lib ? { lib: o.lib } : {}), note: typeof o.note === "string" ? o.note.trim().slice(0, 400) : "", at: o.at }]
+  }).sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).slice(0, 50)
+}
+const DEC_SEEN_KEY = "lab-social-decisions-seen"
+const decSeen = (): number => { try { return Number(localStorage.getItem(DEC_SEEN_KEY)) || 0 } catch { return 0 } }
+const markDecSeen = (list: ModDecision[]) => { try { const m = Math.max(decSeen(), ...list.map(d => Date.parse(d.at))); localStorage.setItem(DEC_SEEN_KEY, String(m)) } catch {} }
+const useDecisions = () => useSyncExternalStore(subscribe, () => decisions, () => [] as ModDecision[])
+// Sperre kann über das Profil oder über einen gemeldeten Post kommen → jede „banned“-Entscheidung zählt (neueste zuerst)
+const banReason = () => decisions.find(d => d.action === "banned")?.note ?? ""
+
 /** Eigenes Konto (legt es bei Einwilligung an). null = offline/keine Einwilligung. */
 export async function ensureMe(): Promise<string | null> {
   if (myId) return myId
@@ -40,11 +60,23 @@ export async function ensureMe(): Promise<string | null> {
   const a = await api.ensureAccount()
   myId = a?.id ?? null
   if (a && !!a.restricted !== restricted) restricted = !!a.restricted
+  if (a) decisions = decisionsOf((a as { decisions?: unknown }).decisions)
   if (myId) emit()
   return myId
 }
 /** Vom Betreiber gesperrt → nur noch „Konto löschen“. */
 const useRestricted = () => useSyncExternalStore(subscribe, () => restricted, () => false)
+/** Ist gerade ein Social-Sheet (Einwilligung/Posten-Vorschau) offen? → andere Sheets warten. */
+export function useSocialSheetOpen(): boolean {
+  return useSyncExternalStore(subscribe, () => !!ask || !!postFor, () => false)
+}
+/** Zurücksetzen ohne Verbindung: nur pausieren – Geheimnis + Profil-ID bleiben, damit späteres Löschen geht. */
+export function pauseSocial() {
+  api.setSocialConsent(false)
+  myId = null
+  nav = []
+  emit()
+}
 const publicAvatar = (): LabAvatar => loadAvatar() ?? DEFAULT_AVATAR
 /** Pseudonym/Avatar geändert → öffentliches Profil nachziehen (nur mit Einwilligung). */
 export function syncPublicProfile() {
@@ -101,7 +133,8 @@ export async function deleteSocialAccount(): Promise<boolean> {
   const ok = !!(await api.deleteAccount())
   if (ok) {
     api.setSocialConsent(false)
-    myId = null; restricted = false
+    myId = null; restricted = false; decisions = []
+    try { localStorage.removeItem(DEC_SEEN_KEY) } catch {}
     setBlocked([])
   }
   return ok
@@ -218,6 +251,70 @@ function EndOfFeed() {
   )
 }
 
+// ═══ Entscheidungen der Moderation (eigene Posts/eigenes Profil) ══════════════════════════════
+const termsHref = () => `${SITE_URL}${isEn ? "/en/terms" : "/nutzungsbedingungen"}`
+function AppealLink() {
+  return <a href={termsHref()} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", minHeight: 44, color: "var(--accent)", fontWeight: 800, fontSize: "0.8rem", lineHeight: 1.3 }}>{t("Widerspruch per E-Mail – siehe Nutzungsbedingungen")} ›</a>
+}
+function decDate(iso: string) {
+  try { return new Date(iso).toLocaleDateString(LOCALE, { day: "numeric", month: "short", year: "numeric" }) } catch { return "" }
+}
+function DecisionRow({ d }: { d: ModDecision }) {
+  const lib = d.lib ? LIB_BY_ID[d.lib] : undefined
+  const what = d.target === "profile" ? t("Dein Profil") : d.lib ? t("Post zu {name}", { name: lib?.name ?? d.lib }) : t("Ein Post von dir")
+  return (
+    <div data-decision style={{ padding: "10px 12px", borderRadius: 14, background: "var(--surface-2)", textAlign: "left" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ flex: 1, minWidth: 0, fontWeight: 900, fontSize: "0.9rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{what}</span>
+        <span style={{ flexShrink: 0, fontSize: "0.72rem", fontWeight: 900, padding: "3px 9px", borderRadius: 999, border: "1px solid var(--border)", background: "var(--surface)" }}>{d.action === "banned" ? t("Konto gesperrt") : t("Ausgeblendet")}</span>
+      </div>
+      {d.note && <div style={{ fontSize: "0.82rem", fontWeight: 700, marginTop: 4, lineHeight: 1.4, wordBreak: "break-word" }}>{t("Begründung: {note}", { note: d.note })}</div>}
+      <div style={{ fontSize: "0.74rem", fontWeight: 700, color: "var(--text-dim)", marginTop: 2 }}>{decDate(d.at)}</div>
+    </div>
+  )
+}
+/** Gesperrt: Begründung + Widerspruch. */
+function BanNote() {
+  useDecisions()
+  const why = banReason()
+  return (
+    <div style={{ marginTop: 10, maxWidth: 320 }}>
+      {why && <div data-ban-reason style={{ fontSize: "0.86rem", fontWeight: 800, lineHeight: 1.45, wordBreak: "break-word" }}>{t("Begründung: {note}", { note: why })}</div>}
+      <AppealLink />
+    </div>
+  )
+}
+/** Entdecken: einmaliger Hinweis auf neue Entscheidungen (danach nur noch in Einstellungen › Social-Konto). */
+export function ModerationNotice() {
+  const on = useSocialOn()
+  const list = useDecisions()
+  const locked = useRestricted()
+  const [shown, setShown] = useState<ModDecision[] | null>(null)
+  useEffect(() => {
+    if (!on || shown) return
+    const seen = decSeen()
+    const fresh = list.filter(d => Date.parse(d.at) > seen)
+    if (!fresh.length) return
+    markDecSeen(list)
+    setShown(locked ? [] : fresh) // gesperrt: Begründung steht schon groß im Feed
+  }, [on, list, locked, shown])
+  if (!shown?.length) return null
+  return (
+    <div className="lab-card lab-rise" role="status" data-mod-notice style={{ padding: 16, borderRadius: 22 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <Mascot mood="think" size={44} />
+        <span style={{ fontWeight: 900, fontSize: "1rem", lineHeight: 1.3 }}>{shown.length === 1 ? t("Neue Entscheidung der Moderation") : t("{n} neue Entscheidungen der Moderation", { n: shown.length })}</span>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+        {shown.slice(0, 3).map((d, i) => <DecisionRow key={i} d={d} />)}
+      </div>
+      {shown.length > 3 && <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text-dim)", marginTop: 6 }}>{t("Alle findest du in Einstellungen › Social-Konto.")}</div>}
+      <AppealLink />
+      <Btn variant="soft" full onClick={() => setShown([])} style={{ minHeight: 44, marginTop: 2 }}>{t("Verstanden")}</Btn>
+    </div>
+  )
+}
+
 // ═══ Ergebnis-Post ═══════════════════════════════════════════════════════════════════════════
 export function PostCard({ p, preview, onSelfTest }: { p: SocialPost; preview?: boolean; onSelfTest?: (libId: string) => void }) {
   const lib = LIB_BY_ID[p.lib]
@@ -227,8 +324,9 @@ export function PostCard({ p, preview, onSelfTest }: { p: SocialPost; preview?: 
   const [counts, setCounts] = useState(p.counts ?? { durchhalten: 0, hilfreich: 0 })
   const [menu, setMenu] = useState(false)
   const own = preview || (!!myId && p.author?.id === myId)
-  const dims = Object.entries(p.dims ?? {}).filter(([k, v]) => typeof v === "number" && Math.abs(v) >= 0.1 && DIMS.some(x => x.id === k))
-    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, 3)
+  // Feed: die 3 deutlichsten Bereiche · Vorschau vor dem Posten: GENAU alles, was gesendet wird
+  const dims = Object.entries(p.dims ?? {}).filter(([k, v]) => typeof v === "number" && (preview || (Math.abs(v) >= 0.1 && DIMS.some(x => x.id === k))))
+    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, preview ? undefined : 3)
   const toggle = async (k: ReactionKind) => {
     if (preview) return
     markSeen("reactions")
@@ -268,8 +366,8 @@ export function PostCard({ p, preview, onSelfTest }: { p: SocialPost; preview?: 
         </div>
         {dims.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 6, marginTop: 10 }}>
-            {dims.map(([k, v]) => { const x = DIMS.find(q => q.id === k)!; return (
-              <span key={k} style={{ padding: "4px 10px", borderRadius: 999, background: "var(--surface)", fontSize: "0.78rem", fontWeight: 800 }}>{x.emoji} {x.label} {signed(v)}</span>
+            {dims.map(([k, v]) => { const x = DIMS.find(q => q.id === k); return (
+              <span key={k} data-dim={k} style={{ padding: "4px 10px", borderRadius: 999, background: "var(--surface)", fontSize: "0.78rem", fontWeight: 800 }}>{x ? `${x.emoji} ${x.label}` : k} {signed(v)}</span>
             ) })}
           </div>
         )}
@@ -379,6 +477,7 @@ export function PostFeed({ feedKey, load, empty, offline, onSelfTest }: {
   useHideVersion()
   useBlocked()
   useRestricted()
+  useDecisions()
   useEffect(() => {
     let on = true
     setSt({ state: "loading", posts: [] })
@@ -396,7 +495,11 @@ export function PostFeed({ feedKey, load, empty, offline, onSelfTest }: {
     if (!r) { flash(OFFLINE()); return }
     setSt(s => ({ state: "ok", posts: [...s.posts, ...r.posts.filter(p => !s.posts.some(q => q.id === p.id))], next: r.next }))
   }
-  if (restricted) return <Empty mood="think" title={t("Dein Social-Konto ist gesperrt")} text={t("Du kannst es in den Einstellungen löschen. Deine eigenen Daten auf dem Gerät bleiben.")} />
+  if (restricted) return (
+    <Empty mood="think" title={t("Dein Social-Konto ist gesperrt")} text={t("Du kannst es in den Einstellungen löschen. Deine eigenen Daten auf dem Gerät bleiben.")}>
+      <BanNote />
+    </Empty>
+  )
   if (st.state === "loading") return <Loading />
   if (st.state === "offline") return <>{offline ?? <Offline onRetry={() => setRetry(x => x + 1)} />}</>
   const posts = st.posts.filter(visible)
@@ -511,9 +614,12 @@ function SharePostSheet({ s, suppId, onClose }: { s: LabState; suppId: string; o
   const post = async () => {
     setBusy(true)
     await ensureMe()
-    const r = restricted ? false : await api.shareResultPost(s, suppId)
+    // true = gepostet · "hidden" = von der Moderation ausgeblendet · "pending" = Prüfung läuft · false = keine Verbindung
+    const r = (restricted ? false : await api.shareResultPost(s, suppId)) as boolean | "hidden" | "pending"
     setBusy(false)
-    if (!r) { flash(restricted ? t("Dein Social-Konto ist gesperrt") : OFFLINE()); return }
+    if (r === "hidden") { flash(t("Dieser Beitrag wurde von der Moderation ausgeblendet")); onClose(); return }
+    if (r === "pending") { flash(t("Zu diesem Beitrag läuft gerade eine Prüfung – bitte später erneut")); onClose(); return }
+    if (r !== true) { flash(restricted ? t("Dein Social-Konto ist gesperrt") : OFFLINE()); return }
     flash(t("✓ Gepostet – zu sehen in Entdecken"))
     onClose()
   }
@@ -523,6 +629,7 @@ function SharePostSheet({ s, suppId, onClose }: { s: LabState; suppId: string; o
         <div style={{ fontSize: "0.78rem", fontWeight: 900, color: "var(--text-dim)", marginBottom: 8 }}>{t("So sieht dein Beitrag aus")}</div>
         <PostCard p={preview} preview />
         <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", lineHeight: 1.45, marginTop: 12 }}>
+          {Object.keys(p!.dims ?? {}).length > 3 && <>{t("Gesendet werden genau die Bereiche oben – im Feed stehen davon die 3 deutlichsten.")} </>}
           {t("Sichtbar für andere in der App unter deinem Pseudonym. Nicht dabei: deine Tagesdaten und Notizen.")}
         </div>
         <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
@@ -537,12 +644,13 @@ function SharePostSheet({ s, suppId, onClose }: { s: LabState; suppId: string; o
 }
 
 /** Einmal in LabApp einhängen: Einwilligung + Posten-Vorschau + Meldungen. */
-export function SocialHost({ s, onFlash }: { s: LabState; onFlash: (m: string) => void }) {
+export function SocialHost({ s, onFlash, hold }: { s: LabState; onFlash: (m: string) => void; hold?: boolean }) {
   useEffect(() => { flashFn = onFlash }, [onFlash])
   const a = useSyncExternalStore(subscribe, () => ask, () => null)
   const pf = useSyncExternalStore(subscribe, () => postFor, () => null)
   const closeAsk = useCallback(() => { ask = null; emit() }, [])
   const closePost = useCallback(() => { postFor = null; emit() }, [])
+  if (hold) return null // anderes Overlay (z. B. Abzeichen) zuerst – danach geht es hier weiter
   return <>
     {a && <ConsentSheet then={a.then} onClose={closeAsk} />}
     {pf && !a && <SharePostSheet s={s} suppId={pf} onClose={closePost} />}
@@ -843,7 +951,10 @@ export function SocialSettingsCard() {
   const [off, setOff] = useState(false)
   const [busy, setBusy] = useState(false)
   const locked = useRestricted()
+  const decs = useDecisions()
+  const [allDecs, setAllDecs] = useState(false)
   const account = on || hadAccount()
+  useEffect(() => { if (on) void ensureMe() }, [on])
   const unblockOne = async (b: Blocked) => {
     const ok = await api.unblock(b.id)
     if (!ok) { flash(OFFLINE()); return }
@@ -875,11 +986,19 @@ export function SocialSettingsCard() {
         </button>
       </div>
       <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", lineHeight: 1.45 }}>
-        {locked ? t("Dein Social-Konto ist gesperrt. Du kannst es nur noch löschen.")
+        {locked ? <>{t("Dein Social-Konto ist gesperrt. Du kannst es nur noch löschen.")}{banReason() && <> {t("Begründung: {note}", { note: banReason() })}</>}</>
           : on ? t("Andere sehen dein Pseudonym, deinen Kolbi-Avatar und was du postest. Tagesdaten und Notizen bleiben privat.")
-          : account ? t("Aus: Du machst gerade nicht mit. Dein Profil und bisherige Posts bleiben gespeichert, bis du das Social-Konto löschst.")
+          : account ? t("Aus: Du machst gerade nicht mit. Profil und Beiträge bleiben gespeichert und für andere sichtbar, bis du sie löschst.")
           : t("Aus: Niemand sieht dich. Deine Daten bleiben auf dem Gerät.")}
       </div>
+      {account && decs.length > 0 && <div data-mod-decisions>
+        <div style={{ fontSize: "0.78rem", fontWeight: 900, color: "var(--text-dim)", marginTop: 14 }}>{t("Moderations-Entscheidungen")}</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 6 }}>
+          {decs.slice(0, allDecs ? 50 : 3).map((d, i) => <DecisionRow key={i} d={d} />)}
+        </div>
+        {decs.length > 3 && !allDecs && <button className="lab-press" onClick={() => setAllDecs(true)} style={{ minHeight: 44, padding: 0, background: "none", border: "none", color: "var(--text)", fontWeight: 800, fontSize: "0.84rem" }}>{t("Alle {n} anzeigen ›", { n: decs.length })}</button>}
+        <div><AppealLink /></div>
+      </div>}
       {on && !locked && blocked.length > 0 && <>
         <div style={{ fontSize: "0.78rem", fontWeight: 900, color: "var(--text-dim)", marginTop: 14 }}>{t("Blockiert ({n})", { n: blocked.length })}</div>
         {blocked.map(b => (
@@ -894,17 +1013,17 @@ export function SocialSettingsCard() {
         <button className="lab-press" onClick={() => setDel(true)} style={{ marginTop: 10, minHeight: 44, padding: 0, background: "none", border: "none", color: "var(--danger)", fontSize: "0.84rem", fontWeight: 800 }}>{t("Social-Konto löschen")}</button>
       )}
       {off && (
-        <Sheet open onClose={() => setOff(false)} z={460} title={t("Sichtbar mitmachen ausschalten?")}>
+        <Sheet open onClose={() => setOff(false)} z={460} portal title={t("Sichtbar mitmachen ausschalten?")}>
           <div style={{ fontSize: "0.9rem", lineHeight: 1.5, fontWeight: 700 }}>{t("Ausschalten pausiert nur: Dein Profil, deine Posts, Follower und Communities bleiben gespeichert und für andere sichtbar. Wenn du alles entfernen willst, lösch dein Social-Konto.")}</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 18 }}>
             <Btn variant="danger" full disabled={busy} onClick={() => void doDelete()} style={{ minHeight: 48 }}>{busy ? t("Lädt …") : t("Social-Konto löschen")}</Btn>
-            <Btn variant="soft" full onClick={() => { api.setSocialConsent(false); emit(); clearSocial(); setOff(false); flash(t("Sichtbar mitmachen ist aus. Ganz entfernen: „Social-Konto löschen“.")) }} style={{ minHeight: 48 }}>{t("Nur ausschalten")}</Btn>
+            <Btn variant="soft" full onClick={() => { api.setSocialConsent(false); emit(); clearSocial(); setOff(false); flash(t("Sichtbar mitmachen ist aus. Profil und Beiträge bleiben gespeichert und für andere sichtbar, bis du sie löschst.")) }} style={{ minHeight: 48 }}>{t("Nur ausschalten")}</Btn>
             <Btn variant="ghost" full onClick={() => setOff(false)} style={{ minHeight: 48 }}>{t("Abbrechen")}</Btn>
           </div>
         </Sheet>
       )}
       {del && (
-        <Sheet open onClose={() => setDel(false)} z={460} title={t("Social-Konto löschen?")}>
+        <Sheet open onClose={() => setDel(false)} z={460} portal title={t("Social-Konto löschen?")}>
           <div style={{ fontSize: "0.9rem", lineHeight: 1.5, fontWeight: 700 }}>{t("Gelöscht werden dein öffentliches Profil, deine Posts, Reaktionen, Follower und Community-Mitgliedschaften. Deine Tagesdaten auf diesem Gerät bleiben.")}</div>
           <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
             <Btn variant="soft" onClick={() => setDel(false)} style={{ flex: 1, minHeight: 48 }}>{t("Abbrechen")}</Btn>
