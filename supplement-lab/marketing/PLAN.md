@@ -129,7 +129,7 @@ von dir brauche.
 > **Kolbi Board (Live-Zahlen + CEO-Berichte):** https://claude.ai/artifact/FkKZis7KaEZPXbvnQfzKbw – Montags-Bericht per ArtifactData in Sammlung `reports` (Dokument-ID = Datum).
 > (Status schickt der Inhaber per „Status kopieren“ in den Chat. Die Liste unten ist das Archiv.)
 
-- [ ] **Social S2 freischalten (1 Min.):** `supabase/inhaber/social-schritt.sql` im Supabase SQL Editor einfügen → Run. Danach App-Deploy durch Claude.
+- [x] **Social S2 freischalten (1 Min.):** `supabase/inhaber/social-schritt.sql` im Supabase SQL Editor einfügen → Run. Danach App-Deploy durch Claude.
 - [ ] Impressum-Daten: vollständiger Name, ladungsfähige Anschrift, E-Mail (Pflicht für Website & Store)
 - [ ] Apple Developer Program (99 €/Jahr) – auf eigenen Namen
 - [ ] Google Play Console (25 $ einmalig) – optional, später
@@ -186,3 +186,4 @@ von dir brauche.
 - 2026-10-06 (Nacht) · **Kurzphase** → deployt: QA-Reste (Touch-Ziele ≥44 px, kein Konfetti bei „Bewegung reduzieren“, DemoBadge-Kontrast, Heute bleibt kurz bei mehreren Hinweisen); Analyst: `legal/ANGEBOTE-RECHTSPRUEFUNG.md` (Empfehlung advocado-Festpreisangebot, Vergleich eRecht24 App-Paket ~990 €) – Entscheidung Inhaber offen.
 - 2026-10-06 (Nacht) · **Social S2a** → deployt: Kolbi-Avatar-Baukasten (Farbe/Accessoire/Stimmung, lokal), Pseudonym würfeln (3×/Tag, nur Wortlisten), Pseudonym mit eigener Zufalls-ID (nicht mehr aus lab-device ableitbar). Keine Server-Aufrufe, kein Freitext. Nächstes (braucht Server + Datenschutz-Update): Reaktionen, Folgen, Startwellen.
 - 2026-10-07 · **Social S2** → Code fertig + QA (Server 77/77, Oberfläche 82/82): Konto ohne E-Mail (Geräte-Schlüssel), Folgen, 2 feste Reaktionen, Ergebnis-Posts (kein Freitext, keine Bilder, kein Libido, keine Peptide), offizielle Communities suchen/beitreten, Melden/Blockieren, Entscheidungen mit Begründung an Betroffene (DSA Art. 17), Datenschutz §8a. Server: Tabellen + Funktion `lab-social` live. Offen: 2 DB-Funktionen mit „delete“ brauchen Inhaber-Bestätigung → `supabase/inhaber/social-schritt.sql`; App-Deploy erst danach (sonst Teilen/Konto-Löschen kaputt). Moderation: CEO-Entscheidung – solange es kaum Meldungen gibt, läuft sie im Chat (Inhaber schreibt „Moderation“ → Claude zeigt offene Meldungen, Inhaber tippt Behalten/Ausblenden/Sperren); eigenes Web-Dashboard erst ab regelmäßigen Meldungen (braucht Admin-Schlüssel).
+- 2026-10-07 · **Social S2 live**: Inhaber hat die 2 DB-Funktionen eingespielt. Server-Test über die Datenbank: Konto anlegen ✓, Ergebnis teilen ✓ (Libido wird verworfen), Communities-Suche ✓, Konto löschen ✓ (danach 0 Profile/Posts). App + Website deployt. Dazu: Wochentag + Datum über jeder Tagesfrage (Inhaber-Wunsch) und über der Schlaf-Frage („Nacht auf …“).
