@@ -158,7 +158,8 @@ The following is stored with Supabase (Frankfurt, section 11):
   sleep or focus).
 - **Reports and blocks:** what you reported, with the reason from a predefined list, and whom you blocked.
 - **Moderation:** if we hide content or suspend an account, the decision with its reason.
-- in each case, the time something was created.
+- in each case, the time something was created, and the day of your last visit (date only);
+- technical counters against abuse (number of your actions per minute), deleted after 2 days at the latest.
 
 **Visibility:** your pseudonym, avatar, result posts and activity (following, reactions, community memberships) are
 visible to **other users of the app – always only under your pseudonym**. We don’t publish them outside the app, e.g.
