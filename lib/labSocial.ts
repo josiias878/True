@@ -193,6 +193,19 @@ export function pseudonym(seed: string, en: boolean): string {
   return `${w.a[h % 16]}${w.n[(h >>> 4) % 16]}-${String((h >>> 8) % 100).padStart(2, "0")}`
 }
 
+/** Wortlisten fürs Pseudonym (die Edge Function lab-social nutzt dieselben – Test prüft Gleichheit). */
+export const PSEUDO_WORDS = { de: WORDS_DE, en: WORDS_EN }
+/** Position des Pseudonyms in der Wortliste (0 … 25599) – nur diese Zahl geht an den Server, nie der Startwert. */
+export function pseudonymIndex(seed: string): number {
+  const h = hash(seed)
+  return (h % 16) + 16 * ((h >>> 4) % 16) + 256 * ((h >>> 8) % 100)
+}
+/** Name aus der Position (gleich wie pseudonym(seed, en) für dieselbe Position). */
+export function pseudonymAt(idx: number, en: boolean): string {
+  const i = Math.max(0, Math.min(25599, Math.floor(idx) || 0)), w = en ? WORDS_EN : WORDS_DE
+  return `${w.a[i % 16]}${w.n[(i >> 4) % 16]}-${String(Math.floor(i / 256)).padStart(2, "0")}`
+}
+
 const AVATAR_BG: [string, string][] = [
   ["#2ECC8A", "#3987e5"], ["#3987e5", "#2ECC8A"], ["#1baf9a", "#3987e5"], ["#2ECC8A", "#1baf9a"],
 ]
