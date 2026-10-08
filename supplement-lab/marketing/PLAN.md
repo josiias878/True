@@ -49,6 +49,16 @@ Feedback aus `lab_feedback` einarbeiten; Store-Build vorbereiten, sobald der App
 - **Kein Gesicht** – aller Content mit Kolbi (Maskottchen)
 - Claude treibt Marketing & Verkauf selbstständig, der Inhaber übernimmt Konten, Verträge, Posten, Zahlungen
 
+## 🧭 Vision (vom CEO festgelegt, 8. Okt 2026 – leitet jede Entscheidung)
+
+**„Kolbi zeigt dir, was bei DIR wirkt – statt was das Internet sagt.“** Persönliches Supplement-Labor: einfach festhalten, ehrlich auswerten, von anderen lernen.
+
+- **Zielgruppe:** 20–40 J., nimmt mehrere Supplements, will sich verbessern (Sport, Schlaf, Fokus, Energie) – „Biohacker light“. Erst DACH, dann EN. Nicht: Therapie-Suchende.
+- **Mehrwert (Reihenfolge):** 1) Klarheit jeden Tag (was nehme ich, wofür, Nebenwirkungen, Kosten – mit 1 Tipp) · 2) Beweis (Selbsttest vs. eigenes Normal) · 3) Gemeinschaft (echte Erfahrungen anderer).
+- **Kolbi-Coach denkt mit:** Kosten, Timing, Wechselwirkungen, „lohnt sich das?“ – auf Basis der eigenen Daten, nie als Heilversprechen.
+- **Bewusst NICHT:** Shop, Kalorien-/Trainings-Tracker, Arzt-Ersatz, Wirkversprechen, Peptid-Werbung.
+- **Heute = Startbildschirm zeigt alles Wichtige** (oben 1 Hauptsache, darunter feste Bereiche): Jetzt dran · Mein Stack (+ spontan) · Kosten & Coach · Mein Zustand (heute + 7 Tage) · Mein Weg · Community (neue Beiträge, Vorschlag). Details eine Ebene tiefer.
+
 ## Marke
 
 - Maskottchen: **Kolbi** (lebendiger Laborkolben)
