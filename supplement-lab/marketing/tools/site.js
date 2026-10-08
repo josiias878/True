@@ -6,7 +6,7 @@ document.documentElement.classList.add("js");
   let i = 0
   b && b.addEventListener("click", () => {
     b.classList.remove("squish"); void b.offsetWidth; b.classList.add("squish")
-    say.textContent = lines[i++ % lines.length]; say.classList.add("pop"); setTimeout(() => say.classList.remove("pop"), 300)
+    if (say) { say.textContent = lines[i++ % lines.length]; say.classList.add("pop"); setTimeout(() => say.classList.remove("pop"), 300) }
     if (navigator.vibrate) navigator.vibrate(8)
   })
   // Herkunft (src) an alle Beta-Knöpfe hängen, die noch keine haben – immer genau ein gültiges src (a–z, ≤ 20):
@@ -18,6 +18,22 @@ document.documentElement.classList.add("js");
   const last = seg[seg.length - 1] || "", first = (seg[0] || "").replace(/[^a-z]/g, "").slice(0, 20)
   const ch = !seg.length ? "home" : ok(last) ? last : ok(first) ? first : "web"
   document.querySelectorAll("a[data-cta]").forEach(a => { if (!/[?&]src=/.test(a.href)) a.href += (a.href.includes("?") ? "&" : "?") + "src=" + ch })
+  // Store-Knöpfe (nur wenn in build-site.mjs STORES_ON + Links gesetzt): iPhone/iPad → App Store, Android → Google Play, sonst beide
+  const st = document.getElementById("stores")
+  if (st) {
+    const ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1), android = /Android/.test(ua)
+    if (ios || android) st.querySelectorAll("[data-store]").forEach(a => { if (a.dataset.store !== (ios ? "ios" : "android")) a.remove() })
+  }
+  // Schrank-Video: lädt erst, wenn es ins Bild kommt (preload="none"); fehlt die Datei, verschwindet der Rahmen
+  const v = document.getElementById("schrank"), vf = document.getElementById("vidframe")
+  if (v && vf) {
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches
+    const gone = () => { vf.hidden = true }
+    v.addEventListener("error", gone)
+    const start = () => { if (!v.src) { v.src = v.dataset.src; still ? (v.controls = true) : (v.autoplay = true) } if (!still) v.play().catch(() => {}) }
+    if ("IntersectionObserver" in window) new IntersectionObserver(es => es.forEach(e => e.isIntersecting ? start() : v.pause()), { threshold: .2 }).observe(vf)
+    else start()
+  }
   const io = "IntersectionObserver" in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target) } }), { threshold: .15 }) : null
   document.querySelectorAll(".reveal").forEach((el, k) => { el.style.transitionDelay = `${(k % 4) * 70}ms`; io ? io.observe(el) : el.classList.add("in") })
 })()

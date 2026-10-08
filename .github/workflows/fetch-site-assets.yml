@@ -1,0 +1,93 @@
+# Kolbi · Website-Assets holen (3D-Kolbi-Bilder + Schrank-Video für die Startseite)
+#
+# Liest supplement-lab/marketing/content/higgsfield/site-assets.json (.assets: Ziel-Datei → Quell-URL, Ziel relativ zu
+# supplement-lab/marketing/, muss unter site/img/3d/ oder site/video/ liegen) und legt ab:
+#   *.png → <name>.webp daneben (max. 1080 px breit, Qualität 80; das PNG selbst wird nicht committet)
+#   *.mp4 → 720×1280, H.264, ohne Ton, CRF 28 (bei > 3 MB höher), faststart  +  <name>.jpg als Poster (Sekunde 2)
+# build-site.mjs lässt diese Ordner beim Neubauen stehen und nutzt die Dateien automatisch (sonst Kolbi-SVG als Rückfall).
+# Danach einmal lokal `node tools/build-site.mjs` (im Ordner marketing) laufen lassen, damit das HTML die Bilder direkt einbindet.
+
+name: Kolbi Website-Assets holen
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/supplement-tracking-app-hwna5s]
+    paths: [supplement-lab/marketing/content/higgsfield/site-assets.json, .github/workflows/fetch-site-assets.yml]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kolbi-site-assets-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  assets:
+    name: Bilder + Video laden und umwandeln
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/supplement-tracking-app-hwna5s
+
+      - name: Werkzeuge installieren
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q webp jq ffmpeg
+
+      - name: Laden und umwandeln
+        env:
+          SRC: supplement-lab/marketing/content/higgsfield/site-assets.json
+          BASE: supplement-lab/marketing
+          MAX_BYTES: "3145728"
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          jq -r '.assets | to_entries[] | "\(.key)\t\(.value)"' "$SRC" | while IFS=$'\t' read -r target url; do
+            case "$target" in
+              site/img/3d/*.png|site/video/*.mp4) ;;
+              *) echo "::error::Ziel nicht erlaubt: $target"; exit 1;;
+            esac
+            case "$target" in (*..*|*[!A-Za-z0-9/._-]*) echo "::error::Ungültiger Pfad: $target"; exit 1;; esac
+            case "$url" in (https://*) ;; (*) echo "::error::Nur https-URLs: $url"; exit 1;; esac
+            out="$BASE/$target"; mkdir -p "$(dirname "$out")"
+            name="$(basename "$target")"
+            echo "→ $target"
+            curl -fsSL --retry 3 --max-time 180 -o "$tmp/$name" "$url"
+            case "$target" in
+              *.png)
+                # nur verkleinern, nie vergrößern; Alpha bleibt erhalten
+                ffmpeg -loglevel error -y -i "$tmp/$name" -vf "scale='min(1080,iw)':-2:flags=lanczos" "$tmp/s-$name"
+                cwebp -quiet -q 80 -alpha_q 100 -m 6 "$tmp/s-$name" -o "${out%.png}.webp"
+                ls -l "${out%.png}.webp"
+                ;;
+              *.mp4)
+                for crf in 28 30 32 34 36; do
+                  ffmpeg -loglevel error -y -i "$tmp/$name" -an \
+                    -vf "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setsar=1" \
+                    -c:v libx264 -preset slow -profile:v high -pix_fmt yuv420p -crf "$crf" -movflags +faststart "$out"
+                  size=$(stat -c %s "$out"); echo "   CRF $crf → $size Bytes"
+                  [ "$size" -le "$MAX_BYTES" ] && break
+                done
+                [ "$(stat -c %s "$out")" -le "$MAX_BYTES" ] || { echo "::error::$target bleibt über 3 MB"; exit 1; }
+                ffmpeg -loglevel error -y -ss 2 -i "$out" -frames:v 1 -q:v 4 "${out%.mp4}.jpg"
+                ls -l "$out" "${out%.mp4}.jpg"
+                ;;
+            esac
+          done
+
+      - name: Committen und pushen (nur bei Änderungen)
+        run: |
+          set -euo pipefail
+          git add -- supplement-lab/marketing/site/img/3d supplement-lab/marketing/site/video
+          if git diff --cached --quiet; then
+            echo "Keine Änderungen an den Website-Assets."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Website: 3D-Kolbi-Bilder (WebP) und Schrank-Video aus site-assets.json"
+          git pull --rebase origin claude/supplement-tracking-app-hwna5s
+          git push origin HEAD:claude/supplement-tracking-app-hwna5s

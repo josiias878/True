@@ -1,0 +1,9 @@
+{
+  "_hinweis": "Ziel-Datei (relativ zu supplement-lab/marketing/) → Quell-URL. Workflow .github/workflows/fetch-site-assets.yml lädt sie: PNG → WebP gleichen Namens (max. 1080 px breit, q80), MP4 → 720×1280 H.264 ohne Ton (≤ 3 MB) + Poster-JPG (Sekunde 2). build-site.mjs lässt site/img/3d und site/video beim Neubauen stehen.",
+  "assets": {
+    "site/img/3d/kolbi-schrank.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261008_175939_0b154d1d-bb61-404c-81e0-b51b134123e3.png",
+    "site/img/3d/kolbi-sortiert.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261008_175947_f3106ff2-5bea-4598-bebd-eae37c55a885.png",
+    "site/img/3d/kolbi-jubel.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261008_175947_0943fbf6-9c19-434f-b44c-e2d842427f0b.png",
+    "site/video/schrank.mp4": "https://d2ol7oe51mr4n9.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/1251a6f6-9b46-441e-8c83-bfc40be33302.mp4"
+  }
+}

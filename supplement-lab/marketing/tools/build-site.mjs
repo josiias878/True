@@ -17,8 +17,32 @@ if (GSC_VERIFY && !/^[A-Za-z0-9_-]{10,100}$/.test(GSC_VERIFY)) throw new Error("
 const GSC_META = GSC_VERIFY ? `<meta name="google-site-verification" content="${GSC_VERIFY}">` : ""
 /** Kanal-Links: gleiche Startseite unter eigenem Pfad → Vercel Analytics zeigt Besuche je Kanal (ohne Cookies). */
 export const CHANNELS = ["invite", "reddit", "tiktok", "insta", "youtube", "producthunt", "hn", "facebook", "linkedin", "x", "threads", "discord", "betalist", "indiehackers", "pinterest", "forum", "qr"]
+/** Store-Links (Sprungbrett-Knopf oben auf der Startseite). STORES_ON = false → Knopf führt zur Web-App,
+ *  darunter „App Store & Google Play ab Dezember“. Sobald beide Links eingetragen sind und STORES_ON = true:
+ *  iPhone sieht „Im App Store laden“, Android „Bei Google Play“, Desktop beide Knöpfe (Erkennung per userAgent in site.js). */
+const STORES_ON = false
+const STORE = { ios: "", android: "" }
+const STORES = STORES_ON && STORE.ios && STORE.android
+if (STORES_ON && !STORES) console.log("⚠️ STORES_ON, aber STORE.ios/STORE.android fehlen – Knopf bleibt bei der Web-App")
 const OUT = "site"
-fs.rmSync(OUT, { recursive: true, force: true })
+/** Bleibt beim Neubauen erhalten: Dateien, die nicht dieses Skript erzeugt (GitHub-Workflow fetch-site-assets.yml,
+ *  Video-Overlays aus content/higgsfield). Alles andere in site/ wird jedes Mal frisch angelegt. */
+const KEEP = ["img/3d", "video", "img/v", "img/kolbi-start-think-9x16.png"]
+const clean = (dir, rel = "") => {
+  if (!fs.existsSync(dir)) return
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const r = rel ? `${rel}/${e.name}` : e.name
+    if (KEEP.includes(r)) continue
+    if (e.isDirectory() && KEEP.some(k => k.startsWith(r + "/"))) clean(`${dir}/${e.name}`, r)
+    else fs.rmSync(`${dir}/${e.name}`, { recursive: true, force: true })
+  }
+}
+clean(OUT)
+/** Optionale Dateien aus fetch-site-assets.yml (content/higgsfield/site-assets.json). Fehlen sie, zeigt die Seite
+ *  das bisherige Kolbi-SVG bzw. lässt das Video weg – nichts bricht. */
+const has = f => fs.existsSync(`${OUT}/${f}`)
+const K3D = { hero: "img/3d/kolbi-jubel.webp", schrank: "img/3d/kolbi-schrank.webp", sortiert: "img/3d/kolbi-sortiert.webp", jubel: "img/3d/kolbi-jubel.webp" }
+const VIDEO = { src: "video/schrank.mp4", poster: "video/schrank.jpg" }
 fs.mkdirSync(`${OUT}/img`, { recursive: true }); fs.mkdirSync(`${OUT}/fonts`, { recursive: true })
 fs.copyFileSync("brand/fonts/Nunito-latin.woff2", `${OUT}/fonts/Nunito-latin.woff2`)
 fs.copyFileSync("brand/png/kolbi-happy-glow.png", `${OUT}/img/kolbi.png`)
@@ -96,6 +120,7 @@ const L = {
     steps: [["think-alive", "1", "Reset", "Ein paar Tage ohne Neues. Kolbi lernt dein Normal kennen: Schlaf, Energie, Ruhe, Fokus."], ["happy-alive", "2", "Testen", "Ein Supplement nach dem anderen. Jeden Abend eine Minute Check-in – ein paar Taps."], ["party-alive", "3", "Aufdecken", "Kolbi vergleicht mit deinem Normal. Du entscheidest: Behalten, Vielleicht oder raus."]],
     features: [["🔎", "Muster-Detektor", "Schläfst du nach Alkohol schlechter? Bist du montags anders drauf? Kolbi schaut in deinen Daten nach."], ["⏰", "Erinnert, ohne zu nerven", "Gebündelt nach Tageszeit – und Kolbi merkt sich, wann du wirklich einnimmst."], ["💸", "Kosten & Sparen", "Sieh, was dein Stack im Monat kostet und was du sparst, wenn du etwas weglässt."], ["🧭", "Fertige Experimente", "Schlaf, Fokus, Ruhe, Training: Thema wählen, Kolbi plant den Rest."], ["⏱️", "Timing-Check", "Was lieber mit Abstand, was zusammen? Auf einer Tageslinie erklärt."], ["📦", "Vorrat im Blick", "Kolbi sagt dir Bescheid, bevor eine Dose leer ist."], ["📊", "Wochen-Story", "Jeden Sonntag dein Rückblick – zum Durchtippen und Teilen."], ["📅", "Kalender-Abo", "Testende und Ergebnisse automatisch in deinem Kalender."]],
     faq: [["Ist das medizinische Beratung?", "Nein. Kolbi hilft dir, deine eigenen Beobachtungen strukturiert festzuhalten und zu vergleichen. Die App stellt keine Diagnosen und sagt nicht, dass ein Supplement „wirkt“ – sie zeigt dir, wie <em>du</em> dich mit und ohne gefühlt hast. Bei Beschwerden oder Medikamenten bitte vorher ärztlich beraten lassen."], ["Was kostet Kolbi?", "In der Beta ist alles kostenlos. Danach bleibt der Kern gratis; Lab Pro kostet 2,99 €/Monat, 19,99 €/Jahr oder 39,99 € einmalig. Wer bis zum 30. November startet, bekommt Pro als Dankeschön für immer gratis."], ["Wo landen meine Daten?", "Deine Einträge bleiben auf deinem Gerät. Für die App brauchst du kein Konto – nur wenn du freiwillig in der Community mitmachst, legt Kolbi ein pseudonymes Profil ohne E-Mail an. Übertragen wird nur wenig: eine anonyme Nutzungsstatistik ohne Geräte-ID (in den Einstellungen abschaltbar), in den Store-Apps die Kaufprüfung über RevenueCat und – nur wenn du sie nutzt – Erinnerungen mit neutralem Text, Kalender-Abo, Feedback oder ein anonymes Test-Ergebnis für die Community. Details in der <a href=\"/datenschutz\">Datenschutzerklärung</a>."], ["Wie installiere ich die App?", "iPhone: Link in Safari öffnen → Teilen-Symbol → „Zum Home-Bildschirm“. Android: im Chrome-Menü „App installieren“. Die Store-Versionen sind in Arbeit."], ["Wie lange dauert ein Test?", "Meist 5–10 Tage pro Supplement, dazu ein paar Tage Reset am Anfang. Kolbi plant die Reihenfolge und sagt dir, wann das Ergebnis da ist."]],
+    jump: { sub: "Supplements einzeln testen – mit deinen eigenen Daten. Gratis.", btn: "Gratis starten", store: "App Store &amp; Google Play ab Dezember", ios: "Im App Store laden", android: "Bei Google Play", web: "Oder gleich im Browser starten", more: "Mehr erfahren ↓", vidH: "Voller Schrank. Aber was davon merkst du wirklich?", vidP: "Kolbi testet mit dir eins nach dem anderen – und vergleicht mit deinem Normal.", vidLabel: "Kurzes Video: Kolbi und der Supplement-Schrank", founder: "🧪 Beta: Wer bis 30. November startet, behält Lab Pro für immer gratis.", heroAlt: "Kolbi, das Maskottchen der App" },
     t: { chip: "🧪 Beta · Gründer-Pro gratis bis 30. Nov", h1: 'Finde raus, was bei <span class="grad">DIR</span> wirkt.', lead: "Kolbi testet deine Supplements eins nach dem anderen, vergleicht mit deinem Normal und zeigt dir, was du behalten kannst – und was du dir sparen kannst.", start: "Jetzt kostenlos starten", how: "So geht's ↓", trust: ["🔒 Kein Konto nötig", "📱 Daten bleiben auf deinem Gerät", "⏱️ 1 Minute am Tag"], hi: "Hi, ich bin Kolbi! 👋", poke: "Kolbi anstupsen", stepsH: "So einfach geht's", shotsH: "Ein Blick in die App", shotsSub: "Bunt, klar, ohne Zahlensalat – Kolbi zeigt dir nur, was gerade zählt.", featH: "Was Kolbi für dich macht", dataH: "Deine Daten gehören dir.", dataP: "Kein Konto nötig, keine Anmeldung, kein Verkauf von Daten. Alles bleibt auf deinem Handy. Teilen ist immer freiwillig – und jederzeit löschbar.", founderH: "Gründer-Beta bis 30. November", founderP: "Jetzt ist alles gratis. Wer bis zum <b>30. November</b> startet, behält <b>Lab Pro für immer kostenlos</b> – als Dankeschön. Danach kostet Pro 2,99 €/Monat oder 19,99 €/Jahr.", faqH: "Häufige Fragen", finalH: "Schluss mit Raten.", finalP: "Starte heute dein erstes Experiment – Kolbi führt dich Schritt für Schritt.", finalBtn: "Kostenlos starten" },
     lines: ["Hihi, das kitzelt! 😄", "Ich teste mit dir. 🧪", "Erst Reset, dann Test!", "Behalten oder raus? Ich zeig's dir.", "Hi, ich bin Kolbi! 👋"],
   },
@@ -112,6 +137,7 @@ const L = {
     steps: [["think-alive", "1", "Reset", "A few days without anything new. Kolbi learns your normal: sleep, energy, calm, focus."], ["happy-alive", "2", "Test", "One supplement at a time. A one-minute check-in every evening – just a few taps."], ["party-alive", "3", "Reveal", "Kolbi compares with your normal. You decide: keep, maybe or drop."]],
     features: [["🔎", "Pattern detector", "Do you sleep worse after drinking? Feel different on Mondays? Kolbi looks for it in your data."], ["⏰", "Reminders that don't nag", "Bundled by time of day – and Kolbi learns when you actually take them."], ["💸", "Cost & savings", "See what your stack costs per month and what you save when you leave something out."], ["🧭", "Ready-made experiments", "Sleep, focus, calm, training: pick a topic, Kolbi plans the rest."], ["⏱️", "Timing check", "What's better apart, what together? Explained on a simple day line."], ["📦", "Stock at a glance", "Kolbi lets you know before a bottle runs out."], ["📊", "Weekly recap", "Every Sunday your week as a story – tap through and share."], ["📅", "Calendar feed", "Test ends and results show up in your calendar automatically."]],
     faq: [["Is this medical advice?", "No. Kolbi helps you record and compare your own observations in a structured way. The app doesn't diagnose and doesn't say a supplement \"works\" – it shows how <em>you</em> felt with and without it. If you have health issues or take medication, please ask a doctor first."], ["What does Kolbi cost?", "Everything is free during the beta. After that the core stays free; Lab Pro costs €2.99/month, €19.99/year or €39.99 one-time. Start by November 30 and you get Pro free forever, as a thank-you."], ["Where does my data go?", "Your entries stay on your device. You don't need an account – only if you choose to join the community, Kolbi creates a pseudonymous profile without email. Very little is sent: anonymous usage stats without a device ID (can be turned off in Settings), purchase verification via RevenueCat in the store apps and – only if you use them – reminders with neutral text, the calendar subscription, feedback or an anonymous test result for the community. Details in the <a href=\"/en/privacy\">privacy policy</a>."], ["How do I install the app?", "iPhone: open the link in Safari → Share → \"Add to Home Screen\". Android: Chrome menu → \"Install app\". Store versions are on the way."], ["How long does a test take?", "Usually 5–10 days per supplement, plus a few reset days at the start. Kolbi plans the order and tells you when your result is ready."]],
+    jump: { sub: "Test supplements one at a time – with your own data. Free.", btn: "Start free", store: "App Store &amp; Google Play from December", ios: "Download on the App Store", android: "Get it on Google Play", web: "Or start right in your browser", more: "Learn more ↓", vidH: "A full cabinet. But which of these do you actually notice?", vidP: "Kolbi tests them with you one at a time – and compares with your normal.", vidLabel: "Short video: Kolbi and the supplement cabinet", founder: "🧪 Beta: start by November 30 and keep Lab Pro free forever.", heroAlt: "Kolbi, the app's mascot" },
     t: { chip: "🧪 Beta · Founder Pro free until Nov 30", h1: 'Find out what works for <span class="grad">YOU</span>.', lead: "Kolbi tests your supplements one at a time, compares them with your normal and shows you what's worth keeping – and what you can skip.", start: "Start for free", how: "How it works ↓", trust: ["🔒 No account needed", "📱 Data stays on your device", "⏱️ 1 minute a day"], hi: "Hi, I'm Kolbi! 👋", poke: "Poke Kolbi", stepsH: "As easy as that", shotsH: "A look inside", shotsSub: "Colorful, clear, no number soup – Kolbi only shows what matters right now.", featH: "What Kolbi does for you", dataH: "Your data is yours.", dataP: "No account needed, no sign-up, no selling data. Everything stays on your phone. Sharing is always optional – and can be deleted any time.", founderH: "Founder beta until November 30", founderP: "Everything is free right now. Start by <b>November 30</b> and keep <b>Lab Pro free forever</b> – as a thank-you. After that, Pro costs €2.99/month or €19.99/year.", faqH: "FAQ", finalH: "Stop guessing.", finalP: "Start your first experiment today – Kolbi guides you step by step.", finalBtn: "Start for free" },
     lines: ["Hehe, that tickles! 😄", "I'll test with you. 🧪", "Reset first, then test!", "Keep or drop? I'll show you.", "Hi, I'm Kolbi! 👋"],
   },
@@ -149,52 +175,53 @@ ${body}
 </body></html>`
 }
 
+/** 3D-Kolbi mit Rückfall: Liegt die WebP beim Bauen vor → nur <img>. Sonst SVG sichtbar, <img> lädt im Hintergrund
+ *  und blendet sich erst nach erfolgreichem Laden ein (falls der Workflow die Datei nach dem Bauen nachliefert). */
+const k3d = (file, svg, { alt = "", eager = false, cls = "" } = {}) => {
+  const img = `<img src="/${file}" alt="${alt}" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async"`
+  return has(file)
+    ? `<span class="k3d has3d ${cls}">${img}></span>`
+    : `<span class="k3d ${cls}">${kolbi(svg)}${img} onload="this.parentNode.classList.add('has3d')" onerror="this.remove()"></span>`
+}
+
+/** Sprungbrett-Knopf: Web-App (Standard) oder – mit STORES – Store-Knöpfe je nach Gerät (site.js blendet um). */
+function jumpCta(l, A) {
+  const J = l.jump
+  if (!STORES) return `<a class="btn jump-btn" href="${A}" data-cta="hero">${J.btn}</a>
+    <p class="store-note">${J.store}</p>`
+  return `<div class="stores" id="stores">
+      <a class="btn jump-btn" href="${STORE.ios}" data-store="ios" rel="noopener"> ${J.ios}</a>
+      <a class="btn jump-btn" href="${STORE.android}" data-store="android" rel="noopener">▶ ${J.android}</a>
+    </div>
+    <p class="store-note"><a href="${A}" data-cta="hero-web">${J.web}</a></p>`
+}
+
 function home(l) {
-  const T = l.t, A = `${APP}?lang=${l.lang}`
-  return page(l, { title: l.ogTitle, desc: l.desc, alt: { de: "/", en: "/en" }, body: `
+  const T = l.t, J = l.jump, A = `${APP}?lang=${l.lang}`
+  const stepArt = ["schrank", "sortiert", "jubel"]
+  return page(l, { title: l.ogTitle, desc: l.desc, alt: { de: "/", en: "/en" },
+    head: has(K3D.hero) ? `<link rel="preload" as="image" href="/${K3D.hero}" fetchpriority="high">` : "", body: `
 <main>
-<section class="hero"><div class="wrap hero-grid">
-  <div class="hero-copy">
-    <span class="chip">${T.chip}</span>
+<section class="jump"><div class="wrap jump-grid">
+  <button class="kolbi-btn jump-art" id="poke" aria-label="${T.poke}">${k3d(K3D.hero, "happy-alive", { alt: J.heroAlt, eager: true, cls: "float" })}</button>
+  <div class="jump-copy">
     <h1>${T.h1}</h1>
-    <p class="lead">${T.lead}</p>
-    <div class="cta-row"><a class="btn" href="${A}" data-cta="hero">${T.start}</a><a class="btn ghost" href="#how">${T.how}</a></div>
-    <ul class="trust">${T.trust.map(x => `<li>${x}</li>`).join("")}</ul>
+    <p class="jump-sub">${J.sub}</p>
+    ${jumpCta(l, A)}
   </div>
-  <div class="hero-art">
-    <div class="bubble" id="say">${T.hi}</div>
-    <button class="kolbi-btn" id="poke" aria-label="${T.poke}">${kolbi("happy-alive", "float")}</button>
-  </div>
+  <a class="jump-more" href="#mehr">${J.more}</a>
 </div></section>
+
+<section id="mehr" class="wrap section vid-sec">
+  <div class="vid-copy"><h2>${J.vidH}</h2><p class="sub">${J.vidP}</p></div>
+  <div class="vid-frame" id="vidframe"><video id="schrank" muted loop playsinline preload="none" poster="/${VIDEO.poster}" width="720" height="1280" aria-label="${J.vidLabel}" data-src="/${VIDEO.src}"></video></div>
+</section>
 
 <section id="how" class="wrap section">
   <h2>${T.stepsH}</h2>
-  <div class="steps">${l.steps.map(([k, n, h, d]) => `<article class="card step reveal">${kolbi(k)}<span class="num">${n}</span><h3>${h}</h3><p>${d}</p></article>`).join("")}</div>
-</section>
-
-<section class="section shots-sec">
-  <div class="wrap"><h2>${T.shotsH}</h2><p class="sub">${T.shotsSub}</p></div>
-  <div class="shots" tabindex="0">${l.shots.map(([f, a]) => `<img loading="lazy" src="/img/${l.lang}-${f}.webp" width="430" height="932" alt="${a}">`).join("")}</div>
-</section>
-
-<section class="wrap section">
-  <h2>${T.featH}</h2>
-  <div class="features">${l.features.map(([e, h, d]) => `<article class="card feat reveal"><span class="emo">${e}</span><h3>${h}</h3><p>${d}</p></article>`).join("")}</div>
-</section>
-
-<section class="wrap section">
-  <div class="band reveal">
-    <div><h2>${T.dataH}</h2><p>${T.dataP}</p></div>
-    <div class="lock">🔒</div>
-  </div>
-</section>
-
-<section class="wrap section">
-  <div class="card founder reveal">
-    ${kolbi("happy-shades")}
-    <div><h2>${T.founderH}</h2><p>${T.founderP}</p>
-    <a class="btn" href="${A}" data-cta="founder">${l.open}</a></div>
-  </div>
+  <div class="steps">${l.steps.map(([k, n, h, d], i) => `<article class="card step reveal">${k3d(K3D[stepArt[i]], k)}<span class="num">${n}</span><h3>${h}</h3><p>${d}</p></article>`).join("")}</div>
+  <ul class="trust">${T.trust.map(x => `<li>${x}</li>`).join("")}</ul>
+  <p class="founder-line">${J.founder}</p>
 </section>
 
 <section class="wrap section">
@@ -445,6 +472,7 @@ fs.writeFileSync(`${OUT}/vercel.json`, JSON.stringify({
   headers: [
     ...(DRAFT ? [{ source: "/(.*)", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] }] : []),
     { source: "/fonts/(.*)", headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }] },
+    { source: "/(video|img/3d)/(.*)", headers: [{ key: "Cache-Control", value: "public, max-age=604800" }] },
   ],
 }, null, 2))
 console.log(`✓ site/ gebaut${DRAFT ? " (Entwurf: noindex, Impressum-Platzhalter offen)" : ""}`)

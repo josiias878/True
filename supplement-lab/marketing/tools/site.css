@@ -130,3 +130,34 @@ code{background:var(--card);padding:1px 6px;border-radius:6px}
 .tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:18px}
 .tcard{display:flex;flex-direction:column;gap:4px;padding:16px;border-radius:20px;background:var(--card);border:1px solid var(--line);color:var(--text);text-decoration:none}.tcard span{font-size:1.8rem}.tcard small{color:#2ECC8A;font-weight:800}
 @media (max-width:480px){.tbox{grid-template-columns:1fr}}
+/* Startseite als Sprungbrett (Bio-Link aus TikTok/Instagram): oben nur Kolbi, Claim, ein Knopf */
+.jump{padding:10px 0 8px;min-height:calc(100svh - 62px);display:flex;align-items:center}
+.jump-grid{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;width:100%}
+.jump-art{width:auto;aspect-ratio:auto;filter:none}
+.k3d{position:relative;display:block;width:clamp(170px,34svh,320px);aspect-ratio:1}
+.k3d .kolbi{width:100%;height:100%;filter:drop-shadow(0 24px 40px rgba(0,0,0,.4))}
+.k3d img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:32px;opacity:0;transition:opacity .4s;box-shadow:0 24px 50px rgba(0,0,0,.4)}
+.k3d.has3d img{opacity:1}
+.k3d.has3d .kolbi{visibility:hidden}
+.jump h1{font-size:clamp(2.15rem,9.6vw,4.2rem);margin:12px 0 8px}
+.jump-sub{margin:0 auto 20px;color:var(--dim);font-size:1.1rem;font-weight:700;max-width:24em}
+.jump-btn{width:min(100%,360px);padding:20px 28px;font-size:1.22rem}
+.stores{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+.store-note{margin:12px 0 0;color:var(--dim);font-size:.88rem;font-weight:800;letter-spacing:.01em}
+.store-note a{color:var(--dim)}
+.jump-more{margin-top:14px;color:var(--dim);font-weight:800;font-size:.9rem;text-decoration:none;padding:8px 14px}
+.vid-sec{display:flex;flex-direction:column;align-items:center;text-align:center}
+.vid-frame{width:min(320px,78vw);aspect-ratio:9/16;border-radius:28px;overflow:hidden;background:linear-gradient(160deg,rgba(144,133,233,.35),rgba(57,135,229,.25));box-shadow:0 24px 50px rgba(0,0,0,.4);margin-top:6px}
+.vid-frame video{display:block;width:100%;height:100%;object-fit:cover}
+.vid-frame[hidden]{display:none}
+.step .k3d{width:120px;margin:0 auto 10px}
+.step .k3d img{border-radius:24px}
+#how .trust{justify-content:center}
+.founder-line{text-align:center;margin:18px auto 0;padding:12px 16px;border-radius:18px;max-width:34em;background:linear-gradient(135deg,rgba(144,133,233,.22),rgba(232,123,164,.18));border:1px solid var(--line);font-weight:800;font-size:.95rem}
+@media (min-width:861px){
+  .jump-grid{display:grid;grid-template-columns:auto 1fr;gap:40px;text-align:left}
+  .jump-copy .jump-sub{margin-left:0}
+  .jump-more{grid-column:1/-1;justify-self:center}
+}
+@media (max-width:480px){ .jump .wrap{padding:0 16px} .jump-btn{width:100%} }
+.vid-sec{scroll-margin-top:72px}
