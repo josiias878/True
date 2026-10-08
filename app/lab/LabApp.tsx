@@ -485,8 +485,15 @@ export default function LabApp() {
     }, on ? undefined : { amount: 5, label: t("Eingenommen") })
   }, [s.took, today, update])
   /** „Heute nicht“ (Wischen bzw. Knopf im Detail) setzen oder aufheben – entfernt einen Genommen-Haken für heute. */
-  const skipToday = useCallback((id: string, on: boolean) => {
-    update(p => { setSkipped(p, today, id, on); return p })
+  const skipToday = useCallback((id: string, on: boolean, restore?: { at?: string }) => {
+    update(p => {
+      setSkipped(p, today, id, on)
+      if (!on && restore) { // Rückgängig nach „Heute nicht“ auf abgehakter Zeile → Haken samt Uhrzeit zurück
+        p.took[today] = [...new Set([...(p.took[today] ?? []), id])]
+        if (restore.at) p.tookAt[today] = { ...(p.tookAt[today] ?? {}), [id]: restore.at }
+      }
+      return p
+    })
   }, [today, update])
 
   // Aktionen aus Kolbis Tipps

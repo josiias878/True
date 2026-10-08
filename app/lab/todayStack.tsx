@@ -196,7 +196,7 @@ export function StackSection({ s, today, onTake, onSkip, onExtra, onExtraRemove,
   s: LabState; today: string
   onTake: (id: string) => void
   /** „Heute nicht“ setzen (true) oder aufheben (false) */
-  onSkip: (id: string, on: boolean) => void
+  onSkip: (id: string, on: boolean, restore?: { at?: string }) => void
   onExtra: (date: string, item: ExtraInput, label: string) => void; onExtraRemove: (date: string, id: string) => void
   onOpenSupp: (id: string) => void; onVorrat: () => void; onAddMany: () => void; goTab: (t: string) => void
 }) {
@@ -280,12 +280,16 @@ export function StackSection({ s, today, onTake, onSkip, onExtra, onExtraRemove,
   const open = info ? s.supps.find(x => x.id === info) : undefined
   /** Läuft gerade der Test genau dieses Mittels? Dann zählt jeder Tag. */
   const inTest = (id: string) => w?.kind === "test" && w.suppId === id
+  // Vorher abgehakt? Haken + Uhrzeit merken, damit „Rückgängig“ ihn wiederherstellt.
+  const prevTaken = useRef<Record<string, { at?: string }>>({})
   const skip = (x: MySupp) => {
     coachDone()
+    if (s.took[today]?.includes(x.id)) prevTaken.current[x.id] = { at: s.tookAt?.[today]?.[x.id] }
+    else delete prevTaken.current[x.id]
     onSkip(x.id, true)
     setUndo({ id: x.id, name: x.name, test: inTest(x.id), k: Date.now() })
   }
-  const unskip = (x: MySupp) => { haptic(8); onSkip(x.id, false); setUndo(u => (u?.id === x.id ? null : u)) }
+  const unskip = (x: MySupp) => { haptic(8); onSkip(x.id, false, prevTaken.current[x.id]); delete prevTaken.current[x.id]; setUndo(u => (u?.id === x.id ? null : u)) }
 
   return (
     <Section title={t("Mein Stack heute")} badge={<NewBadge id={NEW_ID} />} onMore={() => goTab("meine")} moreLabel={t("Alle Supplements")}>

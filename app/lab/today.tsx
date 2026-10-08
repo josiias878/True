@@ -98,7 +98,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
   /** Erinnerungen an, aber Push aus („off“: einschaltbar) bzw. blockiert („denied“) → dezenter Hinweis */
   pushHint: "off" | "denied" | null; onPush: () => void
   onAction: (a: CoachAction, id: string) => void
-  onRound: (steps: RoundStep[]) => void; onTakeAll: (ids: string[]) => void; onTake: (id: string) => void; onSkip: (id: string, on: boolean) => void
+  onRound: (steps: RoundStep[]) => void; onTakeAll: (ids: string[]) => void; onTake: (id: string) => void; onSkip: (id: string, on: boolean, restore?: { at?: string }) => void
   onMorning: (v: { sleep?: number; fit?: number }) => void; onUnlock: () => void; onCheckin: (d: string) => void
   onPhase: (w: PhaseWindow) => void; goTab: (t: string) => void; onVorrat: () => void
   onExtra: (date: string, item: ExtraInput, label: string) => void; onExtraRemove: (date: string, id: string) => void
