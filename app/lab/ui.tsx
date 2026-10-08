@@ -177,19 +177,19 @@ export function Capsule({ supp, size = "md", onClick, right }: { supp: MySupp | 
  */
 const failedIcons = new Set<string>()
 export function SuppIcon({ lib, emoji, size }: { lib?: string | null; emoji: React.ReactNode; size: number }) {
-  const src = suppIconSrc(lib)
+  const src = suppIconSrc(lib, emoji)
   const [bad, setBad] = useState(false)
   if (!src || bad || failedIcons.has(src)) return <>{emoji}</>
   return (
     <img src={src} alt="" width={size} height={size} loading="lazy" decoding="async" draggable={false} onError={() => { failedIcons.add(src); setBad(true) }}
-      data-supp-icon={lib ?? undefined}
+      data-supp-icon={lib ?? "custom"}
       style={{ width: size, height: size, objectFit: "contain", display: "block", flexShrink: 0, pointerEvents: "none", userSelect: "none" }} />
   )
 }
 
 /** Sheet-Titel für ein Mittel: Symbolbild + Name (ohne Bild bleibt es „Emoji Name“ wie bisher). */
 export function SuppTitle({ lib, emoji, name }: { lib?: string | null; emoji: string; name: string }) {
-  if (!suppIconSrc(lib)) return <>{`${emoji} ${name}`}</>
+  if (!suppIconSrc(lib, emoji)) return <>{`${emoji} ${name}`}</>
   return (
     <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
       <SuppIcon lib={lib} emoji={emoji} size={36} />
