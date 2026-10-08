@@ -76,34 +76,45 @@ export function StackSection({ s, today, onTake, onExtra, onExtraRemove, onOpenS
   const w = wins.find(x => today >= x.start && today <= x.end) ?? null
   const intake = intakeOn(s, today)
   const took = s.took[today] ?? []
-  const rows = intake.map(id => s.supps.find(x => x.id === id)).filter((x): x is MySupp => !!x)
+  // Alles, was du gerade nimmst: heutiger Plan + Durchgehendes + Behaltenes (auch außerhalb von Stack-Phasen).
+  // Bewusst pausiert (Auswasch/Beobachtung eines Tests, „noch nicht da“, Status Pause) → dezente Zeile; „Raus“ fehlt ganz.
+  const pausedNow = (x: MySupp) => !isHere(x) || x.mode === "pause" || ((w?.kind === "washout" || w?.kind === "check") && w.suppId === x.id)
+  const current = (x: MySupp) => s.verdicts[x.id]?.decision !== "drop" && (intake.includes(x.id) || x.mode === "konstant" || s.verdicts[x.id]?.decision === "keep")
+  const inReset = w?.kind === "baseline"
+  const rows = [
+    ...intake.map(id => s.supps.find(x => x.id === id)).filter((x): x is MySupp => !!x),
+    ...(inReset ? [] : s.supps.filter(x => !intake.includes(x.id) && current(x) && !pausedNow(x) && !libOf(x)?.weekly)),
+  ]
+  const paused = s.supps.filter(x => !rows.includes(x) && s.verdicts[x.id]?.decision !== "drop" && pausedNow(x)
+    && (x.mode === "konstant" || s.verdicts[x.id]?.decision === "keep" || !isHere(x) || ((w?.kind === "washout" || w?.kind === "check") && w.suppId === x.id)))
+  const rowIds = new Set(rows.map(x => x.id))
   const plannedLibs = new Set(rows.map(x => x.lib ?? x.id))
   const extras = extrasOn(s, today)
   const caf = caffeineToday(s, today)
   // Wartet noch auf seinen Test (nicht im heutigen Plan)
-  const later = s.supps.filter(x => isHere(x) && x.mode === "test" && !intake.includes(x.id) && !s.verdicts[x.id]
+  const later = s.supps.filter(x => isHere(x) && x.mode === "test" && !rowIds.has(x.id) && !paused.includes(x) && !s.verdicts[x.id]
     && !wins.some(p => p.kind === "test" && p.suppId === x.id && p.end < today))
 
   // ＋ spontan: Kaffee, Alkohol und die 3 häufigsten Extras bzw. eigenen Mittel
   const coffee = s.supps.find(x => (x.lib ?? x.id) === "koffein")
-  type Chip = { key: string; emoji: string; label: string; item: ExtraInput; planId?: string }
+  type Chip = { key: string; emoji: string; label: string; item: ExtraInput }
+  // Ein Mittel nie zugleich im Stack und in „＋ spontan“: Steht Kaffee im Stack, wird er dort abgehakt
   const chips: Chip[] = [
-    { key: "koffein", emoji: "☕", label: t("Kaffee"), item: coffee ? { supp: coffee.id } : { lib: "koffein" },
-      planId: coffee && intake.includes(coffee.id) && !took.includes(coffee.id) ? coffee.id : undefined },
+    ...(coffee && rowIds.has(coffee.id) ? [] : [{ key: "koffein", emoji: "☕", label: t("Kaffee"), item: coffee ? { supp: coffee.id } : { lib: "koffein" } } as Chip]),
     { key: "n:alkohol", emoji: "🍷", label: t("Alkohol"), item: { name: "Alkohol", emoji: "🍷" } },
   ]
   const taken = new Set(chips.map(c => c.key))
   for (const r of recentExtras(s, 12)) {
     if (chips.length >= 5) break
     const k = r.lib ?? r.key
-    if (taken.has(k) || taken.has(r.key) || (r.lib && plannedLibs.has(r.lib)) || (r.supp && intake.includes(r.supp))) continue
+    if (taken.has(k) || taken.has(r.key) || (r.lib && plannedLibs.has(r.lib)) || (r.supp && rowIds.has(r.supp))) continue
     taken.add(k); taken.add(r.key)
     chips.push({ key: r.key, emoji: r.emoji, label: r.name, item: { ...(r.lib ? { lib: r.lib } : {}), ...(r.supp ? { supp: r.supp } : {}), name: r.name } })
   }
   for (const x of s.supps) {
     if (chips.length >= 5) break
     const k = x.lib ?? x.id
-    if (taken.has(k) || intake.includes(x.id) || !isHere(x) || libOf(x)?.rx || libOf(x)?.weekly) continue
+    if (taken.has(k) || rowIds.has(x.id) || plannedLibs.has(k) || !isHere(x) || libOf(x)?.rx || libOf(x)?.weekly) continue
     taken.add(k)
     chips.push({ key: k, emoji: x.emoji, label: x.name, item: { supp: x.id } })
   }
@@ -156,6 +167,11 @@ export function StackSection({ s, today, onTake, onExtra, onExtraRemove, onOpenS
         </button>
       )}
 
+      {paused.length > 0 && (
+        <div style={{ ...dim, fontSize: "0.76rem", padding: "6px 0 2px" }}>
+          <span style={ellipsis}>⏸️ {t("Pausiert: {names}", { names: paused.map(x => !isHere(x) ? t("{name} (noch nicht da)", { name: x.name }) : x.name).join(", ") })}</span>
+        </div>
+      )}
       {/* ＋ spontan */}
       <div style={{ marginTop: 8, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
         <div style={{ fontSize: "0.74rem", fontWeight: 900, letterSpacing: ".04em", color: "var(--text-dim)", marginBottom: 8 }}>{t("＋ SPONTAN")}</div>
@@ -165,8 +181,7 @@ export function StackSection({ s, today, onTake, onExtra, onExtraRemove, onOpenS
             return (
               <button key={c.key} className="lab-press" onClick={() => {
                 haptic(10); seen()
-                if (c.planId) onTake(c.planId)
-                else onExtra(today, c.item, c.label)
+                onExtra(today, c.item, c.label)
               }} style={{
                 ...pill, maxWidth: "100%", display: "inline-flex", alignItems: "center", gap: 6, padding: "0 14px",
                 border: n ? "1.5px solid var(--accent)" : "1px solid var(--border)", background: n ? "var(--accent-dim)" : "var(--surface)", color: "var(--text)",

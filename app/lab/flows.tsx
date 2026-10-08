@@ -8,7 +8,7 @@ import {
   type CheckIn, type Dim, type LabState, type MySupp, type Settings, type LibSupp, type GoalId, type Scores,
 } from "@/lib/supplementLab"
 import { hasNativeReminders } from "@/lib/labReminders"
-import { eveningDims, morningAnswered, sidesOf, type ExtraInput } from "@/lib/labDay"
+import { eveningDims, morningAnswered, prefillTags, sidesOf, type ExtraInput } from "@/lib/labDay"
 import { DaySheet, ExtraList, SidesWithSuspect } from "./day"
 import { pairsWith } from "@/lib/labInteractions"
 import { fetchOverview } from "@/lib/labCommunity"
@@ -431,7 +431,7 @@ export function CheckInSheet({ s, date, phaseLabel, onDone, onClose, onAddExtra,
   const [scores, setScores] = useState<Scores>(existing?.scores ?? {})
   const [touched, setTouched] = useState<Set<Dim>>(new Set(existing && !existing.quick ? (Object.keys(existing.scores) as Dim[]) : []))
   const [overall, setOverall] = useState<number | undefined>(existing ? Math.round(daySum(existing)) : undefined)
-  const [tags, setTags] = useState<string[]>(existing?.tags ?? [])
+  const [tags, setTags] = useState<string[]>(() => existing ? existing.tags : prefillTags(s, date))
   const [note, setNote] = useState(existing?.note ?? "")
   // Beschwerden vorbelegen – auch die, die tagsüber schon eingetragen wurden
   const [sides, setSides] = useState<Record<string, number>>(() => sidesOf(s, date).sides)

@@ -6,7 +6,7 @@ import {
   intakeOn, phaseWindows, addDays, dayRef, nightRef, signal, testResult, suppColor, streak, timeTip, relMin, suppMinutes, extrasOn,
   type LabState, type CheckIn, type Scores, type Decision, type Dim,
 } from "@/lib/supplementLab"
-import { eveningDims, morningDue, morningAnswered, sidesOf, type ExtraInput } from "@/lib/labDay"
+import { eveningDims, morningDue, morningAnswered, prefillTags, sidesOf, type ExtraInput } from "@/lib/labDay"
 import { Btn, DayKicker, Stars, TagChips } from "./ui"
 import { DaySheet, ExtraList, MorningPanel, SidesWithSuspect } from "./day"
 import { KolbiTip, Mascot } from "./mascot"
@@ -82,7 +82,7 @@ export function DailyRound({ s, today, steps, onTake, onCheckin, onVerdict, onLe
   const [sides, setSides] = useState<Record<string, number>>(() => sidesOf(s, today).sides)
   const [suspect, setSuspect] = useState<Record<string, string>>(() => sidesOf(s, today).suspect)
   // Störfaktoren („War heute was anders?“) – optional, gespeichert als deutsche Werte
-  const [tags, setTags] = useState<string[]>([])
+  const [tags, setTags] = useState<string[]>(() => prefillTags(s, today))
   const [flood, setFlood] = useState(true)
   const step = steps[i]
   const done = i >= steps.length

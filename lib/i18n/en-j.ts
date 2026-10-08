@@ -78,5 +78,7 @@ export const EN_J: Record<string, string> = {
   "＋ Mehrere auf einmal": "＋ Several at once",
   "＋ SPONTAN": "＋ SPONTANEOUS",
   "🎁 Ergebnis am {date}": "🎁 Result on {date}",
-  "🎁 Ergebnis heute": "🎁 Result today"
+  "🎁 Ergebnis heute": "🎁 Result today",
+  "Pausiert: {names}": "Paused: {names}",
+  "{name} (noch nicht da)": "{name} (not here yet)"
 }

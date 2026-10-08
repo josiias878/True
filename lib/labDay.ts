@@ -287,3 +287,23 @@ export function caffeineToday(s: LabState, date: string): { at: string; fromH: n
   const m = toMin(at)
   return { at, fromH: Math.round((m + 5 * 60) / 60) % 24, toH: Math.round((m + 7 * 60) / 60) % 24, late: m >= 14 * 60 }
 }
+
+// ── Alkohol aus „＋ spontan“ → Check-in-Störfaktor ─────────────────────────────
+
+/** Ist dieser Extra-Eintrag der Alkohol-Chip? (gespeichert als freier Name „Alkohol“) */
+export const isAlcoholExtra = (x: Pick<ExtraIntake, "lib" | "name">) => !x.lib && x.name.trim().toLowerCase() === "alkohol"
+
+/**
+ * Störfaktoren, mit denen der Check-in eines Tages vorbelegt wird (gespeichert wie gewohnt als deutsche Werte):
+ * Alkohol per Chip eingetragen → „Alkohol“. Wird der Chip wieder entfernt, entfällt auch die Vorbelegung.
+ */
+export function prefillTags(s: Pick<LabState, "extra">, date: string, tags: string[] = []): string[] {
+  return extrasOn(s, date).some(isAlcoholExtra) && !tags.includes("Alkohol") ? [...tags, "Alkohol"] : tags
+}
+
+/** Alkohol nachträglich eingetragen, Check-in aber schon gespeichert → Störfaktor dort ergänzen. */
+export function syncAlcoholTag(s: LabState, date: string): LabState {
+  const c = s.checkins[date]
+  if (c && extrasOn(s, date).some(isAlcoholExtra) && !c.tags.includes("Alkohol")) s.checkins[date] = { ...c, tags: [...c.tags, "Alkohol"] }
+  return s
+}

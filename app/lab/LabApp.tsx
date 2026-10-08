@@ -13,7 +13,7 @@ import {
   type SlotId, type LabState, type Decision, type Dim, type PhaseWindow, type MySupp, type LibSupp, type Settings, type CheckIn, type Scores, type SuppStatusKey,
 } from "@/lib/supplementLab"
 import { applyTaken, checkLabReminders, downloadIcs, hasNativeReminders, onNotifTaken, syncNativeReminders } from "@/lib/labReminders"
-import { addExtra, eveningDims, morningAnswered, putCheckin, removeExtra, saveMorning, setDaySides, sidesOf, type ExtraInput } from "@/lib/labDay"
+import { addExtra, syncAlcoholTag, eveningDims, morningAnswered, putCheckin, removeExtra, saveMorning, setDaySides, sidesOf, type ExtraInput } from "@/lib/labDay"
 import { DaySheet, MorningPanel, SuspectCard, type DayTab } from "./day"
 import { enablePush, pushAvailable, pushState, syncPush, type PushState } from "@/lib/labPush"
 import { fetchHealthSince, healthVisible, healthCompare, mergeHealthDay, requestHealthPermission } from "@/lib/health"
@@ -382,7 +382,7 @@ export default function LabApp() {
     update(p => saveMorning(p, d, v), first ? { amount: 5, label: t("Schlaf notiert") } : undefined)
   }, [s, update])
   const addExtraV = useCallback((date: string, item: ExtraInput, label: string) => {
-    update(p => addExtra(p, date, item))
+    update(p => syncAlcoholTag(addExtra(p, date, item), date))
     setFlash(t("✓ {name} eingetragen", { name: label }))
   }, [update])
   const removeExtraV = useCallback((date: string, id: string) => { update(p => removeExtra(p, date, id)) }, [update])
