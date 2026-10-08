@@ -61,6 +61,8 @@ Feedback aus `lab_feedback` einarbeiten; Store-Build vorbereiten, sobald der App
 
 - **Einnahmen breiter (CEO-Entscheid 9. Okt):** Jetzt Fokus B2C. Sobald Impressum steht: Affiliate (nur für selbst genutzte Mittel, als Anzeige gekennzeichnet). Ab ~300–500 aktiven Nutzern Pilot „Kolbi für Coaches“ (B2B2C, Coach zahlt ~19 €/Monat, Kunden teilen Daten nur mit Einwilligung). Später evtl. gekennzeichnete Marken-Selbsttests, Studios. Nie: Datenverkauf, Apotheken/Ärzte/Arbeitgeber.
 
+- **Idee „Kolbi-Siegel/Index“ (Inhaber, 9. Okt) – geparkt:** Langfristig (≥ 1–2 Jahre, viele Nutzer) mit Anwalt, offener Methode, Marken-Erfassung, Fälschungsschutz, nie bezahlte Siegel. Jetzt nur: öffentliche Wirkstoff-Seiten mit anonymen Community-Zahlen (ab Mindestanzahl), ohne Marken.
+
 ## Marke
 
 - Maskottchen: **Kolbi** (lebendiger Laborkolben)
