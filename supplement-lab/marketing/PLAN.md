@@ -59,6 +59,8 @@ Feedback aus `lab_feedback` einarbeiten; Store-Build vorbereiten, sobald der App
 - **Bewusst NICHT:** Shop, Kalorien-/Trainings-Tracker, Arzt-Ersatz, Wirkversprechen, Peptid-Werbung.
 - **Heute = Startbildschirm zeigt alles Wichtige** (oben 1 Hauptsache, darunter feste Bereiche): Jetzt dran · Mein Stack (+ spontan) · Kosten & Coach · Mein Zustand (heute + 7 Tage) · Mein Weg · Community (neue Beiträge, Vorschlag). Details eine Ebene tiefer.
 
+- **Einnahmen breiter (CEO-Entscheid 9. Okt):** Jetzt Fokus B2C. Sobald Impressum steht: Affiliate (nur für selbst genutzte Mittel, als Anzeige gekennzeichnet). Ab ~300–500 aktiven Nutzern Pilot „Kolbi für Coaches“ (B2B2C, Coach zahlt ~19 €/Monat, Kunden teilen Daten nur mit Einwilligung). Später evtl. gekennzeichnete Marken-Selbsttests, Studios. Nie: Datenverkauf, Apotheken/Ärzte/Arbeitgeber.
+
 ## Marke
 
 - Maskottchen: **Kolbi** (lebendiger Laborkolben)
