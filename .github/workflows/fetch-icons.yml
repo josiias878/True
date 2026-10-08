@@ -3,12 +3,15 @@
 # Lädt alle Bilder aus supplement-lab/marketing/content/higgsfield/icons.json (id → URL, 1024×1024 PNG mit
 # transparentem Hintergrund), verkleinert sie auf 256×256 WebP mit Alpha und legt sie als
 # supplement-lab/public/icons/<id>.webp ab. Committet nur, wenn sich etwas geändert hat.
-# Nur manuell starten (Actions → „Kolbi Icons holen“ → Run workflow). Neue IDs auch in lib/labIcons.ts eintragen.
+# Startet automatisch, wenn icons.json auf dem Arbeits-Branch geändert wird (oder manuell). Neue IDs auch in lib/labIcons.ts eintragen.
 
 name: Kolbi Icons holen
 
 on:
   workflow_dispatch:
+  push:
+    branches: [claude/supplement-tracking-app-hwna5s]
+    paths: [supplement-lab/marketing/content/higgsfield/icons.json, .github/workflows/fetch-icons.yml]
 
 permissions:
   contents: write
