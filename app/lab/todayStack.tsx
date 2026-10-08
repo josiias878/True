@@ -118,9 +118,10 @@ export function StackSection({ s, today, onTake, onExtra, onExtraRemove, onOpenS
   // ＋ spontan: Kaffee, Alkohol und die 3 häufigsten Extras bzw. eigenen Mittel
   const coffee = s.supps.find(x => (x.lib ?? x.id) === "koffein")
   type Chip = { key: string; emoji: string; label: string; item: ExtraInput }
-  // Ein Mittel nie zugleich im Stack und in „＋ spontan“: Steht Kaffee im Stack, wird er dort abgehakt
+  // Ein Mittel nie zugleich im Stack und in „＋ spontan“: Steht Kaffee im Stack, wird er dort abgehakt;
+  // ist Koffein selbst in Reset/Test/Auswasch pausiert, gibt es keinen Kaffee-Chip (Test bleibt isoliert)
   const chips: Chip[] = [
-    ...(coffee && rowIds.has(coffee.id) ? [] : [{ key: "koffein", emoji: "☕", label: t("Kaffee"), item: coffee ? { supp: coffee.id } : { lib: "koffein" } } as Chip]),
+    ...(coffee && (rowIds.has(coffee.id) || (isolated && s.verdicts[coffee.id]?.decision !== "drop")) ? [] : [{ key: "koffein", emoji: "☕", label: t("Kaffee"), item: coffee ? { supp: coffee.id } : { lib: "koffein" } } as Chip]),
     { key: "n:alkohol", emoji: "🍷", label: t("Alkohol"), item: { name: "Alkohol", emoji: "🍷" } },
   ]
   // Keine Chips für: Stack-Zeilen, Test-Kandidaten ohne Urteil, Behaltenes während Reset/Test/Auswasch
