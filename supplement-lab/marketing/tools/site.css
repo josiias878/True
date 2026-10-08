@@ -161,3 +161,4 @@ code{background:var(--card);padding:1px 6px;border-radius:6px}
 }
 @media (max-width:480px){ .jump .wrap{padding:0 16px} .jump-btn{width:100%} }
 .vid-sec{scroll-margin-top:72px}
+@media (max-width:480px){ .wrap.section{padding:40px 16px} .jump .wrap{padding:0 16px} }

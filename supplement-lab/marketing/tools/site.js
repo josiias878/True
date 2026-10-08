@@ -28,7 +28,8 @@ document.documentElement.classList.add("js");
   const v = document.getElementById("schrank"), vf = document.getElementById("vidframe")
   if (v && vf) {
     const still = matchMedia("(prefers-reduced-motion: reduce)").matches
-    const gone = () => { vf.hidden = true }
+    // Video lässt sich nicht abspielen (fehlt / Codec): Standbild (Poster) bleibt stehen, fehlt auch das → Rahmen weg
+    const gone = () => { const im = new Image(); im.onerror = () => { vf.hidden = true }; im.src = v.poster }
     v.addEventListener("error", gone)
     const start = () => { if (!v.src) { v.src = v.dataset.src; still ? (v.controls = true) : (v.autoplay = true) } if (!still) v.play().catch(() => {}) }
     if ("IntersectionObserver" in window) new IntersectionObserver(es => es.forEach(e => e.isIntersecting ? start() : v.pause()), { threshold: .2 }).observe(vf)

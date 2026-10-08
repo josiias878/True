@@ -177,8 +177,9 @@ ${body}
 
 /** 3D-Kolbi mit Rückfall: Liegt die WebP beim Bauen vor → nur <img>. Sonst SVG sichtbar, <img> lädt im Hintergrund
  *  und blendet sich erst nach erfolgreichem Laden ein (falls der Workflow die Datei nach dem Bauen nachliefert). */
+const K3D_POS = { "img/3d/kolbi-schrank.webp": "22% 84%", "img/3d/kolbi-sortiert.webp": "50% 55%", "img/3d/kolbi-jubel.webp": "50% 58%" }
 const k3d = (file, svg, { alt = "", eager = false, cls = "" } = {}) => {
-  const img = `<img src="/${file}" alt="${alt}" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async"`
+  const img = `<img src="/${file}" alt="${alt}" width="752" height="1344" style="object-position:${K3D_POS[file] || "50% 50%"}" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async"`
   return has(file)
     ? `<span class="k3d has3d ${cls}">${img}></span>`
     : `<span class="k3d ${cls}">${kolbi(svg)}${img} onload="this.parentNode.classList.add('has3d')" onerror="this.remove()"></span>`
