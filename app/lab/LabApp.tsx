@@ -18,7 +18,7 @@ import { DaySheet, MorningPanel, SuspectCard, type DayTab } from "./day"
 import { enablePush, pushAvailable, pushState, syncPush, type PushState } from "@/lib/labPush"
 import { fetchHealthSince, healthVisible, healthCompare, mergeHealthDay, requestHealthPermission } from "@/lib/health"
 import { coach, type CoachAction, type CoachMsg } from "@/lib/labCoach"
-import { LAB_CSS, Btn, Capsule, Card, DemoBadge, Icon, Label, Segmented, Sheet, Stepper, TabHead, XpToast, haptic } from "./ui"
+import { LAB_CSS, Btn, Capsule, Card, DemoBadge, Icon, Label, Segmented, Sheet, Stepper, SuppTitle, TabHead, XpToast, haptic } from "./ui"
 import { CheckInSheet, Onboarding, SuppPicker } from "./flows"
 import { DeltaBars, DimLineChart, MoodCurve, ProCon } from "./charts"
 import { CoachBubble, HelpSheet, KolbiTip, MASCOT_NAME, Mascot } from "./mascot"
@@ -991,7 +991,7 @@ function SuppSheet({ s, id, today, adv, onClose, update, onAction, onVerdict, on
   const w = phaseAt(s, today)
   const baseDone = phaseWindows(s).some(p => p.kind === "baseline" && p.end < today) || (w && w.kind !== "baseline")
   return (
-    <Sheet open onClose={onClose} title={`${x.emoji} ${x.name}`}>
+    <Sheet open onClose={onClose} title={<SuppTitle lib={x.lib} emoji={x.emoji} name={x.name} />}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
         <span style={{ fontSize: "0.78rem", fontWeight: 800, padding: "5px 10px", borderRadius: 999, background: STATUS_STYLE[st.key].bg, color: STATUS_STYLE[st.key].fg }}>{st.emoji} {st.label}</span>
         {info.days > 0 && <span style={{ fontSize: "0.78rem", fontWeight: 700, padding: "5px 10px", borderRadius: 999, background: "var(--surface-2)" }}>{info.days === 1 ? t("⏱️ 1 Tag genommen · seit {date}", { date: fmtDate(info.since!) }) : t("⏱️ {n} Tage genommen · seit {date}", { n: info.days, date: fmtDate(info.since!) })}</span>}

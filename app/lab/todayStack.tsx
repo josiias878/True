@@ -18,7 +18,7 @@ import * as socialApi from "@/lib/labSocialApi"
 import type { SocialPost } from "@/lib/labSocialApi"
 import { markSeen, seenNew } from "@/lib/labNew"
 import { t, dec, clock, isEn, LOCALE } from "@/lib/labI18n"
-import { Btn, Sheet, haptic } from "./ui"
+import { Btn, Sheet, SuppIcon, SuppTitle, haptic } from "./ui"
 import { ExtraList } from "./day"
 import { NewBadge } from "./newbadge"
 import { Mascot } from "./mascot"
@@ -312,7 +312,7 @@ export function StackSection({ s, today, onTake, onSkip, onExtra, onExtraRemove,
           const at = s.tookAt[today]?.[x.id]
           const icon = (
             <span aria-hidden style={{ width: 38, height: 38, borderRadius: 12, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.15rem",
-              background: `color-mix(in srgb, ${suppColor(x)} 20%, var(--surface-2))`, filter: off ? "grayscale(1)" : undefined }}>{x.emoji}</span>
+              background: `color-mix(in srgb, ${suppColor(x)} 20%, var(--surface-2))`, filter: off ? "grayscale(1)" : undefined }}><SuppIcon lib={x.lib} emoji={x.emoji} size={32} /></span>
           )
           if (off) return (
             <SwipeRow key={x.id} divider={i > 0} action={t("Rückgängig")} tone="undo" onAction={() => unskip(x)}>
@@ -447,7 +447,7 @@ function SuppInfoSheet({ s, x, onClose, onVorrat, onOpen, skip }: {
   const head = (txt: string) => <div style={{ fontSize: "0.72rem", fontWeight: 900, letterSpacing: ".05em", color: "var(--text-dim)", margin: "14px 0 5px" }}>{txt}</div>
   const body: React.CSSProperties = { fontSize: "0.9rem", lineHeight: 1.5 }
   return (
-    <Sheet open onClose={onClose} title={`${x.emoji} ${x.name}`}>
+    <Sheet open onClose={onClose} title={<SuppTitle lib={x.lib} emoji={x.emoji} name={x.name} />}>
       {head(t("WOFÜR"))}
       {lib ? <>
         {lib.claim && <div style={{ ...body, fontWeight: 800 }}>{lib.claim}</div>}

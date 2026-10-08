@@ -1,0 +1,63 @@
+# Kolbi · Supplement-Symbolbilder holen
+#
+# Lädt alle Bilder aus supplement-lab/marketing/content/higgsfield/icons.json (id → URL, 1024×1024 PNG mit
+# transparentem Hintergrund), verkleinert sie auf 256×256 WebP mit Alpha und legt sie als
+# supplement-lab/public/icons/<id>.webp ab. Committet nur, wenn sich etwas geändert hat.
+# Nur manuell starten (Actions → „Kolbi Icons holen“ → Run workflow). Neue IDs auch in lib/labIcons.ts eintragen.
+
+name: Kolbi Icons holen
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kolbi-icons-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  icons:
+    name: Icons laden und als WebP ablegen
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/supplement-tracking-app-hwna5s
+
+      - name: cwebp installieren
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q webp jq
+
+      - name: Bilder laden und umwandeln
+        env:
+          SRC: supplement-lab/marketing/content/higgsfield/icons.json
+          OUT: supplement-lab/public/icons
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          tmp="$(mktemp -d)"
+          jq -r '.icons | to_entries[] | "\(.key)\t\(.value)"' "$SRC" | while IFS=$'\t' read -r id url; do
+            case "$id" in (*[!a-z0-9_-]*|"") echo "::error::Ungültige ID: $id"; exit 1;; esac
+            echo "→ $id"
+            curl -fsSL --retry 3 --max-time 60 -o "$tmp/$id.png" "$url"
+            # 256×256, Alpha bleibt erhalten (verlustfreie Alpha-Ebene)
+            cwebp -quiet -resize 256 256 -q 85 -alpha_q 100 -exact -m 6 "$tmp/$id.png" -o "$OUT/$id.webp"
+            ls -l "$OUT/$id.webp"
+          done
+
+      - name: Committen und pushen (nur bei Änderungen)
+        run: |
+          set -euo pipefail
+          git add supplement-lab/public/icons
+          if git diff --cached --quiet; then
+            echo "Keine Änderungen an den Icons."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Icons: Supplement-Symbolbilder aus icons.json aktualisiert (256×256 WebP)"
+          git push origin HEAD:claude/supplement-tracking-app-hwna5s

@@ -5,7 +5,7 @@ import React, { useEffect, useState } from "react"
 import { diffDays, phaseAt, type LabState, type LibSupp } from "@/lib/supplementLab"
 import { fetchOverview } from "@/lib/labCommunity"
 import { LAB_GROUPS, feedOrder, keepWords, labColor, labGroup, tierOf, WORDS_MIN, type FeedEntry } from "@/lib/labSocial"
-import { Btn, DemoBadge, TabHead, haptic } from "./ui"
+import { Btn, DemoBadge, SuppIcon, TabHead, haptic } from "./ui"
 import { Mascot } from "./mascot"
 import { Avatar } from "./me"
 import { t } from "@/lib/labI18n"
@@ -44,7 +44,7 @@ function ResultCard({ e, onOpen, onSelfTest }: { e: FeedEntry; onOpen: () => voi
   return (
     <article className="lab-card lab-rise" style={{ padding: 0, overflow: "hidden", borderRadius: 24 }}>
       <button onClick={onOpen} className="lab-press" style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "12px 14px", background: "none", border: "none", color: "var(--text)", textAlign: "left" }}>
-        <span style={{ width: 38, height: 38, borderRadius: 999, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.15rem", background: `color-mix(in srgb, ${color} 22%, var(--surface-2))` }}>{e.lib.emoji}</span>
+        <span style={{ width: 38, height: 38, borderRadius: 999, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.15rem", background: `color-mix(in srgb, ${color} 22%, var(--surface-2))` }}><SuppIcon lib={e.lib.id} emoji={e.lib.emoji} size={32} /></span>
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: "block", fontWeight: 900, fontSize: "0.95rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{labTitle(e.lib)}</span>
           <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.76rem", fontWeight: 700, color: "var(--text-dim)" }}>
@@ -146,7 +146,7 @@ export function DiscoverView({ s, today, recapReady, onRecap, onOpenLab, onSelfT
         <Story label={t("Deine Woche")} ring={recapReady ? "linear-gradient(135deg, #2ECC8A, #3987e5)" : undefined} dashed={!canRecap} dot={recapReady}
           onClick={() => canRecap ? onRecap() : onFlash(t("📊 Deine Woche gibt's ab 3 Check-ins"))}><Avatar s={s} size={50} shadow={false} /></Story>
         {myLabs.map(e => (
-          <Story key={e.lib.id} label={e.lib.name} ring={labColor(e.lib)} onClick={() => onOpenLab(e.lib.id, "andere")}>{e.lib.emoji}</Story>
+          <Story key={e.lib.id} label={e.lib.name} ring={labColor(e.lib)} onClick={() => onOpenLab(e.lib.id, "andere")}><SuppIcon lib={e.lib.id} emoji={e.lib.emoji} size={40} /></Story>
         ))}
       </div>
 

@@ -1,10 +1,11 @@
 "use client"
-import React, { useEffect } from "react"
+import React, { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import type { MySupp } from "@/lib/supplementLab"
 import { suppColor, TAGS, tagLabel } from "@/lib/supplementLab"
 import { TAG_EMOJI } from "@/lib/labPatterns"
 import { t } from "@/lib/labI18n"
+import { suppIconSrc } from "@/lib/labIcons"
 
 // ── Lab-Styles (Animationen & wiederverwendbare Klassen) ────────────────────────
 
@@ -170,8 +171,35 @@ export function Capsule({ supp, size = "md", onClick, right }: { supp: MySupp | 
   )
 }
 
+/**
+ * Symbolbild eines Mittels (3D-Icon) – sonst wie bisher das Emoji.
+ * Dekorativ (alt=""), der Name steht immer daneben. Lädt das Bild nicht, fällt es aufs Emoji zurück.
+ */
+const failedIcons = new Set<string>()
+export function SuppIcon({ lib, emoji, size }: { lib?: string | null; emoji: React.ReactNode; size: number }) {
+  const src = suppIconSrc(lib)
+  const [bad, setBad] = useState(false)
+  if (!src || bad || failedIcons.has(src)) return <>{emoji}</>
+  return (
+    <img src={src} alt="" width={size} height={size} loading="lazy" decoding="async" draggable={false} onError={() => { failedIcons.add(src); setBad(true) }}
+      data-supp-icon={lib ?? undefined}
+      style={{ width: size, height: size, objectFit: "contain", display: "block", flexShrink: 0, pointerEvents: "none", userSelect: "none" }} />
+  )
+}
+
+/** Sheet-Titel für ein Mittel: Symbolbild + Name (ohne Bild bleibt es „Emoji Name“ wie bisher). */
+export function SuppTitle({ lib, emoji, name }: { lib?: string | null; emoji: string; name: string }) {
+  if (!suppIconSrc(lib)) return <>{`${emoji} ${name}`}</>
+  return (
+    <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+      <SuppIcon lib={lib} emoji={emoji} size={36} />
+      <span style={{ minWidth: 0 }}>{name}</span>
+    </span>
+  )
+}
+
 /** portal: für ein Sheet IN einem Sheet – sonst hängt es am (animierten) Eltern-Sheet statt am Bildschirm. */
-export function Sheet({ open, onClose, children, title, z = 400, portal }: { open: boolean; onClose: () => void; children: React.ReactNode; title?: string; z?: number; portal?: boolean }) {
+export function Sheet({ open, onClose, children, title, z = 400, portal }: { open: boolean; onClose: () => void; children: React.ReactNode; title?: React.ReactNode; z?: number; portal?: boolean }) {
   useEffect(() => {
     if (!open) return
     const prev = document.body.style.overflow

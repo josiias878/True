@@ -1,0 +1,14 @@
+{
+  "_note": "Supplement-Symbolbilder (Test, 5 Stück). Quelle für .github/workflows/fetch-icons.yml → supplement-lab/public/icons/<id>.webp (256×256, WebP mit Alpha). Schlüssel = Bibliotheks-ID aus lib/supplementLab.ts. Neue IDs auch in lib/labIcons.ts (SUPP_ICONS) eintragen.",
+  "generator": "Higgsfield",
+  "style": "Weiches 3D-Symbol (Clay/Glossy), ein Objekt mittig, freundliche Kolbi-Farben, transparenter Hintergrund, keine Schrift/Marken/Logos, kein Wirkversprechen im Bild. Original 1024×1024 PNG.",
+  "cost": { "creditsPerImage": 0.5, "images": 5, "creditsTotal": 2.5 },
+  "created": "2026-10-08",
+  "icons": {
+    "magnesium": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261008_182908_8e0fcab7-8678-4263-8677-4871ae4db72c.png",
+    "omega3": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261008_182907_4fda957a-1e31-4e54-8cd4-c0c2177f82e5.png",
+    "vitd": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261008_182907_1d6a497e-cd56-4518-bdba-9f789a5621c0.png",
+    "kreatin": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261008_182907_30d08aa8-0cae-474f-bd5d-0fa36d20d2f7.png",
+    "koffein": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261008_182906_a889182c-0e76-4fbc-9f2b-7e49683d9b82.png"
+  }
+}

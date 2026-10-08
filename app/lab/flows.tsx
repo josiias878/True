@@ -12,7 +12,7 @@ import { eveningDims, morningAnswered, prefillTags, sidesOf, type ExtraInput } f
 import { DaySheet, ExtraList, SidesWithSuspect } from "./day"
 import { pairsWith } from "@/lib/labInteractions"
 import { fetchOverview } from "@/lib/labCommunity"
-import { Btn, Capsule, Card, FaceRow, Label, Segmented, Stars, TagChips } from "./ui"
+import { Btn, Capsule, Card, FaceRow, Label, Segmented, Stars, SuppIcon, TagChips } from "./ui"
 import { KolbiTip, MASCOT_NAME, Mascot } from "./mascot"
 import { InstallHint } from "./install"
 import type { Mood } from "@/lib/labCoach"
@@ -50,7 +50,7 @@ export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd,
         background: on ? `color-mix(in srgb, ${c} 16%, var(--surface))` : "var(--surface)",
         color: "var(--text)", fontWeight: on ? 800 : 600, fontSize: "0.85rem",
       }}>
-        <span>{l.emoji}</span>{l.name}
+        <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 20, height: 20, margin: "-2px 0" }}><SuppIcon lib={l.id} emoji={l.emoji} size={24} /></span>{l.name}
         {l.route && l.route !== "oral" && <span style={{ fontSize: "0.75rem" }}>{ROUTE_INFO[l.route].emoji}</span>}
         {crowd[l.id]?.keepPct != null && <span title={t("{n} Tests in der Community", { n: crowd[l.id].n })} style={{ fontSize: "0.68rem", fontWeight: 800, padding: "1px 6px", borderRadius: 999, background: "color-mix(in srgb, #1baf7a 15%, transparent)", color: "#1baf7a" }}>👥 {crowd[l.id].keepPct} %</span>}
         {on && <span>✓</span>}
