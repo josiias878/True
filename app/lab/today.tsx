@@ -322,7 +322,7 @@ export function QuickSheet({ s, today, now, checkinLocked, onClose, onTake, onDa
       {view === "menu" ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {tile("✓", t("Genommen"), open.length ? t("{n} von {total} heute", { n: took.filter(id => open.includes(id)).length, total: open.length }) : t("Heute nichts geplant"), () => { markSeen("taken-check"); setView("take") }, <NewBadge id="taken-check" style={{ position: "absolute", top: 14, right: 12 }} />)}
+            {tile("✓", t("Genommen"), open.length ? t("{n} von {total} heute", { n: took.filter(id => open.includes(id)).length, total: open.length }) : intake.length ? t("heute ausgelassen") : t("Heute nichts geplant"), () => { markSeen("taken-check"); setView("take") }, <NewBadge id="taken-check" style={{ position: "absolute", top: 14, right: 12 }} />)}
             {tile("➕", t("Zusätzlich"), t("außerhalb deines Plans"), () => { markSeen("extra-taken"); onClose(); onDay("take") }, <>{count(nx)}<NewBadge id="extra-taken" style={{ position: "absolute", top: 14, right: nx ? 40 : 12 }} /></>)}
             {tile("🤕", t("Beschwerde"), t("tagsüber notieren"), () => { markSeen("complaints"); onClose(); onDay("sides") }, <>{count(ns)}<NewBadge id="complaints" style={{ position: "absolute", top: 14, right: ns ? 40 : 12 }} /></>)}
             {tile("📝", t("Check-in"), checked ? t("Heute {v}★ · ändern", { v: fmt(daySum(checked)) }) : locked ? t("ab {time}", { time: clock(fromMin(checkinOpensMin(s))) }) : t("1 Minute"),
