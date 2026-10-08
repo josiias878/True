@@ -54,4 +54,31 @@ const CAPS = {
 }
 for (const [n, t] of Object.entries(CAPS))
   await shot(n, wrap(`<div style="position:absolute;top:210px;left:50px;right:50px" class="t">${t}</div>`), true)
+// F: Video „Kolbi testet“ + „Kolbi erklärt: Dein Normal“
+const CAPS2 = {
+  "cap-a1": `Kolbi testet 🧪`,
+  "cap-a2": `1 Supplement<br>2 Wochen<br><em>deine Daten</em>`,
+  "cap-a3": `… und dann?`,
+  "cap-a4": `<em>Behalten ✓</em><br>oder raus ✗`,
+  "cap-b1": `Warum erst<br><em>dein Normal?</em>`,
+}
+for (const [n, t] of Object.entries(CAPS2))
+  await shot(n, wrap(`<div style="position:absolute;top:210px;left:50px;right:50px" class="t">${t}</div>`), true)
+// Erklärgrafik: eigenes Normal vs. mit Supplement (Beispiel)
+const pts = (arr, x0, w, y0, h) => arr.map((v, i) => `${x0 + i * w / (arr.length - 1)},${y0 + h - (v - 1) / 4 * h}`).join(" ")
+const base = [3.1, 2.8, 3.2, 3.0, 2.9, 3.1, 3.0], test = [3.0, 3.3, 3.6, 3.5, 3.8, 3.7, 3.9]
+await shot("baseline", wrap(`<div style="position:absolute;inset:0;background:${BG}"></div>
+  <div class="t" style="position:absolute;top:200px;left:60px;right:60px;font-size:82px">Erst dein <em>Normal</em> –<br>dann vergleichen</div>
+  <svg width="960" height="760" viewBox="0 0 960 760" style="position:absolute;left:60px;top:620px">
+    <rect x="0" y="0" width="960" height="760" rx="44" fill="rgba(255,255,255,.06)"/>
+    <line x1="80" y1="${110 + 520 - (3.0 - 1) / 4 * 520}" x2="900" y2="${110 + 520 - (3.0 - 1) / 4 * 520}" stroke="#b4b0d6" stroke-width="5" stroke-dasharray="18 14"/>
+    <polyline points="${pts(base, 80, 380, 110, 520)}" fill="none" stroke="#b4b0d6" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <polyline points="${pts(test, 520, 380, 110, 520)}" fill="none" stroke="#7CF5C0" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="490" y1="90" x2="490" y2="650" stroke="rgba(255,255,255,.25)" stroke-width="3"/>
+    <text x="270" y="710" fill="#d9d6f5" font-family="N" font-weight="800" font-size="40" text-anchor="middle">ohne</text>
+    <text x="710" y="710" fill="#7CF5C0" font-family="N" font-weight="900" font-size="40" text-anchor="middle">mit Supplement</text>
+    <text x="96" y="${110 + 520 - (3.0 - 1) / 4 * 520 - 80}" fill="#d9d6f5" font-family="N" font-weight="800" font-size="34">dein Normal</text>
+  </svg>
+  <div class="s" style="position:absolute;top:1450px;left:80px;right:80px">Kolbi vergleicht – nicht dein Bauchgefühl</div>
+  <div class="pill">Beispiel</div>`))
 await b.close()
