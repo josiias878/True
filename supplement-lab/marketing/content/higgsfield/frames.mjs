@@ -45,4 +45,13 @@ await shot("end", wrap(`<div style="position:absolute;inset:0;background:${BG}">
   <div style="position:absolute;left:50%;top:330px;transform:translateX(-50%);width:640px;height:640px;filter:drop-shadow(0 0 26px rgba(124,245,192,.5))">${svg("happy")}</div>
   <div class="t" style="position:absolute;top:1060px;left:60px;right:60px">Teste selbst,<br>was bei <em>DIR</em> wirkt</div>
   <div class="s" style="position:absolute;top:1370px;left:60px;right:60px">Kolbi · gratis · Link in Bio 🧪</div>`))
+// E: Untertitel für das 3D-Video (transparent, oben)
+const CAPS = {
+  "cap-1": `40 € im Monat …`,
+  "cap-2": `… und was davon<br><em>wirkt bei dir?</em>`,
+  "cap-3": `Kolbi findet's raus`,
+  "cap-4": `<em>Behalten ✓</em><br>Raus ✗`,
+}
+for (const [n, t] of Object.entries(CAPS))
+  await shot(n, wrap(`<div style="position:absolute;top:210px;left:50px;right:50px" class="t">${t}</div>`), true)
 await b.close()
