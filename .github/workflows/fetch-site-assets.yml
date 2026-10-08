@@ -55,24 +55,24 @@ jobs:
             out="$BASE/$target"; mkdir -p "$(dirname "$out")"
             name="$(basename "$target")"
             echo "→ $target"
-            curl -fsSL --retry 3 --max-time 180 -o "$tmp/$name" "$url"
+            curl -fsSL --retry 3 --max-time 180 -o "$tmp/$name" "$url" < /dev/null
             case "$target" in
               *.png)
                 # nur verkleinern, nie vergrößern; Alpha bleibt erhalten
-                ffmpeg -loglevel error -y -i "$tmp/$name" -vf "scale='min(1080,iw)':-2:flags=lanczos" "$tmp/s-$name"
+                ffmpeg -nostdin -loglevel error -y -i "$tmp/$name" -vf "scale='min(1080,iw)':-2:flags=lanczos" "$tmp/s-$name"
                 cwebp -quiet -q 80 -alpha_q 100 -m 6 "$tmp/s-$name" -o "${out%.png}.webp"
                 ls -l "${out%.png}.webp"
                 ;;
               *.mp4)
                 for crf in 28 30 32 34 36; do
-                  ffmpeg -loglevel error -y -i "$tmp/$name" -an \
+                  ffmpeg -nostdin -loglevel error -y -i "$tmp/$name" -an \
                     -vf "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setsar=1" \
                     -c:v libx264 -preset slow -profile:v high -pix_fmt yuv420p -crf "$crf" -movflags +faststart "$out"
                   size=$(stat -c %s "$out"); echo "   CRF $crf → $size Bytes"
                   [ "$size" -le "$MAX_BYTES" ] && break
                 done
                 [ "$(stat -c %s "$out")" -le "$MAX_BYTES" ] || { echo "::error::$target bleibt über 3 MB"; exit 1; }
-                ffmpeg -loglevel error -y -ss 2 -i "$out" -frames:v 1 -q:v 4 "${out%.mp4}.jpg"
+                ffmpeg -nostdin -loglevel error -y -ss 2 -i "$out" -frames:v 1 -q:v 4 "${out%.mp4}.jpg"
                 ls -l "$out" "${out%.mp4}.jpg"
                 ;;
             esac
