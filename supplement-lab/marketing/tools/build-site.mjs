@@ -466,10 +466,14 @@ body{margin:0;font-family:Nunito,sans-serif}</style></head><body><div style="wid
 }
 await browser.close()
 
+// Kanal-Links (/tiktok, /en/tiktok …) als echte Kopien – Vercel-Rewrites griffen bei statischem Upload nicht
+for (const c of CHANNELS) {
+  fs.copyFileSync(`${OUT}/index.html`, `${OUT}/${c}.html`)
+  fs.copyFileSync(`${OUT}/en.html`, `${OUT}/en/${c}.html`)
+}
 fs.writeFileSync(`${OUT}/robots.txt`, DRAFT ? "User-agent: *\nDisallow: /\n" : `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml\n`)
 fs.writeFileSync(`${OUT}/vercel.json`, JSON.stringify({
   cleanUrls: true,
-  rewrites: [...CHANNELS.map(c => ({ source: `/${c}`, destination: "/index.html" })), ...CHANNELS.map(c => ({ source: `/en/${c}`, destination: "/en.html" }))],
   headers: [
     ...(DRAFT ? [{ source: "/(.*)", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] }] : []),
     { source: "/fonts/(.*)", headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }] },
