@@ -903,6 +903,7 @@ export interface LabState {
   morning?: Record<string, MorningEntry>   // Aufwach-Datum → Morgen-Frage
   extra?: Record<string, ExtraIntake[]>    // Datum → spontane Extra-Einnahmen
   daySides?: Record<string, DaySides>      // Datum → Beschwerden, solange es noch keinen Check-in gibt
+  skipped?: Record<string, string[]>       // Datum → bewusst ausgelassene Supplement-IDs („Heute nicht“)
 }
 
 export const STORAGE_KEY = "true-supplement-lab-v1"
@@ -1022,6 +1023,15 @@ function sanitizeDayData(s: LabState) {
     }
     s.daySides = out
   }
+  if (s.skipped !== undefined) {
+    const out: Record<string, string[]> = {}
+    if (isObj(s.skipped)) for (const [d, list] of Object.entries(s.skipped)) {
+      if (!DATE_RE.test(d) || !Array.isArray(list)) continue
+      const ids = [...new Set(list.filter((x): x is string => typeof x === "string"))]
+      if (ids.length) out[d] = ids
+    }
+    s.skipped = out
+  }
   for (const [d, m] of Object.entries(s.morning ?? {})) {
     const c = s.checkins[d]
     if (c && m.schlaf != null && c.scores.schlaf !== m.schlaf) c.scores = { ...c.scores, schlaf: m.schlaf }
@@ -1032,6 +1042,32 @@ function sanitizeDayData(s: LabState) {
     c.sides = { ...ds.sides, ...c.sides }
     if (ds.suspect) c.suspect = { ...ds.suspect, ...c.suspect }
     delete s.daySides![d]
+  }
+}
+
+// ── „Heute nicht“: bewusst ausgelassene Einnahmen ──────────────────────────────
+// Ausgelassenes ist an dem Tag erledigt (keine offene Einnahme, keine Erinnerung, zählt nicht im Tagesfortschritt).
+// In der Auswertung bleibt es eine fehlende Einnahme (took enthält es nicht) – nichts wird erfunden.
+
+/** Am Tag bewusst ausgelassene Supplement-IDs. */
+export function skippedOn(s: LabState, date: string): string[] { return s.skipped?.[date] ?? [] }
+
+/** Am Tag erledigt: genommen oder bewusst ausgelassen. */
+export function doneOn(s: LabState, date: string): string[] { return [...(s.took[date] ?? []), ...skippedOn(s, date)] }
+
+/** „Heute nicht“ setzen oder aufheben (mutiert s). Setzen entfernt einen Genommen-Haken samt Uhrzeit für den Tag. */
+export function setSkipped(s: LabState, date: string, id: string, on: boolean) {
+  const cur = skippedOn(s, date)
+  if (on) {
+    s.skipped = { ...s.skipped, [date]: [...new Set([...cur, id])] }
+    if (s.took[date]?.includes(id)) s.took[date] = s.took[date].filter(x => x !== id)
+    if (s.tookAt[date]?.[id]) { const rest = { ...s.tookAt[date] }; delete rest[id]; s.tookAt[date] = rest }
+  } else if (cur.includes(id)) {
+    const next = { ...s.skipped }
+    const left = cur.filter(x => x !== id)
+    if (left.length) next[date] = left
+    else delete next[date]
+    s.skipped = next
   }
 }
 

@@ -2,10 +2,10 @@
 // ── Heute 2.0: feste, ruhige Bereiche unter der einen Hauptsache ──
 // Reihenfolge: Mein Stack (+ spontan) · Kosten & Kolbi-Coach · Mein Zustand · Mein Weg · Community.
 // Je eine schlanke Karte mit Überschrift und „›“ zur Detailebene. Logik steckt in lib/* – hier nur Anzeige.
-import React, { useEffect, useMemo, useRef, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   FACES, LIB_BY_ID, LIB_SIDES, SIDE_BY_ID, addDays, checkinsIn, daySum, diffDays, extraKey, extrasOn, fmtDate, intakeOn, isHere, libOf,
-  meanScore, phaseWindows, streak, suppColor,
+  meanScore, phaseWindows, skippedOn, streak, suppColor,
   type LabState, type LibSupp, type MySupp,
 } from "@/lib/supplementLab"
 import { caffeineToday, recentExtras, type ExtraInput } from "@/lib/labDay"
@@ -16,7 +16,7 @@ import { COMMUNITY_MIN, fetchOverview } from "@/lib/labCommunity"
 import { labColor } from "@/lib/labSocial"
 import * as socialApi from "@/lib/labSocialApi"
 import type { SocialPost } from "@/lib/labSocialApi"
-import { markSeen } from "@/lib/labNew"
+import { markSeen, seenNew } from "@/lib/labNew"
 import { t, dec, clock, isEn, LOCALE } from "@/lib/labI18n"
 import { Btn, Sheet, haptic } from "./ui"
 import { ExtraList } from "./day"
@@ -25,6 +25,7 @@ import { Mascot } from "./mascot"
 import { PublicAvatar, ago, decisionInfo, signed, useSocialOn } from "./social"
 
 const NEW_ID = "today-stack"
+const SKIP_ID = "skip-today" // Kolbi-Hinweis „nach links wischen“ (lib/labNew.ts)
 const seen = () => markSeen(NEW_ID)
 
 /** Abkürzungen, an denen kein Satz endet (v. a., z. B., ca., u. a. …). */
@@ -72,15 +73,146 @@ const linkBtn: React.CSSProperties = {
 /** Stundenangabe für die Koffein-Faustregel: „14“ (+ „Uhr“ im Satz) bzw. „2 pm“. */
 const hourLabel = (h: number) => isEn ? `${h % 12 || 12} ${h < 12 ? "am" : "pm"}` : String(h)
 
+// ── Wisch-Zeile („Heute nicht“) ──────────────────────────────────────────────
+
+/** Bewegung reduzieren? (Systemeinstellung) */
+function useReducedMotion() {
+  const [r, setR] = useState(false)
+  useEffect(() => {
+    try {
+      const m = window.matchMedia("(prefers-reduced-motion: reduce)")
+      setR(m.matches)
+      const fn = () => setR(m.matches)
+      m.addEventListener?.("change", fn)
+      return () => m.removeEventListener?.("change", fn)
+    } catch {}
+  }, [])
+  return r
+}
+
+const REVEAL = 112 // Breite der Aktionsfläche, wenn die Zeile offen stehen bleibt
+
+/**
+ * iOS-artige Zeile: nach links wischen legt eine Aktionsfläche frei. Weit gewischt (> 45 % Breite) = sofort ausführen,
+ * halb gewischt = Fläche bleibt offen (Antippen führt aus), kurz = zurück. Nur Pointer-Events, kein Paket.
+ * Senkrechtes Scrollen bleibt beim Browser (touch-action: pan-y). Ohne Wischen geht dasselbe über das Detail-Sheet.
+ */
+function SwipeRow({ action, tone, onAction, onSwipe, hint, divider, children }: {
+  action: string; tone: "skip" | "undo"; onAction: () => void; onSwipe?: () => void; hint?: boolean; divider?: boolean; children: React.ReactNode
+}) {
+  const reduce = useReducedMotion()
+  const [dx, setDx] = useState(0)
+  const [anim, setAnim] = useState(true)
+  const wrap = useRef<HTMLDivElement | null>(null)
+  const g = useRef<{ x: number; y: number; base: number; w: number; mode: "?" | "x" | "y" } | null>(null)
+  const swiped = useRef(false)
+  const dxRef = useRef(0)
+  const set = useCallback((v: number, a: boolean) => { dxRef.current = v; setAnim(a); setDx(v) }, [])
+
+  // Einmaliger Wisch-Hinweis: Zeile kurz anlupfen und zurück (nicht bei reduzierter Bewegung)
+  useEffect(() => {
+    if (!hint || reduce) return
+    const a = setTimeout(() => set(-64, true), 700)
+    const b = setTimeout(() => set(0, true), 1350)
+    return () => { clearTimeout(a); clearTimeout(b) }
+  }, [hint, reduce, set])
+
+  // Offen stehen gelassen → Tippen woanders schließt
+  useEffect(() => {
+    if (dx === 0 || g.current) return
+    const close = (e: PointerEvent) => { if (!wrap.current?.contains(e.target as Node)) set(0, true) }
+    document.addEventListener("pointerdown", close)
+    return () => document.removeEventListener("pointerdown", close)
+  }, [dx, set])
+
+  const run = () => {
+    haptic(14)
+    if (reduce) { set(0, false); onAction(); return }
+    set(-(wrap.current?.offsetWidth ?? 400), true)
+    setTimeout(() => { onAction(); set(0, false) }, 170)
+  }
+
+  const down = (e: React.PointerEvent) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return
+    g.current = { x: e.clientX, y: e.clientY, base: dxRef.current, w: wrap.current?.offsetWidth ?? 360, mode: "?" }
+  }
+  const move = (e: React.PointerEvent) => {
+    const p = g.current
+    if (!p) return
+    const mx = e.clientX - p.x, my = e.clientY - p.y
+    if (p.mode === "?") {
+      if (Math.abs(mx) > 10 && Math.abs(mx) > Math.abs(my) * 1.2) {
+        p.mode = "x"; swiped.current = true; onSwipe?.()
+        try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId) } catch {}
+      } else if (Math.abs(my) > 10) { p.mode = "y"; return }
+      else return
+    }
+    if (p.mode !== "x") return
+    let v = p.base + mx
+    if (v > 0) v = v / 4 // nach rechts nur federn
+    set(Math.max(-p.w, v), false)
+  }
+  const up = () => {
+    const p = g.current
+    g.current = null
+    if (!p || p.mode !== "x") return
+    const v = dxRef.current
+    if (v < -p.w * 0.45) run()
+    else if (v < -REVEAL * 0.5) set(-REVEAL, !reduce)
+    else set(0, !reduce)
+  }
+  const cancel = () => { const p = g.current; g.current = null; if (p?.mode === "x") set(0, !reduce) }
+
+  const open = dx !== 0
+  const bg = tone === "skip" ? "var(--danger-dim)" : "var(--accent-dim)"
+  const fg = tone === "skip" ? "var(--danger)" : "var(--accent-ink)"
+  return (
+    <div ref={wrap} style={{ position: "relative", overflow: "hidden", margin: "0 -14px" }}
+      onPointerDownCapture={() => { swiped.current = false }}
+      onClickCapture={e => {
+        // Nach einer Wisch-Geste keinen Klick auslösen; offene Zeile antippen = schließen
+        if (swiped.current) { swiped.current = false; e.stopPropagation(); e.preventDefault(); return }
+        if (open && !(e.target as HTMLElement).closest?.("[data-swipe-action]")) { e.stopPropagation(); e.preventDefault(); set(0, !reduce) }
+      }}>
+      {divider && <div aria-hidden style={{ position: "absolute", top: 0, left: 14, right: 14, height: 1, background: "var(--border)", zIndex: 2 }} />}
+      <div aria-hidden={!open} style={{ position: "absolute", inset: 0, display: "flex", justifyContent: "flex-end", alignItems: "stretch", background: bg, opacity: open ? 1 : 0 }}>
+        <button data-swipe-action tabIndex={open ? 0 : -1} onClick={run} style={{
+          minWidth: Math.max(REVEAL, -dx), minHeight: 44, padding: "0 14px", border: "none", background: "none", color: fg,
+          fontWeight: 900, fontSize: "0.84rem", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, whiteSpace: "nowrap",
+        }}>{action}</button>
+      </div>
+      <div onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={cancel} style={{
+        position: "relative", background: "var(--surface)", padding: "0 14px", touchAction: "pan-y",
+        transform: dx ? `translate3d(${dx}px,0,0)` : undefined,
+        transition: anim && !reduce ? "transform .22s cubic-bezier(.2,.8,.2,1)" : "none",
+      }}>{children}</div>
+    </div>
+  )
+}
+
 // ── 1 · Mein Stack heute ─────────────────────────────────────────────────────
 
-export function StackSection({ s, today, onTake, onExtra, onExtraRemove, onOpenSupp, onVorrat, onAddMany, goTab }: {
+export function StackSection({ s, today, onTake, onSkip, onExtra, onExtraRemove, onOpenSupp, onVorrat, onAddMany, goTab }: {
   s: LabState; today: string
   onTake: (id: string) => void
+  /** „Heute nicht“ setzen (true) oder aufheben (false) */
+  onSkip: (id: string, on: boolean) => void
   onExtra: (date: string, item: ExtraInput, label: string) => void; onExtraRemove: (date: string, id: string) => void
   onOpenSupp: (id: string) => void; onVorrat: () => void; onAddMany: () => void; goTab: (t: string) => void
 }) {
   const [info, setInfo] = useState<string | null>(null)
+  const [undo, setUndo] = useState<{ id: string; name: string; test: boolean; k: number } | null>(null)
+  // Kolbi-Hinweis „nach links wischen“: einmalig, bis „Verstanden“ oder die erste Wisch-Geste (lokal gemerkt)
+  const [coach, setCoach] = useState(false)
+  useEffect(() => { setCoach(!seenNew().includes(SKIP_ID)) }, [])
+  const coachDone = () => { if (coach) { setCoach(false); markSeen(SKIP_ID) } }
+  useEffect(() => {
+    if (!undo) return
+    const k = undo.k
+    const tm = setTimeout(() => setUndo(u => (u?.k === k ? null : u)), undo.test ? 8000 : 5000)
+    return () => clearTimeout(tm)
+  }, [undo])
+  const skipList = skippedOn(s, today)
   const wins = phaseWindows(s)
   const w = wins.find(x => today >= x.start && today <= x.end) ?? null
   const intake = intakeOn(s, today)
@@ -146,6 +278,14 @@ export function StackSection({ s, today, onTake, onExtra, onExtraRemove, onOpenS
 
   const pill: React.CSSProperties = { minHeight: 44, borderRadius: 999, fontWeight: 800, fontSize: "0.84rem", whiteSpace: "nowrap", flexShrink: 0 }
   const open = info ? s.supps.find(x => x.id === info) : undefined
+  /** Läuft gerade der Test genau dieses Mittels? Dann zählt jeder Tag. */
+  const inTest = (id: string) => w?.kind === "test" && w.suppId === id
+  const skip = (x: MySupp) => {
+    coachDone()
+    onSkip(x.id, true)
+    setUndo({ id: x.id, name: x.name, test: inTest(x.id), k: Date.now() })
+  }
+  const unskip = (x: MySupp) => { haptic(8); onSkip(x.id, false); setUndo(u => (u?.id === x.id ? null : u)) }
 
   return (
     <Section title={t("Mein Stack heute")} badge={<NewBadge id={NEW_ID} />} onMore={() => goTab("meine")} moreLabel={t("Alle Supplements")}>
@@ -156,17 +296,49 @@ export function StackSection({ s, today, onTake, onExtra, onExtraRemove, onOpenS
             : t("Heute steht nichts auf dem Plan.")}
         </div>
       )}
+      {coach && rows.length > 0 && (
+        <div role="note" style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 6px", padding: "8px 8px 8px 10px", borderRadius: 16, background: "var(--surface-2)" }}>
+          <span aria-hidden style={{ flexShrink: 0 }}><Mascot mood="happy" size={28} /></span>
+          <span style={{ flex: 1, minWidth: 0, fontSize: "0.82rem", fontWeight: 700, lineHeight: 1.35 }}>
+            {t("Heute etwas nicht nehmen? Wisch die Zeile nach links.")}
+          </span>
+          <button className="lab-press" onClick={() => { haptic(); coachDone() }} style={{ ...linkBtn, minWidth: 44, padding: "0 8px", flexShrink: 0 }}>{t("Verstanden")}</button>
+        </div>
+      )}
       <div style={{ display: "flex", flexDirection: "column" }}>
         {rows.map((x, i) => {
           const on = took.includes(x.id)
+          const off = !on && skipList.includes(x.id)
           const at = s.tookAt[today]?.[x.id]
+          const icon = (
+            <span aria-hidden style={{ width: 38, height: 38, borderRadius: 12, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.15rem",
+              background: `color-mix(in srgb, ${suppColor(x)} 20%, var(--surface-2))`, filter: off ? "grayscale(1)" : undefined }}>{x.emoji}</span>
+          )
+          if (off) return (
+            <SwipeRow key={x.id} divider={i > 0} action={t("Rückgängig")} tone="undo" onAction={() => unskip(x)}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0" }}>
+                <button className="lab-press" onClick={() => unskip(x)} aria-label={t("{name}: heute ausgelassen – rückgängig", { name: x.name })} style={{
+                  flex: 1, minWidth: 0, minHeight: 52, display: "flex", alignItems: "center", gap: 10, padding: "4px 0", border: "none", background: "none", color: "var(--text)", textAlign: "left", opacity: 0.55,
+                }}>
+                  {icon}
+                  <span style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{ ...ellipsis, fontWeight: 800, fontSize: "0.94rem", textDecoration: "line-through", textDecorationThickness: 1.5 }}>{x.name}</span>
+                    <span style={{ ...ellipsis, fontSize: "0.76rem", lineHeight: 1.35, color: "var(--text-dim)", fontWeight: 700 }}>{t("heute ausgelassen")}</span>
+                  </span>
+                </button>
+                <button className="lab-press" onClick={() => unskip(x)} aria-hidden tabIndex={-1} style={{
+                  ...pill, minWidth: 76, padding: "0 12px", border: "1px dashed var(--border)", background: "none", color: "var(--text-dim)", fontSize: "0.78rem",
+                }}>{t("Rückgängig")}</button>
+              </div>
+            </SwipeRow>
+          )
           return (
-            <div key={x.id} style={{ display: "flex", alignItems: "center", gap: 8, borderTop: i ? "1px solid var(--border)" : undefined, padding: "4px 0" }}>
-              <button className="lab-press" onClick={() => { haptic(); seen(); setInfo(x.id) }} aria-label={t("{name}: wofür, Timing, Nebenwirkungen", { name: x.name })} style={{
+            <SwipeRow key={x.id} divider={i > 0} action={t("Heute nicht")} tone="skip" onAction={() => skip(x)} onSwipe={coachDone} hint={coach && i === 0}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0" }}>
+              <button className="lab-press" onClick={() => { haptic(); seen(); setUndo(null); setInfo(x.id) }} aria-label={t("{name}: wofür, Timing, Nebenwirkungen", { name: x.name })} style={{
                 flex: 1, minWidth: 0, minHeight: 52, display: "flex", alignItems: "center", gap: 10, padding: "4px 0", border: "none", background: "none", color: "var(--text)", textAlign: "left",
               }}>
-                <span aria-hidden style={{ width: 38, height: 38, borderRadius: 12, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.15rem",
-                  background: `color-mix(in srgb, ${suppColor(x)} 20%, var(--surface-2))` }}>{x.emoji}</span>
+                {icon}
                 <span style={{ minWidth: 0, flex: 1 }}>
                   <span style={{ ...ellipsis, fontWeight: 800, fontSize: "0.94rem" }}>{x.name}</span>
                   <span style={{ ...(libOf(x)?.claim ? { display: "block" } : { display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }), fontSize: "0.76rem", lineHeight: 1.35, color: "var(--text-dim)", fontWeight: 600 }}>{purposeShort(libOf(x))}</span>
@@ -182,6 +354,7 @@ export function StackSection({ s, today, onTake, onExtra, onExtraRemove, onOpenS
                 }}>{t("Genommen")}</button>
               )}
             </div>
+            </SwipeRow>
           )
         })}
       </div>
@@ -231,7 +404,25 @@ export function StackSection({ s, today, onTake, onExtra, onExtraRemove, onOpenS
         <button className="lab-press" onClick={() => { seen(); onAddMany() }} style={{ ...linkBtn, marginTop: 4 }}>{t("＋ Mehrere auf einmal eintragen")}</button>
       </div>
 
-      {open && <SuppInfoSheet s={s} x={open} onClose={() => setInfo(null)} onVorrat={() => { setInfo(null); onVorrat() }} onOpen={() => { setInfo(null); onOpenSupp(open.id) }} />}
+      {open && <SuppInfoSheet s={s} x={open} onClose={() => setInfo(null)} onVorrat={() => { setInfo(null); onVorrat() }} onOpen={() => { setInfo(null); onOpenSupp(open.id) }}
+        skip={rowIds.has(open.id) ? { off: skipList.includes(open.id), test: inTest(open.id), set: on => { setInfo(null); if (on) { haptic(12); skip(open) } else unskip(open) } } : undefined} />}
+
+      {undo && (
+        <div style={{ position: "fixed", left: 0, right: 0, bottom: "calc(96px + env(safe-area-inset-bottom))", zIndex: 400, display: "flex", justifyContent: "center", padding: "0 16px", pointerEvents: "none" }}>
+          <div role="status" aria-live="polite" className="lab-rise" style={{
+            pointerEvents: "auto", width: "100%", maxWidth: 440, display: "flex", alignItems: "center", gap: 10, padding: "6px 6px 6px 16px", borderRadius: 18,
+            background: "#16151f", color: "#fff", border: "1px solid rgba(255,255,255,.12)", boxShadow: "0 12px 34px rgba(0,0,0,.35)",
+          }}>
+            <span style={{ flex: 1, minWidth: 0, padding: "6px 0" }}>
+              <span style={{ display: "block", fontWeight: 800, fontSize: "0.88rem", lineHeight: 1.35 }}>{t("{name}: heute ausgelassen", { name: undo.name })}</span>
+              {undo.test && <span style={{ display: "block", fontSize: "0.76rem", fontWeight: 600, lineHeight: 1.35, color: "rgba(255,255,255,.78)", marginTop: 2 }}>{t("Im Test zählt jeder Tag – auslassen macht das Ergebnis ungenauer.")}</span>}
+            </span>
+            <button className="lab-press" onClick={() => { const x = s.supps.find(q => q.id === undo.id); if (x) unskip(x); else setUndo(null) }} style={{
+              minHeight: 44, minWidth: 44, padding: "0 14px", borderRadius: 12, border: "none", background: "rgba(255,255,255,.14)", color: "#7CF5C0", fontWeight: 900, fontSize: "0.86rem", flexShrink: 0,
+            }}>{t("Rückgängig")}</button>
+          </div>
+        </div>
+      )}
     </Section>
   )
 }
@@ -245,7 +436,11 @@ function sameText(claim: string | undefined, effect: string) {
 }
 
 /** Detail-Ebene je Supplement: wofür (lang), Timing, Vorsicht, mögliche Nebenwirkungen, Kosten. */
-function SuppInfoSheet({ s, x, onClose, onVorrat, onOpen }: { s: LabState; x: MySupp; onClose: () => void; onVorrat: () => void; onOpen: () => void }) {
+function SuppInfoSheet({ s, x, onClose, onVorrat, onOpen, skip }: {
+  s: LabState; x: MySupp; onClose: () => void; onVorrat: () => void; onOpen: () => void
+  /** Steht heute im Stack: „Heute nicht genommen“ (off = schon ausgelassen, test = läuft gerade sein Test) */
+  skip?: { off: boolean; test: boolean; set: (on: boolean) => void }
+}) {
   const lib = libOf(x)
   const sides = (lib ? LIB_SIDES[lib.id] ?? [] : []).map(id => SIDE_BY_ID[id]).filter(Boolean)
   const cost = monthlyCost(x)
@@ -284,7 +479,13 @@ function SuppInfoSheet({ s, x, onClose, onVorrat, onOpen }: { s: LabState; x: My
         : lib?.rx ? <div style={dim}>{t("Verschrieben – Kosten rechne ich hier nicht mit.")}</div>
         : <button className="lab-press" onClick={onVorrat} style={linkBtn}>{t("Preis im Vorrat eintragen ›")}</button>}
 
-      <Btn variant="soft" full onClick={onOpen} style={{ marginTop: 18 }}>{t("Im Lab ansehen ›")}</Btn>
+      {skip && <>
+        <Btn variant={skip.off ? "soft" : "ghost"} full onClick={() => skip.set(!skip.off)} style={{ marginTop: 18, minHeight: 48 }}>
+          {skip.off ? t("Auslassen rückgängig") : t("Heute nicht genommen")}
+        </Btn>
+        {skip.test && !skip.off && <div style={{ ...dim, fontSize: "0.74rem", marginTop: 6 }}>{t("Im Test zählt jeder Tag – auslassen macht das Ergebnis ungenauer.")}</div>}
+      </>}
+      <Btn variant="soft" full onClick={onOpen} style={{ marginTop: skip ? 10 : 18 }}>{t("Im Lab ansehen ›")}</Btn>
       <div style={{ ...dim, fontSize: "0.7rem", marginTop: 12 }}>{t("Kein Medizinprodukt, keine Diagnose. Bei Beschwerden, Schwangerschaft oder Medikamenten vorher mit Ärztin, Arzt oder Apotheke sprechen.")}</div>
     </Sheet>
   )

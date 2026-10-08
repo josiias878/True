@@ -30,6 +30,7 @@ export const NEW_FEATURES: NewFeature[] = [
   { id: "reactions", since: "2026-10-07" }, // Reaktionen „Durchhalten“ / „Hilfreich“
   // Heute 2.0
   { id: "today-stack", since: "2026-10-08" }, // Heute: Mein Stack, ＋ spontan, Kosten & Coach, Zustand, Weg, Community
+  { id: "skip-today", since: "2026-10-08", parent: "today-stack" }, // Mein Stack: nach links wischen = „Heute nicht“ (Kolbi-Hinweis einmalig)
 ]
 
 const KEY = "lab-new-seen"

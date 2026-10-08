@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react"
 import {
   FACES, SIDE_BY_ID, DIM_BY_ID,
-  intakeOn, phaseWindows, addDays, dayRef, nightRef, signal, testResult, suppColor, streak, timeTip, relMin, suppMinutes, extrasOn,
+  intakeOn, phaseWindows, addDays, dayRef, nightRef, signal, testResult, suppColor, streak, timeTip, relMin, suppMinutes, extrasOn, doneOn, skippedOn,
   type LabState, type CheckIn, type Scores, type Decision, type Dim,
 } from "@/lib/supplementLab"
 import { eveningDims, morningDue, morningAnswered, prefillTags, sidesOf, type ExtraInput } from "@/lib/labDay"
@@ -22,7 +22,7 @@ export type RoundStep =
 
 /** Einnahmen, die bis ca. 90 Min. von jetzt fällig sind (Tagesrhythmus ab Aufstehzeit). */
 function dueIntakes(s: LabState, today: string, now: Date) {
-  const took = s.took[today] ?? []
+  const took = doneOn(s, today) // genommen oder „Heute nicht“
   const nowRel = relMin(now.getHours() * 60 + now.getMinutes(), s.settings)
   return intakeOn(s, today).filter(id => !took.includes(id) && suppMinutes(id, s) <= nowRel + 90)
 }
@@ -54,7 +54,8 @@ export function withMorning(s: LabState, today: string, steps: RoundStep[]): Rou
 
 /** Tages-Fortschritt für Kolbis Füllstand: erledigte Einnahmen + Check-in. */
 export function dayProgress(s: LabState, today: string) {
-  const intake = intakeOn(s, today)
+  const skip = skippedOn(s, today)
+  const intake = intakeOn(s, today).filter(id => !skip.includes(id)) // „Heute nicht“ zählt nicht als offen
   const took = (s.took[today] ?? []).filter(id => intake.includes(id)).length
   const total = intake.length + 1
   return (took + (s.checkins[today] ? 1 : 0)) / total

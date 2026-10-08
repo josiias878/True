@@ -83,5 +83,14 @@ export const EN_J: Record<string, string> = {
   "noch nicht da": "not here yet",
   "Auswasch": "washout",
   "für den Reset pausiert": "paused for the reset",
-  "für den {name}-Test pausiert": "paused for the {name} test"
+  "für den {name}-Test pausiert": "paused for the {name} test",
+  "Heute nicht": "Not today",
+  "Heute nicht genommen": "Not taking it today",
+  "Auslassen rückgängig": "Undo skip",
+  "Rückgängig": "Undo",
+  "heute ausgelassen": "skipped today",
+  "{name}: heute ausgelassen": "{name}: skipped today",
+  "{name}: heute ausgelassen – rückgängig": "{name}: skipped today – undo",
+  "Im Test zählt jeder Tag – auslassen macht das Ergebnis ungenauer.": "Every day counts in a test – skipping makes the result less accurate.",
+  "Heute etwas nicht nehmen? Wisch die Zeile nach links.": "Not taking something today? Swipe the row to the left."
 }

@@ -3,7 +3,7 @@ import { LocalNotifications } from "@capacitor/local-notifications"
 import { InAppReview } from "@capacitor-community/in-app-review"
 import { setAppPlatform, setNativeReview } from "@/lib/labGrow"
 import { emitNotifTaken, setNativeScheduler, upcomingNotifications } from "@/lib/labReminders"
-import { nowTime, todayIso, type LabState } from "@/lib/supplementLab"
+import { doneOn, nowTime, todayIso, type LabState } from "@/lib/supplementLab"
 import { t } from "@/lib/labI18n"
 
 /** „Später“ = in so vielen Minuten noch einmal erinnern. */
@@ -76,7 +76,7 @@ export async function initNative(): Promise<boolean> {
         const list = upcomingNotifications(s)
         // Verschobene Erinnerungen („Später“) bleiben beim Neu-Planen erhalten – außer alles ist schon abgehakt
         const snoozed = readSnoozed().filter(x => x.at > Date.now() && !(x.extra.suppIds && x.extra.date &&
-          x.extra.suppIds.split(",").every(id => (s.took[x.extra.date!] ?? []).includes(id))))
+          x.extra.suppIds.split(",").every(id => doneOn(s, x.extra.date!).includes(id))))
         writeSnoozed(snoozed)
         const key = JSON.stringify([list.map(n => [n.id, +n.at]), snoozed.map(x => [x.id, x.at])])
         if (key === lastKey) return

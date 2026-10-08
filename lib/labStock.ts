@@ -3,7 +3,7 @@
 // Dosis gegen die übliche Tagesmenge und erinnert rechtzeitig ans Nachkaufen.
 
 import {
-  addDays, intakeOn, libOf, todayIso, isHere, looksPrescribed, STORE_MODE,
+  addDays, intakeOn, libOf, todayIso, isHere, looksPrescribed, STORE_MODE, skippedOn,
   type LabState, type LibSupp, type MySupp, type Stock, type StockForm,
 } from "./supplementLab"
 import { t, euro, isEn, LOCALE } from "./labI18n"
@@ -42,7 +42,7 @@ function usedSince(s: LabState, id: string, from: string) {
   const lib = s.supps.find(x => x.id === id)?.lib
   let n = 0
   for (let d = addDays(from, 1), k = 0; d <= today && k < 800; d = addDays(d, 1), k++) {
-    if ((s.took[d] ?? []).includes(id) || intakeOn(s, d).includes(id) || (s.extra?.[d] ?? []).some(e => e.supp === id || (!!lib && e.lib === lib))) n++
+    if ((s.took[d] ?? []).includes(id) || (intakeOn(s, d).includes(id) && !skippedOn(s, d).includes(id)) || (s.extra?.[d] ?? []).some(e => e.supp === id || (!!lib && e.lib === lib))) n++
   }
   return n
 }

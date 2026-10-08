@@ -4,7 +4,7 @@
 import React, { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import {
-  FACES, STORE_MODE, addDays, dayRef, nightRef, checkinOpensMin, daySum, fmtCountdown, fromMin, intakeOn, streak, extrasOn,
+  FACES, STORE_MODE, addDays, dayRef, nightRef, checkinOpensMin, daySum, fmtCountdown, fromMin, intakeOn, streak, extrasOn, skippedOn,
   type LabState, type PhaseWindow,
 } from "@/lib/supplementLab"
 import { sidesOf, type ExtraInput } from "@/lib/labDay"
@@ -91,14 +91,14 @@ function greeting(now: Date) {
 
 type Main = "notStarted" | "reveal" | "morning" | "take" | "checkin" | "locked" | "done"
 
-export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, recap, onRecap, pushHint, onPush, onAction, onRound, onTakeAll, onTake, onMorning, onUnlock, onCheckin, onPhase, goTab, onVorrat, onExtra, onExtraRemove, onOpenSupp, onOpenLab, onAddMany }: {
+export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, recap, onRecap, pushHint, onPush, onAction, onRound, onTakeAll, onTake, onSkip, onMorning, onUnlock, onCheckin, onPhase, goTab, onVorrat, onExtra, onExtraRemove, onOpenSupp, onOpenLab, onAddMany }: {
   s: LabState; wins: PhaseWindow[]; today: string; now: Date; pending: RoundStep[]; checkinLocked: boolean; tips: CoachMsg[]
   /** Wochenrückblick bereit und noch nicht gesehen → schmale Zeile unter der Hauptsache */
   recap: { ready: boolean; end: string }; onRecap: () => void
   /** Erinnerungen an, aber Push aus („off“: einschaltbar) bzw. blockiert („denied“) → dezenter Hinweis */
   pushHint: "off" | "denied" | null; onPush: () => void
   onAction: (a: CoachAction, id: string) => void
-  onRound: (steps: RoundStep[]) => void; onTakeAll: (ids: string[]) => void; onTake: (id: string) => void
+  onRound: (steps: RoundStep[]) => void; onTakeAll: (ids: string[]) => void; onTake: (id: string) => void; onSkip: (id: string, on: boolean) => void
   onMorning: (v: { sleep?: number; fit?: number }) => void; onUnlock: () => void; onCheckin: (d: string) => void
   onPhase: (w: PhaseWindow) => void; goTab: (t: string) => void; onVorrat: () => void
   onExtra: (date: string, item: ExtraInput, label: string) => void; onExtraRemove: (date: string, id: string) => void
@@ -268,7 +268,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
       {showTip && <KolbiSays msg={top} more={tips.length - 1} onAction={onAction} onMore={() => goTab("kolbi")} tail={!showRecap} />}
 
       {/* ── Feste Bereiche: Stack · Kosten & Coach · Zustand · Weg · Community ── */}
-      <StackSection s={s} today={today} onTake={onTake} onExtra={onExtra} onExtraRemove={onExtraRemove} onOpenSupp={onOpenSupp} onVorrat={onVorrat} onAddMany={onAddMany} goTab={goTab} />
+      <StackSection s={s} today={today} onTake={onTake} onSkip={onSkip} onExtra={onExtra} onExtraRemove={onExtraRemove} onOpenSupp={onOpenSupp} onVorrat={onVorrat} onAddMany={onAddMany} goTab={goTab} />
       <CostSection s={s} today={today} onVorrat={onVorrat} onAction={onAction} />
       <StateSection s={s} today={today} onOpen={() => goTab("reise")} />
       <WaySection s={s} today={today} stops={road.stops} onOpen={() => setSheet(w?.kind === "baseline" && !notStarted ? "normal" : "day")} />
@@ -300,6 +300,8 @@ export function QuickSheet({ s, today, now, checkinLocked, onClose, onTake, onDa
   const [view, setView] = useState<"menu" | "take">("menu")
   const intake = intakeOn(s, today)
   const took = s.took[today] ?? []
+  const skip = skippedOn(s, today)
+  const open = intake.filter(id => !skip.includes(id)) // „Heute nicht“ zählt nicht mit
   const checked = s.checkins[today]
   const nx = extrasOn(s, today).length
   const ns = Object.keys(sidesOf(s, today).sides).length
@@ -320,7 +322,7 @@ export function QuickSheet({ s, today, now, checkinLocked, onClose, onTake, onDa
       {view === "menu" ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {tile("✓", t("Genommen"), intake.length ? t("{n} von {total} heute", { n: took.filter(id => intake.includes(id)).length, total: intake.length }) : t("Heute nichts geplant"), () => { markSeen("taken-check"); setView("take") }, <NewBadge id="taken-check" style={{ position: "absolute", top: 14, right: 12 }} />)}
+            {tile("✓", t("Genommen"), open.length ? t("{n} von {total} heute", { n: took.filter(id => open.includes(id)).length, total: open.length }) : t("Heute nichts geplant"), () => { markSeen("taken-check"); setView("take") }, <NewBadge id="taken-check" style={{ position: "absolute", top: 14, right: 12 }} />)}
             {tile("➕", t("Zusätzlich"), t("außerhalb deines Plans"), () => { markSeen("extra-taken"); onClose(); onDay("take") }, <>{count(nx)}<NewBadge id="extra-taken" style={{ position: "absolute", top: 14, right: nx ? 40 : 12 }} /></>)}
             {tile("🤕", t("Beschwerde"), t("tagsüber notieren"), () => { markSeen("complaints"); onClose(); onDay("sides") }, <>{count(ns)}<NewBadge id="complaints" style={{ position: "absolute", top: 14, right: ns ? 40 : 12 }} /></>)}
             {tile("📝", t("Check-in"), checked ? t("Heute {v}★ · ändern", { v: fmt(daySum(checked)) }) : locked ? t("ab {time}", { time: clock(fromMin(checkinOpensMin(s))) }) : t("1 Minute"),
@@ -334,13 +336,16 @@ export function QuickSheet({ s, today, now, checkinLocked, onClose, onTake, onDa
           {intake.map(id => {
             const x = s.supps.find(q => q.id === id)
             const on = took.includes(id)
+            const off = !on && skip.includes(id)
             return (
               <button key={id} onClick={() => { haptic(10); onTake(id) }} className="lab-press" aria-pressed={on} style={{
+                opacity: off ? 0.6 : 1,
                 display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 18, textAlign: "left", color: "var(--text)",
                 border: on ? "2px solid var(--accent)" : "1px solid var(--border)", background: on ? "var(--accent-dim)" : "var(--surface)",
               }}>
                 <span style={{ fontSize: "1.3rem" }}>{x?.emoji ?? "💊"}</span>
                 <span style={{ flex: 1, minWidth: 0, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{x?.name}</span>
+                {off && <span style={{ fontSize: "0.74rem", fontWeight: 700, color: "var(--text-dim)", whiteSpace: "nowrap" }}>{t("heute ausgelassen")}</span>}
                 <span style={{ width: 28, height: 28, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, background: on ? "var(--accent)" : "var(--surface-2)", color: on ? "#fff" : "var(--text-dim)" }}>{on ? "✓" : ""}</span>
               </button>
             )

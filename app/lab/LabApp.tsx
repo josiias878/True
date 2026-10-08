@@ -4,7 +4,7 @@ import Link from "next/link"
 import Confetti from "@/components/Confetti"
 import {
   DIMS, FACES, FACE_LABELS, ONSET_INFO, SIDE_EFFECTS, SIDE_BY_ID, LIB_SIDES, knownSides, ROUTE_INFO, SLOTS, BADGES, GOALS,
-  loadState, saveState, emptyState, demoState, computeBadges, levelFor, streak, hydrate,
+  loadState, saveState, emptyState, demoState, computeBadges, levelFor, streak, hydrate, setSkipped,
   phaseWindows, phaseAt, testResult, checkinsIn, buildStack, allowedSlots, slotTime, slotFor, stackMembers, intakeOn,
   STORE_MODE, LAB_BASE, todayIso, setDayBoundary, addDays, diffDays, fmtDate, suppColor, daySum, activeDims, signal, libOf, makeSupp, defaultCheckinTime,
   nextCandidates, suppStatus, takingInfo, avgIntakeMinutes, phaseEndsAt, fmtCountdown, nowTime, closeActive, looksPrescribed,
@@ -110,6 +110,7 @@ function quickCheckin(s: LabState, date: string, v: number): CheckIn {
 
 function markTaken(p: LabState, date: string, id: string) {
   p.took[date] = [...new Set([...(p.took[date] ?? []), id])]
+  setSkipped(p, date, id, false) // doch genommen → „Heute nicht“ aufheben
   if (date === todayIso()) p.tookAt[date] = { ...(p.tookAt[date] ?? {}), [id]: nowTime() }
 }
 
@@ -483,6 +484,10 @@ export default function LabApp() {
       return p
     }, on ? undefined : { amount: 5, label: t("Eingenommen") })
   }, [s.took, today, update])
+  /** „Heute nicht“ (Wischen bzw. Knopf im Detail) setzen oder aufheben – entfernt einen Genommen-Haken für heute. */
+  const skipToday = useCallback((id: string, on: boolean) => {
+    update(p => { setSkipped(p, today, id, on); return p })
+  }, [today, update])
 
   // Aktionen aus Kolbis Tipps
   const runAction = useCallback((a: CoachAction, msgId: string) => {
@@ -659,7 +664,7 @@ export default function LabApp() {
             tips={msgs.filter(m => !(m.id === "checkin" || m.id.startsWith("take-") || m.id.startsWith("verdict-") || m.id.startsWith("low-") || m.id.startsWith("phase-")))}
             recap={recapAvailable(s, now, today)} onRecap={() => setRecapEnd(recapWeekEnd(now, today))}
             pushHint={s.reminders.enabled && !hasNativeReminders() && (pushSt === "off" || pushSt === "denied") ? pushSt : null} onPush={turnOnPush}
-            onAction={runAction} onRound={steps => setRound(steps)} onTakeAll={takeAll} onTake={toggleTook} onMorning={saveMorningV}
+            onAction={runAction} onRound={steps => setRound(steps)} onTakeAll={takeAll} onTake={toggleTook} onSkip={skipToday} onMorning={saveMorningV}
             onUnlock={() => { setUnlockedFor(today); setRound(roundSteps(s, today, now, false)) }}
             onCheckin={setCheckinDate} onPhase={setPhaseSheet} goTab={goTab} onVorrat={() => { setLab(null); setLaborView("vorrat"); goTab("labor") }}
             onExtra={addExtraV} onExtraRemove={removeExtraV} onAddMany={() => setAddMany(true)}

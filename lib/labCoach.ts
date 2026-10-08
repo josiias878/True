@@ -6,7 +6,7 @@ import {
   DIMS, LIB_BY_ID, ONSET_INFO, SLOTS, SIDE_BY_ID,
   phaseWindows, phaseAt, checkinsIn, nextCandidates, signal, testResult, intakeOn, slotFor, slotMinutes, slotTime,
   avgIntakeMinutes, meanScore, libOf, defaultMode, todayIso, addDays, diffDays, fmtDate, fromMin, toMin, daySum,
-  suppMinutes, suppTime, recentIntake, relMin, isHere,
+  suppMinutes, suppTime, recentIntake, relMin, isHere, doneOn,
   type LabState, type Decision, type PhaseWindow,
 } from "./supplementLab"
 import { partnerTips, recentSides, sideCauses } from "./labKnowledge"
@@ -226,7 +226,7 @@ export function coach(s: LabState, now = new Date(), dismissed: string[] = []): 
   }
 
   // ── Einnahme fällig
-  const took = s.took[today] ?? []
+  const took = doneOn(s, today) // „Heute nicht“ ausgelassen = nicht mehr fällig
   for (const id of intakeOn(s, today)) {
     if (took.includes(id)) continue
     const at = suppMinutes(id, s)

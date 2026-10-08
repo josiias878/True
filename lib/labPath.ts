@@ -2,7 +2,7 @@
 // Was heute noch ansteht und was in den nächsten Tagen passiert — als Stationen auf einer Strecke.
 
 import {
-  addDays, checkinOpensMin, diffDays, fromMin, intakeOn, morningMin, nextCandidates, phaseWindows, relMin, stackMembers, streak, suppColor, suppMinutes,
+  addDays, checkinOpensMin, diffDays, fromMin, intakeOn, skippedOn, morningMin, nextCandidates, phaseWindows, relMin, stackMembers, streak, suppColor, suppMinutes,
   type LabState,
 } from "./supplementLab"
 import { morningAnswered, morningDue } from "./labDay"
@@ -57,9 +57,10 @@ export function pathStops(s: LabState, today: string, now: Date, checkinLocked: 
       if (!x) continue
       const at = suppMinutes(id, s)
       const done = took.includes(id)
+      const skip = !done && skippedOn(s, today).includes(id)
       add({ key: `take-${id}`, date: today, kind: "take", emoji: x.emoji, suppId: id, color: suppColor(x),
-        title: x.name, sub: done ? `✓ ${s.tookAt[today]?.[id] ?? ""}`.trim() : clock(fromMin(at)),
-        state: done ? "done" : nowRel >= at - 15 ? "now" : "future" })
+        title: x.name, sub: done ? `✓ ${s.tookAt[today]?.[id] ?? ""}`.trim() : skip ? t("heute ausgelassen") : clock(fromMin(at)),
+        state: done || skip ? "done" : nowRel >= at - 15 ? "now" : "future" })
     }
     for (const p of wins) {
       if (p.kind === "test" && p.suppId && p.end < today && !s.verdicts[p.suppId])

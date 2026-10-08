@@ -4,7 +4,7 @@
 
 import {
   LIB_BY_ID, SLOTS, phaseWindows, intakeOn, slotFor, slotMinutes, suppMinutes, fromMin, toMin, todayIso, addDays, diffDays, libOf, streak,
-  STORAGE_KEY, hydrate, saveState, STORE_MODE, LAB_BASE, isHere, morningMin, type LabState, type SlotId,
+  STORAGE_KEY, hydrate, saveState, STORE_MODE, LAB_BASE, isHere, morningMin, doneOn, skippedOn, setSkipped, type LabState, type SlotId,
 } from "./supplementLab"
 import { morningAnswered } from "./labDay"
 import { partnerTips } from "./labKnowledge"
@@ -181,7 +181,7 @@ export function notificationPlan(s: LabState, days = 7, now = new Date()): Plann
 
     // Einnahmen, gebündelt pro Tageszeit
     if (s.reminders.intake) {
-      const took = date === today ? (s.took[date] ?? []) : []
+      const took = date === today ? doneOn(s, date) : skippedOn(s, date) // genommen oder „Heute nicht“ → keine Erinnerung
       // gebündelt nach Uhrzeit (persönliche Zeit oder Kolbis Tageszeit)
       const groups = new Map<number, string[]>()
       for (const id of intakeOn(s, date)) {
@@ -329,6 +329,7 @@ export function applyTaken(s: LabState, a: NotifTaken): string[] {
   const ids = a.ids.filter(id => s.supps.some(x => x.id === id) && !(s.took[a.date] ?? []).includes(id))
   if (!ids.length) return []
   s.took[a.date] = [...new Set([...(s.took[a.date] ?? []), ...ids])]
+  ids.forEach(id => setSkipped(s, a.date, id, false))
   if (a.at) s.tookAt[a.date] = { ...Object.fromEntries(ids.map(id => [id, a.at!])), ...(s.tookAt[a.date] ?? {}) }
   return ids
 }
