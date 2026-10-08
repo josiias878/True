@@ -16,7 +16,7 @@ export const EN_J: Record<string, string> = {
   "Eigenes Mittel": "Your own item",
   "Einfach alle Namen mit Komma oder je Zeile eintippen – Unbekanntes lege ich als eigenes Mittel an.": "Just type all the names, separated by commas or one per line – anything I don't know becomes your own item.",
   "Entdecken öffnen": "Open Discover",
-  "Faustregel: Halbwertszeit bei vielen ca. 5 h, je nach Mensch 3–7 h.": "Rule of thumb: half-life about 5 h for many people, 3–7 h depending on the person.",
+  "Faustregel: Halbwertszeit bei vielen ca. 5 h, je nach Mensch 3–7 h – so lange dauert es, bis etwa die Hälfte abgebaut ist.": "Rule of thumb: half-life about 5 h for many people, 3–7 h depending on the person – that's roughly how long it takes for half of it to be gone.",
   "Gerade kein Test": "No test right now",
   "Heute steht nichts auf dem Plan.": "Nothing on the plan today.",
   "Im Lab ansehen ›": "View in the lab ›",
@@ -70,7 +70,7 @@ export const EN_J: Record<string, string> = {
   "· {n} Tests": "· {n} tests",
   "· {n} ohne Preis": "· {n} without price",
   "Ø 7 Tage {v}★": "7-day avg {v}★",
-  "☕ {time} · wirkt grob noch bis ca. {from}–{to} Uhr": "☕ {time} · for many, roughly active until about {from}–{to}",
+  "☕ {time} · Hälfte grob abgebaut ca. {from}–{to} Uhr": "☕ {time} · half roughly gone around {from}–{to}",
   "✂️ Gespart: {price}/Monat durch Aussortiertes": "✂️ Saved: {price}/month on what you dropped",
   "✓ 1 Supplement hinzugefügt": "✓ 1 supplement added",
   "✓ {n} Supplements hinzugefügt": "✓ {n} supplements added",
@@ -80,5 +80,8 @@ export const EN_J: Record<string, string> = {
   "🎁 Ergebnis am {date}": "🎁 Result on {date}",
   "🎁 Ergebnis heute": "🎁 Result today",
   "Pausiert: {names}": "Paused: {names}",
-  "{name} (noch nicht da)": "{name} (not here yet)"
+  "noch nicht da": "not here yet",
+  "Auswasch": "washout",
+  "für den Reset pausiert": "paused for the reset",
+  "für den {name}-Test pausiert": "paused for the {name} test"
 }

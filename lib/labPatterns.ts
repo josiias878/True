@@ -3,7 +3,7 @@
 // ausgelassene Einnahmen und Einnahme-Uhrzeit. Nur Hinweise – keine Beweise.
 
 import {
-  DIMS, TAGS, addDays, daySum, tagLabel, intakeOn, libOf, relMin, toMin, fromMin, evalCheckin, extraKey, extraLabel, extraEmoji, LIB_BY_ID,
+  DIMS, TAGS, addDays, daySum, tagLabel, intakeOn, libOf, relMin, toMin, fromMin, evalCheckin, extraKey, extraLabel, isAlcoholExtra, extraEmoji, LIB_BY_ID,
   type CheckIn, type Dim, type LabState,
 } from "./supplementLab"
 import { t } from "./labI18n"
@@ -84,6 +84,7 @@ export function findPatterns(s: LabState): Pattern[] {
   // Nur Check-in-Tage zählen; ohne Check-in am Vortag ist der Folgetag unbekannt und fällt raus.
   const extraKeys = new Map<string, { label: string; emoji: string; dates: Set<string> }>()
   for (const [date, list] of Object.entries(s.extra ?? {})) for (const x of list) {
+    if (isAlcoholExtra(x)) continue // Alkohol zählt als Störfaktor-Tag (oben), nicht doppelt
     const k = extraKey(x)
     const cur = extraKeys.get(k) ?? { label: extraLabel(x), emoji: extraEmoji(x), dates: new Set<string>() }
     cur.dates.add(date)

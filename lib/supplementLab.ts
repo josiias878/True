@@ -459,11 +459,11 @@ const ALL_LIBRARY: LibSupp[] = [
   { id: "b12", name: "Vitamin B12", emoji: "🔋", category: "Vitamine & Mineralien", onset: "langsam",
     slots: ["fruehstueck", "nuechtern"], dose: t("250–1.000 µg"), watch: ["energie", "fokus"],
     effect: t("Nerven & Blutbildung. Spürbar vor allem bei Mangel (vegan!)."),
-    timing: t("Morgens — kann bei manchen leicht aktivierend wirken."), aliases: ["b12", "b 12", "vitamin b12", "cobalamin", "methylcobalamin"] },
+    timing: t("Morgens — kann bei manchen leicht aktivierend wirken."), aliases: ["b12", "b 12", "vitamin b12", "vitamin b 12", "cobalamin", "methylcobalamin"] },
   { id: "bkomplex", name: t("B-Komplex"), emoji: "🅱️", category: "Vitamine & Mineralien", onset: "mittel",
     slots: ["fruehstueck"], dose: t("1 Kapsel"), watch: ["energie", "stimmung"],
     effect: t("Energiestoffwechsel. Färbt den Urin gelb — harmlos."),
-    timing: t("Morgens zum Frühstück, nicht abends (kann wach halten)."), aliases: ["b-komplex", "b komplex", "b complex", "b-complex", "b-vitamine", "vitamin b komplex", "vitamin b "] },
+    timing: t("Morgens zum Frühstück, nicht abends (kann wach halten)."), aliases: ["b-komplex", "b komplex", "b complex", "b-complex", "b-vitamine", "vitamin b komplex", "vitamin-b-komplex"] },
   { id: "vitc", name: "Vitamin C", emoji: "🍊", category: "Darm & Immun", onset: "mittel",
     slots: ["fruehstueck", "mittag"], dose: "200–500 mg", watch: ["koerper", "haut"],
     effect: t("Trägt zu normalem Immunsystem und normaler Kollagenbildung bei, erhöht die Eisenaufnahme."),
@@ -1254,6 +1254,8 @@ export function extraLabel(x: Pick<ExtraIntake, "lib" | "name">) {
 export function extraEmoji(x: Pick<ExtraIntake, "lib" | "emoji">) {
   return x.emoji ?? (x.lib ? LIB_BY_ID[x.lib]?.emoji : undefined) ?? "💊"
 }
+/** Alkohol per Heute-Chip (freier Name „Alkohol“) – zählt als Check-in-Störfaktor „Alkohol“, nicht als Extra-Einnahme. */
+export const isAlcoholExtra = (x: Pick<ExtraIntake, "lib" | "name">) => !x.lib && x.name.trim().toLowerCase() === "alkohol"
 export function extrasOn(s: Pick<LabState, "extra">, date: string): ExtraIntake[] { return s.extra?.[date] ?? [] }
 
 /** Extra-Einnahmen in einem Fenster: [Anzeige-Name, Tage] – wie Störfaktoren (Tag markiert, nicht herausgerechnet). */
@@ -1262,6 +1264,7 @@ function extraCounts(s: LabState, cs: CheckIn[]): [string, number][] {
   for (const c of cs) {
     const seen = new Set<string>()
     for (const x of extrasOn(s, c.date)) {
+      if (isAlcoholExtra(x)) continue // zählt schon als Störfaktor-Tag „Alkohol“
       const k = extraKey(x)
       if (seen.has(k)) continue
       seen.add(k)

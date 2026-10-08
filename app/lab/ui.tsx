@@ -9,6 +9,8 @@ import { t } from "@/lib/labI18n"
 // ── Lab-Styles (Animationen & wiederverwendbare Klassen) ────────────────────────
 
 export const LAB_CSS = `
+.lab { --accent-ink: #0f7a52; }
+html.dark .lab { --accent-ink: var(--accent); }
 .lab { --lab-grad: linear-gradient(135deg, #2ECC8A 0%, #1baf9a 45%, #3987e5 100%); --lab-radius: 24px; }
 .lab-card { background: var(--surface); border: 1px solid var(--glass-line, color-mix(in srgb, var(--border) 70%, transparent)); border-radius: var(--lab-radius); box-shadow: inset 0 1px 0 var(--glass-edge, transparent), 0 1px 2px rgba(0,0,0,.04), 0 10px 30px rgba(20,30,60,.07); }
 .lab { --glass: rgba(255,255,255,.58); --glass-strong: rgba(255,255,255,.78); --glass-edge: rgba(255,255,255,.95); --glass-line: rgba(20,24,40,.08); --glass-shadow: 0 10px 40px rgba(20,30,60,.14), 0 2px 6px rgba(20,30,60,.05); }

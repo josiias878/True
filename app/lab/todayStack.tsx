@@ -27,11 +27,20 @@ import { PublicAvatar, ago, decisionInfo, signed, useSocialOn } from "./social"
 const NEW_ID = "today-stack"
 const seen = () => markSeen(NEW_ID)
 
+/** Abkürzungen, an denen kein Satz endet (v. a., z. B., ca., u. a. …). */
+const ABBR = /(?:(?:^|\s)[A-Za-z]|\bv\. ?a|\bz\. ?B|\bu\. ?a|\bca|\bbzw|\bevtl|\bggf|\binkl|\bgem|\bvgl|\be\.g|\bi\.e|\bapprox|\betc|\bvs|\bincl)$/i
+function firstSentence(text: string) {
+  const re = /[.!?]\s+/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(text))) if (!ABBR.test(text.slice(0, m.index))) return text.slice(0, m.index)
+  return text
+}
+
 /** Kurzes „wofür“: zugelassener Claim, sonst der erste Satz des vorsichtigen Bibliothekstexts. */
 export function purposeShort(lib: LibSupp | undefined): string {
   if (!lib) return t("Eigenes Mittel")
   if (lib.claim) return lib.claim
-  return lib.effect.split(/[.!?]\s+|\s+[—–]\s+/)[0].replace(/[.;,]\s*$/, "")
+  return firstSentence(lib.effect.split(/\s+[—–]\s+/)[0]).replace(/[.;,]\s*$/, "")
 }
 
 // ── Gemeinsame Karte ──────────────────────────────────────────────────────────
@@ -57,7 +66,7 @@ function Section({ title, badge, onMore, moreLabel, children }: {
 const dim: React.CSSProperties = { fontSize: "0.78rem", color: "var(--text-dim)", lineHeight: 1.4 }
 const ellipsis: React.CSSProperties = { display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }
 const linkBtn: React.CSSProperties = {
-  minHeight: 44, padding: "0 4px", border: "none", background: "none", color: "var(--accent)", fontWeight: 800, fontSize: "0.84rem", cursor: "pointer", textAlign: "left",
+  minHeight: 44, padding: "0 4px", border: "none", background: "none", color: "var(--accent-ink)", fontWeight: 800, fontSize: "0.84rem", cursor: "pointer", textAlign: "left",
 }
 
 /** Stundenangabe für die Koffein-Faustregel: „14“ (+ „Uhr“ im Satz) bzw. „2 pm“. */
@@ -78,21 +87,32 @@ export function StackSection({ s, today, onTake, onExtra, onExtraRemove, onOpenS
   const took = s.took[today] ?? []
   // Alles, was du gerade nimmst: heutiger Plan + Durchgehendes + Behaltenes (auch außerhalb von Stack-Phasen).
   // Bewusst pausiert (Auswasch/Beobachtung eines Tests, „noch nicht da“, Status Pause) → dezente Zeile; „Raus“ fehlt ganz.
-  const pausedNow = (x: MySupp) => !isHere(x) || x.mode === "pause" || ((w?.kind === "washout" || w?.kind === "check") && w.suppId === x.id)
-  const current = (x: MySupp) => s.verdicts[x.id]?.decision !== "drop" && (intake.includes(x.id) || x.mode === "konstant" || s.verdicts[x.id]?.decision === "keep")
-  const inReset = w?.kind === "baseline"
+  // Alles, was du gerade nimmst. Reset/Test/Auswasch bleiben isoliert (wie intakeOn): dort nur der Tagesplan,
+  // Behaltenes steht in „Pausiert“ mit Grund. Sonst: Plan + Durchgehendes + Behaltenes. „Raus“ fehlt ganz.
+  const isolated = w?.kind === "baseline" || w?.kind === "test" || w?.kind === "washout"
+  const kept = (x: MySupp) => s.verdicts[x.id]?.decision === "keep"
+  const current = (x: MySupp) => s.verdicts[x.id]?.decision !== "drop" && x.mode !== "pause" && (x.mode === "konstant" || kept(x))
+  const phaseSupp = w?.suppId ? s.supps.find(x => x.id === w.suppId)?.name ?? "" : ""
   const rows = [
     ...intake.map(id => s.supps.find(x => x.id === id)).filter((x): x is MySupp => !!x),
-    ...(inReset ? [] : s.supps.filter(x => !intake.includes(x.id) && current(x) && !pausedNow(x) && !libOf(x)?.weekly)),
+    ...(isolated ? [] : s.supps.filter(x => !intake.includes(x.id) && current(x) && isHere(x) && !libOf(x)?.weekly && !(w?.kind === "check" && w.suppId === x.id))),
   ]
-  const paused = s.supps.filter(x => !rows.includes(x) && s.verdicts[x.id]?.decision !== "drop" && pausedNow(x)
-    && (x.mode === "konstant" || s.verdicts[x.id]?.decision === "keep" || !isHere(x) || ((w?.kind === "washout" || w?.kind === "check") && w.suppId === x.id)))
+  const paused: { x: MySupp; why: string }[] = []
+  for (const x of s.supps) {
+    if (rows.includes(x) || s.verdicts[x.id]?.decision === "drop" || libOf(x)?.weekly) continue
+    if (!isHere(x) && (current(x) || x.mode === "test")) paused.push({ x, why: t("noch nicht da") })
+    else if (x.mode === "pause" && kept(x)) paused.push({ x, why: "" })
+    else if (w?.kind === "washout" && w.suppId === x.id) paused.push({ x, why: t("Auswasch") })
+    else if (w?.kind === "check" && w.suppId === x.id) paused.push({ x, why: t("Beobachtung") })
+    else if (isolated && current(x)) paused.push({ x, why: w?.kind === "baseline" ? t("für den Reset pausiert") : t("für den {name}-Test pausiert", { name: phaseSupp }) })
+  }
+  const pausedIds = new Set(paused.map(p => p.x.id))
   const rowIds = new Set(rows.map(x => x.id))
   const plannedLibs = new Set(rows.map(x => x.lib ?? x.id))
   const extras = extrasOn(s, today)
   const caf = caffeineToday(s, today)
   // Wartet noch auf seinen Test (nicht im heutigen Plan)
-  const later = s.supps.filter(x => isHere(x) && x.mode === "test" && !rowIds.has(x.id) && !paused.includes(x) && !s.verdicts[x.id]
+  const later = s.supps.filter(x => isHere(x) && x.mode === "test" && !rowIds.has(x.id) && !pausedIds.has(x.id) && !s.verdicts[x.id]
     && !wins.some(p => p.kind === "test" && p.suppId === x.id && p.end < today))
 
   // ＋ spontan: Kaffee, Alkohol und die 3 häufigsten Extras bzw. eigenen Mittel
@@ -103,18 +123,21 @@ export function StackSection({ s, today, onTake, onExtra, onExtraRemove, onOpenS
     ...(coffee && rowIds.has(coffee.id) ? [] : [{ key: "koffein", emoji: "☕", label: t("Kaffee"), item: coffee ? { supp: coffee.id } : { lib: "koffein" } } as Chip]),
     { key: "n:alkohol", emoji: "🍷", label: t("Alkohol"), item: { name: "Alkohol", emoji: "🍷" } },
   ]
+  // Keine Chips für: Stack-Zeilen, Test-Kandidaten ohne Urteil, Behaltenes während Reset/Test/Auswasch
+  const noChip = (x: MySupp | undefined) => !!x && (rowIds.has(x.id) || (x.mode === "test" && !s.verdicts[x.id]) || (isolated && kept(x)))
+  const mineBy = (lib?: string, supp?: string) => s.supps.find(x => (supp && x.id === supp) || (lib && x.lib === lib))
   const taken = new Set(chips.map(c => c.key))
   for (const r of recentExtras(s, 12)) {
     if (chips.length >= 5) break
     const k = r.lib ?? r.key
-    if (taken.has(k) || taken.has(r.key) || (r.lib && plannedLibs.has(r.lib)) || (r.supp && rowIds.has(r.supp))) continue
+    if (taken.has(k) || taken.has(r.key) || (r.lib && plannedLibs.has(r.lib)) || (r.supp && rowIds.has(r.supp)) || noChip(mineBy(r.lib, r.supp))) continue
     taken.add(k); taken.add(r.key)
     chips.push({ key: r.key, emoji: r.emoji, label: r.name, item: { ...(r.lib ? { lib: r.lib } : {}), ...(r.supp ? { supp: r.supp } : {}), name: r.name } })
   }
   for (const x of s.supps) {
     if (chips.length >= 5) break
     const k = x.lib ?? x.id
-    if (taken.has(k) || rowIds.has(x.id) || plannedLibs.has(k) || !isHere(x) || libOf(x)?.rx || libOf(x)?.weekly) continue
+    if (taken.has(k) || noChip(x) || plannedLibs.has(k) || !isHere(x) || libOf(x)?.rx || libOf(x)?.weekly) continue
     taken.add(k)
     chips.push({ key: k, emoji: x.emoji, label: x.name, item: { supp: x.id } })
   }
@@ -145,12 +168,12 @@ export function StackSection({ s, today, onTake, onExtra, onExtraRemove, onOpenS
                   background: `color-mix(in srgb, ${suppColor(x)} 20%, var(--surface-2))` }}>{x.emoji}</span>
                 <span style={{ minWidth: 0, flex: 1 }}>
                   <span style={{ ...ellipsis, fontWeight: 800, fontSize: "0.94rem" }}>{x.name}</span>
-                  <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", fontSize: "0.76rem", lineHeight: 1.35, color: "var(--text-dim)", fontWeight: 600 }}>{purposeShort(libOf(x))}</span>
+                  <span style={{ ...(libOf(x)?.claim ? { display: "block" } : { display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }), fontSize: "0.76rem", lineHeight: 1.35, color: "var(--text-dim)", fontWeight: 600 }}>{purposeShort(libOf(x))}</span>
                 </span>
               </button>
               {on ? (
                 <button className="lab-press" aria-pressed onClick={() => { haptic(8); onTake(x.id) }} aria-label={t("{name} genommen – rückgängig", { name: x.name })} style={{
-                  ...pill, minWidth: 76, padding: "0 12px", border: "none", background: "var(--accent-dim)", color: "var(--accent)", fontVariantNumeric: "tabular-nums",
+                  ...pill, minWidth: 76, padding: "0 12px", border: "none", background: "var(--accent-dim)", color: "var(--accent-ink)", fontVariantNumeric: "tabular-nums",
                 }}>✓{at ? ` ${at}` : ""}</button>
               ) : (
                 <button className="lab-press" aria-pressed={false} onClick={() => { haptic(12); seen(); onTake(x.id) }} style={{
@@ -169,7 +192,7 @@ export function StackSection({ s, today, onTake, onExtra, onExtraRemove, onOpenS
 
       {paused.length > 0 && (
         <div style={{ ...dim, fontSize: "0.76rem", padding: "6px 0 2px" }}>
-          <span style={ellipsis}>⏸️ {t("Pausiert: {names}", { names: paused.map(x => !isHere(x) ? t("{name} (noch nicht da)", { name: x.name }) : x.name).join(", ") })}</span>
+          <span>⏸️ {t("Pausiert: {names}", { names: paused.map(p => p.why ? `${p.x.name} – ${p.why}` : p.x.name).join(" · ") })}</span>
         </div>
       )}
       {/* ＋ spontan */}
@@ -188,7 +211,7 @@ export function StackSection({ s, today, onTake, onExtra, onExtraRemove, onOpenS
               }}>
                 <span aria-hidden>{c.emoji}</span>
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>{c.label}</span>
-                {n > 0 ? <span style={{ fontVariantNumeric: "tabular-nums", color: "var(--accent)" }}>✓{n > 1 ? ` ${n}` : ""}</span> : <span aria-hidden style={{ color: "var(--accent)", fontWeight: 900 }}>+</span>}
+                {n > 0 ? <span style={{ fontVariantNumeric: "tabular-nums", color: "var(--accent-ink)" }}>✓{n > 1 ? ` ${n}` : ""}</span> : <span aria-hidden style={{ color: "var(--accent-ink)", fontWeight: 900 }}>+</span>}
               </button>
             )
           })}
@@ -196,10 +219,10 @@ export function StackSection({ s, today, onTake, onExtra, onExtraRemove, onOpenS
         {caf && (
           <div role="status" style={{ marginTop: 10, padding: "10px 12px", borderRadius: 14, background: "var(--surface-2)" }}>
             <div style={{ fontWeight: 800, fontSize: "0.86rem", lineHeight: 1.35 }}>
-              {t("☕ {time} · wirkt grob noch bis ca. {from}–{to} Uhr", { time: caf.at, from: hourLabel(caf.fromH), to: hourLabel(caf.toH) })}
+              {t("☕ {time} · Hälfte grob abgebaut ca. {from}–{to} Uhr", { time: caf.at, from: hourLabel(caf.fromH), to: hourLabel(caf.toH) })}
             </div>
             <div style={{ ...dim, fontSize: "0.72rem", marginTop: 2 }}>
-              {caf.late ? t("Später am Tag kann Koffein bei manchen den Schlaf stören.") + " " : ""}{t("Faustregel: Halbwertszeit bei vielen ca. 5 h, je nach Mensch 3–7 h.")}
+              {caf.late ? t("Später am Tag kann Koffein bei manchen den Schlaf stören.") + " " : ""}{t("Faustregel: Halbwertszeit bei vielen ca. 5 h, je nach Mensch 3–7 h – so lange dauert es, bis etwa die Hälfte abgebaut ist.")}
             </div>
           </div>
         )}
@@ -282,7 +305,7 @@ export function CostSection({ s, today, onVorrat, onAction }: { s: LabState; tod
         </div>
       ) : (
         <button className="lab-press" onClick={onVorrat} style={{ ...linkBtn, color: "var(--text)", fontWeight: 700, width: "100%" }}>
-          💶 {t("Preise eintragen, dann rechne ich mit.")} <span style={{ color: "var(--accent)", fontWeight: 800 }}>{t("Zum Vorrat ›")}</span>
+          💶 {t("Preise eintragen, dann rechne ich mit.")} <span style={{ color: "var(--accent-ink)", fontWeight: 800 }}>{t("Zum Vorrat ›")}</span>
         </button>
       )}
       {cs.savedMonthly > 0 && <div style={{ ...dim, marginTop: 2 }}>{t("✂️ Gespart: {price}/Monat durch Aussortiertes", { price: fmtEuro(cs.savedMonthly) })}</div>}
@@ -372,7 +395,7 @@ export function WaySection({ s, today, stops, onOpen }: { s: LabState; today: st
   const next = result ? (result.date === today ? t("🎁 Ergebnis heute") : t("🎁 Ergebnis am {date}", { date: fmtDate(result.date) })) : null
   return (
     <Section title={t("Mein Weg")} onMore={onOpen} moreLabel={t("Deinen Weg ansehen")}>
-      <button className="lab-press" onClick={() => { seen(); onOpen() }} style={{ width: "100%", padding: 0, border: "none", background: "none", color: "var(--text)", textAlign: "left" }}>
+      <button className="lab-press" onClick={() => { seen(); onOpen() }} style={{ width: "100%", minHeight: 44, padding: 0, border: "none", background: "none", color: "var(--text)", textAlign: "left" }}>
         <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: "0.88rem", fontWeight: 800 }}>
           <span style={{ whiteSpace: "nowrap" }}><span style={{ filter: st ? undefined : "grayscale(1)" }}>🔥</span> {st === 1 ? t("1 Tag Serie") : t("{n} Tage Serie", { n: st })}</span>
           <span aria-hidden style={{ color: "var(--text-dim)" }}>·</span>

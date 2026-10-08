@@ -13,7 +13,7 @@ import {
   type SlotId, type LabState, type Decision, type Dim, type PhaseWindow, type MySupp, type LibSupp, type Settings, type CheckIn, type Scores, type SuppStatusKey,
 } from "@/lib/supplementLab"
 import { applyTaken, checkLabReminders, downloadIcs, hasNativeReminders, onNotifTaken, syncNativeReminders } from "@/lib/labReminders"
-import { addExtra, syncAlcoholTag, eveningDims, morningAnswered, putCheckin, removeExtra, saveMorning, setDaySides, sidesOf, type ExtraInput } from "@/lib/labDay"
+import { addExtra, syncAlcoholTag, unsyncAlcoholTag, eveningDims, morningAnswered, putCheckin, removeExtra, saveMorning, setDaySides, sidesOf, type ExtraInput } from "@/lib/labDay"
 import { DaySheet, MorningPanel, SuspectCard, type DayTab } from "./day"
 import { enablePush, pushAvailable, pushState, syncPush, type PushState } from "@/lib/labPush"
 import { fetchHealthSince, healthVisible, healthCompare, mergeHealthDay, requestHealthPermission } from "@/lib/health"
@@ -385,7 +385,9 @@ export default function LabApp() {
     update(p => syncAlcoholTag(addExtra(p, date, item), date))
     setFlash(t("✓ {name} eingetragen", { name: label }))
   }, [update])
-  const removeExtraV = useCallback((date: string, id: string) => { update(p => removeExtra(p, date, id)) }, [update])
+  const removeExtraV = useCallback((date: string, id: string) => {
+    update(p => { const gone = (p.extra?.[date] ?? []).find(x => x.id === id); return unsyncAlcoholTag(removeExtra(p, date, id), date, gone) })
+  }, [update])
   const saveSidesV = useCallback((date: string, sides: Record<string, number>, suspect: Record<string, string>) => {
     update(p => setDaySides(p, date, sides, suspect))
     setFlash(Object.keys(sides).length ? t("🤕 Notiert – ich zähle mit") : t("✓ Keine Beschwerden notiert"))

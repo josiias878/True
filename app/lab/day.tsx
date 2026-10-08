@@ -142,7 +142,9 @@ export function ExtraList({ s, date, onRemove }: { s: LabState; date: string; on
       {list.map(x => (
         <span key={x.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 6px 6px 11px", borderRadius: 999, fontSize: "0.8rem", fontWeight: 800, background: "var(--accent-dim)", maxWidth: "100%" }}>
           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{extraEmoji(x)} {extraLabel(x)}{x.dose ? ` · ${x.dose}` : ""}{x.at ? <span style={{ color: "var(--text-dim)", fontWeight: 600 }}> · {clock(x.at)}</span> : null}</span>
-          <button onClick={() => onRemove(x.id)} aria-label={t("Entfernen")} className="lab-press" style={{ width: 22, height: 22, borderRadius: 999, border: "none", background: "var(--surface)", color: "var(--text-dim)", fontSize: "0.7rem", flexShrink: 0 }}>✕</button>
+          <button onClick={() => onRemove(x.id)} aria-label={t("Entfernen")} className="lab-press" style={{ width: 44, height: 44, margin: "-11px -11px -11px -11px", padding: 0, border: "none", background: "transparent", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <span aria-hidden style={{ width: 22, height: 22, borderRadius: 999, background: "var(--surface)", color: "var(--text-dim)", fontSize: "0.7rem", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>✕</span>
+          </button>
         </span>
       ))}
     </div>

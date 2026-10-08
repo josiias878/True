@@ -10,7 +10,7 @@
 //  • die Auswertung rechnet diese Nacht dem Tag D−1 zu (Einnahmen am Abend/Tag davor wirken auf diese Nacht)
 
 import {
-  LIB_BY_ID, activeDims, extraEmoji, extraKey, extraLabel, extrasOn, intakeOn, morningMin, nowTime, phaseWindows,
+  LIB_BY_ID, activeDims, isAlcoholExtra, extraEmoji, extraKey, extraLabel, extrasOn, intakeOn, morningMin, nowTime, phaseWindows,
   relMin, suppName, todayIso, toMin, fromMin, checkinOpensMin, addDays, fmtDate,
   type CheckIn, type DaySides, type DimInfo, type ExtraIntake, type LabState, type MorningEntry,
 } from "./supplementLab"
@@ -272,8 +272,8 @@ export function dayMarked(s: LabState, date: string) {
 // ── Koffein heute (reine Anzeige-Faustregel) ───────────────────────────────────
 
 /**
- * Letzte Koffein-Einnahme heute (Plan-Haken mit Uhrzeit oder Extra „Kaffee“) und eine grobe Spanne, bis wann sie
- * noch nachwirkt: Halbwertszeit bei vielen ~5 h, je nach Mensch etwa 3–7 h → Anzeige „ca. +5 bis +7 h“.
+ * Letzte Koffein-Einnahme heute (Plan-Haken mit Uhrzeit oder Extra „Kaffee“) und eine grobe Spanne, bis wann etwa die
+ * Hälfte abgebaut ist: Halbwertszeit bei vielen ~5 h, je nach Mensch etwa 3–7 h → Anzeige „ca. +3 bis +7 h“.
  * Keine Aussage über Wirkung, nur eine Faustregel. late = nach ~14 Uhr eingenommen (kann den Schlaf stören).
  */
 export function caffeineToday(s: LabState, date: string): { at: string; fromH: number; toH: number; late: boolean } | null {
@@ -285,13 +285,12 @@ export function caffeineToday(s: LabState, date: string): { at: string; fromH: n
   const at = times[times.length - 1]
   if (!at) return null
   const m = toMin(at)
-  return { at, fromH: Math.round((m + 5 * 60) / 60) % 24, toH: Math.round((m + 7 * 60) / 60) % 24, late: m >= 14 * 60 }
+  return { at, fromH: Math.round((m + 3 * 60) / 60) % 24, toH: Math.round((m + 7 * 60) / 60) % 24, late: m >= 14 * 60 }
 }
 
 // ── Alkohol aus „＋ spontan“ → Check-in-Störfaktor ─────────────────────────────
 
-/** Ist dieser Extra-Eintrag der Alkohol-Chip? (gespeichert als freier Name „Alkohol“) */
-export const isAlcoholExtra = (x: Pick<ExtraIntake, "lib" | "name">) => !x.lib && x.name.trim().toLowerCase() === "alkohol"
+export { isAlcoholExtra }
 
 /**
  * Störfaktoren, mit denen der Check-in eines Tages vorbelegt wird (gespeichert wie gewohnt als deutsche Werte):
@@ -305,5 +304,13 @@ export function prefillTags(s: Pick<LabState, "extra">, date: string, tags: stri
 export function syncAlcoholTag(s: LabState, date: string): LabState {
   const c = s.checkins[date]
   if (c && extrasOn(s, date).some(isAlcoholExtra) && !c.tags.includes("Alkohol")) s.checkins[date] = { ...c, tags: [...c.tags, "Alkohol"] }
+  return s
+}
+
+/** Alkohol-Eintrag entfernt und an dem Tag keiner mehr übrig → den per syncAlcoholTag gesetzten Störfaktor wieder streichen. */
+export function unsyncAlcoholTag(s: LabState, date: string, removed: ExtraIntake | undefined): LabState {
+  const c = s.checkins[date]
+  if (!c || !removed || !isAlcoholExtra(removed) || extrasOn(s, date).some(isAlcoholExtra)) return s
+  if (c.tags.includes("Alkohol")) s.checkins[date] = { ...c, tags: c.tags.filter(x => x !== "Alkohol") }
   return s
 }

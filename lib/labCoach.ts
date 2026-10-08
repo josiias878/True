@@ -446,7 +446,7 @@ export function costCoach(s: LabState, today = todayIso()): CostCoach | null {
   const n = (id: string) => s.supps.find(x => x.id === id)?.name ?? ""
   // 1) Eigenes Ergebnis vorhanden → ehrlich gegen den Preis stellen
   for (const { x, cost } of items) {
-    if (!tested(x.id) && !s.verdicts[x.id]) continue
+    if (!libOf(x) || (!tested(x.id) && !s.verdicts[x.id])) continue // eigene Mittel: kein „Weiter nehmen?“
     const sig = signal(s, x.id)
     const price = fmtEuro(cost)
     if (sig.key === "few" || sig.key === "none") continue
@@ -463,7 +463,7 @@ export function costCoach(s: LabState, today = todayIso()): CostCoach | null {
   const running = w?.kind === "test" && w.suppId ? items.find(i => i.x.id === w.suppId) : undefined
   if (running) return { suppId: running.x.id, text: t("Dein Test zeigt bald, ob sich die {price}/Monat für {name} lohnen.", { name: running.x.name, price: fmtEuro(running.cost) }) }
   // 3) Teuerstes noch nicht getestetes, das sich im Kurztest überhaupt zeigen kann
-  const cand = items.find(i => libOf(i.x)?.onset !== "langsam")
+  const cand = items.find(i => !!libOf(i.x) && libOf(i.x)!.onset !== "langsam")
   if (!cand) return null
   const baseDone = wins.some(p => p.kind === "baseline" && p.end < today) || (!!w && w.kind !== "baseline")
   const canStart = baseDone && w?.kind !== "test"
