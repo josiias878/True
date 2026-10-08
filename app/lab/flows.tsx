@@ -20,14 +20,14 @@ import { t, dec, clock } from "@/lib/labI18n"
 
 // ── Supplement-Auswahl: antippen oder Liste einfügen ───────────────────────────
 
-export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd, onAway }: {
-  selected: MySupp[]; goals: GoalId[]
+export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd, onAway, initialMode = "tap" }: {
+  selected: MySupp[]; goals: GoalId[]; initialMode?: "tap" | "paste"
   onToggle: (lib: LibSupp) => void; onAddCustom: (name: string) => void
   onPasteAdd: (items: { lib: LibSupp | null; name: string; dose: string }[]) => void
   /** „Schon zu Hause?“ – nicht da = Einkaufsliste, zählt noch nicht mit */
   onAway?: (libId: string, away: boolean) => void
 }) {
-  const [mode, setMode] = useState<"tap" | "paste">("tap")
+  const [mode, setMode] = useState<"tap" | "paste">(initialMode)
   const [q, setQ] = useState("")
   const [lastAdded, setLastAdded] = useState<LibSupp | null>(null)
   // Social Proof: wie viele andere haben es nach dem Test behalten? (ab genug Beiträgen)

@@ -1,13 +1,13 @@
 "use client"
-// ── Heute: genau EINE fällige Hauptsache groß, darunter max. 3 kleine Kacheln ──
+// ── Heute: genau EINE fällige Hauptsache groß, darunter feste ruhige Bereiche (todayStack.tsx) ──
 // Reihenfolge: Ergebnis aufdecken > Morgen-Frage > fällige Einnahme > Abend-Check-in > „Alles erledigt“ mit Kolbi.
 import React, { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import {
-  FACES, STORE_MODE, addDays, dayRef, nightRef, checkinOpensMin, daySum, diffDays, fmtCountdown, fromMin, intakeOn, streak, extrasOn,
+  FACES, STORE_MODE, addDays, dayRef, nightRef, checkinOpensMin, daySum, fmtCountdown, fromMin, intakeOn, streak, extrasOn,
   type LabState, type PhaseWindow,
 } from "@/lib/supplementLab"
-import { sidesOf } from "@/lib/labDay"
+import { sidesOf, type ExtraInput } from "@/lib/labDay"
 import type { CoachAction, CoachMsg } from "@/lib/labCoach"
 import { pathStops, type Stop } from "@/lib/labPath"
 import { Btn, Capsule, DayKicker, DemoBadge, Sheet, TabHead, haptic } from "./ui"
@@ -19,6 +19,7 @@ import { ProfileCard } from "./profile"
 import { NewBadge, useMarkSeen } from "./newbadge"
 import { RecapTeaser } from "./insights"
 import { markSeen } from "@/lib/labNew"
+import { CommunitySection, CostSection, StackSection, StateSection, WaySection } from "./todayStack"
 import { t, dec, clock, LOCALE } from "@/lib/labI18n"
 
 
@@ -88,27 +89,9 @@ function greeting(now: Date) {
   return h < 5 ? t("Gute Nacht") : h < 11 ? t("Guten Morgen") : h < 17 ? t("Hallo") : h < 22 ? t("Guten Abend") : t("Gute Nacht")
 }
 
-/** Kleine Kachel unter der Hauptsache. */
-function Tile({ value, label, onClick, progress }: { value: React.ReactNode; label: React.ReactNode; onClick: () => void; progress?: number | null }) {
-  return (
-    <button onClick={onClick} className="lab-press lab-card" style={{
-      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, padding: "12px 6px", minHeight: 74, minWidth: 0,
-      color: "var(--text)", borderRadius: 18,
-    }}>
-      <span style={{ fontSize: "1.12rem", fontWeight: 900, lineHeight: 1.15, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{value}</span>
-      <span style={{ fontSize: "0.74rem", fontWeight: 800, color: "var(--text-dim)", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
-      {progress != null && (
-        <span style={{ display: "block", width: "70%", height: 4, borderRadius: 2, background: "var(--surface-2)", marginTop: 5, overflow: "hidden" }}>
-          <span style={{ display: "block", width: `${Math.max(6, progress * 100)}%`, height: "100%", background: "var(--lab-grad)" }} />
-        </span>
-      )}
-    </button>
-  )
-}
-
 type Main = "notStarted" | "reveal" | "morning" | "take" | "checkin" | "locked" | "done"
 
-export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, recap, onRecap, pushHint, onPush, onAction, onRound, onTakeAll, onTake, onMorning, onUnlock, onCheckin, onPhase, goTab, onVorrat }: {
+export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, recap, onRecap, pushHint, onPush, onAction, onRound, onTakeAll, onTake, onMorning, onUnlock, onCheckin, onPhase, goTab, onVorrat, onExtra, onExtraRemove, onOpenSupp, onOpenLab, onAddMany }: {
   s: LabState; wins: PhaseWindow[]; today: string; now: Date; pending: RoundStep[]; checkinLocked: boolean; tips: CoachMsg[]
   /** Wochenrückblick bereit und noch nicht gesehen → schmale Zeile unter der Hauptsache */
   recap: { ready: boolean; end: string }; onRecap: () => void
@@ -118,6 +101,8 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
   onRound: (steps: RoundStep[]) => void; onTakeAll: (ids: string[]) => void; onTake: (id: string) => void
   onMorning: (v: { sleep?: number; fit?: number }) => void; onUnlock: () => void; onCheckin: (d: string) => void
   onPhase: (w: PhaseWindow) => void; goTab: (t: string) => void; onVorrat: () => void
+  onExtra: (date: string, item: ExtraInput, label: string) => void; onExtraRemove: (date: string, id: string) => void
+  onOpenSupp: (id: string) => void; onOpenLab: (libId: string) => void; onAddMany: () => void
 }) {
   const [mHold, setMHold] = useState(false)
   const [sheet, setSheet] = useState<null | "day" | "normal">(null)
@@ -172,20 +157,6 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
     </div>
   ) : null
 
-  // Kacheln
-  const intake = intakeOn(s, today)
-  const took = (s.took[today] ?? []).filter(id => intake.includes(id)).length
-  const wDay = w ? diffDays(w.start, today) + 1 : 0
-  const phaseLabel = !w ? (notStarted ? t("Reset") : t("Kein Test")) : w.kind === "baseline" ? t("Reset") : w.kind === "test" ? (s.supps.find(x => x.id === w.suppId)?.name ?? t("Test"))
-    : w.kind === "stack" ? t("Dein Stack") : w.kind === "check" ? t("Beobachtung") : t("Pause")
-  const phaseValue = notStarted ? "—" : !w ? "＋" : w.open ? t("Tag {n}", { n: wDay }) : `${t("Tag {n}", { n: wDay })}/${w.days}`
-  const phaseProgress = w && !w.open ? Math.min(1, wDay / w.days) : null
-  const onPhaseTile = () => {
-    if (!w) { goTab("meine"); return }
-    if (w.kind === "baseline" && !notStarted) { setSheet("normal"); return }
-    onPhase(w)
-  }
-
   const road = pathStops(s, today, now, checkinLocked)
   const onStop = (sp: Stop) => {
     switch (sp.kind) {
@@ -221,7 +192,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
       {/* ── Die eine Hauptsache ── */}
       <div className="lab-rise" style={{
         position: "relative", overflow: "hidden", isolation: "isolate", borderRadius: 30, padding: "22px 18px 24px", textAlign: "center",
-        minHeight: tipsShown && top ? undefined : "min(54vh, 470px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        minHeight: tipsShown && top ? undefined : "min(44vh, 380px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         background: "var(--surface)", border: "1px solid var(--glass-line)",
       }}>
         {/* Marken-Licht: Selbsttest-Fläche */}
@@ -296,12 +267,12 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
       {showRecap && <RecapTeaser slim end={recap.end} onOpen={onRecap} />}
       {showTip && <KolbiSays msg={top} more={tips.length - 1} onAction={onAction} onMore={() => goTab("kolbi")} tail={!showRecap} />}
 
-      {/* ── max. 3 kleine Kacheln ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
-        <Tile value={intake.length ? `${took}/${intake.length}` : "—"} label={t("Einnahmen")} onClick={() => setSheet("day")} />
-        <Tile value={phaseValue} label={phaseLabel} progress={phaseProgress} onClick={onPhaseTile} />
-        <Tile value={<><span style={{ filter: st ? undefined : "grayscale(1)" }}>🔥</span> {st}</>} label={t("Serie")} onClick={() => goTab("kolbi")} />
-      </div>
+      {/* ── Feste Bereiche: Stack · Kosten & Coach · Zustand · Weg · Community ── */}
+      <StackSection s={s} today={today} onTake={onTake} onExtra={onExtra} onExtraRemove={onExtraRemove} onOpenSupp={onOpenSupp} onVorrat={onVorrat} onAddMany={onAddMany} goTab={goTab} />
+      <CostSection s={s} today={today} onVorrat={onVorrat} onAction={onAction} />
+      <StateSection s={s} today={today} onOpen={() => goTab("reise")} />
+      <WaySection s={s} today={today} stops={road.stops} onOpen={() => setSheet(w?.kind === "baseline" && !notStarted ? "normal" : "day")} />
+      <CommunitySection s={s} onDiscover={() => goTab("entdecken")} onOpenLab={onOpenLab} />
 
       {sheet === "day" && (
         <Sheet open onClose={() => setSheet(null)} title={t("🗺️ Dein Tag")}>

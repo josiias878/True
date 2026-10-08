@@ -268,3 +268,22 @@ function suspectName(s: LabState, key: string, date: string): { name: string; em
 export function dayMarked(s: LabState, date: string) {
   return (s.checkins[date]?.tags.length ?? 0) > 0 || extrasOn(s, date).length > 0
 }
+
+// ── Koffein heute (reine Anzeige-Faustregel) ───────────────────────────────────
+
+/**
+ * Letzte Koffein-Einnahme heute (Plan-Haken mit Uhrzeit oder Extra „Kaffee“) und eine grobe Spanne, bis wann sie
+ * noch nachwirkt: Halbwertszeit bei vielen ~5 h, je nach Mensch etwa 3–7 h → Anzeige „ca. +5 bis +7 h“.
+ * Keine Aussage über Wirkung, nur eine Faustregel. late = nach ~14 Uhr eingenommen (kann den Schlaf stören).
+ */
+export function caffeineToday(s: LabState, date: string): { at: string; fromH: number; toH: number; late: boolean } | null {
+  const mine = s.supps.filter(x => (x.lib ?? x.id) === "koffein").map(x => x.id)
+  const times = [
+    ...mine.map(id => s.tookAt[date]?.[id]).filter((v): v is string => !!v),
+    ...extrasOn(s, date).filter(x => x.lib === "koffein" || (!!x.supp && mine.includes(x.supp))).map(x => x.at).filter((v): v is string => !!v),
+  ].sort()
+  const at = times[times.length - 1]
+  if (!at) return null
+  const m = toMin(at)
+  return { at, fromH: Math.round((m + 5 * 60) / 60) % 24, toH: Math.round((m + 7 * 60) / 60) % 24, late: m >= 14 * 60 }
+}

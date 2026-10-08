@@ -28,6 +28,8 @@ export const NEW_FEATURES: NewFeature[] = [
   { id: "follow", since: "2026-10-07" }, // Folgen / „Gefolgt“-Feed / Sichtbar mitmachen
   { id: "communities", since: "2026-10-07" }, // Communities suchen & beitreten
   { id: "reactions", since: "2026-10-07" }, // Reaktionen „Durchhalten“ / „Hilfreich“
+  // Heute 2.0
+  { id: "today-stack", since: "2026-10-08" }, // Heute: Mein Stack, ＋ spontan, Kosten & Coach, Zustand, Weg, Community
 ]
 
 const KEY = "lab-new-seen"

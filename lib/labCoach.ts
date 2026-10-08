@@ -10,7 +10,7 @@ import {
   type LabState, type Decision, type PhaseWindow,
 } from "./supplementLab"
 import { partnerTips, recentSides, sideCauses } from "./labKnowledge"
-import { buyInfo, inUse, shopUrl, stockInfo } from "./labStock"
+import { buyInfo, costSummary, fmtEuro, inUse, shopUrl, stockInfo } from "./labStock"
 import { fmtGap, interactionChecks } from "./labInteractions"
 import { dimLabel, findPatterns } from "./labPatterns"
 import { t, dec, clock } from "./labI18n"
@@ -426,4 +426,47 @@ function idleAdvice(s: LabState, today: string, wins: PhaseWindow[], push: Push)
 export function recentMean(s: LabState, n = 3) {
   const cs = Object.values(s.checkins).sort((a, b) => a.date.localeCompare(b.date)).slice(-n)
   return cs.length ? cs.map(daySum).reduce((a, b) => a + b, 0) / cs.length : null
+}
+
+// ── Kosten-Coach: „Lohnt sich das?“ aus deinen eigenen Daten ───────────────────
+
+export interface CostCoach { suppId: string; text: string; action?: { label: string; action: CoachAction } }
+
+/**
+ * Ein Satz für Heute → „Kosten & Kolbi-Coach“: verbindet Preis (Vorrat) mit deinem eigenen Testergebnis.
+ * Mit Ergebnis/Urteil: „X kostet dich 9 €/Monat – dein Test zeigte kaum Unterschied. Weiter nehmen?“
+ * Ohne: „Teste X, dann weißt du, ob sich die 9 €/Monat lohnen.“ Verschreibungspflichtiges (rx) wird nie
+ * in Frage gestellt (nie zum Absetzen raten), Peptide ebenso nicht. Nichts Passendes → null.
+ */
+export function costCoach(s: LabState, today = todayIso()): CostCoach | null {
+  const items = costSummary(s, today).items.filter(i => { const l = libOf(i.x); return !l?.rx && l?.category !== "Peptide" })
+  if (!items.length) return null
+  const wins = phaseWindows(s)
+  const tested = (id: string) => wins.some(p => p.kind === "test" && p.suppId === id && p.end < today)
+  const n = (id: string) => s.supps.find(x => x.id === id)?.name ?? ""
+  // 1) Eigenes Ergebnis vorhanden → ehrlich gegen den Preis stellen
+  for (const { x, cost } of items) {
+    if (!tested(x.id) && !s.verdicts[x.id]) continue
+    const sig = signal(s, x.id)
+    const price = fmtEuro(cost)
+    if (sig.key === "few" || sig.key === "none") continue
+    if (sig.key === "flat" || sig.key === "neg")
+      return { suppId: x.id, text: t("{name} kostet dich {price}/Monat – dein Test zeigte kaum Unterschied. Weiter nehmen?", { name: x.name, price }),
+        action: { label: t("Neu entscheiden"), action: { kind: "openVerdict", suppId: x.id } } }
+    if (sig.key === "tradeoff")
+      return { suppId: x.id, text: t("{name} kostet dich {price}/Monat – bei dir ein Plus, aber mit Nebenwirkungen. Lohnt es sich für dich?", { name: x.name, price }),
+        action: { label: t("Neu entscheiden"), action: { kind: "openVerdict", suppId: x.id } } }
+    return { suppId: x.id, text: t("{name} kostet dich {price}/Monat – dein Test zeigte bei dir ein Plus (eigene Bewertung).", { name: x.name, price }) }
+  }
+  // 2) Läuft gerade der Test? → bald weißt du es
+  const w = phaseAt(s, today)
+  const running = w?.kind === "test" && w.suppId ? items.find(i => i.x.id === w.suppId) : undefined
+  if (running) return { suppId: running.x.id, text: t("Dein Test zeigt bald, ob sich die {price}/Monat für {name} lohnen.", { name: running.x.name, price: fmtEuro(running.cost) }) }
+  // 3) Teuerstes noch nicht getestetes, das sich im Kurztest überhaupt zeigen kann
+  const cand = items.find(i => libOf(i.x)?.onset !== "langsam")
+  if (!cand) return null
+  const baseDone = wins.some(p => p.kind === "baseline" && p.end < today) || (!!w && w.kind !== "baseline")
+  const canStart = baseDone && w?.kind !== "test"
+  return { suppId: cand.x.id, text: t("Teste {name}, dann weißt du, ob sich die {price}/Monat lohnen.", { name: n(cand.x.id), price: fmtEuro(cand.cost) }),
+    ...(canStart ? { action: { label: t("🔬 Test starten"), action: { kind: "startTest" as const, suppId: cand.x.id } } } : {}) }
 }

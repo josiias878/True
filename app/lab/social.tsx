@@ -191,7 +191,7 @@ export function SwitchTabs<T extends string>({ value, options, onChange }: { val
   )
 }
 
-function ago(iso: string): string {
+export function ago(iso: string): string {
   const ms = Date.now() - Date.parse(iso)
   if (!Number.isFinite(ms)) return ""
   const m = Math.max(0, Math.round(ms / 60000))
@@ -203,8 +203,8 @@ function ago(iso: string): string {
   if (d < 7) return d === 1 ? t("vor 1 Tag") : t("vor {n} Tagen", { n: d })
   try { return new Date(iso).toLocaleDateString(LOCALE, { day: "numeric", month: "short" }) } catch { return "" }
 }
-const signed = (v: number) => `${v > 0.04 ? "+" : v < -0.04 ? "−" : "±"}${dec(Math.abs(v), 1)}`
-const decisionInfo = (d: SocialPost["decision"]) => ({
+export const signed = (v: number) => `${v > 0.04 ? "+" : v < -0.04 ? "−" : "±"}${dec(Math.abs(v), 1)}`
+export const decisionInfo = (d: SocialPost["decision"]) => ({
   keep: { emoji: "💚", label: t("Behalten"), dot: "#1baf7a" },
   maybe: { emoji: "🤔", label: t("Vielleicht"), dot: "#eda100" },
   drop: { emoji: "✂️", label: t("Raus"), dot: "#8c8c99" },

@@ -210,6 +210,7 @@ export default function LabApp() {
   const [phaseSheet, setPhaseSheet] = useState<PhaseWindow | null>(null)
   const [suppSheet, setSuppSheet] = useState<string | null>(null)
   const [pickOpen, setPickOpen] = useState(false)
+  const [addMany, setAddMany] = useState(false)
   const [testSetup, setTestSetup] = useState<string | null>(null)
   const [reclassifyIds, setReclassifyIds] = useState<string[] | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
@@ -658,7 +659,10 @@ export default function LabApp() {
             pushHint={s.reminders.enabled && !hasNativeReminders() && (pushSt === "off" || pushSt === "denied") ? pushSt : null} onPush={turnOnPush}
             onAction={runAction} onRound={steps => setRound(steps)} onTakeAll={takeAll} onTake={toggleTook} onMorning={saveMorningV}
             onUnlock={() => { setUnlockedFor(today); setRound(roundSteps(s, today, now, false)) }}
-            onCheckin={setCheckinDate} onPhase={setPhaseSheet} goTab={goTab} onVorrat={() => { setLab(null); setLaborView("vorrat"); goTab("labor") }} />}
+            onCheckin={setCheckinDate} onPhase={setPhaseSheet} goTab={goTab} onVorrat={() => { setLab(null); setLaborView("vorrat"); goTab("labor") }}
+            onExtra={addExtraV} onExtraRemove={removeExtraV} onAddMany={() => setAddMany(true)}
+            onOpenSupp={id => { setLaborView(null); setLab({ suppId: id, tab: "ueberblick" }); goTab("labor") }}
+            onOpenLab={libId => { const x = s.supps.find(q => q.lib === libId); setLaborView(null); setLab({ suppId: x?.id, libId, tab: "andere" }); goTab("labor") }} />}
 
           {tab === "entdecken" && <DiscoverView s={s} today={today} recapReady={recapAvailable(s, now, today).ready} onRecap={() => setRecapEnd(recapWeekEnd(now, today))}
             onOpenLab={(libId, t2) => { const x = s.supps.find(q => q.lib === libId); setLaborView(null); setLab({ suppId: x?.id, libId, tab: t2 ?? "ueberblick" }); goTab("labor") }}
@@ -826,6 +830,7 @@ export default function LabApp() {
         })
         setReclassifyIds(null)
       }} />}
+      {addMany && <AddManySheet s={s} update={update} onClose={() => setAddMany(false)} onDone={n => { setAddMany(false); setFlash(n === 1 ? t("✓ 1 Supplement hinzugefügt") : t("✓ {n} Supplements hinzugefügt", { n })) }} />}
       {pickOpen && <PickNextSheet s={s} onClose={() => setPickOpen(false)} update={update} onStart={id => { setPickOpen(false); runAction({ kind: "startTest", suppId: id }, "pick") }} />}
       {testSetup && <TestSetupSheet s={s} suppId={testSetup} onClose={() => setTestSetup(null)}
         onConfirm={days => {
@@ -1136,6 +1141,23 @@ function PickNextSheet({ s, onClose, update, onStart }: { s: LabState; onClose: 
           onToggle={(lib: LibSupp) => update(p => { if (!p.supps.some(x => x.lib === lib.id)) p.supps.push(makeSupp(lib, lib.name, p.supps)); return p })}
           onAway={(libId, v) => update(p => { p.supps = p.supps.map(x => x.lib === libId ? { ...x, away: v ? todayIso() : undefined } : x); return p })} />
       ) : <Btn variant="ghost" full onClick={() => setAdding(true)}>{t("+ Neues Supplement hinzufügen")}</Btn>}
+    </Sheet>
+  )
+}
+
+/** Heute → „＋ Mehrere auf einmal“: Liste einfügen (Komma/Zeilen), unbekannte Namen werden eigene Supplements. */
+function AddManySheet({ s, update, onClose, onDone }: { s: LabState; update: Update; onClose: () => void; onDone: (n: number) => void }) {
+  return (
+    <Sheet open onClose={onClose} title={t("＋ Mehrere auf einmal")}>
+      <div style={{ fontSize: "0.84rem", color: "var(--text-dim)", lineHeight: 1.45, marginBottom: 12 }}>{t("Einfach alle Namen mit Komma oder je Zeile eintippen – Unbekanntes lege ich als eigenes Mittel an.")}</div>
+      <SuppPicker selected={s.supps} goals={s.goals} initialMode="paste"
+        onAddCustom={name => update(p => { p.supps.push(makeSupp(null, name, p.supps)); return p })}
+        onPasteAdd={items => {
+          const fresh = items.filter(it => it.lib ? !s.supps.some(x => x.lib === it.lib!.id) : !s.supps.some(x => !x.lib && x.name.toLowerCase() === it.name.toLowerCase()))
+          update(p => { fresh.forEach(it => p.supps.push(makeSupp(it.lib, it.name, p.supps, it.dose))); return p })
+          onDone(fresh.length)
+        }}
+        onToggle={(lib: LibSupp) => update(p => { if (!p.supps.some(x => x.lib === lib.id)) p.supps.push(makeSupp(lib, lib.name, p.supps)); return p })} />
     </Sheet>
   )
 }

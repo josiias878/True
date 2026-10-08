@@ -337,6 +337,8 @@ export interface LibSupp {
   rx?: boolean             // verschreibungspflichtig → nie eigenmächtig absetzen
   weekly?: boolean         // 1× pro Woche statt täglich
   aliases: string[]        // für „Liste einfügen“
+  /** Zugelassener EU-Health-Claim (VO (EU) 432/2012), kurz – nur für Vitamine/Mineralstoffe, sonst leer. */
+  claim?: string
 }
 
 const PEPTIDE_NOTE = t("Nicht als Arzneimittel zugelassen, kaum Humanstudien, Reinheit von Research-Peptiden schwankt stark. Nur mit ärztlicher Begleitung und sauberer Injektionshygiene.")
@@ -461,7 +463,7 @@ const ALL_LIBRARY: LibSupp[] = [
   { id: "bkomplex", name: t("B-Komplex"), emoji: "🅱️", category: "Vitamine & Mineralien", onset: "mittel",
     slots: ["fruehstueck"], dose: t("1 Kapsel"), watch: ["energie", "stimmung"],
     effect: t("Energiestoffwechsel. Färbt den Urin gelb — harmlos."),
-    timing: t("Morgens zum Frühstück, nicht abends (kann wach halten)."), aliases: ["b-komplex", "b komplex", "b complex", "b-complex", "b-vitamine", "vitamin b komplex"] },
+    timing: t("Morgens zum Frühstück, nicht abends (kann wach halten)."), aliases: ["b-komplex", "b komplex", "b complex", "b-complex", "b-vitamine", "vitamin b komplex", "vitamin b "] },
   { id: "vitc", name: "Vitamin C", emoji: "🍊", category: "Darm & Immun", onset: "mittel",
     slots: ["fruehstueck", "mittag"], dose: "200–500 mg", watch: ["koerper", "haut"],
     effect: t("Trägt zu normalem Immunsystem und normaler Kollagenbildung bei, erhöht die Eisenaufnahme."),
@@ -687,6 +689,26 @@ const ALL_LIBRARY: LibSupp[] = [
     effect: t("Wird für Haut und Gelenke genutzt – Effekte, wenn überhaupt, nach Wochen."),
     timing: t("Egal wann – täglich zur gleichen Zeit."), aliases: ["hyaluron", "hyaluronsäure", "hyaluronic"] },
 ]
+
+/**
+ * „Wofür“ in einem Satz: nur zugelassene EU-Health-Claims (VO (EU) 432/2012), sinngemäß nach dem Wortlaut der Liste.
+ * Alles andere zeigt den vorsichtigen effect-Text („wird genutzt für …“). Keine eigenen Wirkversprechen ergänzen.
+ */
+const CLAIMS: Record<string, string> = {
+  vitc: t("Trägt zu einer normalen Funktion des Immunsystems bei."),
+  magnesium: t("Trägt zur Verringerung von Müdigkeit und Ermüdung bei."),
+  b12: t("Trägt zu einem normalen Energiestoffwechsel bei."),
+  vitd: t("Trägt zur Erhaltung normaler Knochen bei."),
+  zink: t("Trägt zu einer normalen Funktion des Immunsystems bei."),
+  eisen: t("Trägt zur Verringerung von Müdigkeit und Ermüdung bei."),
+  omega3: t("EPA und DHA tragen zu einer normalen Herzfunktion bei (ab 250 mg/Tag)."),
+  calcium: t("Wird für die Erhaltung normaler Knochen benötigt."),
+  selen: t("Trägt zu einer normalen Funktion des Immunsystems bei."),
+  folat: t("Trägt zur Verringerung von Müdigkeit und Ermüdung bei."),
+  biotin: t("Trägt zur Erhaltung normaler Haare bei."),
+  jod: t("Trägt zu einer normalen Schilddrüsenfunktion bei."),
+}
+for (const l of ALL_LIBRARY) if (CLAIMS[l.id]) l.claim = CLAIMS[l.id]
 
 const RESEARCH_PEPTIDES = new Set(["bpc157", "tb500", "ghkcu", "cjc-ipa", "semax", "selank", "motsc", "epitalon", "ta1", "kpv"])
 
