@@ -183,5 +183,8 @@ export const EN_J: Record<string, string> = {
   "Nach ein paar Check-ins schlägt Kolbi deine üblichen Sterne vor – du bestätigst nur.": "After a few check-ins, Kolbi suggests your usual stars – you just confirm.",
   "Schlaf, Energie, Fokus, Stress, Muskeln – mit einem Tipp beitreten.": "Sleep, energy, focus, stress, muscle – join with one tap.",
   "Kolbi im Labor": "Kolbi in the lab",
-  "Ein kurzer Blick hinter die Kulissen.": "A quick look behind the scenes."
+  "Ein kurzer Blick hinter die Kulissen.": "A quick look behind the scenes.",
+  "Pausieren": "Pause",
+  "Weiter abspielen": "Resume",
+  "{i} von {n}": "{i} of {n}"
 }

@@ -4,7 +4,7 @@
 // Storys: Fortschrittsbalken, rechts/links tippen = weiter/zurück, gedrückt halten = Pause,
 // nach unten wischen / ✕ / Esc = schließen, Auto-Weiter nach 6 s. Bewegung reduzieren → keine Animationen.
 import React, { useCallback, useEffect, useRef, useState } from "react"
-import { LAB_NEWS, installDateOf, markNewsSeen, onNewsSeenChange, seenNews, unseenNews, type LabNews, type NewsAction } from "@/lib/labNews"
+import { markNewsSeen, newsFor, onNewsSeenChange, seenNews, type LabNews, type NewsAction } from "@/lib/labNews"
 import { suppIconSrc } from "@/lib/labIcons"
 import { STORE_MODE, fmtDate, type LabState } from "@/lib/supplementLab"
 import { Mascot, MASCOT_NAME } from "./mascot"
@@ -16,7 +16,7 @@ const VIDEO_MAX_MS = 30000
 
 const NEWS_CSS = `
 .lab-news-ring { position: absolute; inset: 0; border-radius: 999px; background: conic-gradient(from 0deg, #2ECC8A, #3987e5, #a77bf3, #2ECC8A); animation: labNewsSpin 3.2s linear infinite; }
-.lab-news-glow { animation: labNewsGlow 2.2s ease-in-out infinite; }
+.lab-news-glow { position: absolute; inset: 0; border-radius: 999px; animation: labNewsGlow 2.2s ease-in-out infinite; }
 @keyframes labNewsSpin { to { transform: rotate(360deg) } }
 @keyframes labNewsGlow { 0%,100% { box-shadow: 0 0 0 0 rgba(46,204,138,.0) } 50% { box-shadow: 0 0 14px 2px rgba(46,204,138,.55) } }
 .lab-news-scanline { position: absolute; left: 8%; right: 8%; height: 3px; border-radius: 3px; background: #2ECC8A; box-shadow: 0 0 14px 3px rgba(46,204,138,.8); animation: labNewsScan 2.2s ease-in-out infinite alternate; }
@@ -33,12 +33,9 @@ const NEWS_CSS = `
 @keyframes labNewsSpark { 0%,100% { opacity: 0; transform: scale(.3) rotate(0) } 45% { opacity: 1; transform: scale(1.15) rotate(45deg) } 70% { opacity: 0; transform: scale(.5) rotate(90deg) } }
 .lab-news-in { animation: labRise .4s cubic-bezier(.2,.9,.3,1) both; }
 @media (prefers-reduced-motion: reduce) {
-  .lab-news-ring, .lab-news-glow, .lab-news-scanline, .lab-news-pop, .lab-news-float, .lab-news-orbit, .lab-news-orbit > span > span, .lab-news-star, .lab-news-hero { animation: labNewsHero 5s ease-in-out infinite; }
-@keyframes labNewsHero { 0%,100% { transform: translateY(0) scale(1) } 50% { transform: translateY(-8px) scale(1.025) } }
-.lab-news-spark { position: absolute; width: 14px; height: 14px; pointer-events: none; background: radial-gradient(circle, #fff 0 18%, rgba(255,230,150,.9) 30%, rgba(255,209,102,0) 70%); clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%); animation: labNewsSpark 2.4s ease-in-out infinite; opacity: 0; }
-@keyframes labNewsSpark { 0%,100% { opacity: 0; transform: scale(.3) rotate(0) } 45% { opacity: 1; transform: scale(1.15) rotate(45deg) } 70% { opacity: 0; transform: scale(.5) rotate(90deg) } }
-.lab-news-in { animation: none !important; }
+  .lab-news-ring, .lab-news-glow, .lab-news-scanline, .lab-news-pop, .lab-news-float, .lab-news-orbit, .lab-news-orbit > span > span, .lab-news-star, .lab-news-hero, .lab-news-spark, .lab-news-in { animation: none !important; }
   .lab-news-scanline { top: 48%; }
+  .lab-news-spark { opacity: 0; }
 }
 `
 
@@ -46,13 +43,12 @@ const reducedMotion = () => { try { return !!window.matchMedia?.("(prefers-reduc
 
 /** Ungesehene Neuheiten für diesen Nutzer; aktualisiert sich live, wenn eine gesehen wird. */
 export function useUnseenNews(s: LabState, today: string): LabNews[] {
-  const install = installDateOf(s)
   const [list, setList] = useState<LabNews[]>([])
   useEffect(() => {
-    const check = () => setList(unseenNews(LAB_NEWS, install, today, seenNews()))
+    const check = () => setList(newsFor(s, today, seenNews())) // Demo-Modus → immer leer
     check()
     return onNewsSeenChange(check)
-  }, [install, today])
+  }, [s, today])
   return list
 }
 
@@ -65,7 +61,8 @@ export function NewsRing({ s, today, onOpen }: { s: LabState; today: string; onO
       aria-label={items.length === 1 ? t("Neu bei Kolbi: 1 Neuheit ansehen") : t("Neu bei Kolbi: {n} Neuheiten ansehen", { n: items.length })}
       style={{ position: "relative", width: 48, height: 48, flexShrink: 0, padding: 0, border: "none", background: "transparent", borderRadius: 999 }}>
       <style>{NEWS_CSS}</style>
-      <span aria-hidden className="lab-news-ring lab-news-glow" />
+      <span aria-hidden className="lab-news-glow" />
+      <span aria-hidden className="lab-news-ring" />
       <span aria-hidden style={{ position: "absolute", inset: 3, borderRadius: 999, background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
         <span style={{ marginTop: 4 }}><Mascot size={36} mood="happy" /></span>
       </span>
@@ -101,7 +98,7 @@ function Art(p: ArtProps) {
   if (!n.img || !STORE_MODE || bad === n.id || n.art === "video") return <DrawnArt {...p} />
   const sparks = n.art === "stars" ? [[12, 18, 0], [80, 10, .6], [88, 62, 1.2], [6, 70, 1.8], [52, 4, .9]] : []
   return (
-    <div style={{ position: "relative", width: "min(78vw, 46dvh, 340px)", aspectRatio: "1 / 1" }}>
+    <div style={{ position: "relative", width: "min(78vw, 40dvh, 340px)", aspectRatio: "1 / 1" }}>
       <img key={n.id} src={n.img} alt="" draggable={false} onError={() => setBad(n.id)} className="lab-news-hero"
         style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", borderRadius: 32,
           // Ränder weich ins Navy auslaufen lassen (Bild und Karte haben fast denselben Ton)
@@ -154,7 +151,8 @@ function DrawnArt({ n, onVideoState, videoRef, paused }: ArtProps) {
       </div>
     )
     case "groups": {
-      const g: [string, string][] = [["melatonin", "😴"], ["koffein", "⚡"], ["lionsmane", "🎯"], ["ashwagandha", "🧘"], ["kreatin", "💪"]]
+      // Neutrale Ziel-Symbole – bewusst keine Supplements neben den Zielen (keine Wirkzuordnung)
+      const g: [string, string][] = [["schlaf", "🌙"], ["energie", "🔋"], ["fokus", "🎯"], ["ruhe", "🫧"], ["muskeln", "🏋️"]]
       const R = 108
       return (
         <div style={{ position: "relative", width: 280, height: 280 }}>
@@ -165,7 +163,7 @@ function DrawnArt({ n, onVideoState, videoRef, paused }: ArtProps) {
               return (
                 <span key={id} style={{ position: "absolute", left: 140 + Math.cos(a) * R - 30, top: 140 + Math.sin(a) * R - 30, width: 60, height: 60 }}>
                   <span style={{ width: 60, height: 60, borderRadius: 999, background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <Ico id={id} emoji={e} size={46} />
+                    <span style={{ fontSize: "1.8rem", lineHeight: 1 }}>{e}</span>
                   </span>
                 </span>
               )
@@ -201,7 +199,7 @@ function NewsVideo({ n, videoRef, onState, paused }: {
     if (!v || failed || !playing) return
     if (paused) v.pause(); else v.play().catch(() => {})
   }, [paused, failed, playing, videoRef])
-  const box: React.CSSProperties = { width: "min(62vw, 300px)", aspectRatio: "9 / 16", maxHeight: "52dvh", borderRadius: 26, overflow: "hidden", position: "relative", background: "rgba(255,255,255,.08)", boxShadow: "0 18px 40px rgba(0,0,0,.4)" }
+  const box: React.CSSProperties = { width: "min(62vw, 300px)", aspectRatio: "9 / 16", maxHeight: "40dvh", borderRadius: 26, overflow: "hidden", position: "relative", background: "rgba(255,255,255,.08)", boxShadow: "0 18px 40px rgba(0,0,0,.4)" }
   if (failed || !n.video) return (
     <div style={{ ...box, display: "flex", alignItems: "center", justifyContent: "center" }}>
       {n.video && posterOk
@@ -215,7 +213,7 @@ function NewsVideo({ n, videoRef, onState, paused }: {
   return (
     <div style={box}>
       <video ref={el => { videoRef.current = el; if (el) { el.muted = true; el.defaultMuted = true } }}
-        src={n.video.src} poster={n.video.poster} muted playsInline autoPlay={auto} preload={auto ? "auto" : "none"} loop={false}
+        src={n.video.src} poster={n.video.poster} muted playsInline autoPlay={auto} preload={auto ? "metadata" : "none"} loop={false}
         onPlaying={() => { setPlaying(true); onState("playing") }} onEnded={() => onState("ended")} onError={() => setFailed(true)}
         aria-label={n.title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
       {!auto && !playing && (
@@ -228,63 +226,73 @@ function NewsVideo({ n, videoRef, onState, paused }: {
 
 // ── Vollbild-Storys ─────────────────────────────────────────────────────────────
 
+type VState = "loading" | "playing" | "failed" | "idle" | "ended"
+
+const FOCUSABLE = "button:not([disabled]), [href], video[controls], [tabindex]:not([tabindex='-1'])"
+
 export function NewsStories({ items, onClose, onAction }: { items: LabNews[]; onClose: () => void; onAction: (a: NonNullable<NewsAction>) => void }) {
   const [idx, setIdx] = useState(0)
-  const [progress, setProgress] = useState(0)
   const [held, setHeld] = useState(false)
   const [hidden, setHidden] = useState(false)
+  const [userPaused, setUserPaused] = useState(false)
+  // Tastatur/Screenreader: kein Auto-Weiter, stattdessen Ansage über aria-live
+  const [kbd, setKbd] = useState(false)
   const [dragY, setDragY] = useState(0)
-  const [vState, setVState] = useState<"loading" | "playing" | "failed" | "idle" | "ended">("idle")
-  const videoRef = useRef<HTMLVideoElement | null>(null)
-  const elapsed = useRef(0)
-  const n = items[idx]
-  const paused = held || hidden
-
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  const closeRef = useRef<HTMLButtonElement | null>(null)
   const idxRef = useRef(0)
-  idxRef.current = idx
+  useEffect(() => { idxRef.current = idx }, [idx])
+  const n = items[idx]
+  const mediaPaused = held || hidden || userPaused // Video anhalten
+  const paused = mediaPaused || kbd // kein Auto-Weiter
+
   const go = useCallback((d: number) => {
     const j = idxRef.current + d
     if (j >= items.length) { onClose(); return }
-    elapsed.current = 0; setProgress(0)
     setIdx(Math.max(0, j))
   }, [items.length, onClose])
 
   // Gesehen, sobald die Karte erscheint
   useEffect(() => { if (n) markNewsSeen(n.id) }, [n])
-  useEffect(() => { if (n?.art !== "video") setVState("idle") }, [n])
 
-  // Hintergrund nicht mitscrollen; Tastatur: ← → Esc
+  // Öffnen: ✕ fokussieren, Hintergrund inert, Scrollen sperren · Schließen: Fokus zurück auf den Kreis
   useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null
+    const root = rootRef.current
+    const siblings = root?.parentElement ? [...root.parentElement.children].filter((el): el is HTMLElement => el !== root && el instanceof HTMLElement && el.tagName !== "STYLE") : []
+    const was = siblings.map(el => el.inert)
+    siblings.forEach(el => { el.inert = true })
     const prev = document.body.style.overflow
     document.body.style.overflow = "hidden"
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); else if (e.key === "ArrowRight") go(1); else if (e.key === "ArrowLeft") go(-1) }
+    closeRef.current?.focus()
+    return () => {
+      siblings.forEach((el, i) => { el.inert = was[i] })
+      document.body.style.overflow = prev
+      const back = opener?.isConnected ? opener : document.querySelector<HTMLElement>("[data-news-ring]")
+      try { back?.focus() } catch {}
+    }
+  }, [])
+
+  // Tastatur: ← → Esc, Leertaste = Pause, Tab bleibt im Dialog
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.preventDefault(); onClose() }
+      else if (e.key === "ArrowRight") { setKbd(true); go(1) }
+      else if (e.key === "ArrowLeft") { setKbd(true); go(-1) }
+      else if (e.key === " " && !(e.target instanceof HTMLButtonElement)) { e.preventDefault(); setUserPaused(p => !p) }
+      else if (e.key === "Tab" && rootRef.current) {
+        setKbd(true)
+        const f = [...rootRef.current.querySelectorAll<HTMLElement>(FOCUSABLE)]
+        if (!f.length) return
+        const first = f[0], last = f[f.length - 1]
+        if (e.shiftKey && (document.activeElement === first || !rootRef.current.contains(document.activeElement))) { e.preventDefault(); last.focus() }
+        else if (!e.shiftKey && (document.activeElement === last || !rootRef.current.contains(document.activeElement))) { e.preventDefault(); first.focus() }
+      }
+    }
     const onVis = () => setHidden(document.visibilityState === "hidden")
     window.addEventListener("keydown", onKey); document.addEventListener("visibilitychange", onVis)
-    return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", onKey); document.removeEventListener("visibilitychange", onVis) }
+    return () => { window.removeEventListener("keydown", onKey); document.removeEventListener("visibilitychange", onVis) }
   }, [go, onClose])
-
-  // Fortschritt: Video nach Abspielzeit, sonst 6 s (Laden zählt nicht mit)
-  useEffect(() => {
-    let raf = 0, last = performance.now()
-    const tick = (now: number) => {
-      const dt = now - last; last = now
-      const v = videoRef.current
-      if (n?.art === "video" && vState === "playing" && v && v.duration > 0) {
-        const total = Math.min(v.duration * 1000, VIDEO_MAX_MS)
-        setProgress(Math.min(1, (v.currentTime * 1000) / total))
-        if (v.currentTime * 1000 >= VIDEO_MAX_MS) { go(1); return } // kürzere Videos: weiter über onEnded
-      } else if (!paused && !(n?.art === "video" && vState === "loading")) {
-        elapsed.current += dt
-        const p = Math.min(1, elapsed.current / STORY_MS)
-        setProgress(p)
-        if (p >= 1) { go(1); return }
-      }
-      raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [n, paused, vState, go])
-  useEffect(() => { if (vState === "ended") go(1) }, [vState, go])
 
   // Gesten: tippen links/rechts, halten = Pause, nach unten wischen = schließen
   const g = useRef<{ x: number; y: number; t: number; hold: ReturnType<typeof setTimeout> | null } | null>(null)
@@ -314,9 +322,14 @@ export function NewsStories({ items, onClose, onAction }: { items: LabNews[]; on
   const onCancel = () => { if (g.current?.hold) clearTimeout(g.current.hold); g.current = null; setHeld(false); setDragY(0) }
 
   if (!n) return null
+  const roundBtn: React.CSSProperties = {
+    width: 44, height: 44, borderRadius: 999, border: "none", background: "rgba(255,255,255,.12)", color: "#fff", fontSize: "1.05rem", fontWeight: 900,
+    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+  }
   return (
-    <div role="dialog" aria-modal="true" aria-label={t("Neu bei {name}", { name: MASCOT_NAME })}
+    <div ref={rootRef} role="dialog" aria-modal="true" aria-label={t("Neu bei {name}", { name: MASCOT_NAME })}
       onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onCancel}
+      onFocus={e => { try { if ((e.target as HTMLElement).matches(":focus-visible")) setKbd(true) } catch {} }}
       style={{
         position: "fixed", inset: 0, zIndex: 600, color: "#fff", touchAction: "none", userSelect: "none", WebkitUserSelect: "none", overflow: "hidden",
         // Navy wie die 3D-Bilder (#14142a), dazu leise Markenlichter
@@ -324,49 +337,98 @@ export function NewsStories({ items, onClose, onAction }: { items: LabNews[]; on
         transform: dragY ? `translateY(${dragY}px) scale(${1 - Math.min(dragY, 300) / 1500})` : undefined, opacity: dragY ? 1 - Math.min(dragY, 300) / 500 : 1,
         borderRadius: dragY ? 24 : 0, transition: dragY ? "none" : "transform .25s ease, opacity .25s ease",
         display: "flex", flexDirection: "column",
-        padding: "calc(10px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom))",
+        padding: "calc(10px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom))",
       }}>
       <style>{NEWS_CSS}</style>
-      {/* Fortschritt */}
-      <div aria-hidden style={{ display: "flex", gap: 4 }}>
-        {items.map((x, i) => (
-          <span key={x.id} style={{ flex: 1, height: 3, borderRadius: 3, background: "rgba(255,255,255,.3)", overflow: "hidden" }}>
-            <span style={{ display: "block", height: "100%", background: "#fff", width: `${(i < idx ? 1 : i > idx ? 0 : progress) * 100}%` }} />
-          </span>
-        ))}
-      </div>
-      {/* Kopf */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
-        <span aria-hidden style={{ width: 34, height: 34, borderRadius: 999, background: "rgba(255,255,255,.14)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><span style={{ marginTop: 3 }}><Mascot size={26} /></span></span>
-        <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: "block", fontWeight: 900, fontSize: "0.9rem" }}>{t("Neu bei {name}", { name: MASCOT_NAME })}</span>
-          <span style={{ display: "block", fontSize: "0.74rem", fontWeight: 700, color: "rgba(255,255,255,.75)" }}>{fmtDate(n.date)}{held ? ` · ${t("Pausiert")}` : ""}</span>
-        </span>
-        <button data-news-ui onClick={onClose} aria-label={t("Schließen")} className="lab-press" style={{
-          width: 44, height: 44, marginRight: -6, borderRadius: 999, border: "none", background: "rgba(255,255,255,.12)", color: "#fff", fontSize: "1.1rem", fontWeight: 900,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>✕</button>
-      </div>
-      {/* Bild */}
-      <div key={n.id} className="lab-news-in" style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
-        <div style={{ pointerEvents: n.art === "video" ? "auto" : "none" }}>
-          <Art n={n} videoRef={videoRef} onVideoState={setVState} paused={paused} />
-        </div>
-      </div>
-      {/* Text + ein Knopf */}
-      <div key={`t-${n.id}`} className="lab-news-in" style={{ animationDelay: ".08s" }}>
-        <h2 style={{ margin: 0, fontSize: "1.65rem", fontWeight: 900, lineHeight: 1.15, letterSpacing: "-.01em" }}>{n.title}</h2>
-        <p style={{ margin: "8px 0 0", fontSize: "1rem", fontWeight: 600, lineHeight: 1.45, color: "rgba(255,255,255,.88)" }}>{n.text}</p>
-        {n.action ? (
-          <button data-news-ui onClick={() => { haptic(10); onAction(n.action!) }} className="lab-press" style={{
-            marginTop: 18, width: "100%", minHeight: 54, borderRadius: 18, border: "none", background: "#fff", color: "#0f1a2a", fontWeight: 900, fontSize: "1.02rem",
-            boxShadow: "0 10px 28px rgba(0,0,0,.35)",
-          }}>{t("Ausprobieren")}</button>
-        ) : <div style={{ height: 18 + 54 }} aria-hidden />}
-        <div aria-hidden style={{ marginTop: 10, textAlign: "center", fontSize: "0.72rem", fontWeight: 700, color: "rgba(255,255,255,.6)" }}>
-          {idx < items.length - 1 ? t("Tippen für weiter · nach unten wischen zum Schließen") : t("Nach unten wischen zum Schließen")}
-        </div>
-      </div>
+      {/* Ansage für Screenreader/Tastatur (bleibt stehen, damit Wechsel angesagt werden) */}
+      <span aria-live="polite" aria-atomic="true" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap" }}>
+        {kbd || userPaused ? `${t("{i} von {n}", { i: idx + 1, n: items.length })}: ${n.title}. ${n.text}` : ""}
+      </span>
+      <StoryCard key={n.id} n={n} idx={idx} items={items} paused={paused} mediaPaused={mediaPaused} held={held} kbd={kbd} userPaused={userPaused}
+        onNext={() => go(1)} onClose={onClose} onAction={onAction} onTogglePause={() => setUserPaused(p => !p)} closeRef={closeRef} roundBtn={roundBtn} />
     </div>
   )
+}
+
+/** Eine Karte – eigener Zustand (Fortschritt, Video) beginnt bei jedem Kartenwechsel neu (key). */
+function StoryCard({ n, idx, items, paused, mediaPaused, held, kbd, userPaused, onNext, onClose, onAction, onTogglePause, closeRef, roundBtn }: {
+  n: LabNews; idx: number; items: LabNews[]; paused: boolean; mediaPaused: boolean; held: boolean; kbd: boolean; userPaused: boolean
+  onNext: () => void; onClose: () => void; onAction: (a: NonNullable<NewsAction>) => void; onTogglePause: () => void
+  closeRef: React.MutableRefObject<HTMLButtonElement | null>; roundBtn: React.CSSProperties
+}) {
+  const [progress, setProgress] = useState(0)
+  const [vState, setVState] = useState<VState>(n.art === "video" ? "loading" : "idle")
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const elapsed = useRef(0)
+  const isVideo = n.art === "video"
+
+  // Fortschritt: Video nach Abspielzeit, sonst 6 s. Video lädt oder wartet auf Tipp (idle) → Zähler steht.
+  useEffect(() => {
+    let raf = 0, last = performance.now()
+    const tick = (now: number) => {
+      const dt = now - last; last = now
+      const v = videoRef.current
+      if (isVideo && vState === "playing" && v && v.duration > 0) {
+        const total = Math.min(v.duration * 1000, VIDEO_MAX_MS)
+        setProgress(Math.min(1, (v.currentTime * 1000) / total))
+        if (!paused && v.currentTime * 1000 >= VIDEO_MAX_MS) { onNext(); return } // kürzere Videos: weiter über onEnded
+      } else if (!paused && !(isVideo && (vState === "loading" || vState === "idle"))) {
+        elapsed.current += dt
+        const p = Math.min(1, elapsed.current / STORY_MS)
+        setProgress(p)
+        if (p >= 1) { onNext(); return }
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [paused, vState, isVideo, onNext])
+  useEffect(() => { if (vState === "ended" && !paused) onNext() }, [vState, paused, onNext])
+
+  return <>
+    {/* Fortschritt */}
+    <div aria-hidden style={{ display: "flex", gap: 4 }}>
+      {items.map((x, i) => (
+        <span key={x.id} style={{ flex: 1, height: 3, borderRadius: 3, background: "rgba(255,255,255,.3)", overflow: "hidden" }}>
+          <span style={{ display: "block", height: "100%", background: "#fff", width: `${(i < idx ? 1 : i > idx ? 0 : progress) * 100}%` }} />
+        </span>
+      ))}
+    </div>
+    {/* Kopf */}
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+      <span aria-hidden style={{ width: 34, height: 34, borderRadius: 999, background: "rgba(255,255,255,.14)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><span style={{ marginTop: 3 }}><Mascot size={26} /></span></span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: "block", fontWeight: 900, fontSize: "0.9rem" }}>{t("Neu bei {name}", { name: MASCOT_NAME })}</span>
+        <span style={{ display: "block", fontSize: "0.74rem", fontWeight: 700, color: "rgba(255,255,255,.75)" }}>{fmtDate(n.date)}{held || userPaused ? ` · ${t("Pausiert")}` : ""}</span>
+      </span>
+      <button data-news-ui onClick={onTogglePause} aria-pressed={userPaused} aria-label={userPaused ? t("Weiter abspielen") : t("Pausieren")} className="lab-press" style={roundBtn}>
+        {userPaused ? "▶" : "❚❚"}
+      </button>
+      <button data-news-ui ref={closeRef} onClick={onClose} aria-label={t("Schließen")} className="lab-press" style={{ ...roundBtn, marginRight: -6 }}>✕</button>
+    </div>
+    {/* Bild */}
+    <div className="lab-news-in" style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", padding: "8px 0" }}>
+      <div style={{ pointerEvents: isVideo ? "auto" : "none", maxHeight: "100%" }}>
+        <Art n={n} videoRef={videoRef} onVideoState={setVState} paused={mediaPaused} />
+      </div>
+    </div>
+    {/* Text + ein Knopf */}
+    <div className="lab-news-in" style={{ animationDelay: ".08s", flexShrink: 0 }}>
+      <h2 style={{ margin: 0, fontSize: "clamp(1.3rem, 6vw, 1.65rem)", fontWeight: 900, lineHeight: 1.15, letterSpacing: "-.01em" }}>{n.title}</h2>
+      <p style={{ margin: "6px 0 0", fontSize: "clamp(0.9rem, 4.2vw, 1rem)", fontWeight: 600, lineHeight: 1.4, color: "rgba(255,255,255,.88)" }}>{n.text}</p>
+      {n.action ? (
+        <button data-news-ui onClick={() => { haptic(10); onAction(n.action!) }} className="lab-press" style={{
+          marginTop: 14, width: "100%", minHeight: 52, borderRadius: 18, border: "none", background: "#fff", color: "#0f1a2a", fontWeight: 900, fontSize: "1.02rem",
+          boxShadow: "0 10px 28px rgba(0,0,0,.35)",
+        }}>{t("Ausprobieren")}</button>
+      ) : idx < items.length - 1 || kbd ? (
+        <button data-news-ui onClick={onNext} className="lab-press" style={{
+          marginTop: 14, width: "100%", minHeight: 52, borderRadius: 18, border: "1px solid rgba(255,255,255,.35)", background: "rgba(255,255,255,.08)", color: "#fff", fontWeight: 900, fontSize: "1.02rem",
+        }}>{idx < items.length - 1 ? t("Weiter") : t("Fertig")}</button>
+      ) : <div style={{ height: 14 + 52 }} aria-hidden />}
+      <div aria-hidden style={{ marginTop: 8, textAlign: "center", fontSize: "0.72rem", fontWeight: 700, color: "rgba(255,255,255,.6)" }}>
+        {idx < items.length - 1 ? t("Tippen für weiter · nach unten wischen zum Schließen") : t("Nach unten wischen zum Schließen")}
+      </div>
+    </div>
+  </>
 }

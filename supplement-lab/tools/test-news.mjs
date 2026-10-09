@@ -62,6 +62,18 @@ try {
     N.markNewsSeen("c"); N.markNewsSeen("a")
     assert.deepEqual(N.unseenNews(list, "2026-09-20", "2026-10-09", N.seenNews()), [])
   })
+  await test("Demo-Modus (Beispiel-Daten) → nie Neuheiten", () => {
+    const st = { startDate: "2026-09-20", checkins: {}, took: {} }
+    assert.deepEqual(N.newsFor(st, "2026-10-09", [], list).map(n => n.id), ["b", "c", "a"])
+    assert.deepEqual(N.newsFor({ ...st, demo: true }, "2026-10-09", [], list), [])
+    assert.deepEqual(N.newsFor({ ...st, startDate: null }, "2026-10-09", [], list), [])
+  })
+  await test("Sprach-Karten: nur in ihrer Sprache (Video mit deutscher Schrift nicht in EN)", () => {
+    const l2 = [item("de-only", "2026-10-09", { lang: "de" }), item("alle", "2026-10-09")]
+    assert.deepEqual(N.eligibleNews(l2, "2026-10-01", "2026-10-09", 45, "de").map(n => n.id), ["de-only", "alle"])
+    assert.deepEqual(N.eligibleNews(l2, "2026-10-01", "2026-10-09", 45, "en").map(n => n.id), ["alle"])
+    assert.equal(N.LAB_NEWS.find(n => n.art === "video")?.lang, "de")
+  })
   await test("kaputter oder fehlender Speicher → leer, kein Absturz", () => {
     store.set("lab-news-seen", "{kaputt")
     assert.deepEqual(N.seenNews(), [])

@@ -643,7 +643,11 @@ export default function LabApp() {
   const newsAction = (a: NonNullable<NewsAction>) => {
     switch (a) {
       case "scan": setNewsScan(true); break
-      case "checkin": setCheckinDate(today); break
+      case "checkin":
+        // Gesperrt bis zur Abendzeit → nicht umgehen, sondern zeigen, ab wann
+        if (checkinLocked && !s.checkins[today]) { goTab("heute"); setFlash(`⏰ ${t("Check-in ab {time}", { time: clock(fromMin(checkinOpensMin(s))) })}`) }
+        else setCheckinDate(today)
+        break
       case "communities": showCommunitiesNext(); setLab(null); setLaborView(null); goTab("labor"); break
       case "stack": goTab("heute"); setTimeout(() => { try { document.getElementById("lab-today-stack")?.scrollIntoView({ behavior: "smooth", block: "start" }) } catch {} }, 120); break
     }

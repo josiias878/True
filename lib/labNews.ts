@@ -1,7 +1,7 @@
 // ── „Neu bei Kolbi“: kurze Storys über frische Funktionen (Anzeige: app/lab/news.tsx) ─────────
 // Datengetrieben: neue Karte = neuer Eintrag mit neuer, nie wiederverwendeter id. Gesehen-Status je id
 // in localStorage („lab-news-seen“). Reine Anzeige-Hilfe ohne Netz und ohne Tracking.
-import { t } from "./labI18n"
+import { t, LANG, type Lang } from "./labI18n"
 
 /** Welche animierte Illustration die Karte zeigt (gezeichnet in app/lab/news.tsx) */
 export type NewsArt = "scan" | "dose" | "stars" | "groups" | "video"
@@ -21,6 +21,8 @@ export type LabNews = {
   action: NewsAction
   /** 3D-Kolbi-Hauptbild im App-Bundle (supplement-lab/public/news/*.webp); fehlt es → gezeichnete Illustration */
   img?: string
+  /** Nur in dieser Sprache zeigen (z. B. Video mit deutscher Schrift) */
+  lang?: Lang
   /** Nur für art "video": gestreamt (nicht im Bundle), Poster daneben */
   video?: { src: string; poster: string }
 }
@@ -37,7 +39,7 @@ export const LAB_NEWS: LabNews[] = [
     title: t("Kolbi lernt deine Sterne"), text: t("Nach ein paar Check-ins schlägt Kolbi deine üblichen Sterne vor – du bestätigst nur.") },
   { id: "2026-10-groups", date: "2026-10-09", art: "groups", img: "./news/news-gruppen.webp", action: "communities",
     title: t("Start-Gruppen"), text: t("Schlaf, Energie, Fokus, Stress, Muskeln – mit einem Tipp beitreten.") },
-  { id: "2026-10-video-testet", date: "2026-10-09", art: "video", action: null,
+  { id: "2026-10-video-testet", date: "2026-10-09", art: "video", action: null, lang: "de",
     title: t("Kolbi im Labor"), text: t("Ein kurzer Blick hinter die Kulissen."),
     video: { src: `${VIDEO_BASE}.mp4`, poster: `${VIDEO_BASE}.jpg` } },
 ]
@@ -55,18 +57,24 @@ const isIso = (d: unknown): d is string => typeof d === "string" && /^\d{4}-\d{2
  * - Nicht aus der Zukunft, nicht älter als NEWS_MAX_DAYS.
  * Neueste zuerst; bei gleichem Datum Reihenfolge der Liste.
  */
-export function eligibleNews(news: LabNews[], installDate: string | null, today: string, maxDays = NEWS_MAX_DAYS): LabNews[] {
+export function eligibleNews(news: LabNews[], installDate: string | null, today: string, maxDays = NEWS_MAX_DAYS, lang: Lang = LANG): LabNews[] {
   if (!isIso(installDate) || !isIso(today)) return []
   return news
     .map((n, i) => ({ n, i }))
-    .filter(({ n }) => isIso(n.date) && n.date > installDate && n.date <= today && dayDiff(n.date, today) < maxDays)
+    .filter(({ n }) => (!n.lang || n.lang === lang) && isIso(n.date) && n.date > installDate && n.date <= today && dayDiff(n.date, today) < maxDays)
     .sort((a, b) => (a.n.date === b.n.date ? a.i - b.i : a.n.date < b.n.date ? 1 : -1))
     .map(({ n }) => n)
 }
 
 /** Noch nicht gesehene Neuheiten (für den leuchtenden Ring) */
-export function unseenNews(news: LabNews[], installDate: string | null, today: string, seen: string[]): LabNews[] {
-  return eligibleNews(news, installDate, today).filter(n => !seen.includes(n.id))
+export function unseenNews(news: LabNews[], installDate: string | null, today: string, seen: string[], lang: Lang = LANG): LabNews[] {
+  return eligibleNews(news, installDate, today, NEWS_MAX_DAYS, lang).filter(n => !seen.includes(n.id))
+}
+
+/** Ungesehene Neuheiten für diesen Nutzer – im Demo-Modus (Beispiel-Daten) nie. */
+export function newsFor(s: { demo?: boolean; startDate: string | null; checkins?: Record<string, unknown>; took?: Record<string, unknown> }, today: string, seen: string[], news: LabNews[] = LAB_NEWS, lang: Lang = LANG): LabNews[] {
+  if (s.demo) return []
+  return unseenNews(news, installDateOf(s), today, seen, lang)
 }
 
 /**
