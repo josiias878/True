@@ -370,7 +370,7 @@ Deno.serve(async req => {
     case "communities": {
       const { data, error } = await db.rpc("social_communities_v2", { p_me: myId })
       if (error) return fail("db", 500)
-      const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+      const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
       const q = typeof b.query === "string" ? norm(b.query.trim().slice(0, 40)) : ""
       const rows = ((data ?? []) as {
         id: string; kind: string; key: string; name_de: string; name_en: string; members: number; joined: boolean
