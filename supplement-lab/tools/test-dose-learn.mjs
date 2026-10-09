@@ -100,8 +100,23 @@ try {
     const before = S.stockInfo(s, s.supps[0]).left
     S.alignStockToPortion(D.setPortion(s, "mg", { n: 2, u: "stk" }, today), "mg", today)
     assert.equal(s.supps[0].stock.perDay, 2)
-    assert.equal(s.supps[0].stock.at, today)
+    assert.equal(s.supps[0].stock.at, L.addDays(today, -1))
     assert.equal(S.stockInfo(s, s.supps[0]).left, before)
+  })
+  await test("Standard angleichen friert den heutigen Tag nicht ein (QA A)", () => {
+    const y = L.addDays(today, -1), y2 = L.addDays(today, -2), at = L.addDays(today, -3)
+    const mk = () => { const s = state({ supps: [supp({ id: "mg", lib: "magnesium", stock: { form: "kapseln", pack: 60, perDay: 1, left: 60, at } })] }); s.took[y2] = ["mg"]; s.took[y] = ["mg"]; return s }
+    const left = s => S.stockInfo(s, s.supps[0]).left
+    const tick = s => { s.took[today] = ["mg"]; D.recordDefaultAmount(s, today, "mg") }
+    const align = (s, n) => S.alignStockToPortion(D.setPortion(s, "mg", { n, u: "stk" }, today), "mg", today)
+    // (1) Standard 2 vor dem Abhaken, dann abhaken → 60 − 1 − 1 − 2
+    const a = mk(); align(a, 2); assert.equal(left(a), 58); tick(a); assert.equal(left(a), 56)
+    // (2) erst abhaken, dann Standard 2 → 56; dann heute 3 → 55
+    const b = mk(); tick(b); align(b, 2); assert.equal(left(b), 56)
+    D.setAmount(b, today, "mg", { n: 3, u: "stk" }); assert.equal(left(b), 55)
+    // (3) Haken entfernen → 58
+    b.took[today] = []; D.setAmount(b, today, "mg", null); assert.equal(left(b), 58)
+    assert.equal(b.supps[0].stock.at, y)
   })
   await test("Vorrat sinkt nach tatsächlicher Menge (gleiche Einheit und per Verhältnis)", () => {
     const y = L.addDays(today, -1), y2 = L.addDays(today, -2), at = L.addDays(today, -3)

@@ -41,8 +41,8 @@ export function doseLabel(st: Pick<Stock, "form" | "perDay">) {
  * Verbrauch seit dem Eintragen (ab dem Folgetag) in Packungs-Einheiten: je Einnahmetag (geplant, abgehakt oder als
  * Extra-Einnahme eingetragen) die übliche Menge – an abgehakten Tagen mit eingetragener Menge die tatsächliche (labDose).
  */
-function usedSince(s: LabState, x: MySupp, st: Stock, from: string) {
-  const today = todayIso()
+function usedSince(s: LabState, x: MySupp, st: Stock, from: string, until = todayIso()) {
+  const today = until
   const id = x.id, lib = x.lib
   const per = perUse(st)
   let n = 0
@@ -291,7 +291,10 @@ export function alignStockToPortion(s: LabState, id: string, today = todayIso())
   const x = s.supps.find(q => q.id === id)
   const st = x?.stock, p = x?.portion
   if (!x || !st || !p || p.u !== stockUnit(st.form) || st.perDay === p.n) return s
-  const info = stockInfo(s, x)
-  s.supps = s.supps.map(q => q.id === id && q.stock ? { ...q, stock: { ...q.stock, perDay: p.n, left: info ? Math.round(info.left * 1000) / 1000 : q.stock.left, at: today } } : q)
+  // Nur bis GESTERN festschreiben (Rest am Ende von gestern, at = gestern) – der heutige Tag bleibt beweglich
+  // (Abhaken, Menge ändern, Haken entfernen zählen weiter richtig). Eingetragen erst heute → nichts festzuschreiben.
+  const y = addDays(today, -1)
+  const frozen = st.at < y ? { left: Math.round(Math.max(0, st.left - usedSince(s, x, st, st.at, y)) * 1000) / 1000, at: y } : {}
+  s.supps = s.supps.map(q => q.id === id && q.stock ? { ...q, stock: { ...q.stock, perDay: p.n, ...frozen } } : q)
   return s
 }
