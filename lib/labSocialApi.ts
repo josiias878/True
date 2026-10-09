@@ -35,6 +35,21 @@ export interface Post {
   counts: { durchhalten: number; hilfreich: number }; mine: ReactionKind[]
   /** Test-Inhalt (Autor im Testmodus bzw. im Testmodus geteilt) → „TEST“-Abzeichen */
   tester?: boolean
+  /** Erfahrungs-Bausteine (feste Liste POST_TAGS, max. 3) */
+  tags?: PostTag[]
+}
+/** Erfahrungs-Bausteine (kein Freitext; gleiche Liste in der Edge Function und der DB-Prüfung) */
+export const POST_TAGS = ["morgens", "abends", "zum-essen", "weiter-testen", "kaum-unterschied", "braucht-zeit",
+  "geschmack-ok", "geschmack-schlecht", "preis-ok", "preis-hoch", "kapseln-gross", "leichte-beschwerden"] as const
+export type PostTag = typeof POST_TAGS[number]
+export const isPostTag = (x: unknown): x is PostTag => typeof x === "string" && (POST_TAGS as readonly string[]).includes(x)
+/** Kolbi-Umfrage einer Community (Antworten aus fester Liste, eine Stimme je Profil) */
+export interface Poll {
+  id: string; community: string; date: string; question: string
+  options: { id: string; label: string }[]
+  counts: Record<string, number>; total: number
+  /** meine Antwort (falls abgestimmt) */
+  mine?: string
 }
 /** Offizieller Kolbi-Post einer Community (Text vom Kolbi-Team, keine Nutzer-Inhalte). */
 export interface OfficialPost {
@@ -58,6 +73,8 @@ export interface SocialProfile {
 }
 export interface SocialPage {
   posts: Post[]; next?: string
+  /** Kolbi-Umfragen (Community-Feed bzw. Home-Feed, erste Seite), neueste zuerst */
+  polls?: Poll[]
   /** nur Community-Feed, erste Seite: offizielle Kolbi-Posts, neueste zuerst */
   official?: OfficialPost[]
 }
@@ -182,6 +199,7 @@ function postOf(v: unknown): Post | null {
     counts: { durchhalten: num(c.durchhalten), hilfreich: num(c.hilfreich) },
     mine: (Array.isArray(v.mine) ? v.mine : []).filter((k): k is ReactionKind => k === "durchhalten" || k === "hilfreich"),
     ...(v.tester === true ? { tester: true } : {}),
+    ...(Array.isArray(v.tags) && v.tags.some(isPostTag) ? { tags: [...new Set(v.tags.filter(isPostTag))].slice(0, 3) } : {}),
   }
 }
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -205,10 +223,24 @@ function decisionsOf(v: unknown): SocialDecision[] {
     }]
   }).slice(0, 10)
 }
+const ID_RE = /^[a-z0-9][a-z0-9-]{0,80}$/
+function pollOf(v: unknown): Poll | null {
+  if (!isObj(v) || typeof v.id !== "string" || !ID_RE.test(v.id) || typeof v.question !== "string" || !v.question.trim()) return null
+  if (typeof v.community !== "string" || typeof v.date !== "string" || !DATE_RE.test(v.date)) return null
+  const options = (Array.isArray(v.options) ? v.options : []).flatMap((o: unknown) =>
+    isObj(o) && typeof o.id === "string" && ID_RE.test(o.id) && typeof o.label === "string" && o.label.trim() ? [{ id: o.id, label: o.label.slice(0, 60) }] : []).slice(0, 5)
+  if (options.length < 2) return null
+  const counts: Record<string, number> = {}
+  if (isObj(v.counts)) for (const o of options) counts[o.id] = Math.max(0, num(v.counts[o.id]))
+  const total = Object.values(counts).reduce((a, b) => a + b, 0)
+  const mine = typeof v.mine === "string" && options.some(o => o.id === v.mine) ? v.mine : undefined
+  return { id: v.id, community: v.community, date: v.date, question: v.question.slice(0, 140), options, counts, total, ...(mine ? { mine } : {}) }
+}
 function pageOf(v: unknown): SocialPage | null {
   if (!isObj(v) || !Array.isArray(v.posts)) return null
   const official = Array.isArray(v.official) ? v.official.map(officialOf).filter((o): o is OfficialPost => !!o) : null
-  return { posts: postsOf(v.posts), ...(typeof v.next === "string" && v.next ? { next: v.next } : {}), ...(official ? { official } : {}) }
+  const polls = Array.isArray(v.polls) ? v.polls.map(pollOf).filter((o): o is Poll => !!o) : null
+  return { posts: postsOf(v.posts), ...(typeof v.next === "string" && v.next ? { next: v.next } : {}), ...(official ? { official } : {}), ...(polls ? { polls } : {}) }
 }
 
 // ── Transport ─────────────────────────────────────────────────────────────────
@@ -326,16 +358,20 @@ export function resultPostPayload(s: LabState, suppId: string) {
   return { lib: p.lib, days: p.days, decision: p.decision, delta: p.delta, dims }
 }
 /** Teilen bzw. erneut teilen (aktualisiert den bestehenden Post zu diesem Supplement). */
-export async function shareResultPost(s: LabState, suppId: string): Promise<ShareResult> {
+export async function shareResultPost(s: LabState, suppId: string, tags: PostTag[] = []): Promise<ShareResult> {
   const p = resultPostPayload(s, suppId)
   if (!p) return false
-  const r = await authed("shareResult", p)
+  const clean = [...new Set(tags.filter(isPostTag))].slice(0, 3)
+  const r = await authed("shareResult", { ...p, tags: clean })
   if (ok(r)) return true
   const err = isObj(r?.body) ? r.body.error : null
   if (r?.status === 403 && err === "hidden") return "hidden"
   if (r?.status === 409 && err === "pending") return "pending"
   return false
 }
+
+// ── Kolbi-Umfragen ────────────────────────────────────────────────────────────
+export const vote = async (poll: string, option: string) => ID_RE.test(poll) && ID_RE.test(option) && ok(await authed("vote", { poll, option }))
 
 // ── Communities (nur vordefiniert: Labs + Ziele) ─────────────────────────────
 export async function communities(query?: string): Promise<SocialCommunity[] | null> {

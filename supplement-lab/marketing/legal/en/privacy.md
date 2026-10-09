@@ -152,7 +152,10 @@ The following is stored with Supabase (Frankfurt, section 11):
   Kolbi avatar (colour, accessory, mood).
 - **Result posts you share:** which supplement from the library was tested, test duration, your verdict (keep / maybe
   / out) and the difference in your ratings compared with your reset phase (overall and per area). **No daily data
-  and no notes.**
+  and no notes.** Optionally up to 3 **experience tags** from a fixed list (e.g. “Taken in the evening”, “Price too
+  high”) – no free text.
+- **Polls:** for Kolbi polls in communities, the answer you chose from a fixed list. Others only see the totals per
+  answer, not who voted how.
 - **Following:** whom you follow and who follows you.
 - **Reactions:** which reaction (“Keep going”, “Helpful”) you gave on which post.
 - **Communities:** which predefined communities you have joined (labs for a supplement or goal communities such as
@@ -178,7 +181,7 @@ without abuse). We review reports ourselves; no automated system decides.
 the app.
 
 **Storage period and deletion:** the data remains stored until you delete your social account. “Delete social
-account” in the app deletes the account, profile, result posts, following and followers, reactions, community
+account” in the app deletes the account, profile, result posts (with tags), following and followers, reactions, poll answers, community
 memberships, reports and blocks **immediately**. Delete your social account before you delete the app or choose
 “Reset”: without the key on your device, nobody can access it any more, not even you. In that case, write to us at
 [E-Mail-Adresse].

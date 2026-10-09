@@ -25,6 +25,10 @@
 //   shareResult {lib, days, decision, delta, dims}  → {ok} · 403 {error:"hidden"} · 409 {error:"pending"}
 //     (erneutes Teilen aktualisiert den Post an Ort und Stelle – gleiche ID, Reaktionen weg; bei offenen Meldungen gesperrt)
 //   react|unreact {post, kind}           → {ok}
+//   vote {poll, option}                  → {ok}   Kolbi-Umfrage: eine Stimme je Profil, änderbar (Antwort aus fester Liste)
+// Phase „Mitreden“: shareResult nimmt zusätzlich tags: bis zu 3 feste Erfahrungs-Bausteine (POST_TAGS); Posts tragen tags.
+//   communityFeed (erste Seite) und feed following+home (erste Seite) liefern polls: [{id, community, date, question,
+//   options: [{id, label}], counts: {option: n}, total, mine?}] – neueste zuerst, max. 3
 //   report {type: post|profile, id, reason}          → {ok}
 //   deleteAccount                        → {ok}   (löscht ALLES des Profils)
 // Fehler 401: {error:"noprofile"} = zu diesem Geheimnis gibt es (k)ein Profil mehr → Client darf neu anfangen;
@@ -58,6 +62,11 @@ const COLORS = ["kolbi", "blau", "violett", "rosa", "tuerkis", "bernstein", "kor
 const ACCESSORIES = ["none", "shades", "nightcap"], MOODS = ["happy", "party", "think", "sleepy", "alert"]
 const REACTIONS = ["durchhalten", "hilfreich"], DECISIONS = ["keep", "maybe", "drop"]
 const REASONS = ["spam", "beleidigung", "gesundheitsversprechen", "sonstiges"]
+// Erfahrungs-Bausteine (gleich wie lib/labSocialApi.ts POST_TAGS und die DB-Prüfung in social_post_tags)
+const POST_TAGS = new Set(["morgens", "abends", "zum-essen", "weiter-testen", "kaum-unterschied", "braucht-zeit",
+  "geschmack-ok", "geschmack-schlecht", "preis-ok", "preis-hoch", "kapseln-gross", "leichte-beschwerden"])
+const POLL_ID = /^[a-z0-9][a-z0-9-]{1,80}$/, OPTION_ID = /^[a-z0-9-]{1,40}$/
+const POLLS_MAX = 3
 const clamp = (v: unknown, lo: number, hi: number) => Math.max(lo, Math.min(hi, Number(v) || 0))
 const r2 = (v: number) => Math.round(v * 100) / 100
 
@@ -129,7 +138,7 @@ async function readCapped(req: Request): Promise<string | null> {
   return new TextDecoder().decode(all)
 }
 
-const WRITES = new Set(["updateProfile", "setTester", "follow", "unfollow", "shareResult", "react", "unreact", "report", "block", "unblock", "join", "leave"])
+const WRITES = new Set(["updateProfile", "setTester", "follow", "unfollow", "shareResult", "react", "unreact", "report", "block", "unblock", "join", "leave", "vote"])
 const READS = new Set(["getProfile", "feed", "communityFeed", "communities"])
 
 Deno.serve(async req => {
@@ -228,13 +237,40 @@ Deno.serve(async req => {
     counts: { durchhalten: r.n_durchhalten, hilfreich: r.n_hilfreich },
     mine: r.mine ?? [],
     ...(r.tester ? { tester: true } : {}),
+    ...(tagMap.get(r.id)?.length ? { tags: tagMap.get(r.id) } : {}),
   })
+  // Erfahrungs-Bausteine zu einer Seite Posts nachladen (eine Abfrage)
+  const tagMap = new Map<string, string[]>()
+  const loadTags = async (rows: FeedRow[]) => {
+    const ids = rows.map(r => r.id).filter(id => !tagMap.has(id))
+    if (!ids.length) return true
+    const { data, error } = await db.from("social_post_tags").select("post, tags").in("post", ids)
+    if (error) return false
+    for (const r of (data ?? []) as { post: string; tags: string[] }[]) tagMap.set(r.post, (r.tags ?? []).filter(x => POST_TAGS.has(x)))
+    return true
+  }
+  // Kolbi-Umfragen (Ergebnis aus meiner Sicht) für Communities
+  const pollsFor = async (communities: string[]) => {
+    if (!communities.length) return []
+    const { data, error } = await db.rpc("social_polls", { p_me: myId, p_communities: communities, p_limit: POLLS_MAX })
+    if (error) return null
+    return ((data ?? []) as { id: string; community: string; publish_on: string; question_de: string; question_en: string; options: { id: string; de: string; en: string }[]; counts: Record<string, number>; total: number; mine: string | null }[])
+      .map(q => ({
+        id: q.id, community: q.community, date: q.publish_on, question: en ? q.question_en : q.question_de,
+        options: (Array.isArray(q.options) ? q.options : []).map(o => ({ id: o.id, label: en ? o.en : o.de })),
+        counts: q.counts ?? {}, total: q.total ?? 0, ...(q.mine ? { mine: q.mine } : {}),
+      }))
+  }
   const feed = async (mode: string, opts: { community?: string; author?: string; home?: boolean }, cursor: unknown, limit = PAGE) => {
     const c = parseCursor(cursor)
     if (c === false) return fail("cursor")
     // Offizielle Kolbi-Posts: nur Community, nur erste Seite (Client mischt sie nach Datum ein, neuester oben angepinnt)
     let official: unknown[] | undefined
+    let polls: unknown[] | undefined
     if (mode === "community" && !c && opts.community) {
+      const p = await pollsFor([opts.community])
+      if (p === null) return fail("db", 500)
+      polls = p
       const today = new Date().toISOString().slice(0, 10)
       const { data: op, error: opErr } = await db.from("official_posts").select("id, publish_on, title_de, body_de, title_en, body_en, icon")
         .eq("community", opts.community).eq("hidden", false).lte("publish_on", today)
@@ -249,6 +285,9 @@ Deno.serve(async req => {
       if (memErr) return fail("db", 500)
       const ids = ((mem ?? []) as { community: string }[]).map(m => m.community)
       official = []
+      const p = await pollsFor(ids)
+      if (p === null) return fail("db", 500)
+      polls = p
       if (ids.length) {
         const now = new Date()
         const today = now.toISOString().slice(0, 10)
@@ -267,8 +306,9 @@ Deno.serve(async req => {
     })
     if (error) return fail("db", 500)
     const rows = (data ?? []) as FeedRow[]
+    if (!await loadTags(rows)) return fail("db", 500)
     const last = rows[rows.length - 1]
-    return json({ posts: rows.map(toPost), ...(rows.length === limit && last ? { next: `${last.created_at}|${last.id}` } : {}), ...(official ? { official } : {}) })
+    return json({ posts: rows.map(toPost), ...(rows.length === limit && last ? { next: `${last.created_at}|${last.id}` } : {}), ...(official ? { official } : {}), ...(polls ? { polls } : {}) })
   }
   const targetId = String(b.id ?? "")
 
@@ -319,6 +359,7 @@ Deno.serve(async req => {
       if (!iBlocked) {
         const { data, error } = await db.rpc("social_feed_v2", { p_me: myId, p_mode: "profile", p_community: null, p_author: p.id, p_before_ts: null, p_before_id: null, p_limit: 50 })
         if (error) return fail("db", 500)
+        if (!await loadTags((data ?? []) as FeedRow[])) return fail("db", 500)
         posts = ((data ?? []) as FeedRow[]).map(toPost)
       }
       return json({
@@ -407,13 +448,27 @@ Deno.serve(async req => {
       if (!DECISIONS.includes(decision)) return fail("decision")
       const dimsIn = (b.dims && typeof b.dims === "object" && !Array.isArray(b.dims) ? b.dims : {}) as Record<string, unknown>
       const dims = Object.fromEntries(Object.entries(dimsIn).filter(([k, v]) => DIMS.has(k) && Number.isFinite(Number(v))).slice(0, 11).map(([k, v]) => [k, r2(clamp(v, -4, 4))]))
+      // Erfahrungs-Bausteine: nur feste Liste, max. 3, ohne Doppelte (unbekannte → Fehler statt still verwerfen)
+      const tagsIn = b.tags === undefined ? [] : b.tags
+      if (!Array.isArray(tagsIn) || tagsIn.length > 3 || tagsIn.some(x => typeof x !== "string" || !POST_TAGS.has(x))) return fail("tags")
+      const tags = [...new Set(tagsIn as string[])]
       // Erneutes Teilen: gleicher Post (gleiche ID) wird aktualisiert, Reaktionen gelöscht – Meldungen bleiben dran.
       // Ausgeblendet → "hidden"; offene Meldungen → "pending" (erst nach Entscheidung des Inhabers wieder teilbar).
       const { data: res, error } = await db.rpc("social_share", {
         p_me: myId, p_lib: lib, p_days: Math.round(clamp(b.days, 1, 120)), p_decision: decision, p_delta: r2(clamp(b.delta, -4, 4)), p_dims: dims,
       })
       if (error) return fail("db", 500)
-      if (res === "ok") return json({ ok: true })
+      if (res === "ok") {
+        // Bausteine zum (neuen oder aktualisierten) Post dieses Supplements setzen bzw. entfernen
+        const { data: mine } = await db.from("social_posts").select("id").eq("author", myId).eq("lib", lib).maybeSingle()
+        if (mine) {
+          const { error: tErr } = tags.length
+            ? await db.from("social_post_tags").upsert({ post: mine.id, tags, updated_at: new Date().toISOString() }, { onConflict: "post" })
+            : await db.from("social_post_tags").delete().eq("post", mine.id)
+          if (tErr) return fail("db", 500)
+        }
+        return json({ ok: true })
+      }
       if (res === "hidden") return fail("hidden", 403)
       if (res === "pending") return fail("pending", 409)
       return fail("busy", 409)
@@ -433,6 +488,19 @@ Deno.serve(async req => {
       if (p.author === myId) return fail("own")
       if (!await visibleProfile(p.author) || await blockedEither(p.author)) return fail("notfound", 404)
       const { error } = await db.from("social_reactions").upsert({ post, profile: myId, kind }, { onConflict: "post,profile,kind", ignoreDuplicates: true })
+      return error ? fail("db", 500) : json({ ok: true })
+    }
+
+    case "vote": {
+      const poll = String(b.poll ?? ""), option = String(b.option ?? "")
+      if (!POLL_ID.test(poll)) return fail("poll")
+      if (!OPTION_ID.test(option)) return fail("option")
+      const today = new Date().toISOString().slice(0, 10)
+      const { data: q } = await db.from("community_polls").select("id, options, hidden, publish_on").eq("id", poll).maybeSingle()
+      if (!q || q.hidden || q.publish_on > today) return fail("notfound", 404)
+      const opts = (Array.isArray(q.options) ? q.options : []) as { id: string }[]
+      if (!opts.some(o => o.id === option)) return fail("option")
+      const { error } = await db.from("community_poll_votes").upsert({ poll, profile: myId, option, created_at: new Date().toISOString() }, { onConflict: "poll,profile" })
       return error ? fail("db", 500) : json({ ok: true })
     }
 

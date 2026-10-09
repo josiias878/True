@@ -10,7 +10,8 @@ import { AVATAR_ACCESSORIES, AVATAR_COLORS, AVATAR_MOODS, DEFAULT_AVATAR, LAB_GR
 import { SITE_URL, appVersion } from "@/lib/labGrow"
 import { markSeen } from "@/lib/labNew"
 import * as api from "@/lib/labSocialApi"
-import type { OfficialPost, ReactionKind, ReportReason, SocialCommunity, SocialPage, SocialPost, SocialProfile } from "@/lib/labSocialApi"
+import { POST_TAGS } from "@/lib/labSocialApi"
+import type { OfficialPost, Poll, PostTag, ReactionKind, ReportReason, SocialCommunity, SocialPage, SocialPost, SocialProfile } from "@/lib/labSocialApi"
 import { Btn, Icon, Sheet, SuppIcon, TabHead, haptic } from "./ui"
 import { Mascot } from "./mascot"
 import { NewBadge } from "./newbadge"
@@ -211,6 +212,80 @@ export const decisionInfo = (d: SocialPost["decision"]) => ({
   maybe: { emoji: "🤔", label: t("Vielleicht"), dot: "#eda100" },
   drop: { emoji: "✂️", label: t("Raus"), dot: "#8c8c99" },
 })[d] ?? { emoji: "🧪", label: "", dot: "#8c8c99" }
+// Erfahrungs-Bausteine: Anzeige (keine Wirkaussagen – nur Alltag, Praxis, neutrale Beobachtung)
+const TAG_INFO: Record<PostTag, { emoji: string; label: () => string }> = {
+  "morgens": { emoji: "🌅", label: () => t("Morgens genommen") },
+  "abends": { emoji: "🌙", label: () => t("Abends genommen") },
+  "zum-essen": { emoji: "🍽️", label: () => t("Zum Essen genommen") },
+  "weiter-testen": { emoji: "🔁", label: () => t("Würde weitertesten") },
+  "kaum-unterschied": { emoji: "🤷", label: () => t("Kaum Unterschied gemerkt") },
+  "braucht-zeit": { emoji: "⏳", label: () => t("Braucht wohl länger") },
+  "geschmack-ok": { emoji: "👌", label: () => t("Geschmack okay") },
+  "geschmack-schlecht": { emoji: "😖", label: () => t("Geschmack schlecht") },
+  "preis-ok": { emoji: "💶", label: () => t("Preis okay") },
+  "preis-hoch": { emoji: "💸", label: () => t("Preis zu hoch") },
+  "kapseln-gross": { emoji: "💊", label: () => t("Kapseln groß") },
+  "leichte-beschwerden": { emoji: "⚠️", label: () => t("Leichte Beschwerden gemerkt") },
+}
+function TagChips({ tags }: { tags: PostTag[] }) {
+  return (
+    <div data-post-tags style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "10px 14px 0" }}>
+      {tags.map(x => <span key={x} style={{ padding: "4px 10px", borderRadius: 999, background: "var(--surface-2)", fontSize: "0.78rem", fontWeight: 800 }}><span aria-hidden>{TAG_INFO[x].emoji}</span> {TAG_INFO[x].label()}</span>)}
+    </div>
+  )
+}
+
+/** Kolbi-Umfrage: Antworten mit einem Tipp; nach der Stimme Balken mit Anteilen (Stimme änderbar). */
+export function PollCard({ q0, where }: { q0: Poll; where?: string }) {
+  const [q, setQ] = useState(q0)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => { setQ(q0) }, [q0])
+  const voted = !!q.mine
+  const choose = async (id: string) => {
+    if (busy || q.mine === id) return
+    haptic(8)
+    const prev = q
+    const counts = { ...q.counts }
+    if (q.mine) counts[q.mine] = Math.max(0, (counts[q.mine] ?? 0) - 1)
+    counts[id] = (counts[id] ?? 0) + 1
+    setQ({ ...q, counts, total: prev.mine ? prev.total : prev.total + 1, mine: id })
+    setBusy(true)
+    await ensureMe()
+    const ok = await api.vote(q.id, id)
+    setBusy(false)
+    if (!ok) { setQ(prev); flash(OFFLINE()) }
+  }
+  return (
+    <section className="lab-card lab-rise" data-poll={q.id} aria-label={t("Kolbi-Umfrage")} style={{ padding: "14px 14px 12px", borderRadius: 24, border: "1px solid var(--accent)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <PublicAvatar avatar={DEFAULT_AVATAR} size={30} />
+        <span style={{ flex: 1, minWidth: 0, fontSize: "0.76rem", fontWeight: 900, color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {t("Kolbi fragt")}{where ? ` · ${where}` : ""}
+        </span>
+        <span style={{ fontSize: "0.72rem", fontWeight: 800, color: "var(--text-dim)", whiteSpace: "nowrap" }}>{q.total === 1 ? t("1 Stimme") : t("{n} Stimmen", { n: q.total })}</span>
+      </div>
+      <div style={{ fontWeight: 900, fontSize: "1.02rem", lineHeight: 1.3, margin: "10px 2px 10px" }}>{q.question}</div>
+      <div role="group" aria-label={q.question} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {q.options.map(o => {
+          const n = q.counts[o.id] ?? 0
+          const pct = q.total ? Math.round((n / q.total) * 100) : 0
+          const me = q.mine === o.id
+          return (
+            <button key={o.id} className="lab-press" aria-pressed={me} disabled={busy} onClick={() => void choose(o.id)}
+              style={{ position: "relative", overflow: "hidden", minHeight: 44, display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 14,
+                border: me ? "2px solid var(--accent)" : "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", textAlign: "left", fontWeight: 800, fontSize: "0.9rem" }}>
+              {voted && <span aria-hidden style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${pct}%`, background: me ? "var(--accent-dim)" : "var(--surface-2)", transition: "width .4s ease" }} />}
+              <span style={{ position: "relative", flex: 1, minWidth: 0 }}>{me ? "✓ " : ""}{o.label}</span>
+              {voted && <span style={{ position: "relative", fontVariantNumeric: "tabular-nums", fontWeight: 900, color: "var(--text-dim)" }}>{pct} %</span>}
+            </button>
+          )
+        })}
+      </div>
+      <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginTop: 8 }}>{voted ? t("Antwort jederzeit änderbar · nur Gesamtzahlen sichtbar") : t("Tippen zum Abstimmen – danach siehst du, wie andere antworten.")}</div>
+    </section>
+  )
+}
+
 const REACTIONS: { id: ReactionKind; emoji: string; label: () => string }[] = [
   { id: "durchhalten", emoji: "💪", label: () => t("Durchhalten") },
   { id: "hilfreich", emoji: "▲", label: () => t("Hilfreich") },
@@ -476,6 +551,7 @@ export function PostCard({ p, preview, onSelfTest, compact, example }: { p: Soci
         )}
       </div>
 
+      {p.tags && p.tags.length > 0 && <TagChips tags={p.tags} />}
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, padding: "12px 14px 4px" }}>
         {REACTIONS.map(r => {
           const on = mine.includes(r.id)
@@ -576,7 +652,7 @@ export function PostFeed({ feedKey, load, empty, offline, onSelfTest, onOfficial
   /** offizielle Kolbi-Posts der ersten Seite geladen (neueste zuerst) */
   onOfficial?: (o: OfficialPost[]) => void
 }) {
-  const [st, setSt] = useState<{ state: "loading" | "ok" | "offline"; posts: SocialPost[]; next?: string; official?: OfficialPost[] }>({ state: "loading", posts: [] })
+  const [st, setSt] = useState<{ state: "loading" | "ok" | "offline"; posts: SocialPost[]; next?: string; official?: OfficialPost[]; polls?: Poll[] }>({ state: "loading", posts: [] })
   const [more, setMore] = useState(false)
   const [retry, setRetry] = useState(0)
   useHideVersion()
@@ -588,7 +664,7 @@ export function PostFeed({ feedKey, load, empty, offline, onSelfTest, onOfficial
     setSt({ state: "loading", posts: [] })
     void ensureMe().then(() => load()).then(r => {
       if (!on) return
-      setSt(r && Array.isArray(r.posts) ? { state: "ok", posts: r.posts, next: r.next, official: r.official } : { state: "offline", posts: [] })
+      setSt(r && Array.isArray(r.posts) ? { state: "ok", posts: r.posts, next: r.next, official: r.official, polls: r.polls } : { state: "offline", posts: [] })
       if (r?.official) onOfficial?.(r.official)
     })
     return () => { on = false }
@@ -619,12 +695,15 @@ export function PostFeed({ feedKey, load, empty, offline, onSelfTest, onOfficial
   type Item = { k: "post"; p: SocialPost; at: number } | { k: "off"; o: OfficialPost; at: number }
   const items: Item[] = [...posts.map(p => ({ k: "post" as const, p, at: Date.parse(p.createdAt) })), ...rest.map(o => ({ k: "off" as const, o, at: offAt(o) + 86399999 }))]
     .sort((a, b) => b.at - a.at)
-  if (!posts.length && !off.length && !st.next) return <>{empty}</>
+  const polls = st.polls ?? []
+  if (!posts.length && !off.length && !polls.length && !st.next) return <>{empty}</>
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {polls.map(q => <PollCard key={q.id} q0={q} />)}
+      {!posts.length && !off.length && !st.next ? empty : null}
       {pinned && <OfficialCard o={pinned} pinned />}
       {items.map(it => it.k === "post" ? <PostCard key={it.p.id} p={it.p} onSelfTest={onSelfTest} /> : <OfficialCard key={`o-${it.o.id}`} o={it.o} />)}
-      {st.next ? <Btn variant="soft" onClick={() => void loadMore()} disabled={more} style={{ alignSelf: "center", minHeight: 44 }}>{more ? t("Lädt …") : t("Weitere laden")}</Btn> : <EndOfFeed />}
+      {st.next ? <Btn variant="soft" onClick={() => void loadMore()} disabled={more} style={{ alignSelf: "center", minHeight: 44 }}>{more ? t("Lädt …") : t("Weitere laden")}</Btn> : posts.length || off.length ? <EndOfFeed /> : null}
     </div>
   )
 }
@@ -724,15 +803,18 @@ function SharePostSheet({ s, suppId, onClose }: { s: LabState; suppId: string; o
   const p = s.demo ? null : api.resultPostPayload(s, suppId) // Demo-Daten werden nie gepostet
   const locked = useRestricted()
   const [busy, setBusy] = useState(false)
+  const [tags, setTags] = useState<PostTag[]>([])
+  const toggleTag = (x: PostTag) => { haptic(6); setTags(cur => cur.includes(x) ? cur.filter(y => y !== x) : cur.length >= 3 ? cur : [...cur, x]) }
   const preview: SocialPost | null = p ? {
     id: "preview", author: { id: "me", name: pseudonym(pseudoSeed(), isEn), avatar: publicAvatar() }, lib: p.lib, days: p.days, decision: p.decision,
     delta: p.delta, dims: p.dims, createdAt: new Date().toISOString(), counts: { durchhalten: 0, hilfreich: 0 }, mine: [],
+    ...(tags.length ? { tags } : {}),
   } : null
   const post = async () => {
     setBusy(true)
     await ensureMe()
     // true = gepostet · "hidden" = von der Moderation ausgeblendet · "pending" = Prüfung läuft · false = keine Verbindung
-    const r = (restricted ? false : await api.shareResultPost(s, suppId)) as boolean | "hidden" | "pending"
+    const r = (restricted ? false : await api.shareResultPost(s, suppId, tags)) as boolean | "hidden" | "pending"
     setBusy(false)
     if (r === "hidden") { flash(t("Dieser Beitrag wurde von der Moderation ausgeblendet")); onClose(); return }
     if (r === "pending") { flash(t("Zu diesem Beitrag läuft gerade eine Prüfung – bitte später erneut")); onClose(); return }
@@ -743,6 +825,19 @@ function SharePostSheet({ s, suppId, onClose }: { s: LabState; suppId: string; o
   return (
     <Sheet open onClose={onClose} z={450} title={t("📣 Ergebnis posten")}>
       {preview ? <>
+        <div style={{ fontSize: "0.78rem", fontWeight: 900, color: "var(--text-dim)", marginBottom: 6 }}>{t("Erzähl mehr – bis zu 3 Bausteine (freiwillig)")}</div>
+        <div role="group" aria-label={t("Erfahrungs-Bausteine")} data-tag-picker style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+          {POST_TAGS.map(x => {
+            const on = tags.includes(x)
+            const full = !on && tags.length >= 3
+            return (
+              <button key={x} className="lab-press" aria-pressed={on} disabled={full} onClick={() => toggleTag(x)} style={{
+                minHeight: 40, padding: "0 12px", borderRadius: 999, fontWeight: 800, fontSize: "0.82rem", opacity: full ? 0.45 : 1,
+                border: on ? "2px solid var(--accent)" : "1px solid var(--border)", background: on ? "var(--accent-dim)" : "var(--surface)", color: "var(--text)",
+              }}><span aria-hidden>{TAG_INFO[x].emoji}</span> {TAG_INFO[x].label()}</button>
+            )
+          })}
+        </div>
         <div style={{ fontSize: "0.78rem", fontWeight: 900, color: "var(--text-dim)", marginBottom: 8 }}>{t("So sieht dein Beitrag aus")}</div>
         <PostCard p={preview} preview />
         <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", lineHeight: 1.45, marginTop: 12 }}>
@@ -974,7 +1069,7 @@ function StartGroupCard({ c0, onJoined }: { c0: SocialCommunity; onJoined?: () =
 }
 
 // ═══ Home-Feed (Heute) ═══════════════════════════════════════════════════════════════════════
-type FeedItem = { k: "post"; p: SocialPost; at: number } | { k: "off"; o: OfficialPost; at: number }
+type FeedItem = { k: "post"; p: SocialPost; at: number } | { k: "off"; o: OfficialPost; at: number } | { k: "poll"; q: Poll; at: number }
 const HOME_FEED_MAX = 10
 
 /**
@@ -1009,12 +1104,14 @@ export function HomeFeed({ myLibs, onSelfTest, onEmpty }: { myLibs: Set<string>;
       const items: FeedItem[] = [
         ...uniq.map(p => ({ k: "post" as const, p, at: Date.parse(p.createdAt) })),
         ...(a.official ?? []).map(o => ({ k: "off" as const, o, at: Date.parse(`${o.date}T00:00:00Z`) + 86399999 })),
+        // Offene Umfragen nach vorn (Mitmachen mit einem Tipp), beantwortete nach Datum
+        ...(a.polls ?? []).map(q => ({ k: "poll" as const, q, at: q.mine ? Date.parse(`${q.date}T00:00:00Z`) : Date.now() + 1 })),
       ].sort((x, y) => y.at - x.at).slice(0, HOME_FEED_MAX)
       if (on) setSt({ state: "ok", items, comms: Array.isArray(cs) ? cs : [] })
     })()
     return () => { on = false }
   }, [reload, libsKey]) // eslint-disable-line react-hooks/exhaustive-deps
-  const items = st.items.filter(it => it.k === "off" || visible(it.p))
+  const items = st.items.filter(it => it.k !== "post" || visible(it.p))
   const joined = st.comms.filter(c => c.joined)
   const start = st.comms.filter(c => c.featured && !c.joined).sort((a, b) => (a.featured ?? 99) - (b.featured ?? 99)).slice(0, 3)
   const empty = st.state === "ok" && !items.length
@@ -1037,9 +1134,10 @@ export function HomeFeed({ myLibs, onSelfTest, onEmpty }: { myLibs: Set<string>;
           margin: "0 -14px", padding: "2px 14px 6px", scrollPaddingLeft: 14, scrollbarWidth: "none", alignItems: "flex-start",
         }}>
           {items.map(it => (
-            <div key={it.k === "post" ? it.p.id : `o-${it.o.id}`} role="listitem" style={{ flex: `0 0 ${items.length === 1 ? "100%" : "88%"}`, scrollSnapAlign: "start", minWidth: 0 }}>
+            <div key={it.k === "post" ? it.p.id : it.k === "poll" ? `q-${it.q.id}` : `o-${it.o.id}`} role="listitem" style={{ flex: `0 0 ${items.length === 1 ? "100%" : "88%"}`, scrollSnapAlign: "start", minWidth: 0 }}>
               {it.k === "post"
                 ? <PostCard p={it.p} onSelfTest={onSelfTest} compact />
+                : it.k === "poll" ? <PollCard q0={it.q} where={name(it.q.community)} />
                 : (() => {
                     const c = st.comms.find(x => x.id === it.o.community)
                     // Community unbekannt (alte App-Version / offline) → voller Text, nicht anklickbar

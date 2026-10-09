@@ -161,7 +161,10 @@ Gespeichert wird bei Supabase (Frankfurt, Abschnitt 11):
   dein Kolbi-Avatar (Farbe, Accessoire, Stimmung).
 - **Ergebnis-Posts, die du teilst:** welches Supplement aus der Bibliothek getestet wurde, Testdauer, dein Urteil
   (behalten / vielleicht / raus) und der Unterschied deiner Bewertungen gegenüber deiner Reset-Phase (gesamt und je
-  Bereich). **Keine Tagesdaten und keine Notizen.**
+  Bereich). **Keine Tagesdaten und keine Notizen.** Freiwillig bis zu 3 **Erfahrungs-Bausteine** aus einer festen
+  Liste (z. B. „Abends genommen“, „Preis zu hoch“) – kein eigener Text.
+- **Umfragen:** bei Kolbi-Umfragen in Communities deine gewählte Antwort aus einer festen Liste. Andere sehen nur die
+  Gesamtzahlen je Antwort, nicht, wer wie abgestimmt hat.
 - **Folgen:** wem du folgst und wer dir folgt.
 - **Reaktionen:** welche Reaktion („Durchhalten“, „Hilfreich“) du bei welchem Post gegeben hast.
 - **Communities:** welchen vorgegebenen Communities du beigetreten bist (Labs zu einem Supplement oder
@@ -190,7 +193,7 @@ wir selbst; es entscheidet kein Automat.
 Nutzer der App.
 
 **Speicherdauer und Löschung:** Die Daten bleiben gespeichert, bis du dein Social-Konto löschst. Mit „Social-Konto
-löschen“ in der App werden Konto, Profil, Ergebnis-Posts, Folgen und Follower, Reaktionen, Community-Mitgliedschaften,
+löschen“ in der App werden Konto, Profil, Ergebnis-Posts (mit Bausteinen), Folgen und Follower, Reaktionen, Umfrage-Antworten, Community-Mitgliedschaften,
 Meldungen und Blockierungen **sofort** gelöscht. Lösch das Social-Konto, bevor du die App löschst oder „Zurücksetzen“
 wählst: Ohne den Schlüssel auf deinem Gerät kann niemand mehr darauf zugreifen, auch du nicht. Schreib uns in dem
 Fall unter [E-Mail-Adresse].
