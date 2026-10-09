@@ -271,6 +271,9 @@ Deno.serve(async req => {
     case "setTester": {
       if (typeof b.on !== "boolean") return fail("on")
       if (b.on === iTest) return json({ ok: true })
+      // Einbahnstraße: Ein Testprofil wird nie öffentlich (sonst würden alte Test-Reaktionen/Follows/Mitgliedschaften
+      // mitzählen). Aussteigen = Profil löschen.
+      if (!b.on) return fail("tester_permanent", 409)
       const { error } = await db.from("social_profiles").update({ tester: b.on }).eq("id", myId)
       return error ? fail("db", 500) : json({ ok: true })
     }

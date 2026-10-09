@@ -397,7 +397,7 @@ export function OfficialHint() {
       <PublicAvatar avatar={DEFAULT_AVATAR} size={40} />
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: "block", fontWeight: 900, fontSize: "0.92rem" }}>📣 {t("Neuer Kolbi-Post in {name}", { name: m.title })}</span>
-        <span style={{ display: "block", fontSize: "0.76rem", fontWeight: 700, color: "var(--text-dim)" }}>{fresh.length > 1 ? t("und in {n} weiteren Communities", { n: fresh.length - 1 }) : t("Vom Kolbi-Team")}</span>
+        <span style={{ display: "block", fontSize: "0.76rem", fontWeight: 700, color: "var(--text-dim)" }}>{fresh.length === 2 ? t("und in 1 weiteren Community") : fresh.length > 2 ? t("und in {n} weiteren Communities", { n: fresh.length - 1 }) : t("Vom Kolbi-Team")}</span>
       </span>
       <span aria-hidden style={{ color: "var(--text-dim)" }}>›</span>
     </button>
@@ -931,7 +931,7 @@ function StartGroupCard({ c0 }: { c0: SocialCommunity }) {
           <span style={{ display: "block", fontSize: "0.78rem", fontWeight: 800, color: "var(--text-dim)" }}>{membersText(c.members)}</span>
         </span>
       </button>
-      <InkBtn on={c.joined} onClick={() => void toggle()} style={{ flexShrink: 0, minWidth: 124, minHeight: 52, fontSize: "1rem" }}>{c.joined ? t("✓ Dabei") : t("Beitreten")}</InkBtn>
+      <InkBtn on={c.joined} onClick={() => void toggle()} style={{ flexShrink: 0, minWidth: 100, minHeight: 52, fontSize: "1rem" }}>{c.joined ? t("✓ Dabei") : t("Beitreten")}</InkBtn>
     </div>
   )
 }
@@ -1249,10 +1249,9 @@ export function TesterSettingsCard() {
       </div>
       {off && (
         <Sheet open onClose={() => setOff(false)} z={460} portal title={t("Testmodus ausschalten?")}>
-          <div style={{ fontSize: "0.9rem", lineHeight: 1.5, fontWeight: 700 }}>{t("Beiträge, die du im Testmodus geteilt hast, bleiben versteckt – nur Tester sehen sie. Dein Profil ist danach wieder für alle sichtbar. Für einen sauberen Neustart lösch lieber das Testprofil.")}</div>
+          <div style={{ fontSize: "0.9rem", lineHeight: 1.5, fontWeight: 700 }}>{t("Ein Testprofil bleibt immer unsichtbar für echte Nutzer. Zum Ausschalten wird es gelöscht – mit allen Test-Beiträgen, Reaktionen und Follows. Danach kannst du ein normales Profil anlegen.")}</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 18 }}>
             <Btn variant="danger" full disabled={busy} onClick={() => void doDelete()} style={{ minHeight: 48 }}>{busy ? t("Lädt …") : t("Testprofil löschen")}</Btn>
-            <Btn variant="soft" full disabled={busy} onClick={() => { setOff(false); void apply(false) }} style={{ minHeight: 48 }}>{t("Nur ausschalten")}</Btn>
             <Btn variant="ghost" full onClick={() => setOff(false)} style={{ minHeight: 48 }}>{t("Abbrechen")}</Btn>
           </div>
         </Sheet>

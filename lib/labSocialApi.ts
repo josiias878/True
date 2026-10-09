@@ -119,7 +119,7 @@ function setTesterLocal(on: boolean) {
 /** Testmodus ein/aus (lokal + Server). Ohne Konto/Verbindung: false, lokal unverändert. */
 export async function setTester(on: boolean): Promise<boolean> {
   const acc = await ensureAccount()
-  if (!acc) return false
+  if (!acc || (!on && acc.tester)) return false
   if (!!acc.tester === on) { setTesterLocal(on); return true }
   const r = await send("setTester", { on })
   if (!ok(r)) return false
@@ -127,11 +127,12 @@ export async function setTester(on: boolean): Promise<boolean> {
   acc.tester = on
   return true
 }
-/** Nach dem Anmelden: lokalen Wunsch und Server-Stand abgleichen (lokal gewinnt). */
+/** Nach dem Anmelden abgleichen: Testprofil bleibt Testprofil (Server gewinnt), sonst lokaler Wunsch „an“. */
 export async function syncTester(): Promise<void> {
   const acc = await ensureAccount()
   if (!acc || !!acc.tester === testerMode()) return
-  const r = await send("setTester", { on: testerMode() })
+  if (acc.tester) { setTesterLocal(true); return }
+  const r = await send("setTester", { on: true })
   if (ok(r)) acc.tester = testerMode()
 }
 

@@ -98,6 +98,7 @@ export const EN_J: Record<string, string> = {
   "Angepinnt": "Pinned",
   "Neuer Kolbi-Post in {name}": "New Kolbi post in {name}",
   "und in {n} weiteren Communities": "and in {n} more communities",
+  "und in 1 weiteren Community": "and in 1 more community",
   "Vom Kolbi-Team": "From the Kolbi team",
   "✓ Dabei": "✓ Joined",
   "Start-Gruppen": "Starter groups",
@@ -111,6 +112,6 @@ export const EN_J: Record<string, string> = {
   "An: Dein Profil und alles, was du jetzt teilst, sehen nur andere Tester. Du siehst echte Beiträge und Test-Beiträge (mit „TEST“).": "On: only other testers see your profile and anything you share now. You see real posts and test posts (marked “TEST”).",
   "Zum Ausprobieren von Teilen, Folgen, Reaktionen und Melden, ohne den echten Feed zu stören. Test-Inhalte sehen nur andere Tester.": "For trying out sharing, following, reactions and reporting without cluttering the real feed. Only other testers see test content.",
   "Testmodus ausschalten?": "Turn off test mode?",
-  "Beiträge, die du im Testmodus geteilt hast, bleiben versteckt – nur Tester sehen sie. Dein Profil ist danach wieder für alle sichtbar. Für einen sauberen Neustart lösch lieber das Testprofil.": "Posts you shared in test mode stay hidden – only testers see them. Your profile becomes visible to everyone again. For a clean restart, delete the test profile instead.",
+  "Ein Testprofil bleibt immer unsichtbar für echte Nutzer. Zum Ausschalten wird es gelöscht – mit allen Test-Beiträgen, Reaktionen und Follows. Danach kannst du ein normales Profil anlegen.": "A test profile always stays invisible to real users. Turning test mode off deletes it – with all test posts, reactions and follows. Afterwards you can create a normal profile.",
   "Testprofil löschen": "Delete test profile"
 }

@@ -7,7 +7,7 @@
     "body_de": "Hi, ich bin Kolbi! Hier testen alle, ob ein Supplement BEI IHNEN einen Unterschied beim Schlaf macht. Mein Tipp zum Start: Bewerte ein paar Nächte ganz ohne Neues – das ist dein Normal. Erst danach kommt der Test.",
     "title_en": "Welcome to the sleep group",
     "body_en": "Hi, I'm Kolbi! Everyone here is testing whether a supplement makes a difference to THEIR sleep. My tip to start: rate a few nights without anything new – that's your normal. Only then does the test begin.",
-    "icon": "glycin"
+    "icon": null
   },
   {
     "id": "kp-002",
@@ -27,7 +27,7 @@
     "body_de": "Hi, ich bin Kolbi! Hier geht's um konzentrierte Tage – und darum, ehrlich zu prüfen, ob ein Supplement bei DIR einen Unterschied macht. Starte mit ein paar Tagen ohne Neues als Basis. Dann testest du ein Supplement nach dem anderen und vergleichst mit deinem Normal.",
     "title_en": "Welcome to the focus group",
     "body_en": "Hi, I'm Kolbi! This group is about focused days – and about honestly checking whether a supplement makes a difference for YOU. Start with a few days without anything new as your baseline. Then test one supplement at a time and compare it with your normal.",
-    "icon": "theanin"
+    "icon": null
   },
   {
     "id": "kp-004",
@@ -37,7 +37,7 @@
     "body_de": "Hi, ich bin Kolbi! Wie gestresst du dich fühlst, hängt an vielem: Arbeit, Schlaf, Kaffee, Termine. Darum zuerst ein paar Tage dein Normal festhalten, dann eins nach dem anderen testen. So findest du raus, ob ein Supplement bei DIR einen Unterschied macht.",
     "title_en": "Welcome to the stress group",
     "body_en": "Hi, I'm Kolbi! How stressed you feel depends on lots of things: work, sleep, coffee, appointments. So first log your normal for a few days, then test one thing at a time. That's how you find out whether a supplement makes a difference for YOU.",
-    "icon": "magnesium"
+    "icon": null
   },
   {
     "id": "kp-005",
