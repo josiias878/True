@@ -5,8 +5,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react"
 import type { LibSupp } from "@/lib/supplementLab"
 import {
-  BARCODE_LIBRARY, buildCandidates, lookupBarcode, normalizeBarcode, offProductUrl, productName, submitBarcode, usesOff,
-  type BarcodeCand, type LookupResult,
+  BARCODE_LIBRARY, buildCandidates, lookupBarcode, normalizeBarcode, offProductUrl, productInfo, submitBarcode, usesOff,
+  type BarcodeCand, type BarcodeFormat, type LookupResult,
 } from "@/lib/labBarcode"
 import { Btn, Label, Sheet, SuppIcon } from "./ui"
 import { t, LANG } from "@/lib/labI18n"
@@ -14,7 +14,7 @@ import { t, LANG } from "@/lib/labI18n"
 type Phase = "scan" | "manual" | "loading" | "result"
 export interface ScanItem { lib: LibSupp | null; name: string; dose: string }
 
-type Detector = { detect: (v: HTMLVideoElement) => Promise<{ rawValue: string }[]> }
+type Detector = { detect: (v: HTMLVideoElement) => Promise<{ rawValue: string; format?: string }[]> }
 type DetectorCtor = { new (o: { formats: string[] }): Detector; getSupportedFormats?: () => Promise<string[]> }
 
 /** Kamera-Scan: liefert genau einen gültigen Code (EAN-13/EAN-8/UPC) an onCode. */
@@ -26,8 +26,8 @@ function useScanner(active: boolean, video: React.RefObject<HTMLVideoElement | n
     let stop = false, timer = 0, done = false
     let stream: MediaStream | null = null
     let zx: { stop: () => void } | null = null
-    const accept = (raw: string) => {
-      const c = normalizeBarcode(raw)
+    const accept = (raw: string, format?: BarcodeFormat) => {
+      const c = normalizeBarcode(raw, format)
       if (!c || done || stop) return false
       done = true
       try { navigator.vibrate?.(30) } catch {}
@@ -49,7 +49,7 @@ function useScanner(active: boolean, video: React.RefObject<HTMLVideoElement | n
           const det = new BD({ formats: ["ean_13", "ean_8", "upc_a", "upc_e"].filter(f => formats.includes(f)) })
           const tick = async () => {
             if (stop || done) return
-            try { if (v.readyState >= 2) for (const r of await det.detect(v)) if (accept(r.rawValue)) return } catch {}
+            try { if (v.readyState >= 2) for (const r of await det.detect(v)) if (accept(r.rawValue, r.format as BarcodeFormat)) return } catch {}
             timer = window.setTimeout(tick, 160)
           }
           tick()
@@ -60,7 +60,8 @@ function useScanner(active: boolean, video: React.RefObject<HTMLVideoElement | n
           const hints = new Map()
           hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E])
           const reader = new BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 150 })
-          const ctl = await reader.decodeFromVideoElement(v, res => { if (res) accept(res.getText()) })
+          const FMT = new Map<unknown, BarcodeFormat>([[BarcodeFormat.EAN_13, "ean_13"], [BarcodeFormat.EAN_8, "ean_8"], [BarcodeFormat.UPC_A, "upc_a"], [BarcodeFormat.UPC_E, "upc_e"]])
+          const ctl = await reader.decodeFromVideoElement(v, res => { if (res) accept(res.getText(), FMT.get(res.getBarcodeFormat())) })
           if (stop || done) ctl.stop(); else zx = ctl
         }
       } catch { if (!stop) cb.current.onFail() }
@@ -114,7 +115,8 @@ export function ScanSheet({ owned, onClose, onAdd }: {
   useScanner(phase === "scan", videoRef, c => { void lookup(c) }, () => { setCamErr(true); setPhase("manual") })
 
   const built = useMemo(() => buildCandidates(res), [res])
-  const name = productName(res)
+  const info = productInfo(res)
+  const name = info.name
   const confirmedOnly = built.cands.length > 0 && sel.every(id => built.cands.find(c => c.lib.id === id)?.source === "map")
   const ql = q.trim().toLowerCase()
   const listed = BARCODE_LIBRARY.filter(l => !built.cands.some(c => c.lib.id === l.id) && (!ql || l.name.toLowerCase().includes(ql) || l.aliases.some(a => a.includes(ql))))
@@ -195,8 +197,8 @@ export function ScanSheet({ owned, onClose, onAdd }: {
       {phase === "result" && (
         <div className="lab-rise">
           <div style={{ marginBottom: 12 }}>
-            <div style={{ fontWeight: 900, fontSize: "1.02rem", lineHeight: 1.3 }}>{name || t("Unbekanntes Produkt")}</div>
-            <div style={{ fontSize: "0.74rem", color: "var(--text-dim)", fontWeight: 600 }}>{[res?.off?.brand, `EAN ${code}`].filter(Boolean).join(" · ")}</div>
+            <div style={{ fontWeight: 900, fontSize: "1.02rem", lineHeight: 1.3 }}>{name || built.cands[0]?.lib.name || t("Unbekanntes Produkt")}</div>
+            <div style={{ fontSize: "0.74rem", color: "var(--text-dim)", fontWeight: 600 }}>{[info.fromOff ? t("Name laut Open Food Facts") : "", info.fromOff ? res?.off?.brand : "", `EAN ${code}`].filter(Boolean).join(" · ")}</div>
           </div>
 
           {failed || res?.offError && !built.cands.length ? (
@@ -214,14 +216,14 @@ export function ScanSheet({ owned, onClose, onAdd }: {
                 {built.cands.map(c => row(c.lib, SOURCE_LABEL[c.source]))}
               </div>
               {built.cands.some(c => c.source === "crowd") && (
-                <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", lineHeight: 1.4, marginBottom: 10 }}>{t("Von anderen Nutzern zugeordnet heißt: noch nicht bestätigt – bitte kurz mit der Packung vergleichen.")}</div>
+                <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", lineHeight: 1.4, marginBottom: 10 }}>{t("Von anderen Nutzern zugeordnet heißt: nicht von uns geprüft – bitte kurz mit der Packung vergleichen.")}</div>
               )}
             </>
           )}
 
           {picking ? (
             <div style={{ marginBottom: 12 }}>
-              <input value={q} onChange={e => setQ(e.target.value)} placeholder={t("🔍 Suchen … (z. B. Magnesium, BPC)")}
+              <input value={q} onChange={e => setQ(e.target.value)} placeholder={t("🔍 Suchen … (z. B. Magnesium, Zink)")}
                 style={{ width: "100%", padding: "11px 14px", borderRadius: 14, fontSize: "0.92rem", marginBottom: 8 }} />
               <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 260, overflowY: "auto" }}>
                 {listed.slice(0, ql ? 30 : 60).map(l => row(l))}
@@ -243,7 +245,7 @@ export function ScanSheet({ owned, onClose, onAdd }: {
           <Btn full disabled={!sel.length} onClick={confirm}>{sel.length > 1 ? t("✓ {n} übernehmen", { n: sel.length }) : t("✓ Übernehmen")}</Btn>
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
             <Btn variant="ghost" full onClick={() => { setRes(null); setTyped(""); setPhase(camErr ? "manual" : "scan") }}>{t("Neu scannen")}</Btn>
-            {name && !sel.length && <Btn variant="soft" full onClick={() => { onAdd([{ lib: null, name: name.slice(0, 60), dose: "" }]); onClose() }}>{t("Als eigenes")}</Btn>}
+            {name && !sel.length && !built.cands.some(c => owned.has(c.lib.id)) && <Btn variant="soft" full onClick={() => { onAdd([{ lib: null, name: name.slice(0, 60), dose: "" }]); onClose() }}>{t("Als eigenes")}</Btn>}
           </div>
 
           <div style={{ fontSize: "0.68rem", color: "var(--text-dim)", lineHeight: 1.45, marginTop: 12 }}>

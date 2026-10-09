@@ -144,6 +144,7 @@ von dir brauche.
 > (Status schickt der Inhaber per „Status kopieren“ in den Chat. Die Liste unten ist das Archiv.)
 
 - [x] **Social S2 freischalten (1 Min.):** `supabase/inhaber/social-schritt.sql` im Supabase SQL Editor einfügen → Run. Danach App-Deploy durch Claude.
+- [ ] **Barcode (1 Min., einmalig):** Block 1 aus `supabase/inhaber/barcode.sql` im Supabase SQL Editor → Run (entfernt einen Test-Eintrag). Danach gelegentlich: Vorschläge ansehen (Block 2) und nur selbst an der Packung geprüfte Zuordnungen als „✓ geprüft“ eintragen (Block 3, `source = 'manual'`). App-Meldungen werden nie automatisch übernommen.
 - [ ] Impressum-Daten: vollständiger Name, ladungsfähige Anschrift, E-Mail (Pflicht für Website & Store)
 - [ ] Apple Developer Program (99 €/Jahr) – auf eigenen Namen
 - [ ] Google Play Console (25 $ einmalig) – optional, später

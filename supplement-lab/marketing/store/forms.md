@@ -27,6 +27,7 @@ Notizen, Vorrat, Preise, Ziele) liegt **nur auf dem Gerät** (`localStorage`), k
 | 3 | **Community** | Bibliotheks-ID des Supplements, Testtage, Urteil, ±★ gesamt/je Bereich, Nebenwirkungs-IDs | **zufällige Geräte-ID** (32 Hex, in der App erzeugt) | **aus**, nur mit Zustimmung | in der App: „Meine geteilten Ergebnisse löschen“ (löscht alle Beiträge der ID) | Supabase | `lib/labCommunity.ts`, `functions/lab-community` |
 | 4 | **Kalender-Abo** (Pro) | ICS-Datei mit großen Terminen; Titel **neutral**, Supplement-Namen nur wenn „Namen im Kalender“ an | **zufälliges Token** (48 Hex) | aus | „Abo beenden“ löscht die Datei | Supabase | `lib/labCalendar.ts`, `functions/lab-cal` |
 | 5 | **Käufe** (RevenueCat) | anonyme App-Nutzer-ID von RevenueCat, Kaufbelege (Produkt, Zeitpunkt, Status) | **anonyme RC-ID** | aktiv, sobald der RC-Schlüssel im Build steckt (beim Start: Angebote + Kaufstatus abfragen) | über RevenueCat-Dashboard auf Anfrage | RevenueCat (USA, DPF) | `supplement-lab/src/billing.ts` |
+| 6 | **Barcode-Scan** (Supplement hinzufügen) | Kamera: **nichts** (Bild wird nur auf dem Gerät ausgewertet). Raus geht nur die **Strichcode-Nummer**; auf Wunsch (Haken „Zuordnung anonym teilen“, an) zusätzlich die gewählte(n) **Bibliotheks-ID(s)**. Server fragt Open Food Facts (nur die Nummer, vom Server aus) | **eigene zufällige Barcode-ID** (32 Hex, nur dafür); gespeichert nur als Hash (je Meldung Hash aus Code + ID, nicht verknüpfbar); Bremse je ID und je IP-Hash mit Tagessalz (IP nie im Klartext), ≤ 2 Tage | nur wenn man scannt/eintippt; Teilen abwählbar | Meldungen nicht zuordenbar (keine Personenbeziehung); Bremse-Zähler ≤ 2 Tage | Supabase; Open Food Facts (Frankreich, ODbL) nur mit der Nummer | `lib/labBarcode.ts`, `app/lab/scan.tsx`, `functions/lab-barcode` |
 | – | Push über Server | **nicht in der Store-App** (`allowPush(!native)`); Store-App nutzt lokale Benachrichtigungen | – | – | – | – | `src/main.tsx`, `src/native.ts` |
 | – | Vercel Web Analytics | **nicht in der Store-App** (`if (!native) inject()`) | – | – | – | – | `src/main.tsx` |
 | – | Apple Health / Health Connect | **nicht in 1.0**: Oberfläche aus (`HEALTH_UI`), Plugin weder als HealthKit noch als Health Connect gelinkt, `NSHealthShareUsageDescription` entfernt (Technik, 2. Okt) | – | – | – | – | `lib/health.ts`, `capacitor.config.ts` |
@@ -35,9 +36,11 @@ Notizen, Vorrat, Preise, Ziele) liegt **nur auf dem Gerät** (`localStorage`), k
 
 Alle Verbindungen laufen über **HTTPS**. Erwartete Android-Berechtigungen in 1.0 (Angabe Technik, 2. Okt 2026):
 `INTERNET`, `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, `WAKE_LOCK`, `ACCESS_NETWORK_STATE`,
-`com.android.vending.BILLING` (+ signaturgeschützte androidx-Receiver-Berechtigung). **Kein** exakter Wecker,
+`com.android.vending.BILLING` (+ signaturgeschützte androidx-Receiver-Berechtigung) und **`CAMERA`** (Barcode-Scan,
+Zeile 6; `uses-feature android.hardware.camera required="false"`, Abfrage erst beim ersten Scan; das Bild verlässt
+das Gerät nie → in „Datensicherheit“ **keine** Fotos/Videos angeben). **Kein** exakter Wecker,
 **keine** Werbe-ID (`AD_ID` wird aktiv aus dem Manifest entfernt), **keine** Health-Berechtigung, kein Standort,
-keine Kontakte, Kamera oder Mikrofon. Neu: natives **Bewertungs-Fenster** (In-App-Review; Apple zeigt es höchstens
+keine Kontakte, kein Mikrofon. iOS: `NSCameraUsageDescription` (de/en) für den Barcode-Scan. Neu: natives **Bewertungs-Fenster** (In-App-Review; Apple zeigt es höchstens
 3× pro Jahr, in TestFlight nie) – erhebt keine Daten für uns.
 
 > **Klären (Logik, nach dem ersten AAB):** Play Console → *App-Bundle-Explorer* → Berechtigungen ansehen und mit der

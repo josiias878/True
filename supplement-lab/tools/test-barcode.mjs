@@ -59,6 +59,12 @@ try {
     assert.equal(B.normalizeBarcode("04252614"), "0042100005264")
     assert.equal(B.normalizeBarcode("00722252387530"), "0722252387530")
     assert.equal(B.normalizeBarcode("12345"), null)
+    // 8 Stellen: Format vom Scanner entscheidet (UPC-E ≠ EAN-8)
+    assert.equal(B.normalizeBarcode("04252614", "upc_e"), "0042100005264")
+    assert.equal(B.normalizeBarcode("04252614", "ean_8"), null)
+    assert.equal(B.normalizeBarcode("20289119", "ean_8"), "20289119")
+    assert.equal(B.normalizeBarcode("20289119", "upc_e"), null)
+    assert.equal(B.normalizeBarcode("4058172309250", "ean_13"), "4058172309250")
     assert.equal(B.normalizeBarcode("abc4058172309250"), null)
   })
 
@@ -98,6 +104,15 @@ try {
     assert.equal(a[0].dose, "600 mg")
     // Nährwerte aus OFF sind oft falsch erfasst → keine Menge daraus
     assert.equal(B.matchOff(OFF["4058172309250"])[0].dose, "")
+    // Packungsgrößen (g/ml) und unplausible Werte nie als Portion
+    assert.equal(B.doseFromName("Whey Protein Vanille 1000 g"), "")
+    assert.equal(B.doseFromName("Elektrolyt Drink 500 ml"), "")
+    assert.equal(B.doseFromName("Magnesium 400 mg 120 Kapseln"), "400 mg")
+    assert.equal(B.doseFromName("Vitamin D3 2.000 IE"), "2.000 IE")
+    assert.equal(B.doseFromName("B12 1000 µg"), "1000 µg")
+    assert.equal(B.doseFromName("Kreatin 50000 mg"), "")
+    assert.equal(B.doseFromName("Vitamin D 5 IE"), "")
+    assert.equal(B.matchOff({ names: ["Whey Protein 1000 g"] })[0].dose, "")
   })
 
   await test("Keine Peptide und keine verschreibungspflichtigen Mittel", () => {
@@ -109,24 +124,34 @@ try {
     assert.deepEqual(r.cands, [])
   })
 
-  await test("Reihenfolge: bestätigte Zuordnung › Crowd › OFF; Vorauswahl", () => {
+  await test("Reihenfolge: geprüft › Produktname › Crowd; Crowd nie vor einem Namens-Treffer", () => {
     const off = OFF["4061458007696"]
-    const r = B.buildCandidates(res({ map: [{ lib: "zink", amount: 25, unit: "mg" }], crowd: [{ lib: "selen", n: 1 }, { lib: "zink", n: 3 }], off }))
-    assert.deepEqual(r.cands.slice(0, 3).map(c => [c.lib.id, c.source]), [["zink", "map"], ["selen", "crowd"], ["magnesium", "name"]])
+    const r = B.buildCandidates(res({ map: [{ lib: "zink", amount: 25, unit: "mg" }], crowd: [{ lib: "selen", n: 4 }, { lib: "zink", n: 3 }], off }))
+    assert.deepEqual(r.cands.slice(0, 3).map(c => [c.lib.id, c.source]), [["zink", "map"], ["magnesium", "name"], ["selen", "crowd"]])
     assert.equal(r.cands[0].dose, "25 mg")
     assert.deepEqual(r.preselect, ["zink"])
-    const c = B.buildCandidates(res({ crowd: [{ lib: "selen", n: 1 }], off }))
-    assert.deepEqual(c.preselect, ["selen"])
-    assert.equal(c.cands[0].votes, 1)
+    // Namens-Treffer vorhanden → Crowd-Vorschlag wird gezeigt, aber nicht vorausgewählt
+    const c = B.buildCandidates(res({ crowd: [{ lib: "selen", n: 5 }], off }))
+    assert.deepEqual(c.preselect, ["magnesium"])
+    assert.equal(c.cands.find(x => x.lib.id === "selen")?.votes, 5)
+    // Kein Namens-Treffer → klarer Crowd-Vorschlag darf vorausgewählt sein
+    const u = B.buildCandidates(res({ crowd: [{ lib: "selen", n: 3 }], off: OFF["20289119"] }))
+    assert.deepEqual(u.preselect, ["selen"])
+    // Unter 3 Stimmen: gar nicht anzeigen
+    assert.deepEqual(B.buildCandidates(res({ crowd: [{ lib: "selen", n: 2 }] })).cands, [])
     assert.deepEqual(B.buildCandidates(null), { cands: [], preselect: [] })
     assert.deepEqual(B.buildCandidates(res()).cands, [])
   })
 
-  await test("ODbL-Hinweis nur, wenn OFF-Daten verwendet wurden", () => {
+  await test("ODbL-Hinweis nur mit OFF-Daten; Produktname gekürzt, Heil-/Werbeaussagen verworfen", () => {
     assert.equal(B.usesOff(res()), false)
     assert.equal(B.usesOff(res({ off: OFF["4058172309250"] })), true)
-    assert.equal(B.usesOff(res({ map: [{ lib: "zink", name: "Zink 25" }] })), true)
-    assert.equal(B.productName(res({ off: OFF["9780201379624"] })), "Creatine Monohydrate")
+    assert.deepEqual(B.productInfo(res({ off: OFF["9780201379624"] })), { name: "Creatine Monohydrate", fromOff: true })
+    assert.deepEqual(B.productInfo(res({ map: [{ lib: "zink", name: "Zink 25" }], off: OFF["9780201379624"] })), { name: "Zink 25", fromOff: false })
+    assert.deepEqual(B.productInfo(res({ off: { names: ["Immun-Komplex gegen Erkältung"] } })), { name: "", fromOff: false })
+    for (const bad of ["Heilt Gelenke", "Anti-Krebs Formel", "Corona Schutz", "Diabetes Balance", "Detox Kur", "Fatburner Extreme"]) assert.equal(B.cleanProductName(bad), "", bad)
+    assert.equal(B.cleanProductName("Magnesium Brausetabletten"), "Magnesium Brausetabletten")
+    assert.equal(B.cleanProductName("x".repeat(80)).length, 60)
   })
 
   await test("Allow-Liste der Edge-Function = BARCODE_LIBRARY", () => {
@@ -135,6 +160,12 @@ try {
     const allowed = [...block.matchAll(/"([a-z0-9-]+)"/g)].map(m => m[1]).sort()
     assert.deepEqual(allowed, B.BARCODE_LIBRARY.map(l => l.id).sort())
     assert.deepEqual(Object.values(B.NUTRIENT_LIB).filter(id => !L.LIB_BY_ID[id]), [], "NUTRIENT_LIB zeigt auf unbekannte IDs")
+    // Claim-Wortliste in App und Edge-Function identisch
+    const appSrc = readFileSync(new URL("../../lib/labBarcode.ts", import.meta.url), "utf8")
+    const claim = t => t.match(/const CLAIM = (\/.*\/i)/)?.[1]
+    assert.ok(claim(src) && claim(src) === claim(appSrc), "CLAIM-Liste weicht ab")
+    // Crowd wird nie automatisch zu barcode_map
+    assert.ok(!/from\("barcode_map"\)\.(upsert|insert)/.test(src), "Edge-Function schreibt barcode_map")
   })
 } finally {
   await server.close()

@@ -46,7 +46,7 @@ when you scan a barcode yourself (section 9a); the camera image never leaves you
 
 The app stores data in your device’s local storage and reads it back: your entries and settings and – only if you use
 the respective feature – random identifiers for the community (section 8), social features (profile ID and device key,
-section 8a), calendar subscription (section 7) and web push (section 6). This storage is **strictly necessary** so that the app can provide the feature you asked for
+section 8a), barcode scan (separate barcode ID, section 9a), calendar subscription (section 7) and web push (section 6). This storage is **strictly necessary** so that the app can provide the feature you asked for
 (Section 25(2) no. 2 of the German TDDDG); no consent is required for it. In the store apps, RevenueCat’s purchase
 system stores a random app user ID on the device (section 10). For the stats, see section 5. We don’t set cookies for
 advertising or analytics purposes.
@@ -201,24 +201,28 @@ When adding a supplement, you can scan the barcode (EAN/UPC) on the pack with yo
 
 - **Camera:** the app asks for your device’s camera permission on the first scan. The camera image is processed
   **only on your device**; it is neither stored nor uploaded. Only the recognised number is used further.
-- **Lookup:** the app sends the number together with the random, anonymous app device ID (the same as in section 8;
-  generated on the device, not a hardware or advertising ID) to our server at Supabase (section 11). The server
-  first checks our own mapping table (barcode → entry from the Kolbi library, possibly product name and amount per
-  serving) and otherwise queries **Open Food Facts** (see below). The device ID is only used as a one-way checksum
-  (hash) for abuse protection; these counters are deleted after at most 2 days.
+- **Lookup:** the app sends the number together with a **separate random barcode ID** to our server at Supabase
+  (section 11). The app creates this ID on your device only for this feature; it is not a hardware or advertising ID
+  and not the same identifier as for the community or social features (sections 8, 8a). The server first checks our
+  own mapping table, **checked by hand by us** (barcode → entry from the Kolbi library, possibly product name and
+  amount per serving), and otherwise queries **Open Food Facts** (see below).
+- **Abuse protection:** to slow down mass requests and fake reports, the server counts requests per barcode ID and
+  per internet connection. Only one-way checksums (hashes) are stored for this: of the barcode ID, or of the IP address
+  combined with a secret value that changes daily – **never the IP address itself**. The counters are deleted after
+  at most 2 days.
 - **Open Food Facts:** Open Food Facts is an open product database (Open Food Facts, non-profit association, France).
-  The request is made by **our server**, not your device; Open Food Facts only receives the number – no device ID and
-  not your IP address. We cache the answer (product name, brand, ingredients, categories, nutrient details) for up to
-  30 days to spare the database. In the app we only show the name and brand; we do not take over advertising or
-  health statements from Open Food Facts. The data is licensed under the Open Database License (ODbL); the app says
-  so in the result (“Data partly from Open Food Facts (ODbL)”).
+  The request is made by **our server**, not your device; Open Food Facts only receives the number – no identifier
+  and not your IP address. We cache the answer (product name, brand, ingredients, categories, nutrient details) for up
+  to 30 days to spare the database. In the app we only show the name and brand, labelled “Name according to Open Food
+  Facts”; we don’t show names containing health or advertising claims. The data is licensed under the Open Database
+  License (ODbL); the app says so in the result (“Data partly from Open Food Facts (ODbL)”).
 - **Sharing the match (can be switched off):** if you pick an entry from the library after a scan, the app sends –
   as long as “Share the match anonymously” is ticked – only **barcode + chosen library ID(s)**. We store a checksum
-  of barcode and device ID so that each device counts only once per product; because it is different for every
+  of barcode and barcode ID so that each device counts only once per product; because it is different for every
   barcode, reports on different products cannot be linked to the same device. No free text, no name, no intake or
-  health data. A match only counts as confirmed once at least two devices have reported the same; until then, others
-  only see it as a suggestion (“matched by other users”). Confirmed matches (barcode, library ID, product name from
-  Open Food Facts) contain no personal reference.
+  health data. Reports **never automatically** become checked matches; the app only shows them to others as a
+  suggestion (“matched by other users”) and only with a clear majority (at least 3 devices and more than half of
+  the reports for that barcode). Only we create checked matches; they contain no personal reference.
 
 Whatever you add in the end stays on your device like all entries (section 2). Legal basis: Art. 6(1)(f) GDPR
 (legitimate interest in recognising supplements quickly and correctly and protecting the feature from abuse). The app
@@ -280,8 +284,8 @@ If you share a result card or an invitation, the app uses your device’s share 
 - Community: until you delete your contributions.
 - Social features: until you delete your social account (then immediately).
 - Feedback: at most 12 months.
-- Barcode: Open Food Facts cache up to 30 days (not-found entries 2 days); abuse-protection counters at most 2 days;
-  matches and reports (no personal reference, see section 9a) permanently, as long as the feature exists.
+- Barcode: Open Food Facts cache up to 30 days (not-found entries 2 days); abuse-protection counters (checksums only)
+  at most 2 days; checked matches and reports (not linkable, see section 9a) permanently, as long as the feature exists.
 - RevenueCat: as long as needed to verify your purchases.
 - Hosting logs at Vercel: according to Vercel’s retention periods.
 

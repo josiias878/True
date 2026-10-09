@@ -47,7 +47,7 @@ das Kamerabild verlässt dein Gerät dabei nie.
 
 Die App legt Daten im lokalen Speicher deines Geräts ab und liest sie wieder aus: deine Einträge und Einstellungen
 sowie – nur wenn du die jeweilige Funktion nutzt – zufällige Kennungen für Community (Abschnitt 8), Social-Funktionen
-(Profil-ID und Geräte-Schlüssel, Abschnitt 8a), Kalender-Abo (Abschnitt 7) und Web-Push (Abschnitt 6). Diese Speicherung ist **unbedingt erforderlich**, damit die App die von
+(Profil-ID und Geräte-Schlüssel, Abschnitt 8a), Barcode-Scan (eigene Barcode-ID, Abschnitt 9a), Kalender-Abo (Abschnitt 7) und Web-Push (Abschnitt 6). Diese Speicherung ist **unbedingt erforderlich**, damit die App die von
 dir gewünschte Funktion bereitstellen kann (§ 25 Abs. 2 Nr. 2 TDDDG); eine Einwilligung ist dafür nicht nötig.
 In den Store-Apps speichert das Kauf-System von RevenueCat eine zufällige App-Nutzer-ID auf dem Gerät
 (Abschnitt 10). Zur Statistik siehe Abschnitt 5. Wir setzen keine Cookies zu Werbe- oder Analysezwecken.
@@ -215,26 +215,30 @@ Nummer eintippen.
 - **Kamera:** Die App fragt beim ersten Scan nach der Kamera-Erlaubnis deines Geräts. Das Kamerabild wird
   **ausschließlich auf deinem Gerät** ausgewertet; es wird weder gespeichert noch hochgeladen. Weiter verwendet wird
   nur die erkannte Zahlenfolge.
-- **Nachschlagen:** Die App schickt die Zahlenfolge zusammen mit der zufälligen, anonymen App-Geräte-ID (dieselbe
-  wie in Abschnitt 8; auf dem Gerät erzeugt, keine Hardware- oder Werbe-ID) an unseren Server bei Supabase
-  (Abschnitt 11). Der Server sucht zuerst in unserer eigenen Zuordnungstabelle (Strichcode → Eintrag aus der
-  Kolbi-Bibliothek, ggf. Produktname und Menge pro Portion) und fragt sonst **Open Food Facts** ab (siehe unten).
-  Die Geräte-ID wird dabei nur als Einweg-Prüfsumme (Hash) für eine Missbrauchsbremse verwendet; diese Zähler
-  werden nach höchstens 2 Tagen gelöscht.
+- **Nachschlagen:** Die App schickt die Zahlenfolge zusammen mit einer **eigenen zufälligen Barcode-ID** an unseren
+  Server bei Supabase (Abschnitt 11). Diese ID erzeugt die App nur für diese Funktion auf deinem Gerät; sie ist
+  weder eine Hardware- oder Werbe-ID noch dieselbe Kennung wie bei Community oder Social (Abschnitte 8, 8a). Der
+  Server sucht zuerst in unserer eigenen, **von uns von Hand geprüften** Zuordnungstabelle (Strichcode → Eintrag aus
+  der Kolbi-Bibliothek, ggf. Produktname und Menge pro Portion) und fragt sonst **Open Food Facts** ab (siehe unten).
+- **Missbrauchsbremse:** Um massenhafte Abfragen und gefälschte Meldungen zu bremsen, zählt der Server Anfragen je
+  Barcode-ID und je Internet-Verbindung. Gespeichert werden dafür nur Einweg-Prüfsummen (Hash): aus der Barcode-ID
+  bzw. aus der IP-Adresse zusammen mit einem täglich wechselnden geheimen Wert – **nie die IP-Adresse selbst**. Die
+  Zähler werden nach höchstens 2 Tagen gelöscht.
 - **Open Food Facts:** Open Food Facts ist eine offene Produktdatenbank (Open Food Facts, gemeinnütziger Verein,
   Frankreich). Die Abfrage stellt **unser Server**, nicht dein Gerät; Open Food Facts erhält nur die Zahlenfolge –
-  keine Geräte-ID und nicht deine IP-Adresse. Die Antwort (Produktname, Marke, Zutaten, Kategorien, Nährstoffangaben)
-  speichern wir bis zu 30 Tage zwischen, um die Datenbank zu schonen. In der App zeigen wir nur Name und Marke;
-  Werbe- oder Gesundheitsaussagen aus Open Food Facts übernehmen wir nicht. Die Daten stehen unter der Open Database
-  License (ODbL); die App weist im Ergebnis darauf hin („Daten teilweise von Open Food Facts (ODbL)“).
+  keine Kennung und nicht deine IP-Adresse. Die Antwort (Produktname, Marke, Zutaten, Kategorien, Nährstoffangaben)
+  speichern wir bis zu 30 Tage zwischen, um die Datenbank zu schonen. In der App zeigen wir nur Name und Marke,
+  gekennzeichnet als „Name laut Open Food Facts“; Namen mit Heil- oder Werbeaussagen zeigen wir nicht. Die Daten
+  stehen unter der Open Database License (ODbL); die App weist im Ergebnis darauf hin („Daten teilweise von Open
+  Food Facts (ODbL)“).
 - **Zuordnung teilen (abschaltbar):** Wählst du nach dem Scan einen Eintrag aus der Bibliothek, schickt die App –
   solange der Haken „Zuordnung anonym teilen“ gesetzt ist – nur **Strichcode + gewählte Bibliotheks-ID(s)**. Wir
-  speichern dazu eine Prüfsumme aus Strichcode und Geräte-ID, damit jedes Gerät pro Produkt nur einmal zählt; weil sie
-  für jeden Strichcode anders ausfällt, lassen sich Meldungen zu verschiedenen Produkten nicht demselben Gerät
-  zuordnen. Kein Freitext, kein Name, keine Einnahme- oder Gesundheitsdaten. Eine Zuordnung gilt erst als bestätigt,
-  wenn mindestens zwei Geräte übereinstimmend gemeldet haben; bis dahin sehen andere sie nur als Vorschlag
-  („von anderen Nutzern zugeordnet“). Bestätigte Zuordnungen (Strichcode, Bibliotheks-ID, Produktname aus Open Food
-  Facts) enthalten keinen Personenbezug.
+  speichern dazu eine Prüfsumme aus Strichcode und Barcode-ID, damit jedes Gerät pro Produkt nur einmal zählt; weil
+  sie für jeden Strichcode anders ausfällt, lassen sich Meldungen zu verschiedenen Produkten nicht demselben Gerät
+  zuordnen. Kein Freitext, kein Name, keine Einnahme- oder Gesundheitsdaten. Meldungen werden **nie automatisch** zu
+  geprüften Zuordnungen; anderen zeigt die App sie nur als Vorschlag („von anderen Nutzern zugeordnet“) und erst bei
+  einer klaren Mehrheit (mindestens 3 Geräte und mehr als die Hälfte der Meldungen zu diesem Strichcode). Geprüfte
+  Zuordnungen legen nur wir selbst an; sie enthalten keinen Personenbezug.
 
 Was du am Ende hinzufügst, bleibt wie alle Einträge nur auf deinem Gerät (Abschnitt 2). Rechtsgrundlage:
 Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse, Supplements schnell und richtig zu erkennen und die Funktion vor
@@ -301,8 +305,8 @@ Inhalte gehen, entscheidest du.
 - Social-Funktionen: bis du das Social-Konto löschst (dann sofort).
 - Feedback: höchstens 12 Monate.
 - Barcode: Zwischenspeicher von Open Food Facts bis zu 30 Tage (Nicht-gefunden-Einträge 2 Tage); Zähler der
-  Missbrauchsbremse höchstens 2 Tage; Zuordnungen und Meldungen (ohne Personenbezug, siehe Abschnitt 9a) dauerhaft,
-  solange die Funktion besteht.
+  Missbrauchsbremse (nur Prüfsummen) höchstens 2 Tage; geprüfte Zuordnungen und Meldungen (nicht verknüpfbar, siehe
+  Abschnitt 9a) dauerhaft, solange die Funktion besteht.
 - RevenueCat: solange es für die Prüfung deiner Käufe nötig ist.
 - Hosting-Logs bei Vercel: nach den Fristen von Vercel.
 

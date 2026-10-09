@@ -6,9 +6,21 @@
 // Keine Peptide, keine verschreibungspflichtigen Mittel. Keine Health-Claims aus OFF.
 
 import { LIBRARY, LIB_BY_ID, type LibSupp } from "./supplementLab"
-import { device } from "./labCommunity"
-
 const URL_ = "https://mkdfohmshuuiroeruyyz.supabase.co/functions/v1/lab-barcode"
+/** Eigene zufällige ID nur für Barcode (nicht dieselbe wie Community → nicht verknüpfbar) */
+const DEVICE_KEY = "lab-barcode-device"
+
+function device() {
+  try {
+    let d = localStorage.getItem(DEVICE_KEY)
+    if (!d || !/^[a-f0-9]{32}$/.test(d)) {
+      const b = new Uint8Array(16); crypto.getRandomValues(b)
+      d = Array.from(b, x => x.toString(16).padStart(2, "0")).join("")
+      localStorage.setItem(DEVICE_KEY, d)
+    }
+    return d
+  } catch { return null }
+}
 
 // ── Code prüfen ─────────────────────────────────────────────────────────────────
 
@@ -33,22 +45,38 @@ function upcEtoA(e: string): string | null {
   return ns + body + ck
 }
 
+/** Vom Scanner gemeldetes Format (BarcodeDetector-Namen; zxing wird darauf abgebildet) */
+export type BarcodeFormat = "ean_13" | "ean_8" | "upc_a" | "upc_e"
+
 /**
  * EAN-13 / EAN-8 / UPC-A / UPC-E → einheitlicher Schlüssel (EAN-13 oder EAN-8), sonst null.
  * UPC-A bekommt eine führende 0 (= EAN-13), Prüfziffer muss stimmen.
+ * 8 Stellen sind mehrdeutig (EAN-8 oder UPC-E): mit Format vom Scanner eindeutig; ohne (getippt) zuerst EAN-8.
  */
-export function normalizeBarcode(raw: string): string | null {
+export function normalizeBarcode(raw: string, format?: BarcodeFormat | string): string | null {
   let c = String(raw ?? "").replace(/[\s-]/g, "")
   if (!/^\d{6,14}$/.test(c)) return null
+  if (format === "upc_e") {
+    const a = c.length === 8 ? upcEtoA(c) : c.length === 12 ? c : null
+    return a && gtinOk("0" + a) ? "0" + a : null
+  }
   if (c.length === 14 && c[0] === "0") c = c.slice(1)
   if (c.length === 12) c = "0" + c
   if (c.length === 13) return gtinOk(c) ? c : null
   if (c.length === 8) {
     if (gtinOk(c)) return c
+    if (format === "ean_8") return null
     const a = upcEtoA(c)
     return a && gtinOk("0" + a) ? "0" + a : null
   }
   return null
+}
+
+/** Produktnamen mit Heil-/Werbeaussagen nicht zeigen (wie in lab-barcode); max. 60 Zeichen */
+const CLAIM = /\b(heil|gegen\b|krebs|tumor|corona|covid|virus|viren|diabet|blutzucker|cholesterin|blutdruck|abnehm|schlank|fettverbrenn|fatburn|detox|entgift|wunder|arthros|rheuma|alzheimer|demenz|depress|burn-?out|therap|heilt|heals?|cures?|cancer|against|prevents?|verhinder|beugt|weight ?loss|immunbooster|booster)/i
+export function cleanProductName(s: string | undefined): string {
+  const n = String(s ?? "").replace(/\s+/g, " ").trim().slice(0, 60).trim()
+  return n && !CLAIM.test(n) ? n : ""
 }
 
 // ── Welche Bibliothekseinträge darf ein Scan treffen? ───────────────────────────
@@ -122,13 +150,21 @@ export const NUTRIENT_LIB: Record<string, string> = {
 export type CandSource = "map" | "crowd" | "name" | "ingredients"
 export interface BarcodeCand { lib: LibSupp; source: CandSource; dose: string; votes?: number }
 
-const NAME_DOSE = /(\d+(?:[.,]\d+)?)\s*(mg|µg|μg|mcg|ug|g|i\.?\s?e\.?|iu)(?![a-z])/i
-function doseFromName(s: string): string {
-  const m = s.match(NAME_DOSE)
-  if (!m) return ""
-  const u = m[2].toLowerCase().replace(/\s|\./g, "")
-  const unit = u === "μg" || u === "mcg" || u === "ug" ? "µg" : u === "ie" || u === "iu" ? "IE" : u
-  return `${m[1]} ${unit}`
+/**
+ * Menge pro Portion aus dem Produktnamen – nur mg/µg/IE in plausiblen Bereichen.
+ * Gramm/ml sind fast immer Packungsgrößen („1000 g“, „500 ml“) → nie übernehmen.
+ */
+const NAME_DOSE = /(\d+(?:[.,]\d+)?)\s*(mg|µg|μg|mcg|ug|i\.?\s?e\.?|iu)(?![a-z])/gi
+const DOSE_RANGE: Record<string, [number, number]> = { mg: [1, 3000], "µg": [1, 5000], IE: [100, 20000] }
+export function doseFromName(s: string): string {
+  for (const m of s.matchAll(NAME_DOSE)) {
+    const u = m[2].toLowerCase().replace(/\s|\./g, "")
+    const unit = u === "μg" || u === "µg" || u === "mcg" || u === "ug" ? "µg" : u === "ie" || u === "iu" ? "IE" : "mg"
+    const v = Number(m[1].replace(/\.(?=\d{3}\b)/, "").replace(",", "."))
+    const [lo, hi] = DOSE_RANGE[unit]
+    if (Number.isFinite(v) && v >= lo && v <= hi) return `${m[1]} ${unit}`
+  }
+  return ""
 }
 
 /**
@@ -183,10 +219,13 @@ function mapDose(m: MapEntry) {
   return `${String(m.amount).replace(".", ",")} ${m.unit}`
 }
 
+/** Mindeststimmen, ab denen ein Crowd-Vorschlag überhaupt gezeigt wird (Server prüft zusätzlich > 50 %) */
+export const CROWD_MIN = 3
+
 /**
  * Lookup-Ergebnis → Auswahl für den Dialog.
- * Reihenfolge: bestätigte Zuordnung › Vorschläge anderer › Produktname/Kategorie › Zutaten/Nährwerte.
- * Vorausgewählt: alle bestätigten, sonst der stärkste Vorschlag/Namens-Treffer, sonst nichts.
+ * Reihenfolge: geprüfte Zuordnung (Betreiber) › Produktname/Kategorie › Vorschläge anderer › Zutaten/Nährwerte.
+ * Vorausgewählt: alle geprüften, sonst der stärkste Namens-Treffer, sonst (nur dann) ein klarer Crowd-Vorschlag.
  */
 export function buildCandidates(r: LookupResult | null, libs: LibSupp[] = BARCODE_LIBRARY): { cands: BarcodeCand[]; preselect: string[] } {
   if (!r) return { cands: [], preselect: [] }
@@ -195,34 +234,37 @@ export function buildCandidates(r: LookupResult | null, libs: LibSupp[] = BARCOD
   const seen = new Set<string>()
   const offMatches = matchOff(r.off, libs)
   const offDose = (id: string) => offMatches.find(m => m.lib.id === id)?.dose ?? ""
+  const push = (c: BarcodeCand) => { if (!seen.has(c.lib.id)) { seen.add(c.lib.id); out.push(c) } }
   for (const m of r.map) {
     const lib = ok.get(m.lib)
-    if (!lib || seen.has(lib.id)) continue
-    seen.add(lib.id); out.push({ lib, source: "map", dose: mapDose(m) || offDose(lib.id) })
+    if (lib) push({ lib, source: "map", dose: mapDose(m) || offDose(lib.id) })
   }
-  for (const c of [...r.crowd].sort((a, b) => b.n - a.n)) {
+  for (const m of offMatches) if (m.source === "name") push({ lib: m.lib, source: "name", dose: m.dose })
+  for (const c of [...r.crowd].filter(c => c.n >= CROWD_MIN).sort((a, b) => b.n - a.n)) {
     const lib = ok.get(c.lib)
-    if (!lib || seen.has(lib.id)) continue
-    seen.add(lib.id); out.push({ lib, source: "crowd", dose: offDose(lib.id), votes: c.n })
+    if (lib) push({ lib, source: "crowd", dose: offDose(lib.id), votes: c.n })
   }
-  for (const m of offMatches) {
-    if (seen.has(m.lib.id)) continue
-    seen.add(m.lib.id); out.push({ lib: m.lib, source: m.source, dose: m.dose })
-  }
+  for (const m of offMatches) push({ lib: m.lib, source: m.source, dose: m.dose })
   const confirmed = out.filter(c => c.source === "map").map(c => c.lib.id)
-  const first = out.find(c => c.source === "crowd" || c.source === "name")
+  const first = out.find(c => c.source === "name") ?? out.find(c => c.source === "crowd")
   return { cands: out.slice(0, 8), preselect: confirmed.length ? confirmed : first ? [first.lib.id] : [] }
 }
 
-/** Anzeigename des Produkts (OFF-Hauptname oder Name aus der eigenen Zuordnung) */
-export function productName(r: LookupResult | null): string {
-  if (!r) return ""
-  return r.off?.names?.find(Boolean) ?? r.map.find(m => m.name)?.name ?? ""
+/**
+ * Anzeigename des Produkts: geprüfter Name aus der eigenen Zuordnung, sonst OFF-Name (gekürzt, ohne Heil-/Werbe-
+ * aussagen; fromOff → „Name laut Open Food Facts“). Leer → die App zeigt den Bibliotheksnamen.
+ */
+export function productInfo(r: LookupResult | null): { name: string; fromOff: boolean } {
+  if (!r) return { name: "", fromOff: false }
+  const own = r.map.map(m => cleanProductName(m.name)).find(Boolean)
+  if (own) return { name: own, fromOff: false }
+  const off = (r.off?.names ?? []).map(cleanProductName).find(Boolean)
+  return off ? { name: off, fromOff: true } : { name: "", fromOff: false }
 }
 
 /** Wurden Daten von Open Food Facts verwendet? (→ ODbL-Hinweis anzeigen) */
 export function usesOff(r: LookupResult | null): boolean {
-  return !!r && (!!r.off || r.map.some(m => !!m.name))
+  return !!r && !!r.off
 }
 
 // ── Server ──────────────────────────────────────────────────────────────────────
