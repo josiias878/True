@@ -167,6 +167,8 @@ Gespeichert wird bei Supabase (Frankfurt, Abschnitt 11):
 - **Meldungen und Blockierungen:** was du gemeldet hast, mit dem Grund aus einer vorgegebenen Liste, und wen du
   blockiert hast.
 - **Moderation:** wenn wir einen Inhalt ausblenden oder ein Konto sperren, die Entscheidung mit Begründung.
+- **Testmodus (nur wenn du ihn selbst einschaltest):** ein Kennzeichen „Tester“ an deinem Profil und an Posts, die du
+  im Testmodus teilst. Solche Profile und Posts sehen nur andere Tester; wir nutzen das nur zum Testen der Funktionen.
 - jeweils der Zeitpunkt, zu dem etwas angelegt wurde, und der Tag deines letzten Besuchs (nur das Datum);
 - technische Zähler gegen Missbrauch (Anzahl deiner Aktionen pro Minute), die nach spätestens 2 Tagen gelöscht werden.
 

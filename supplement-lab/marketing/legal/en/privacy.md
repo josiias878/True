@@ -158,6 +158,8 @@ The following is stored with Supabase (Frankfurt, section 11):
   sleep or focus).
 - **Reports and blocks:** what you reported, with the reason from a predefined list, and whom you blocked.
 - **Moderation:** if we hide content or suspend an account, the decision with its reason.
+- **Test mode (only if you switch it on yourself):** a “tester” flag on your profile and on posts you share in test
+  mode. Such profiles and posts are only visible to other testers; we use this only to test the features.
 - in each case, the time something was created, and the day of your last visit (date only);
 - technical counters against abuse (number of your actions per minute), deleted after 2 days at the latest.
 
