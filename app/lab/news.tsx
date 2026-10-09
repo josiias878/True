@@ -264,7 +264,8 @@ export function NewsStories({ items, onClose, onAction }: { items: LabNews[]; on
     siblings.forEach(el => { el.inert = true })
     const prev = document.body.style.overflow
     document.body.style.overflow = "hidden"
-    closeRef.current?.focus()
+    // Fokus auf den Dialog selbst (nicht ✕): Leertaste pausiert statt zu schließen, iOS zeigt keinen Fokusrahmen
+    rootRef.current?.focus({ preventScroll: true })
     return () => {
       siblings.forEach((el, i) => { el.inert = was[i] })
       document.body.style.overflow = prev
@@ -327,11 +328,11 @@ export function NewsStories({ items, onClose, onAction }: { items: LabNews[]; on
     display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
   }
   return (
-    <div ref={rootRef} role="dialog" aria-modal="true" aria-label={t("Neu bei {name}", { name: MASCOT_NAME })}
+    <div ref={rootRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={t("Neu bei {name}", { name: MASCOT_NAME })}
       onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onCancel}
-      onFocus={e => { try { if ((e.target as HTMLElement).matches(":focus-visible")) setKbd(true) } catch {} }}
+      onFocus={e => { if (e.target === e.currentTarget) return; try { if ((e.target as HTMLElement).matches(":focus-visible")) setKbd(true) } catch {} }}
       style={{
-        position: "fixed", inset: 0, zIndex: 600, color: "#fff", touchAction: "none", userSelect: "none", WebkitUserSelect: "none", overflow: "hidden",
+        position: "fixed", inset: 0, zIndex: 600, outline: "none", color: "#fff", touchAction: "none", userSelect: "none", WebkitUserSelect: "none", overflow: "hidden",
         // Navy wie die 3D-Bilder (#14142a), dazu leise Markenlichter
         background: "radial-gradient(110% 60% at 15% 5%, rgba(46,204,138,.22) 0%, rgba(46,204,138,0) 60%), radial-gradient(110% 60% at 95% 95%, rgba(57,135,229,.25) 0%, rgba(57,135,229,0) 60%), #14142a",
         transform: dragY ? `translateY(${dragY}px) scale(${1 - Math.min(dragY, 300) / 1500})` : undefined, opacity: dragY ? 1 - Math.min(dragY, 300) / 500 : 1,
