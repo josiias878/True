@@ -78,7 +78,7 @@ function hash(str: string) {
 // ── Community-Zusammenfassung (freiwillig, max. 1×/Tag; Server: push-register social + Cron social_push_digest) ──
 const COMMUNITY_KEY = "lab-push-community"
 const COMMUNITY_OFF_PENDING = "lab-push-community-off" // Abschalten schlug fehl (offline) → beim nächsten Start nachholen
-export function communityPushOn(): boolean { try { return localStorage.getItem(COMMUNITY_KEY) === "1" } catch { return false } }
+export function communityPushOn(): boolean { try { return localStorage.getItem(COMMUNITY_KEY) === "1" && localStorage.getItem(COMMUNITY_OFF_PENDING) !== "1" } catch { return false } }
 /** Nur lokal vergessen (z. B. Social-Konto gelöscht: serverseitig ist die Verknüpfung per Cascade weg) */
 export function clearCommunityPush() { try { localStorage.removeItem(COMMUNITY_KEY); localStorage.removeItem(COMMUNITY_OFF_PENDING) } catch {} }
 export const communityOffPending = () => { try { return localStorage.getItem(COMMUNITY_OFF_PENDING) === "1" } catch { return false } }
@@ -93,6 +93,8 @@ export async function setCommunityPush(on: boolean, social: { secret: string; la
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ subscription: sub.toJSON(), social: { secret: social.secret, on, lang: social.lang } }),
     })
+    // Profil schon weg (401) → Verknüpfung per Cascade gelöscht, nichts mehr nachzuholen
+    if (!on && res.status === 401) { clearCommunityPush(); return true }
     // Server bestätigt den tatsächlichen Zustand (gesperrtes Profil → social:false)
     const body = res.ok ? await res.json().catch(() => null) as { social?: boolean } | null : null
     if (!body || body.social !== on) { if (!on) localStorage.setItem(COMMUNITY_OFF_PENDING, "1"); return false }
