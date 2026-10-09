@@ -31,7 +31,7 @@ const endFrame = (pose, text, top = 1060) => wrap(`<div style="position:absolute
   <div class="s" style="position:absolute;top:1370px;left:60px;right:60px">Kolbi · gratis · Link in Bio 🧪</div>`)
 const ENDS = { // Verlust-Framing nur mit Geld/Zeit/Klarheit – nie Gesundheitsangst (Art. 12 HCVO, UWG)
   "end": ["happy", `Teste selbst,<br>was bei <em>DIR</em> wirkt`],
-  "end-sparen": ["happy", `Hör auf, für Dosen<br>zu zahlen, die bei<br><em>DIR</em> nichts tun`, 1000],
+  "end-sparen": ["happy", `Zahl nicht mehr für<br>Supplements, die bei<br><em>DIR</em> nicht wirken`, 1000],
   "end-community": ["party", `Teil dein Ergebnis –<br>statt allein bei<br><em>null</em> anzufangen`, 1000],
   "end-scan": ["think", `Scan die Dose –<br>sonst weißt du nicht,<br><em>wofür</em> du zahlst`, 1000],
   "end-gratis": ["party", `Wer nicht vergleicht,<br><em>rät</em>. Teste gratis.`],
