@@ -10,7 +10,7 @@ import { suppIconSrc } from "@/lib/labIcons"
 import { STORE_MODE, fmtDate, type LabState } from "@/lib/supplementLab"
 import { Mascot, MASCOT_NAME } from "./mascot"
 import { haptic } from "./ui"
-import { t } from "@/lib/labI18n"
+import { t, LOCALE } from "@/lib/labI18n"
 
 const STORY_MS = 6000
 const VIDEO_MAX_MS = 30000
@@ -165,6 +165,42 @@ export function NewsTicker({ s, today, onOpen }: { s: LabState; today: string; o
           {recent.map((x, j) => <span key={x.id} style={{ width: j === i ? 16 : 6, height: 6, borderRadius: 6, background: j === i ? "var(--accent)" : "var(--border)", transition: "width .3s ease, background .3s ease" }} />)}
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * Kolbi-Werdegang: alle bisherigen Neuheiten als Zeitleiste (neueste oben, nach Monat gruppiert).
+ * Tippen öffnet die Storys an dieser Stelle. Daten wie der Ticker (lib/labNews.ts), nur ohne Obergrenze.
+ */
+export function NewsTimeline({ today, onOpen }: { today: string; onOpen: (items: LabNews[], start?: number) => void }) {
+  const all = useMemo(() => recentNews(today, undefined, undefined, Infinity), [today])
+  const seen = useMemo(() => new Set(seenNews()), [])
+  if (!all.length) return <div style={{ fontSize: "0.86rem", color: "var(--text-dim)" }}>{t("Noch keine Neuigkeiten.")}</div>
+  const month = (d: string) => { try { return new Date(`${d}T12:00:00Z`).toLocaleDateString(LOCALE, { month: "long", year: "numeric" }) } catch { return d.slice(0, 7) } }
+  return (
+    <div style={{ position: "relative", paddingLeft: 18 }}>
+      <style>{NEWS_CSS}</style>
+      <span aria-hidden style={{ position: "absolute", left: 5, top: 8, bottom: 8, width: 2, borderRadius: 2, background: "var(--border)" }} />
+      {all.map((n, i) => {
+        const head = i === 0 || all[i - 1].date.slice(0, 7) !== n.date.slice(0, 7)
+        return (
+          <div key={n.id}>
+            {head && <div style={{ fontSize: "0.72rem", fontWeight: 900, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--text-dim)", margin: i ? "14px 0 6px" : "0 0 6px" }}>{month(n.date)}</div>}
+            <button className="lab-press" data-news-timeline={n.id} onClick={() => { haptic(8); onOpen(all, i) }}
+              style={{ position: "relative", width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "8px 8px 8px 4px", marginBottom: 4, borderRadius: 16, border: "none", background: "none", color: "var(--text)", textAlign: "left", cursor: "pointer" }}>
+              <span aria-hidden style={{ position: "absolute", left: -17, top: "50%", marginTop: -5, width: 10, height: 10, borderRadius: 999, background: seen.has(n.id) ? "var(--surface-2)" : "#2ECC8A", border: "2px solid var(--accent)" }} />
+              <Thumb n={n} />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", fontWeight: 900, fontSize: "0.92rem", lineHeight: 1.25 }}>{n.title}</span>
+                <span style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, lineHeight: 1.35, color: "var(--text-dim)" }}>{n.text}</span>
+                <span style={{ display: "block", fontSize: "0.7rem", fontWeight: 700, color: "var(--text-dim)", marginTop: 2 }}>{fmtDate(n.date)}</span>
+              </span>
+              <span aria-hidden style={{ color: "var(--text-dim)", fontWeight: 900 }}>›</span>
+            </button>
+          </div>
+        )
+      })}
     </div>
   )
 }

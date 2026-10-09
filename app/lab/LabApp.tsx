@@ -748,7 +748,8 @@ export default function LabApp() {
               <TabHead onBack={() => setMeView(null)} kicker={t("Ich")} title={t("Kolbi & Hilfe")} />
               <KolbiPage s={s} mood={msgs[0]?.mood ?? "happy"} fill={dayProgress(s, today)} msgs={kolbiTips} onAction={runAction}
                 murky={(() => { const y = addDays(today, -1); return !!wins[0] && y >= wins[0].start && !s.checkins[y] && !s.checkins[today] })()}
-                onFlash={setFlash} onFeedback={() => { setReviewCtx({}); setReviewOpen("feedback") }} />
+                onFlash={setFlash} onFeedback={() => { setReviewCtx({}); setReviewOpen("feedback") }}
+                today={today} onNews={(items, start = 0) => setNews({ items, start })} />
             </div>
           ) : (
             <MeHome s={s} today={today} tipCount={kolbiTips.length} onView={setMeView} onSettings={() => setSettingsOpen(true)}

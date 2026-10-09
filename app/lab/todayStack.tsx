@@ -13,9 +13,6 @@ import { costSummary, fmtEuro, monthlyCost } from "@/lib/labStock"
 import { costCoach, type CoachAction } from "@/lib/labCoach"
 import type { Stop } from "@/lib/labPath"
 import { COMMUNITY_MIN, fetchOverview } from "@/lib/labCommunity"
-import { labColor } from "@/lib/labSocial"
-import * as socialApi from "@/lib/labSocialApi"
-import type { SocialPost } from "@/lib/labSocialApi"
 import { markSeen, seenNew } from "@/lib/labNew"
 import { t, dec, clock, isEn, LOCALE } from "@/lib/labI18n"
 import { Btn, Sheet, SuppIcon, SuppTitle, haptic } from "./ui"
@@ -24,7 +21,7 @@ import { amountOn, defaultPortion, portionLabel } from "@/lib/labDose"
 import { ExtraList } from "./day"
 import { NewBadge } from "./newbadge"
 import { Mascot } from "./mascot"
-import { PublicAvatar, ago, decisionInfo, signed, useSocialOn } from "./social"
+import { HomeFeed, useSocialOn } from "./social"
 
 const NEW_ID = "today-stack"
 const SKIP_ID = "skip-today" // Kolbi-Hinweis „nach links wischen“ (lib/labNew.ts)
@@ -664,30 +661,10 @@ function useNear<T extends Element>(): [React.RefObject<T | null>, boolean] {
 export function CommunitySection({ s, onDiscover, onOpenLab }: { s: LabState; onDiscover: () => void; onOpenLab: (libId: string) => void }) {
   const social = useSocialOn()
   const [ref, near] = useNear<HTMLDivElement>()
-  const [posts, setPosts] = useState<SocialPost[] | null | "loading">("loading")
+  const [feedEmpty, setFeedEmpty] = useState(false)
   const [ov, setOv] = useState<Overview | null | "loading">("loading")
   const myLibs = useMemo(() => new Set(s.supps.map(x => x.lib).filter((v): v is string => !!v)), [s.supps])
 
-  // Beiträge NUR mit Social-Einwilligung – sonst kein Server-Aufruf
-  useEffect(() => {
-    if (!near || !social) return
-    let on = true
-    ;(async () => {
-      try {
-        const a = await socialApi.feed("following")
-        let list = a?.posts ?? []
-        if (list.length < 3) {
-          const b = await socialApi.feed("discover")
-          list = [...list, ...(b?.posts ?? []).filter(p => myLibs.has(p.lib))]
-        }
-        if (!a && list.length === 0) { if (on) setPosts(null); return }
-        const uniq = [...new Map(list.map(p => [p.id, p])).values()].filter(p => LIB_BY_ID[p.lib])
-          .sort((x, y) => Date.parse(y.createdAt) - Date.parse(x.createdAt)).slice(0, 3)
-        if (on) setPosts(uniq)
-      } catch { if (on) setPosts(null) }
-    })()
-    return () => { on = false }
-  }, [near, social, myLibs])
   // „Das testen gerade viele“ aus den anonymen Statistiken
   useEffect(() => {
     if (!near) return
@@ -701,9 +678,8 @@ export function CommunitySection({ s, onDiscover, onOpenLab }: { s: LabState; on
     .sort((a, b) => b[1].n - a[1].n)[0] : undefined
   const pickLib = pick ? LIB_BY_ID[pick[0]] : undefined
 
-  const postsOk = social && Array.isArray(posts)
-  // Fehler still: ohne Beiträge (Einwilligung an, aber Fehler) und ohne Vorschlag → Bereich ausblenden
-  const hidden = near && social && posts === null && ov !== "loading" && !pickLib
+  // Fehler still: Feed leer/offline (mit Einwilligung) und ohne Vorschlag → Bereich ausblenden
+  const hidden = near && social && feedEmpty && ov !== "loading" && !pickLib
   if (hidden) return <div ref={ref} />
 
   return (
@@ -718,33 +694,8 @@ export function CommunitySection({ s, onDiscover, onOpenLab }: { s: LabState; on
             <span style={{ flex: 1, minWidth: 0, fontSize: "0.88rem", fontWeight: 800, lineHeight: 1.35 }}>{t("Sieh, was andere mit deinem Stack erleben")}</span>
             <span aria-hidden style={{ color: "var(--text-dim)", fontWeight: 800 }}>›</span>
           </button>
-        ) : posts === "loading" && near ? (
-          <div className="lab-shine" style={{ height: 56, borderRadius: 14, background: "linear-gradient(90deg, var(--surface-2), var(--surface), var(--surface-2))" }} />
-        ) : postsOk && (posts as SocialPost[]).length === 0 ? (
-          <div style={{ ...dim, padding: "2px 0 4px" }}>{t("Noch keine neuen Beiträge aus deinen Labs.")}</div>
-        ) : postsOk ? (
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            {(posts as SocialPost[]).map((p, i) => {
-              const lib = LIB_BY_ID[p.lib]
-              const d = decisionInfo(p.decision)
-              return (
-                <button key={p.id} className="lab-press" onClick={() => { seen(); onDiscover() }} style={{
-                  minHeight: 56, display: "flex", alignItems: "center", gap: 10, padding: "6px 0", border: "none", borderTop: i ? "1px solid var(--border)" : "none",
-                  background: "none", color: "var(--text)", textAlign: "left", width: "100%",
-                }}>
-                  <PublicAvatar avatar={p.author?.avatar} size={34} />
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ ...ellipsis, fontWeight: 800, fontSize: "0.86rem" }}>{p.author?.name}</span>
-                    <span style={{ ...ellipsis, fontSize: "0.76rem", color: "var(--text-dim)", fontWeight: 700 }}>
-                      <span aria-hidden style={{ display: "inline-block", width: 7, height: 7, borderRadius: 99, background: labColor(lib), marginRight: 5, verticalAlign: "middle" }} />
-                      {lib?.name} · {d.emoji} {d.label} · {signed(p.delta)}★
-                    </span>
-                  </span>
-                  <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-dim)", flexShrink: 0 }}>{ago(p.createdAt)}</span>
-                </button>
-              )
-            })}
-          </div>
+        ) : near ? (
+          <HomeFeed myLibs={myLibs} onSelfTest={onOpenLab} onEmpty={setFeedEmpty} />
         ) : null}
         {pickLib && pick && (
           <button className="lab-press" onClick={() => { seen(); onOpenLab(pickLib.id) }} style={{

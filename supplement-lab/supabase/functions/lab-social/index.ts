@@ -17,6 +17,8 @@
 //   feed {kind: following|discover, cursor?}  ·  communityFeed {id, cursor?}  → {posts, next?}
 //     communityFeed liefert auf der ersten Seite (ohne cursor) zusätzlich official: [{id, date, title, body, icon?}]
 //     = offizielle Kolbi-Posts dieser Community (publish_on <= heute, nicht ausgeblendet), neueste zuerst, max. 30
+//     feed following (erste Seite) liefert official: [{id, community, date, title, body, icon?}] aus allen beigetretenen
+//     Communities der letzten 21 Tage, max. 10 (für den Home-Feed)
 //   communities {query?}                 → {communities: [{id, kind, key, name, members, joined, featured?, official?: {id, date}}]}
 //     featured = Rang als Start-Gruppe (1…) · official = neuester sichtbarer Kolbi-Post
 //   join|leave {id}                      → {ok}
@@ -104,6 +106,8 @@ interface FeedRow {
   dims: Record<string, number>; created_at: string; n_durchhalten: number; n_hilfreich: number; mine: string[]; tester?: boolean
 }
 const OFFICIAL_MAX = 30
+const OFFICIAL_HOME_DAYS = 21 // Home-Feed: Kolbi-Posts der letzten 3 Wochen
+const OFFICIAL_HOME_MAX = 10
 
 /** Body lesen, aber höchstens MAX_BODY Bytes (auch ohne/mit falschem Content-Length) – null = zu groß */
 async function readCapped(req: Request): Promise<string | null> {
@@ -238,6 +242,24 @@ Deno.serve(async req => {
       if (opErr) return fail("db", 500)
       official = ((op ?? []) as { id: string; publish_on: string; title_de: string; body_de: string; title_en: string; body_en: string; icon: string | null }[])
         .map(o => ({ id: o.id, date: o.publish_on, title: en ? o.title_en : o.title_de, body: en ? o.body_en : o.body_de, ...(o.icon ? { icon: o.icon } : {}) }))
+    }
+    // Home-Feed („following“, erste Seite): Kolbi-Posts aus meinen Gruppen der letzten OFFICIAL_HOME_DAYS Tage, mit Community-ID
+    if (mode === "following" && !c) {
+      const { data: mem, error: memErr } = await db.from("community_members").select("community").eq("profile", myId).limit(100)
+      if (memErr) return fail("db", 500)
+      const ids = ((mem ?? []) as { community: string }[]).map(m => m.community)
+      official = []
+      if (ids.length) {
+        const now = new Date()
+        const today = now.toISOString().slice(0, 10)
+        const from = new Date(now.getTime() - OFFICIAL_HOME_DAYS * 86400000).toISOString().slice(0, 10)
+        const { data: op, error: opErr } = await db.from("official_posts").select("id, community, publish_on, title_de, body_de, title_en, body_en, icon")
+          .in("community", ids).eq("hidden", false).lte("publish_on", today).gte("publish_on", from)
+          .order("publish_on", { ascending: false }).order("id", { ascending: false }).limit(OFFICIAL_HOME_MAX)
+        if (opErr) return fail("db", 500)
+        official = ((op ?? []) as { id: string; community: string; publish_on: string; title_de: string; body_de: string; title_en: string; body_en: string; icon: string | null }[])
+          .map(o => ({ id: o.id, community: o.community, date: o.publish_on, title: en ? o.title_en : o.title_de, body: en ? o.body_en : o.body_de, ...(o.icon ? { icon: o.icon } : {}) }))
+      }
     }
     const { data, error } = await db.rpc("social_feed_v2", {
       p_me: myId, p_mode: mode, p_community: opts.community ?? null, p_author: opts.author ?? null,

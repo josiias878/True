@@ -1,4 +1,5 @@
 // ── „Neu bei Kolbi“: kurze Storys über frische Funktionen (Anzeige: app/lab/news.tsx) ─────────
+// Regel: JEDE neue Funktion bekommt hier eine Karte (erscheint in Storys, Ticker und „Kolbis Werdegang“).
 // Datengetrieben: neue Karte = neuer Eintrag mit neuer, nie wiederverwendeter id. Gesehen-Status je id
 // in localStorage („lab-news-seen“). Reine Anzeige-Hilfe ohne Netz und ohne Tracking.
 import { t, LANG, type Lang } from "./labI18n"
@@ -31,6 +32,8 @@ export type LabNews = {
 const VIDEO_BASE = "https://kolbi-smoky.vercel.app/video/archiv/kolbi-02-testet"
 
 export const LAB_NEWS: LabNews[] = [
+  { id: "2026-10-feed", date: "2026-10-09", art: "groups", img: "./news/news-gruppen.webp", action: "communities",
+    title: t("Dein Feed auf Heute"), text: t("Wisch durch Beiträge aus deinen Gruppen – direkt auf Heute.") },
   { id: "2026-10-scan", date: "2026-10-09", art: "scan", img: "./news/news-scan.webp", action: "scan",
     title: t("Scan dein Supplement"), text: t("Strichcode in die Kamera halten – Kolbi trägt es für dich ein.") },
   { id: "2026-10-dose", date: "2026-10-09", art: "dose", img: "./news/news-menge.webp", action: "stack",

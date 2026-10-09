@@ -188,5 +188,16 @@ export const EN_J: Record<string, string> = {
   "Weiter abspielen": "Resume",
   "{i} von {n}": "{i} of {n}",
   "Neuigkeiten von Kolbi nochmal ansehen": "Watch Kolbi's updates again",
-  "Story öffnen": "Open story"
+  "Story öffnen": "Open story",
+  "Kolbis Werdegang": "Kolbi's journey",
+  "1 Neuheit bisher · tippen zum Ansehen": "1 update so far · tap to view",
+  "{n} Neuheiten bisher · tippen zum Ansehen": "{n} updates so far · tap to view",
+  "🚀 Kolbis Werdegang": "🚀 Kolbi's journey",
+  "Alles, was bei Kolbi bisher dazugekommen ist. Tippen spielt die Story nochmal ab.": "Everything that has been added to Kolbi so far. Tap to replay the story.",
+  "Noch keine Neuigkeiten.": "No updates yet.",
+  "Weiterlesen ›": "Read more ›",
+  "Neue Beiträge": "New posts",
+  "Tritt einer Start-Gruppe bei – dann füllt sich dein Feed:": "Join a starter group – then your feed fills up:",
+  "Dein Feed auf Heute": "Your feed on Today",
+  "Wisch durch Beiträge aus deinen Gruppen – direkt auf Heute.": "Swipe through posts from your groups – right on Today."
 }

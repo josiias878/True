@@ -44,6 +44,8 @@ export interface OfficialPost {
   title: string; body: string
   /** Bibliotheks-ID fürs 3D-Icon (./icons/<id>.webp) */
   icon?: string
+  /** nur im Home-Feed („following“): aus welcher Community */
+  community?: string
 }
 export type SocialPost = Post
 export interface SocialProfile {
@@ -189,6 +191,7 @@ function officialOf(v: unknown): OfficialPost | null {
   return {
     id: v.id.slice(0, 64), date: v.date, title: v.title.slice(0, 140), body: v.body.slice(0, 1500),
     ...(typeof v.icon === "string" && /^[a-z0-9-]{2,40}$/.test(v.icon) ? { icon: v.icon } : {}),
+    ...(typeof v.community === "string" && /^(lab|goal)-[a-z0-9-]{2,40}$/.test(v.community) ? { community: v.community } : {}),
   }
 }
 const postsOf = (v: unknown): Post[] => (Array.isArray(v) ? v : []).map(postOf).filter((p): p is Post => !!p)

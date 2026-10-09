@@ -3,7 +3,7 @@
 // „Sicher zuerst“: kein Freitext, keine Bilder – nur strukturierte Ergebnisse, Pseudonym und Kolbi-Avatar.
 // Lese-Flächen neutral (Grafit/Weiß), Lab-/Ziel-Farben nur als Akzent, Grün→Blau nur für „Selbst testen“.
 // Server-Aufrufe ausschließlich über lib/labSocialApi (Edge Function „lab-social“).
-import React, { useCallback, useEffect, useState, useSyncExternalStore } from "react"
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { DIMS, GOALS, LIB_BY_ID, type LabState, type LibSupp } from "@/lib/supplementLab"
 import { AVATAR_ACCESSORIES, AVATAR_COLORS, AVATAR_MOODS, DEFAULT_AVATAR, LAB_GROUPS, avatarColorBg, labColor, loadAvatar, pseudoSeed, pseudonym, type LabAvatar, type LabGroup } from "@/lib/labSocial"
 import { SITE_URL, appVersion } from "@/lib/labGrow"
@@ -326,10 +326,15 @@ function officialDate(d: string) {
   try { return new Date(`${d}T12:00:00Z`).toLocaleDateString(LOCALE, { day: "numeric", month: "long", year: "numeric" }) } catch { return d }
 }
 /** Offizieller Kolbi-Post: Kolbi-Avatar, „Kolbi-Team · offiziell“, Titel, Text, 3D-Icon, Datum. Keine Reaktionen. */
-export function OfficialCard({ o, pinned }: { o: OfficialPost; pinned?: boolean }) {
+export function OfficialCard({ o, pinned, where, onOpen }: { o: OfficialPost; pinned?: boolean
+  /** Home-Feed: Name der Community unter „Kolbi-Team“ + Text gekürzt; Tippen öffnet die Community */
+  where?: string; onOpen?: () => void }) {
   const lib = o.icon ? LIB_BY_ID[o.icon] : undefined
+  const clamp: React.CSSProperties = onOpen ? { display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden" } : {}
   return (
-    <article className="lab-card lab-rise" data-official={o.id} style={{ padding: 0, overflow: "hidden", borderRadius: 24, border: "1px solid var(--accent)" }}>
+    <article className="lab-card lab-rise" data-official={o.id} onClick={onOpen ? () => { haptic(); onOpen() } : undefined} role={onOpen ? "button" : undefined} tabIndex={onOpen ? 0 : undefined}
+      onKeyDown={onOpen ? e => { if (e.key === "Enter") onOpen() } : undefined}
+      style={{ padding: 0, overflow: "hidden", borderRadius: 24, border: "1px solid var(--accent)", cursor: onOpen ? "pointer" : undefined }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px 6px" }}>
         <PublicAvatar avatar={DEFAULT_AVATAR} size={40} />
         <span style={{ flex: 1, minWidth: 0 }}>
@@ -337,7 +342,7 @@ export function OfficialCard({ o, pinned }: { o: OfficialPost; pinned?: boolean 
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("Kolbi-Team · offiziell")}</span>
             <span aria-hidden style={{ color: "var(--accent)" }}>✓</span>
           </span>
-          <span style={{ display: "block", fontSize: "0.74rem", fontWeight: 700, color: "var(--text-dim)" }}>{officialDate(o.date)}</span>
+          <span style={{ display: "block", fontSize: "0.74rem", fontWeight: 700, color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{where ? `${where} · ` : ""}{officialDate(o.date)}</span>
         </span>
         {pinned && <span style={{ flexShrink: 0, fontSize: "0.7rem", fontWeight: 900, padding: "3px 9px", borderRadius: 999, background: "var(--surface-2)", color: "var(--text-dim)" }}>📌 {t("Angepinnt")}</span>}
       </div>
@@ -349,7 +354,8 @@ export function OfficialCard({ o, pinned }: { o: OfficialPost; pinned?: boolean 
         )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 900, fontSize: "1.08rem", lineHeight: 1.3, wordBreak: "break-word" }}>{o.title}</div>
-          <div style={{ fontSize: "0.9rem", fontWeight: 600, lineHeight: 1.5, marginTop: 6, whiteSpace: "pre-line", wordBreak: "break-word" }}>{o.body}</div>
+          <div style={{ fontSize: "0.9rem", fontWeight: 600, lineHeight: 1.5, marginTop: 6, whiteSpace: "pre-line", wordBreak: "break-word", ...clamp }}>{o.body}</div>
+          {onOpen && <div style={{ marginTop: 8, fontSize: "0.82rem", fontWeight: 900, color: "var(--accent)" }}>{t("Weiterlesen ›")}</div>}
         </div>
       </div>
     </article>
@@ -405,7 +411,9 @@ export function OfficialHint() {
 }
 
 // ═══ Ergebnis-Post ═══════════════════════════════════════════════════════════════════════════
-export function PostCard({ p, preview, onSelfTest }: { p: SocialPost; preview?: boolean; onSelfTest?: (libId: string) => void }) {
+export function PostCard({ p, preview, onSelfTest, compact }: { p: SocialPost; preview?: boolean; onSelfTest?: (libId: string) => void
+  /** Home-Feed (schmale Karte): kleinere Reaktions-Knöpfe, damit beide in eine Zeile passen */
+  compact?: boolean }) {
   const lib = LIB_BY_ID[p.lib]
   const color = labColor(lib)
   const d = decisionInfo(p.decision)
@@ -428,7 +436,7 @@ export function PostCard({ p, preview, onSelfTest }: { p: SocialPost; preview?: 
     const ok = await (on ? api.unreact(p.id, k) : api.react(p.id, k))
     if (!ok) { flip(on); flash(OFFLINE()) }
   }
-  const pill: React.CSSProperties = { minHeight: 44, padding: "0 14px", borderRadius: 999, display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 800, fontSize: "0.86rem", whiteSpace: "nowrap" }
+  const pill: React.CSSProperties = { minHeight: 44, padding: compact ? "0 10px" : "0 14px", borderRadius: 999, display: "inline-flex", alignItems: "center", gap: compact ? 4 : 6, fontWeight: 800, fontSize: compact ? "0.8rem" : "0.86rem", whiteSpace: "nowrap" }
   return (
     <article className="lab-card lab-rise" data-post={p.id} style={{ padding: 0, overflow: "hidden", borderRadius: 24 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "8px 6px 8px 8px" }}>
@@ -932,6 +940,97 @@ function StartGroupCard({ c0 }: { c0: SocialCommunity }) {
         </span>
       </button>
       <InkBtn on={c.joined} onClick={() => void toggle()} style={{ flexShrink: 0, minWidth: 100, minHeight: 52, fontSize: "1rem" }}>{c.joined ? t("✓ Dabei") : t("Beitreten")}</InkBtn>
+    </div>
+  )
+}
+
+// ═══ Home-Feed (Heute) ═══════════════════════════════════════════════════════════════════════
+type FeedItem = { k: "post"; p: SocialPost; at: number } | { k: "off"; o: OfficialPost; at: number }
+const HOME_FEED_MAX = 10
+
+/**
+ * Wischbarer Feed auf Heute (wie Instagram): Kolbi-Posts aus meinen Gruppen + Beiträge von Leuten, denen ich folge
+ * (bei wenig Inhalt ergänzt um Beiträge zu meinen Supplements). Chronologisch, kein Ranking.
+ * Noch keine Gruppe → Start-Gruppen mit einem Tipp beitreten. Fehler → null (Bereich zeigt dann nur den Rest).
+ */
+export function HomeFeed({ myLibs, onSelfTest, onEmpty }: { myLibs: Set<string>; onSelfTest?: (libId: string) => void; onEmpty?: (empty: boolean) => void }) {
+  const [st, setSt] = useState<{ state: "loading" | "ok" | "offline"; items: FeedItem[]; comms: SocialCommunity[] }>({ state: "loading", items: [], comms: [] })
+  const [reload, setReload] = useState(0)
+  const [idx, setIdx] = useState(0)
+  const rowRef = useRef<HTMLDivElement | null>(null)
+  useHideVersion()
+  useBlocked()
+  useRestricted()
+  useDecisions()
+  useEffect(() => {
+    let on = true
+    void (async () => {
+      await ensureMe()
+      const [a, cs] = await Promise.all([api.feed("following"), api.communities()])
+      if (!on) return
+      if (!a) { setSt({ state: "offline", items: [], comms: [] }); return }
+      let posts = a.posts
+      if (posts.length < 3) {
+        const b = await api.feed("discover")
+        posts = [...posts, ...(b?.posts ?? []).filter(p => myLibs.has(p.lib))]
+      }
+      const uniq = [...new Map(posts.map(p => [p.id, p])).values()].filter(p => LIB_BY_ID[p.lib])
+      const items: FeedItem[] = [
+        ...uniq.map(p => ({ k: "post" as const, p, at: Date.parse(p.createdAt) })),
+        ...(a.official ?? []).map(o => ({ k: "off" as const, o, at: Date.parse(`${o.date}T00:00:00Z`) + 86399999 })),
+      ].sort((x, y) => y.at - x.at).slice(0, HOME_FEED_MAX)
+      if (on) setSt({ state: "ok", items, comms: Array.isArray(cs) ? cs : [] })
+    })()
+    return () => { on = false }
+  }, [reload, myLibs])
+  const items = st.items.filter(it => it.k === "off" || visible(it.p))
+  const joined = st.comms.filter(c => c.joined)
+  const start = st.comms.filter(c => c.featured && !c.joined).sort((a, b) => (a.featured ?? 99) - (b.featured ?? 99)).slice(0, 3)
+  const empty = st.state === "ok" && !items.length
+  useEffect(() => { if (st.state !== "loading") onEmpty?.(st.state === "offline" || (empty && !start.length)) }, [st.state, empty, start.length]) // eslint-disable-line react-hooks/exhaustive-deps
+  if (restricted) return null
+  if (st.state === "loading") return <div className="lab-shine" style={{ height: 120, borderRadius: 18, background: "linear-gradient(90deg, var(--surface-2), var(--surface), var(--surface-2))" }} />
+  if (st.state === "offline") return null
+  const onScroll = () => {
+    const el = rowRef.current
+    if (!el || !el.firstElementChild) return
+    const w = (el.firstElementChild as HTMLElement).offsetWidth + 10
+    setIdx(Math.max(0, Math.min(items.length - 1, Math.round(el.scrollLeft / w))))
+  }
+  const name = (id?: string) => { const c = id ? st.comms.find(x => x.id === id) : undefined; return c ? meta(c).title : undefined }
+  return (
+    <div data-home-feed>
+      {items.length > 0 && <>
+        <div ref={rowRef} onScroll={onScroll} role="list" aria-label={t("Neue Beiträge")} style={{
+          display: "flex", gap: 10, overflowX: "auto", scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", overscrollBehaviorX: "contain",
+          margin: "0 -14px", padding: "2px 14px 6px", scrollPaddingLeft: 14, scrollbarWidth: "none", alignItems: "flex-start",
+        }}>
+          {items.map(it => (
+            <div key={it.k === "post" ? it.p.id : `o-${it.o.id}`} role="listitem" style={{ flex: `0 0 ${items.length === 1 ? "100%" : "88%"}`, scrollSnapAlign: "start", minWidth: 0 }}>
+              {it.k === "post"
+                ? <PostCard p={it.p} onSelfTest={onSelfTest} compact />
+                : <OfficialCard o={it.o} where={name(it.o.community)} onOpen={() => {
+                    const c = st.comms.find(x => x.id === it.o.community)
+                    if (c) { markOfficialSeen(c.id, { id: it.o.id, date: it.o.date }); openSocial({ kind: "community", id: c.id, c }) }
+                  }} />}
+            </div>
+          ))}
+        </div>
+        {items.length > 1 && (
+          <div aria-hidden style={{ display: "flex", justifyContent: "center", gap: 5, marginTop: 6 }}>
+            {items.map((it, j) => <span key={j} style={{ width: j === idx ? 16 : 6, height: 6, borderRadius: 6, background: j === idx ? "var(--accent)" : "var(--border)", transition: "width .3s ease, background .3s ease" }} />)}
+          </div>
+        )}
+      </>}
+      {!joined.length && start.length > 0 && (
+        <div style={{ marginTop: items.length ? 12 : 0 }}>
+          <div style={{ fontSize: "0.82rem", fontWeight: 800, color: "var(--text-dim)", margin: "0 0 8px" }}>{t("Tritt einer Start-Gruppe bei – dann füllt sich dein Feed:")}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }} onClick={() => setTimeout(() => setReload(x => x + 1), 1200)}>
+            {start.map(c => <StartGroupCard key={c.id} c0={c} />)}
+          </div>
+        </div>
+      )}
+      {empty && !start.length && <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", lineHeight: 1.4 }}>{t("Noch keine neuen Beiträge aus deinen Labs.")}</div>}
     </div>
   )
 }

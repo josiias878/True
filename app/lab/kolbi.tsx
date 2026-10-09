@@ -1,5 +1,7 @@
 "use client"
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
+import { recentNews, type LabNews } from "@/lib/labNews"
+import { NewsTimeline } from "./news"
 import { fetchOverview } from "@/lib/labCommunity"
 import { BADGES, LIB_BY_ID, levelFor, streak, type LabState } from "@/lib/supplementLab"
 import { FACT_COUNT, learnedFacts, nextFact } from "@/lib/labKnowledge"
@@ -20,7 +22,7 @@ const JOBS = [
   { emoji: "📚", title: t("Lernen"), text: t("Jeden Tag ein kleiner Fakt.") },
 ]
 
-type Panel = "mir" | "guide" | "badges" | "pro"
+type Panel = "mir" | "guide" | "badges" | "pro" | "werdegang"
 
 /** Kachel im Kolbi-Raster: Emoji, Titel, eine Zeile Status – Details erst beim Antippen. */
 function Tile({ emoji, title, sub, onClick, arrow = true }: { emoji: string; title: string; sub: React.ReactNode; onClick: () => void; arrow?: boolean }) {
@@ -35,9 +37,11 @@ function Tile({ emoji, title, sub, onClick, arrow = true }: { emoji: string; tit
 }
 
 /** Kolbi-Tab: oben Kolbi kompakt, dann Tipps (knapp), Wissens-Album, ruhiges Kachel-Raster mit Details im Blatt. */
-export function KolbiPage({ s, mood, fill, murky, msgs, onAction, onFlash, onFeedback }: {
+export function KolbiPage({ s, mood, fill, murky, msgs, onAction, onFlash, onFeedback, today, onNews }: {
   s: LabState; mood: Mood; fill: number; murky: boolean; msgs: CoachMsg[]; onAction: (a: CoachAction, id: string) => void
   onFlash: (m: string) => void; onFeedback: () => void
+  /** Kolbi-Werdegang (alle Neuheiten) – fehlt onNews, gibt es die Kachel nicht */
+  today?: string; onNews?: (items: LabNews[], start?: number) => void
 }) {
   const [poke, setPoke] = useState(0)
   const [allTips, setAllTips] = useState(false)
@@ -57,6 +61,7 @@ export function KolbiPage({ s, mood, fill, murky, msgs, onAction, onFlash, onFee
   const chip: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", borderRadius: 999, background: "var(--surface-2)", fontSize: "0.74rem", fontWeight: 800, whiteSpace: "nowrap" }
   const shownTips = allTips ? msgs : msgs.slice(0, 2)
   const close = () => setPanel(null)
+  const newsCount = useMemo(() => (today ? recentNews(today, undefined, undefined, Infinity).length : 0), [today])
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {/* Kolbi kompakt: Figur, Stimmung, Level */}
@@ -99,6 +104,11 @@ export function KolbiPage({ s, mood, fill, murky, msgs, onAction, onFlash, onFee
 
       {/* Ruhiges Raster: Details erst beim Antippen */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        {onNews && today && !s.demo && newsCount > 0 && (
+          <div style={{ gridColumn: "1 / -1" }}>
+            <Tile emoji="🚀" title={t("Kolbis Werdegang")} sub={newsCount === 1 ? t("1 Neuheit bisher · tippen zum Ansehen") : t("{n} Neuheiten bisher · tippen zum Ansehen", { n: newsCount })} onClick={() => { haptic(); setPanel("werdegang") }} />
+          </div>
+        )}
         <Tile emoji={murky ? "🌫️" : glow ? "✨" : "💭"} title={t("So geht's mir")} sub={t("{n} % voll", { n: pct })} onClick={() => setPanel("mir")} />
         <Tile emoji="🏅" title={t("Abzeichen")} sub={<>{t("{n} von {total}", { n: gotBadges.length, total: BADGES.length })} {gotBadges.slice(-3).map(b => b.emoji).join("")}</>} onClick={() => setPanel("badges")} />
         <Tile emoji="❓" title={t("So funktioniert's")} sub={t("Was ich mache + Fragen")} onClick={() => setPanel("guide")} />
@@ -111,6 +121,12 @@ export function KolbiPage({ s, mood, fill, murky, msgs, onAction, onFlash, onFee
 
       <CommunityStat />
 
+      {panel === "werdegang" && onNews && today && (
+        <Sheet open onClose={close} title={t("🚀 Kolbis Werdegang")}>
+          <div style={{ fontSize: "0.84rem", color: "var(--text-dim)", lineHeight: 1.45, marginBottom: 12 }}>{t("Alles, was bei Kolbi bisher dazugekommen ist. Tippen spielt die Story nochmal ab.")}</div>
+          <NewsTimeline today={today} onOpen={(items, start) => { close(); onNews(items, start) }} />
+        </Sheet>
+      )}
       {panel === "mir" && (
         <Sheet open onClose={close} title={t("💭 So geht's mir")}>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
