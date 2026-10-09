@@ -8,6 +8,26 @@
     "site/img/3d/news-scan.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_080113_888ae992-343e-4573-a15b-72c8ef63311a.png",
     "site/img/3d/news-menge.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_080113_bf681478-c70c-4a2c-a091-6ed977a1b055.png",
     "site/img/3d/news-sterne.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_080112_6ad6334f-08d8-424b-a6f9-3bc0f89496cb.png",
-    "site/img/3d/news-gruppen.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_080112_cd03dba0-07ac-44e2-a555-f41b7320d336.png"
+    "site/img/3d/news-gruppen.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_080112_cd03dba0-07ac-44e2-a555-f41b7320d336.png",
+    "site/img/3d/group-icon-schlaf.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_103836_46f86044-df4c-4c1e-a680-9f660e0950d3.png",
+    "site/img/3d/group-icon-energie.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_105946_8c08784b-2652-4c3c-846c-5830532d561a.png",
+    "site/img/3d/group-icon-fokus.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_105943_eb325698-a632-4646-97ff-6386145a8b68.png",
+    "site/img/3d/group-icon-stress.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_105944_77bd8dcf-55ca-4150-857c-42ac9a1bb57a.png",
+    "site/img/3d/group-icon-muskel.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_105944_69dc84e4-2d24-4d2d-82b7-8d7c478641d2.png",
+    "site/img/3d/group-icon-regeneration.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_105945_862908b2-0923-4549-b3a3-76fc6df58970.png",
+    "site/img/3d/group-icon-darm.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_105945_e30f823b-82b7-4501-81d8-5a088cec14ab.png",
+    "site/img/3d/group-icon-haut.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_105943_fcb02ec1-47d1-4a13-930d-2e3794f79a75.png",
+    "site/img/3d/group-icon-longevity.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_105943_e2aab9bb-7ffd-4973-86d3-f686c956bff9.png",
+    "site/img/3d/group-icon-immun.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_105946_4538af46-163d-4f78-b7f5-d833e3fc86b9.png",
+    "site/img/3d/group-head-schlaf.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_103838_6955c0d1-2048-45d3-8985-e64e0fc3ef42.png",
+    "site/img/3d/group-head-energie.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_105944_25f9a891-e13b-463e-8e86-456ece19ac32.png",
+    "site/img/3d/group-head-fokus.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_105944_cedfb141-6fdf-4ce6-b760-75834a5cb8dd.png",
+    "site/img/3d/group-head-stress.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_105945_5330a3b7-4f61-4b15-9795-0989cc80e920.png",
+    "site/img/3d/group-head-muskel.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_110007_5a01432a-5f78-41d7-bcfc-7cea86da561c.png",
+    "site/img/3d/group-head-regeneration.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_110006_4342ffff-c992-4762-9130-3a54cab371e5.png",
+    "site/img/3d/group-head-darm.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_110006_85cdaa6b-da89-40b1-b4e1-61cd628de2f8.png",
+    "site/img/3d/group-head-haut.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_110007_a3441af4-fd62-46bb-acae-ded2089d185d.png",
+    "site/img/3d/group-head-longevity.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_110006_be147a9b-c401-40e7-99c8-7f6f45a26466.png",
+    "site/img/3d/group-head-immun.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_110006_ff794f48-a780-489e-896d-46aa322248e6.png"
   }
 }
