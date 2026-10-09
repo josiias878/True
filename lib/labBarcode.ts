@@ -225,7 +225,7 @@ export const CROWD_MIN = 3
 /**
  * Lookup-Ergebnis → Auswahl für den Dialog.
  * Reihenfolge: geprüfte Zuordnung (Betreiber) › Produktname/Kategorie › Vorschläge anderer › Zutaten/Nährwerte.
- * Vorausgewählt: alle geprüften, sonst der stärkste Namens-Treffer, sonst (nur dann) ein klarer Crowd-Vorschlag.
+ * Vorausgewählt: alle geprüften, sonst der stärkste Namens-Treffer, sonst nichts (Crowd-Vorschläge nie).
  */
 export function buildCandidates(r: LookupResult | null, libs: LibSupp[] = BARCODE_LIBRARY): { cands: BarcodeCand[]; preselect: string[] } {
   if (!r) return { cands: [], preselect: [] }
@@ -246,7 +246,8 @@ export function buildCandidates(r: LookupResult | null, libs: LibSupp[] = BARCOD
   }
   for (const m of offMatches) push({ lib: m.lib, source: m.source, dose: m.dose })
   const confirmed = out.filter(c => c.source === "map").map(c => c.lib.id)
-  const first = out.find(c => c.source === "name") ?? out.find(c => c.source === "crowd")
+  // Vorschläge anderer Nutzer werden NIE vorausgewählt (nicht geprüft) – nur angeboten
+  const first = out.find(c => c.source === "name")
   return { cands: out.slice(0, 8), preselect: confirmed.length ? confirmed : first ? [first.lib.id] : [] }
 }
 

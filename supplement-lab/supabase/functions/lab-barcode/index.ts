@@ -19,8 +19,10 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 
 const DEVICE = /^[a-f0-9]{32,64}$/, CODE = /^(\d{8}|\d{13})$/
 const CROWD_MIN = 3
-/** Höchstens so viele Geräte pro Code (gegen Fluten einzelner Codes) */
+/** Höchstens so viele Geräte pro Code; darüber fliegt die älteste Meldung raus (rollierend, kein Einfrieren) */
 const VOTERS_PER_CODE = 40
+/** Meldungen je IP-Hash und Code pro Tag (gegen Fluten eines Codes von einem Anschluss) */
+const SUBMITS_PER_IP_CODE = 2
 const OFF_UA = "Kolbi/1.0"
 const OFF_FIELDS = [
   "product_name", "product_name_de", "product_name_en", "generic_name", "generic_name_de", "generic_name_en", "brands",
@@ -107,7 +109,10 @@ Deno.serve(async req => {
   const voter = await sha256(`kolbi-barcode|${code}|${device}`)
   // Nur für die Bremse (barcode_rate, nach ≤ 2 Tagen gelöscht): Gerät + IP (gehasht mit Tagessalz, nie im Klartext)
   const rk = (await sha256(`kolbi-rate|${device}`)).slice(0, 32)
-  const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || req.headers.get("x-real-ip") || "unknown"
+  // Client-IP: bevorzugt die vom Proxy gesetzten Header; x-forwarded-for nur als Rückfall und dann der LETZTE
+  // Eintrag (vom letzten vertrauenswürdigen Proxy angehängt; die ersten kann der Client selbst mitschicken)
+  const xff = (req.headers.get("x-forwarded-for") ?? "").split(",").map(x => x.trim()).filter(Boolean)
+  const ip = req.headers.get("cf-connecting-ip")?.trim() || req.headers.get("x-real-ip")?.trim() || xff[xff.length - 1] || "unknown"
   const day = new Date().toISOString().slice(0, 10)
   const ipk = (await sha256(`kolbi-ip|${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""}|${day}|${ip}`)).slice(0, 32)
 
@@ -186,10 +191,17 @@ Deno.serve(async req => {
     if (!libs.length) return json({ error: "lib" }, 400)
     if (!(await hit(`s:${rk}`, 60, 10)) || !(await hit(`S:${rk}`, DAY / 1000, 60))
       || !(await hit(`u:${ipk}`, 60, 10)) || !(await hit(`U:${ipk}`, DAY / 1000, 40))) return json({ error: "rate" }, 429)
-    // Pro Code begrenzt: neue Geräte nur, solange der Code noch nicht „voll“ ist
-    const { data: existing } = await db.from("barcode_votes").select("voter").eq("code", code).limit(VOTERS_PER_CODE * 3)
-    const known = new Set((existing ?? []).map(v => v.voter))
-    if (!known.has(voter) && known.size >= VOTERS_PER_CODE) return json({ ok: true, stored: false })
+    // Je Anschluss höchstens SUBMITS_PER_IP_CODE Meldungen pro Code und Tag
+    if (!(await hit(`c:${ipk}:${code}`, DAY / 1000, SUBMITS_PER_IP_CODE))) return json({ error: "rate" }, 429)
+    // Pro Code höchstens VOTERS_PER_CODE Geräte – rollierend: die älteste Meldung fliegt raus, der Code friert nie ein
+    const { data: existing } = await db.from("barcode_votes").select("voter, created_at").eq("code", code)
+      .order("created_at", { ascending: true }).limit(VOTERS_PER_CODE * 3)
+    const known = [...new Set((existing ?? []).map(v => v.voter))]
+    if (!known.includes(voter) && known.length >= VOTERS_PER_CODE) {
+      const drop = known.slice(0, known.length - VOTERS_PER_CODE + 1)
+      const { error: dropErr } = await db.from("barcode_votes").delete().eq("code", code).in("voter", drop)
+      if (dropErr) return json({ error: "db" }, 500)
+    }
     // Eigene frühere Meldung zu diesem Code ersetzen (Korrektur statt Mehrfach-Stimme)
     const { error: delErr } = await db.from("barcode_votes").delete().eq("code", code).eq("voter", voter)
     if (delErr) return json({ error: "db" }, 500)

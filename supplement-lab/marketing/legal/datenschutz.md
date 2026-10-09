@@ -221,9 +221,11 @@ Nummer eintippen.
   Server sucht zuerst in unserer eigenen, **von uns von Hand geprüften** Zuordnungstabelle (Strichcode → Eintrag aus
   der Kolbi-Bibliothek, ggf. Produktname und Menge pro Portion) und fragt sonst **Open Food Facts** ab (siehe unten).
 - **Missbrauchsbremse:** Um massenhafte Abfragen und gefälschte Meldungen zu bremsen, zählt der Server Anfragen je
-  Barcode-ID und je Internet-Verbindung. Gespeichert werden dafür nur Einweg-Prüfsummen (Hash): aus der Barcode-ID
-  bzw. aus der IP-Adresse zusammen mit einem täglich wechselnden geheimen Wert – **nie die IP-Adresse selbst**. Die
-  Zähler werden nach höchstens 2 Tagen gelöscht.
+  Barcode-ID und je Internet-Verbindung; von einer Verbindung zählen pro Strichcode höchstens 2 Meldungen am Tag.
+  Gespeichert werden dafür nur Einweg-Prüfsummen (Hash): aus der Barcode-ID bzw. aus der IP-Adresse (bei Strichcode-
+  Meldungen zusammen mit dem Strichcode) mit einem täglich wechselnden geheimen Wert – **nie die IP-Adresse selbst**.
+  Die Zähler werden nach höchstens 2 Tagen gelöscht. Pro Strichcode heben wir höchstens die Meldungen von 40 Geräten
+  auf; kommt eine neue hinzu, wird die älteste gelöscht.
 - **Open Food Facts:** Open Food Facts ist eine offene Produktdatenbank (Open Food Facts, gemeinnütziger Verein,
   Frankreich). Die Abfrage stellt **unser Server**, nicht dein Gerät; Open Food Facts erhält nur die Zahlenfolge –
   keine Kennung und nicht deine IP-Adresse. Die Antwort (Produktname, Marke, Zutaten, Kategorien, Nährstoffangaben)

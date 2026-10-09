@@ -207,9 +207,10 @@ When adding a supplement, you can scan the barcode (EAN/UPC) on the pack with yo
   own mapping table, **checked by hand by us** (barcode → entry from the Kolbi library, possibly product name and
   amount per serving), and otherwise queries **Open Food Facts** (see below).
 - **Abuse protection:** to slow down mass requests and fake reports, the server counts requests per barcode ID and
-  per internet connection. Only one-way checksums (hashes) are stored for this: of the barcode ID, or of the IP address
-  combined with a secret value that changes daily – **never the IP address itself**. The counters are deleted after
-  at most 2 days.
+  per internet connection; at most 2 reports per barcode and day count from one connection. Only one-way checksums
+  (hashes) are stored for this: of the barcode ID, or of the IP address (for reports together with the barcode) combined
+  with a secret value that changes daily – **never the IP address itself**. The counters are deleted after at most
+  2 days. We keep reports from at most 40 devices per barcode; when a new one arrives, the oldest is deleted.
 - **Open Food Facts:** Open Food Facts is an open product database (Open Food Facts, non-profit association, France).
   The request is made by **our server**, not your device; Open Food Facts only receives the number – no identifier
   and not your IP address. We cache the answer (product name, brand, ingredients, categories, nutrient details) for up

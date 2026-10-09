@@ -134,9 +134,10 @@ try {
     const c = B.buildCandidates(res({ crowd: [{ lib: "selen", n: 5 }], off }))
     assert.deepEqual(c.preselect, ["magnesium"])
     assert.equal(c.cands.find(x => x.lib.id === "selen")?.votes, 5)
-    // Kein Namens-Treffer → klarer Crowd-Vorschlag darf vorausgewählt sein
+    // Auch ohne Namens-Treffer: Crowd-Vorschlag wird angeboten, aber nie vorausgewählt
     const u = B.buildCandidates(res({ crowd: [{ lib: "selen", n: 3 }], off: OFF["20289119"] }))
-    assert.deepEqual(u.preselect, ["selen"])
+    assert.equal(u.cands[0]?.lib.id, "selen")
+    assert.deepEqual(u.preselect, [])
     // Unter 3 Stimmen: gar nicht anzeigen
     assert.deepEqual(B.buildCandidates(res({ crowd: [{ lib: "selen", n: 2 }] })).cands, [])
     assert.deepEqual(B.buildCandidates(null), { cands: [], preselect: [] })
@@ -164,6 +165,11 @@ try {
     const appSrc = readFileSync(new URL("../../lib/labBarcode.ts", import.meta.url), "utf8")
     const claim = t => t.match(/const CLAIM = (\/.*\/i)/)?.[1]
     assert.ok(claim(src) && claim(src) === claim(appSrc), "CLAIM-Liste weicht ab")
+    // Rollierende Grenze pro Code, Bremse je IP-Hash + Code, IP aus cf-connecting-ip (nicht erster XFF-Eintrag)
+    assert.ok(/SUBMITS_PER_IP_CODE = 2/.test(src) && /hit\(`c:\$\{ipk\}:\$\{code\}`/.test(src), "Bremse je IP + Code fehlt")
+    assert.ok(!/stored: false/.test(src) && /\.in\("voter", drop\)/.test(src), "Grenze pro Code nicht rollierend")
+    assert.ok(/cf-connecting-ip/.test(src) && /xff\[xff\.length - 1\]/.test(src) && !/split\(","\)\[0\]/.test(src), "IP-Ermittlung")
+    assert.ok(!/echo-headers/.test(src), "Echo-Aktion noch drin")
     // Crowd wird nie automatisch zu barcode_map
     assert.ok(!/from\("barcode_map"\)\.(upsert|insert)/.test(src), "Edge-Function schreibt barcode_map")
   })
