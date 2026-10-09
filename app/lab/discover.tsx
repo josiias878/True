@@ -78,13 +78,14 @@ function ResultCard({ e, onOpen, onSelfTest }: { e: FeedEntry; onOpen: () => voi
   )
 }
 
-export function DiscoverView({ s, today, now, checkinLocked, recapReady, onRecap, onOpenLab, onSelfTest, onJoin, onFlash, goLabor, goTab, onCommunities }: {
+export function DiscoverView({ s, today, now, checkinLocked, recapReady, onRecap, onOpenLab, onSelfTest, onJoin, onFlash, goLabor, goTab, onCommunities, onVorrat }: {
   s: LabState; today: string; now: Date; checkinLocked: boolean; recapReady: boolean; onRecap: () => void
   onOpenLab: (libId: string, tab?: "andere") => void; onSelfTest: (libId: string) => void; onJoin: () => void; onFlash: (m: string) => void; goLabor: () => void
   /** Mein Weg: Stopps führen zu Heute/Kolbi/Vorrat/Verlauf */
   goTab: (to: string) => void
   /** Alle Communities (Labor › Communities) */
   onCommunities: () => void
+  onVorrat: () => void
 }) {
   const [daySheet, setDaySheet] = useState(false)
   const road = pathStops(s, today, now, checkinLocked)
@@ -93,7 +94,8 @@ export function DiscoverView({ s, today, now, checkinLocked, recapReady, onRecap
     setDaySheet(false)
     haptic(8)
     if (sp.kind === "streak") goTab("kolbi")
-    else if (sp.kind === "stock") goTab("labor")
+    else if (sp.kind === "stock") onVorrat()
+    else if (sp.kind === "stack" && sp.key !== "start-stack") goTab("stack")
     else goTab("heute")
   }
   const [ov, setOv] = useState<Overview | null | "loading">("loading")
@@ -175,7 +177,7 @@ export function DiscoverView({ s, today, now, checkinLocked, recapReady, onRecap
       {/* Lebendiger Einstieg: So teilst du · Mein Weg · Deine Gruppen (wischbar) */}
       <HowToShare />
       <WaySection s={s} today={today} stops={road.stops} onOpen={() => setDaySheet(true)} />
-      {social && <CommunitySection s={s} onDiscover={onCommunities} onOpenLab={libId => onOpenLab(libId, "andere")} />}
+      {social && <CommunitySection s={s} overview={ov} onDiscover={onCommunities} onOpenLab={libId => onOpenLab(libId, "andere")} />}
       {daySheet && (
         <Sheet open onClose={() => setDaySheet(false)} title={t("🗺️ Dein Tag")}>
           {road.stops.length > 0 ? <RoadPath stops={road.stops} goal={road.goal} today={today} onStop={onStop} />

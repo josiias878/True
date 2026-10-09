@@ -697,16 +697,17 @@ export default function LabApp() {
             pushHint={s.reminders.enabled && !hasNativeReminders() && (pushSt === "off" || pushSt === "denied") ? pushSt : null} onPush={turnOnPush}
             onAction={runAction} onRound={steps => setRound(steps)} onTakeAll={takeAll} onTake={toggleTook} onSkip={skipToday} onMorning={saveMorningV}
             onUnlock={() => { setUnlockedFor(today); setRound(roundSteps(s, today, now, false)) }}
-            onCheckin={setCheckinDate} onPhase={setPhaseSheet} goTab={goTab} onVorrat={() => { setLab(null); setLaborView("vorrat"); goTab("labor") }}
+            onCheckin={setCheckinDate} goTab={goTab} onVorrat={() => { setLab(null); setLaborView("vorrat"); goTab("labor") }}
             onExtra={addExtraV} onExtraRemove={removeExtraV} onAddMany={() => setAddMany(true)}
             onNews={(items, start = 0) => setNews({ items, start })}
             onAmount={(id, p) => update(q => { setAmount(q, today, id, p); return q })}
             onPortion={(id, p) => { update(q => alignStockToPortion(setPortion(q, id, p, today), id, today)); setFlash(t("✓ Gemerkt: {amount}", { amount: portionLabel(p) })) }}
             onOpenSupp={id => { setLaborView(null); setLab({ suppId: id, tab: "ueberblick" }); goTab("labor") }}
-            onOpenLab={libId => { const x = s.supps.find(q => q.lib === libId); setLaborView(null); setLab({ suppId: x?.id, libId, tab: "andere" }); goTab("labor") }} />}
+            />}
 
           {tab === "entdecken" && <DiscoverView s={s} today={today} now={now} checkinLocked={checkinLocked} goTab={goTab}
-            onCommunities={() => { showCommunitiesNext(); setLab(null); setLaborView(null); goTab("labor") }} recapReady={recapAvailable(s, now, today).ready} onRecap={() => setRecapEnd(recapWeekEnd(now, today))}
+            onCommunities={() => { showCommunitiesNext(); setLab(null); setLaborView(null); goTab("labor") }}
+            onVorrat={() => { setLab(null); setLaborView("vorrat"); goTab("labor") }} recapReady={recapAvailable(s, now, today).ready} onRecap={() => setRecapEnd(recapWeekEnd(now, today))}
             onOpenLab={(libId, t2) => { const x = s.supps.find(q => q.lib === libId); setLaborView(null); setLab({ suppId: x?.id, libId, tab: t2 ?? "ueberblick" }); goTab("labor") }}
             onSelfTest={libId => selfTest(libId)} onJoin={() => setAskCommunity(null)} onFlash={setFlash} goLabor={() => goTab("meine")} />}
 

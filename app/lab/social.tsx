@@ -412,9 +412,11 @@ export function OfficialHint() {
 }
 
 // ═══ Ergebnis-Post ═══════════════════════════════════════════════════════════════════════════
-export function PostCard({ p, preview, onSelfTest, compact }: { p: SocialPost; preview?: boolean; onSelfTest?: (libId: string) => void
+export function PostCard({ p, preview, onSelfTest, compact, example }: { p: SocialPost; preview?: boolean; onSelfTest?: (libId: string) => void
   /** Home-Feed (schmale Karte): kleinere Reaktions-Knöpfe, damit beide in eine Zeile passen */
-  compact?: boolean }) {
+  compact?: boolean
+  /** Beispiel in Gruppen: Platzhalter statt Supplement, keine Zeit, klarer Hinweis statt „Selbsttest einer Person“ */
+  example?: boolean }) {
   const lib = LIB_BY_ID[p.lib]
   const color = labColor(lib)
   const d = decisionInfo(p.decision)
@@ -448,7 +450,7 @@ export function PostCard({ p, preview, onSelfTest, compact }: { p: SocialPost; p
               <span style={{ fontWeight: 900, fontSize: "0.95rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.author?.name}</span>
               {(p.tester || p.author?.tester) && <TestBadge />}
             </span>
-            <span style={{ display: "block", fontSize: "0.74rem", fontWeight: 700, color: "var(--text-dim)" }}>{ago(p.createdAt)}</span>
+            <span style={{ display: "block", fontSize: "0.74rem", fontWeight: 700, color: "var(--text-dim)" }}>{(example ? t("Beispiel") : ago(p.createdAt))}</span>
           </span>
         </button>
         {!own && (
@@ -459,7 +461,7 @@ export function PostCard({ p, preview, onSelfTest, compact }: { p: SocialPost; p
       <div style={{ margin: "0 14px", padding: "20px 16px 18px", borderRadius: 18, background: "var(--surface-2)", textAlign: "center" }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "0.8rem", fontWeight: 800, color: "var(--text-dim)", maxWidth: "100%" }}>
           <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: color, flexShrink: 0 }} />
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lib?.emoji} {labName(lib, p.lib)}</span>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{example ? <>🧪 {t("Dein Supplement")}</> : <>{lib?.emoji} {labName(lib, p.lib)}</>}</span>
         </span>
         <div style={{ fontSize: "2.1rem", fontWeight: 900, lineHeight: 1.1, marginTop: 8 }}><span aria-hidden>{d.emoji}</span> {d.label}</div>
         <div style={{ fontSize: "0.92rem", fontWeight: 800, color: "var(--text-dim)", marginTop: 6 }}>
@@ -488,7 +490,7 @@ export function PostCard({ p, preview, onSelfTest, compact }: { p: SocialPost; p
         })}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 6px 6px 14px" }}>
-        <span style={{ flex: 1, fontSize: "0.7rem", color: "var(--text-dim)", lineHeight: 1.3 }}>{t("Selbsttest einer Person · keine Studie")}</span>
+        <span style={{ flex: 1, fontSize: "0.7rem", color: "var(--text-dim)", lineHeight: 1.3 }}>{example ? t("Beispiel – keine echte Person, kein echtes Ergebnis") : t("Selbsttest einer Person · keine Studie")}</span>
         {onSelfTest && lib && !lib.rx && !preview && (
           <button className="lab-press" onClick={() => { haptic(); onSelfTest(lib.id) }} style={{ minHeight: 44, padding: "0 10px", border: "none", background: "none", color: "var(--accent)", fontWeight: 900, fontSize: "0.84rem", whiteSpace: "nowrap" }}>{t("🔬 Selbst testen ›")}</button>
         )}
@@ -902,15 +904,17 @@ function GroupIcon({ c, size }: { c: SocialCommunity; size: number }) {
     style={{ width: size, height: size, objectFit: "contain", display: "block", pointerEvents: "none" }} />
 }
 
-/** Beispiel-Beitrag (klar markiert) – zeigt neuen Gruppen, wie ein geteiltes Ergebnis aussieht. Keine echte Person. */
-function examplePost(c: SocialCommunity): SocialPost | null {
-  const ok = (id: string) => { const l = LIB_BY_ID[id]; return !!l && !l.rx && l.category !== "Peptide" && l.category !== "Verschriebene Medikamente" }
-  const lib = c.kind === "lab" ? c.key : (GOAL_BY_ID[c.key as GoalId]?.suggest ?? []).find(ok)
-  if (!lib || !ok(lib)) return null
-  const dims = (c.kind === "goal" ? GOAL_BY_ID[c.key as GoalId]?.dims ?? [] : ["energie", "schlaf"]).filter(d => d !== "libido").slice(0, 2)
+/**
+ * Beispiel-Beitrag (klar markiert) – zeigt neuen Gruppen nur die FORM eines geteilten Ergebnisses.
+ * Bewusst: kein echtes Supplement (Platzhalter „Dein Supplement“), neutrales Ergebnis („Vielleicht“, gemischte Werte),
+ * keine Person, kein Zeitstempel – sonst wäre es ein erfundener Erfahrungsbericht (Health-Claims).
+ */
+function examplePost(c: SocialCommunity): SocialPost {
+  const dims = (c.kind === "goal" ? GOAL_BY_ID[c.key as GoalId]?.dims ?? [] : []).filter(d => d !== "libido")
+  const [d0, d1] = dims.length >= 2 ? dims : ["schlaf", "energie"]
   return {
     id: `example-${c.id}`, author: { id: "example", name: t("Beispiel-Profil"), avatar: DEFAULT_AVATAR },
-    lib, days: 14, decision: "keep", delta: 0.6, dims: Object.fromEntries(dims.map((d, i) => [d, i ? 0.3 : 0.6])),
+    lib: "example", days: 14, decision: "maybe", delta: 0.1, dims: { [d0]: 0.2, [d1]: -0.1 },
     createdAt: new Date().toISOString(), counts: { durchhalten: 0, hilfreich: 0 }, mine: [],
   }
 }
@@ -1125,7 +1129,7 @@ function CommunityScreen({ id, c0, onSelfTest }: { id: string; c0?: SocialCommun
 function CommunityBody({ c0, onSelfTest }: { c0: SocialCommunity; onSelfTest?: (libId: string) => void }) {
   const [c, toggle] = useJoin(c0)
   const m = meta(c)
-  const info = groupInfo(c, m.title)
+  const info = groupInfo(c, c.kind === "lab" ? LIB_BY_ID[c.key]?.name ?? c.name : m.title)
   const [headBad, setHeadBad] = useState(false)
   const head = STORE_MODE && info.head && !headBad ? info.head : undefined
   const ex = examplePost(c)
@@ -1172,13 +1176,13 @@ function CommunityBody({ c0, onSelfTest }: { c0: SocialCommunity; onSelfTest?: (
         ))}
       </div>
 
-      {ex && (
+      {(
         <div data-example-post>
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.82rem", fontWeight: 900, color: "var(--text-dim)", padding: "0 2px 8px" }}>
-            <span style={{ padding: "2px 8px", borderRadius: 999, background: "var(--warning-dim)", border: "1px solid var(--warning)", color: "var(--text)", fontSize: "0.7rem", letterSpacing: ".04em" }}>{t("BEISPIEL")}</span>
+            <span style={{ padding: "2px 8px", borderRadius: 999, background: "var(--warning-dim)", border: "1px solid var(--warning)", color: "var(--text)", fontSize: "0.7rem", letterSpacing: ".04em", whiteSpace: "nowrap", flexShrink: 0 }}>{t("BEISPIEL-BEITRAG")}</span>
             {t("So sieht ein geteiltes Ergebnis aus")}
           </div>
-          <div style={{ opacity: 0.92 }}><PostCard p={ex} preview /></div>
+          <div style={{ opacity: 0.92 }}><PostCard p={ex} preview example /></div>
         </div>
       )}
 

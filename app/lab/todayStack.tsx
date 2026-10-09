@@ -658,20 +658,23 @@ function useNear<T extends Element>(): [React.RefObject<T | null>, boolean] {
   return [ref, near]
 }
 
-export function CommunitySection({ s, onDiscover, onOpenLab }: { s: LabState; onDiscover: () => void; onOpenLab: (libId: string) => void }) {
+export function CommunitySection({ s, overview, onDiscover, onOpenLab }: { s: LabState
+  /** Übersicht schon geladen (Entdecken) → kein zweiter Abruf */
+  overview?: Overview | null | "loading"; onDiscover: () => void; onOpenLab: (libId: string) => void }) {
   const social = useSocialOn()
   const [ref, near] = useNear<HTMLDivElement>()
   const [feedEmpty, setFeedEmpty] = useState(false)
-  const [ov, setOv] = useState<Overview | null | "loading">("loading")
+  const [ovOwn, setOv] = useState<Overview | null | "loading">("loading")
+  const ov = overview !== undefined ? overview : ovOwn
   const myLibs = useMemo(() => new Set(s.supps.map(x => x.lib).filter((v): v is string => !!v)), [s.supps])
 
   // „Das testen gerade viele“ aus den anonymen Statistiken
   useEffect(() => {
-    if (!near) return
+    if (!near || overview !== undefined) return
     let on = true
     fetchOverview().then(v => { if (on) setOv(v) }).catch(() => { if (on) setOv(null) })
     return () => { on = false }
-  }, [near])
+  }, [near, overview !== undefined]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const pick = ov && ov !== "loading" ? Object.entries(ov.libs ?? {})
     .filter(([id, v]) => { const l = LIB_BY_ID[id]; return !!l && !l.rx && l.category !== "Peptide" && !myLibs.has(id) && typeof v?.n === "number" && v.n >= COMMUNITY_MIN })

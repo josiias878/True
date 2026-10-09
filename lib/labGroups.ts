@@ -36,7 +36,7 @@ export function groupInfo(c: { kind: "lab" | "goal"; key: string }, labName?: st
 /** „So machst du mit“ – drei Schritte, für alle Gruppen gleich */
 export function groupSteps(): { emoji: string; title: string; text: string }[] {
   return [
-    { emoji: "👋", title: t("Beitreten"), text: t("Ein Tipp – dann siehst du die Beiträge dieser Gruppe auch auf deinem Entdecken-Feed.") },
+    { emoji: "👋", title: t("Beitreten"), text: t("Einmal tippen – dann siehst du die Beiträge dieser Gruppe auch in deinem Entdecken-Feed.") },
     { emoji: "🔬", title: t("Selbst testen"), text: t("Kolbi begleitet deinen Test: kurzer Check-in am Abend, am Ende dein Ergebnis.") },
     { emoji: "📣", title: t("Ergebnis teilen"), text: t("Nach dem Test: „Ergebnis posten“ antippen. Andere sehen nur Pseudonym, Supplement und Ergebnis.") },
   ]

@@ -99,9 +99,9 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
   onAction: (a: CoachAction, id: string) => void
   onRound: (steps: RoundStep[]) => void; onTakeAll: (ids: string[]) => void; onTake: (id: string) => void; onSkip: (id: string, on: boolean, restore?: { at?: string; amt?: TakenAmount }) => void
   onMorning: (v: { sleep?: number; fit?: number }) => void; onUnlock: () => void; onCheckin: (d: string) => void
-  onPhase: (w: PhaseWindow) => void; goTab: (t: string) => void; onVorrat: () => void
+  goTab: (t: string) => void; onVorrat: () => void
   onExtra: (date: string, item: ExtraInput, label: string) => void; onExtraRemove: (date: string, id: string) => void
-  onOpenSupp: (id: string) => void; onOpenLab: (libId: string) => void; onAddMany: () => void
+  onOpenSupp: (id: string) => void; onAddMany: () => void
   onAmount: (id: string, p: Portion) => void; onPortion: (id: string, p: Portion) => void
   /** „Neu bei Kolbi“-Kreis antippen → Storys mit diesen (ungesehenen) Neuheiten */
   onNews?: (items: LabNews[], start?: number) => void

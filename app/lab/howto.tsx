@@ -4,6 +4,7 @@
 // (supplement-lab/public/howto/). Nur Store-App (Next unter /lab hat die Datei nicht). Karte zeigt das Poster,
 // Tippen öffnet das Video groß. Bewegung reduzieren → kein Autoplay, Steuerung sichtbar.
 import React, { useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { STORE_MODE } from "@/lib/supplementLab"
 import { markSeen, seenNew } from "@/lib/labNew"
 import { t, isEn } from "@/lib/labI18n"
@@ -40,7 +41,7 @@ export function HowToShare() {
         </span>
         <span aria-hidden style={{ color: "var(--text-dim)", fontWeight: 900 }}>›</span>
       </button>
-      {open && <HowToPlayer onClose={() => setOpen(false)} />}
+      {open && createPortal(<HowToPlayer onClose={() => setOpen(false)} />, document.body)}
     </>
   )
 }
@@ -52,11 +53,16 @@ function HowToPlayer({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     const prev = document.body.style.overflow
     document.body.style.overflow = "hidden"
+    // Hintergrund inert: Tab bleibt im Dialog (Schließen ↔ Video)
+    const root = ref.current
+    const siblings = root?.parentElement ? [...root.parentElement.children].filter((el): el is HTMLElement => el !== root && el instanceof HTMLElement && el.tagName !== "STYLE") : []
+    const was = siblings.map(el => el.inert)
+    siblings.forEach(el => { el.inert = true })
     const opener = document.activeElement as HTMLElement | null
     ref.current?.focus({ preventScroll: true })
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); onClose() } }
     window.addEventListener("keydown", onKey)
-    return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", onKey); try { opener?.focus() } catch {} }
+    return () => { siblings.forEach((el, i) => { el.inert = was[i] }); document.body.style.overflow = prev; window.removeEventListener("keydown", onKey); try { opener?.focus() } catch {} }
   }, [onClose])
   return (
     <div ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={t("So teilst du dein Ergebnis")} onClick={onClose}
@@ -69,8 +75,7 @@ function HowToPlayer({ onClose }: { onClose: () => void }) {
             {t("Video gerade nicht abspielbar – später nochmal reinschauen.")}
           </div>
         ) : (
-          <video src={SRC} poster={POSTER} muted playsInline autoPlay={auto} controls={!auto} loop={false} onError={() => setFailed(true)}
-            onEnded={e => { (e.currentTarget as HTMLVideoElement).controls = true }}
+          <video src={SRC} poster={POSTER} muted playsInline autoPlay={auto} controls loop={false} onError={() => setFailed(true)}
             aria-label={t("So teilst du dein Ergebnis")} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
         )}
       </div>
