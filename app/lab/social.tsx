@@ -6,11 +6,11 @@
 import React, { useCallback, useEffect, useState, useSyncExternalStore } from "react"
 import { DIMS, GOALS, LIB_BY_ID, type LabState, type LibSupp } from "@/lib/supplementLab"
 import { AVATAR_ACCESSORIES, AVATAR_COLORS, AVATAR_MOODS, DEFAULT_AVATAR, LAB_GROUPS, avatarColorBg, labColor, loadAvatar, pseudoSeed, pseudonym, type LabAvatar, type LabGroup } from "@/lib/labSocial"
-import { SITE_URL } from "@/lib/labGrow"
+import { SITE_URL, appVersion } from "@/lib/labGrow"
 import { markSeen } from "@/lib/labNew"
 import * as api from "@/lib/labSocialApi"
-import type { ReactionKind, ReportReason, SocialCommunity, SocialPage, SocialPost, SocialProfile } from "@/lib/labSocialApi"
-import { Btn, Icon, Sheet, TabHead, haptic } from "./ui"
+import type { OfficialPost, ReactionKind, ReportReason, SocialCommunity, SocialPage, SocialPost, SocialProfile } from "@/lib/labSocialApi"
+import { Btn, Icon, Sheet, SuppIcon, TabHead, haptic } from "./ui"
 import { Mascot } from "./mascot"
 import { NewBadge } from "./newbadge"
 import { t, dec, isEn, LOCALE } from "@/lib/labI18n"
@@ -61,6 +61,7 @@ export async function ensureMe(): Promise<string | null> {
   myId = a?.id ?? null
   if (a && !!a.restricted !== restricted) restricted = !!a.restricted
   if (a) decisions = decisionsOf((a as { decisions?: unknown }).decisions)
+  if (a) await api.syncTester() // Testmodus: Wunsch auf dem Gerät → Server (bevor Feeds laden)
   if (myId) emit()
   return myId
 }
@@ -315,6 +316,94 @@ export function ModerationNotice() {
   )
 }
 
+// ═══ Testmodus-Abzeichen + offizielle Kolbi-Posts ═══════════════════════════════════════════
+/** „TEST“ an Inhalten aus dem Testmodus (sehen nur Tester). */
+export function TestBadge() {
+  return <span data-test-badge title={t("Nur für Tester sichtbar")} style={{ flexShrink: 0, fontSize: "0.64rem", fontWeight: 900, letterSpacing: "0.06em", padding: "2px 7px", borderRadius: 999, background: "var(--warning-dim)", border: "1px solid var(--warning)", color: "var(--text)" }}>TEST</span>
+}
+
+function officialDate(d: string) {
+  try { return new Date(`${d}T12:00:00Z`).toLocaleDateString(LOCALE, { day: "numeric", month: "long", year: "numeric" }) } catch { return d }
+}
+/** Offizieller Kolbi-Post: Kolbi-Avatar, „Kolbi-Team · offiziell“, Titel, Text, 3D-Icon, Datum. Keine Reaktionen. */
+export function OfficialCard({ o, pinned }: { o: OfficialPost; pinned?: boolean }) {
+  const lib = o.icon ? LIB_BY_ID[o.icon] : undefined
+  return (
+    <article className="lab-card lab-rise" data-official={o.id} style={{ padding: 0, overflow: "hidden", borderRadius: 24, border: "1px solid var(--accent)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px 6px" }}>
+        <PublicAvatar avatar={DEFAULT_AVATAR} size={40} />
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 900, fontSize: "0.95rem" }}>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("Kolbi-Team · offiziell")}</span>
+            <span aria-hidden style={{ color: "var(--accent)" }}>✓</span>
+          </span>
+          <span style={{ display: "block", fontSize: "0.74rem", fontWeight: 700, color: "var(--text-dim)" }}>{officialDate(o.date)}</span>
+        </span>
+        {pinned && <span style={{ flexShrink: 0, fontSize: "0.7rem", fontWeight: 900, padding: "3px 9px", borderRadius: 999, background: "var(--surface-2)", color: "var(--text-dim)" }}>📌 {t("Angepinnt")}</span>}
+      </div>
+      <div style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "6px 14px 16px" }}>
+        {o.icon && (
+          <span style={{ width: 64, height: 64, borderRadius: 18, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem", background: `color-mix(in srgb, ${labColor(lib)} 18%, var(--surface-2))` }}>
+            <SuppIcon lib={o.icon} emoji={lib?.emoji ?? "🧪"} size={56} />
+          </span>
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 900, fontSize: "1.08rem", lineHeight: 1.3, wordBreak: "break-word" }}>{o.title}</div>
+          <div style={{ fontSize: "0.9rem", fontWeight: 600, lineHeight: 1.5, marginTop: 6, whiteSpace: "pre-line", wordBreak: "break-word" }}>{o.body}</div>
+        </div>
+      </div>
+    </article>
+  )
+}
+
+// Zuletzt gesehener Kolbi-Post je Community (für den Hinweis „Neuer Kolbi-Post in …“)
+const OFFICIAL_SEEN_KEY = "lab-social-official-seen"
+function officialSeen(): Record<string, string> {
+  try { const v = JSON.parse(localStorage.getItem(OFFICIAL_SEEN_KEY) || "{}"); return v && typeof v === "object" && !Array.isArray(v) ? v : {} } catch { return {} }
+}
+let officialVer = 0
+function markOfficialSeen(community: string, o: { id: string; date: string } | undefined) {
+  if (!o) return
+  const m = officialSeen()
+  const k = `${o.date}|${o.id}`
+  if (m[community] && m[community] >= k) return
+  m[community] = k
+  try { localStorage.setItem(OFFICIAL_SEEN_KEY, JSON.stringify(m)) } catch {}
+  officialVer++; emit()
+}
+const useOfficialVer = () => useSyncExternalStore(subscribe, () => officialVer, () => 0)
+
+/** Entdecken: „📣 Neuer Kolbi-Post in Schlaf“ – nur für beigetretene Communities, verschwindet nach dem Öffnen. */
+export function OfficialHint() {
+  const on = useSocialOn()
+  useOfficialVer()
+  const [list, setList] = useState<SocialCommunity[] | null>(null)
+  useEffect(() => {
+    if (!on) return
+    let alive = true
+    void ensureMe().then(() => api.communities()).then(v => { if (alive) setList(Array.isArray(v) ? v : null) })
+    return () => { alive = false }
+  }, [on])
+  if (!on || !list) return null
+  const seen = officialSeen()
+  const fresh = list.filter(c => c.joined && c.official && (!seen[c.id] || seen[c.id] < `${c.official.date}|${c.official.id}`))
+    .sort((a, b) => (b.official!.date).localeCompare(a.official!.date))
+  const c = fresh[0]
+  if (!c) return null
+  const m = meta(c)
+  return (
+    <button className="lab-card lab-press lab-rise" data-official-hint={c.id} onClick={() => { markOfficialSeen(c.id, c.official); openSocial({ kind: "community", id: c.id, c }) }}
+      style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "12px 14px", minHeight: 60, textAlign: "left", color: "var(--text)", borderRadius: 20 }}>
+      <PublicAvatar avatar={DEFAULT_AVATAR} size={40} />
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: "block", fontWeight: 900, fontSize: "0.92rem" }}>📣 {t("Neuer Kolbi-Post in {name}", { name: m.title })}</span>
+        <span style={{ display: "block", fontSize: "0.76rem", fontWeight: 700, color: "var(--text-dim)" }}>{fresh.length > 1 ? t("und in {n} weiteren Communities", { n: fresh.length - 1 }) : t("Vom Kolbi-Team")}</span>
+      </span>
+      <span aria-hidden style={{ color: "var(--text-dim)" }}>›</span>
+    </button>
+  )
+}
+
 // ═══ Ergebnis-Post ═══════════════════════════════════════════════════════════════════════════
 export function PostCard({ p, preview, onSelfTest }: { p: SocialPost; preview?: boolean; onSelfTest?: (libId: string) => void }) {
   const lib = LIB_BY_ID[p.lib]
@@ -346,7 +435,10 @@ export function PostCard({ p, preview, onSelfTest }: { p: SocialPost; preview?: 
         <button className="lab-press" disabled={preview} onClick={() => openSocial({ kind: "profile", id: p.author.id })} style={{ flex: 1, minWidth: 0, minHeight: 48, display: "flex", alignItems: "center", gap: 10, padding: "4px 6px", background: "none", border: "none", color: "var(--text)", textAlign: "left", borderRadius: 14 }}>
           <PublicAvatar avatar={p.author?.avatar} size={40} />
           <span style={{ minWidth: 0 }}>
-            <span style={{ display: "block", fontWeight: 900, fontSize: "0.95rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.author?.name}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+              <span style={{ fontWeight: 900, fontSize: "0.95rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.author?.name}</span>
+              {(p.tester || p.author?.tester) && <TestBadge />}
+            </span>
             <span style={{ display: "block", fontSize: "0.74rem", fontWeight: 700, color: "var(--text-dim)" }}>{ago(p.createdAt)}</span>
           </span>
         </button>
@@ -468,10 +560,12 @@ function ModerationSheet({ target, author, onClose }: { target: { type: "post" |
 }
 
 // ═══ Feed (generisch: Entdecken, Gefolgt, Community) ═════════════════════════════════════════
-export function PostFeed({ feedKey, load, empty, offline, onSelfTest }: {
+export function PostFeed({ feedKey, load, empty, offline, onSelfTest, onOfficial }: {
   feedKey: string; load: (cursor?: string) => Promise<SocialPage | null>; empty: React.ReactNode; offline?: React.ReactNode; onSelfTest?: (libId: string) => void
+  /** offizielle Kolbi-Posts der ersten Seite geladen (neueste zuerst) */
+  onOfficial?: (o: OfficialPost[]) => void
 }) {
-  const [st, setSt] = useState<{ state: "loading" | "ok" | "offline"; posts: SocialPost[]; next?: string }>({ state: "loading", posts: [] })
+  const [st, setSt] = useState<{ state: "loading" | "ok" | "offline"; posts: SocialPost[]; next?: string; official?: OfficialPost[] }>({ state: "loading", posts: [] })
   const [more, setMore] = useState(false)
   const [retry, setRetry] = useState(0)
   useHideVersion()
@@ -483,7 +577,8 @@ export function PostFeed({ feedKey, load, empty, offline, onSelfTest }: {
     setSt({ state: "loading", posts: [] })
     void ensureMe().then(() => load()).then(r => {
       if (!on) return
-      setSt(r && Array.isArray(r.posts) ? { state: "ok", posts: r.posts, next: r.next } : { state: "offline", posts: [] })
+      setSt(r && Array.isArray(r.posts) ? { state: "ok", posts: r.posts, next: r.next, official: r.official } : { state: "offline", posts: [] })
+      if (r?.official) onOfficial?.(r.official)
     })
     return () => { on = false }
   }, [feedKey, retry]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -493,7 +588,7 @@ export function PostFeed({ feedKey, load, empty, offline, onSelfTest }: {
     const r = await load(st.next)
     setMore(false)
     if (!r) { flash(OFFLINE()); return }
-    setSt(s => ({ state: "ok", posts: [...s.posts, ...r.posts.filter(p => !s.posts.some(q => q.id === p.id))], next: r.next }))
+    setSt(s => ({ ...s, state: "ok", posts: [...s.posts, ...r.posts.filter(p => !s.posts.some(q => q.id === p.id))], next: r.next }))
   }
   if (restricted) return (
     <Empty mood="think" title={t("Dein Social-Konto ist gesperrt")} text={t("Du kannst es in den Einstellungen löschen. Deine eigenen Daten auf dem Gerät bleiben.")}>
@@ -503,10 +598,21 @@ export function PostFeed({ feedKey, load, empty, offline, onSelfTest }: {
   if (st.state === "loading") return <Loading />
   if (st.state === "offline") return <>{offline ?? <Offline onRetry={() => setRetry(x => x + 1)} />}</>
   const posts = st.posts.filter(visible)
-  if (!posts.length && !st.next) return <>{empty}</>
+  // Kolbi-Posts: neuester oben angepinnt, die übrigen nach Datum zwischen die Beiträge gemischt
+  // (ältere als der letzte geladene Beitrag erst, wenn nichts mehr nachkommt)
+  const off = st.official ?? []
+  const pinned = off[0]
+  const offAt = (o: OfficialPost) => Date.parse(`${o.date}T00:00:00Z`)
+  const lastAt = posts.length ? Date.parse(posts[posts.length - 1].createdAt) : Infinity
+  const rest = off.slice(1).filter(o => !st.next || offAt(o) >= lastAt)
+  type Item = { k: "post"; p: SocialPost; at: number } | { k: "off"; o: OfficialPost; at: number }
+  const items: Item[] = [...posts.map(p => ({ k: "post" as const, p, at: Date.parse(p.createdAt) })), ...rest.map(o => ({ k: "off" as const, o, at: offAt(o) + 86399999 }))]
+    .sort((a, b) => b.at - a.at)
+  if (!posts.length && !off.length && !st.next) return <>{empty}</>
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {posts.map(p => <PostCard key={p.id} p={p} onSelfTest={onSelfTest} />)}
+      {pinned && <OfficialCard o={pinned} pinned />}
+      {items.map(it => it.k === "post" ? <PostCard key={it.p.id} p={it.p} onSelfTest={onSelfTest} /> : <OfficialCard key={`o-${it.o.id}`} o={it.o} />)}
       {st.next ? <Btn variant="soft" onClick={() => void loadMore()} disabled={more} style={{ alignSelf: "center", minHeight: 44 }}>{more ? t("Lädt …") : t("Weitere laden")}</Btn> : <EndOfFeed />}
     </div>
   )
@@ -699,6 +805,7 @@ function ProfileScreen({ id, onSelfTest }: { id: string; onSelfTest?: (libId: st
       <div className="lab-card lab-rise" style={{ padding: "22px 16px 18px", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, borderRadius: 28 }}>
         <PublicAvatar avatar={p.avatar} size={112} />
         <div style={{ fontSize: "1.45rem", fontWeight: 900, textAlign: "center", wordBreak: "break-word" }}>{p.name}</div>
+        {p.tester && <TestBadge />}
         <div style={{ display: "flex", width: "100%", maxWidth: 320 }}>
           <Stat v={p.followers} l={t("Follower")} />
           <Stat v={p.following} l={t("Gefolgt")} />
@@ -810,7 +917,26 @@ function CommunityTile({ c0 }: { c0: SocialCommunity }) {
   )
 }
 
-/** Labor › Communities: Suche + Kacheln (Beigetretene zuerst). */
+/** Start-Gruppe: große Zeile mit einem Beitreten-Knopf (ein Tipp). */
+function StartGroupCard({ c0 }: { c0: SocialCommunity }) {
+  const [c, toggle] = useJoin(c0)
+  const m = meta(c)
+  return (
+    <div className="lab-card lab-rise" data-community={c.id} data-featured={c.featured} style={{ position: "relative", overflow: "hidden", display: "flex", alignItems: "center", gap: 12, padding: "12px 12px 12px 16px", borderRadius: 22 }}>
+      <span aria-hidden style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 5, background: m.color }} />
+      <button className="lab-press" onClick={() => openSocial({ kind: "community", id: c.id, c })} style={{ flex: 1, minWidth: 0, minHeight: 56, display: "flex", alignItems: "center", gap: 12, background: "none", border: "none", color: "var(--text)", textAlign: "left", padding: 0 }}>
+        <span style={{ width: 52, height: 52, borderRadius: 16, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.6rem", background: `color-mix(in srgb, ${m.color} 22%, var(--surface-2))` }}>{m.emoji}</span>
+        <span style={{ minWidth: 0 }}>
+          <span style={{ display: "block", fontWeight: 900, fontSize: "1.05rem", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.title}</span>
+          <span style={{ display: "block", fontSize: "0.78rem", fontWeight: 800, color: "var(--text-dim)" }}>{membersText(c.members)}</span>
+        </span>
+      </button>
+      <InkBtn on={c.joined} onClick={() => void toggle()} style={{ flexShrink: 0, minWidth: 124, minHeight: 52, fontSize: "1rem" }}>{c.joined ? t("✓ Dabei") : t("Beitreten")}</InkBtn>
+    </div>
+  )
+}
+
+/** Labor › Communities: Start-Gruppen oben, darunter Suche-Ergebnisse/Kacheln (Beigetretene zuerst). */
 export function CommunitiesView() {
   const on = useSocialOn()
   const [q, setQ] = useState("")
@@ -825,7 +951,9 @@ export function CommunitiesView() {
     return () => { alive = false; clearTimeout(id) }
   }, [on, q, retry])
   if (!on) return <JoinIntro text={t("Tritt Labs zu deinen Supplements oder Ziel-Communities wie Schlaf und Fokus bei – und sieh, was andere dort testen.")} />
-  const sorted = Array.isArray(list) ? [...list].sort((a, b) => Number(b.joined) - Number(a.joined) || b.members - a.members) : []
+  const all = Array.isArray(list) ? list : []
+  const start = q ? [] : all.filter(c => c.featured).sort((a, b) => (a.featured ?? 0) - (b.featured ?? 0))
+  const sorted = all.filter(c => !start.includes(c)).sort((a, b) => Number(b.joined) - Number(a.joined) || b.members - a.members)
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <label style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 14px", borderRadius: 16, background: "var(--surface)", border: "1px solid var(--glass-line)", color: "var(--text-dim)" }}>
@@ -836,11 +964,18 @@ export function CommunitiesView() {
       </label>
       {list === "loading" ? <Loading h={240} />
         : list === null ? <Offline onRetry={() => setRetry(x => x + 1)} />
-        : sorted.length ? (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
+        : sorted.length || start.length ? <>
+          {start.length > 0 && <>
+            <div style={{ fontSize: "0.82rem", fontWeight: 900, color: "var(--text-dim)", padding: "0 2px" }}>{t("Start-Gruppen")}</div>
+            <div data-start-groups style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {start.map(c => <StartGroupCard key={c.id} c0={c} />)}
+            </div>
+            {sorted.length > 0 && <div style={{ fontSize: "0.82rem", fontWeight: 900, color: "var(--text-dim)", padding: "6px 2px 0" }}>{t("Alle Communities")}</div>}
+          </>}
+          {sorted.length > 0 && <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
             {sorted.map(c => <CommunityTile key={c.id} c0={c} />)}
-          </div>
-        ) : <Empty mood="think" title={q ? t("Nichts gefunden") : t("Noch keine Communities")} text={q ? t("Probier einen Supplement-Namen oder ein Ziel wie „Schlaf“.") : t("Schau später wieder rein.")} />}
+          </div>}
+        </> : <Empty mood="think" title={q ? t("Nichts gefunden") : t("Noch keine Communities")} text={q ? t("Probier einen Supplement-Namen oder ein Ziel wie „Schlaf“.") : t("Schau später wieder rein.")} />}
     </div>
   )
 }
@@ -874,6 +1009,7 @@ function CommunityBody({ c0, onSelfTest }: { c0: SocialCommunity; onSelfTest?: (
       </div>
       <div style={{ fontSize: "0.82rem", fontWeight: 900, color: "var(--text-dim)", padding: "0 2px" }}>{t("Beiträge")}</div>
       <PostFeed feedKey={`c-${c.id}`} load={cur => api.communityFeed(c.id, cur)} onSelfTest={onSelfTest}
+        onOfficial={o => { if (o[0]) markOfficialSeen(c.id, o[0]) }}
         empty={<Empty title={t("Noch keine Beiträge")} text={t("Sobald jemand hier ein Ergebnis postet, siehst du es hier.")} />} />
     </div>
   )
@@ -938,6 +1074,7 @@ function LabPostsOn({ c0, onSelfTest }: { c0: SocialCommunity; onSelfTest?: (lib
         <div style={{ width: 140, flexShrink: 0 }}><JoinBtn small joined={c.joined} onClick={() => void toggle()} /></div>
       </div>
       <PostFeed feedKey={`lab-${c.id}`} load={cur => api.communityFeed(c.id, cur)} onSelfTest={onSelfTest}
+        onOfficial={o => { if (o[0]) markOfficialSeen(c.id, o[0]) }}
         empty={<Empty title={t("Noch keine Beiträge")} text={t("Nach deinem Test kannst du dein Ergebnis hier als Erstes posten.")} />} />
     </div>
   )
@@ -1028,6 +1165,95 @@ export function SocialSettingsCard() {
           <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
             <Btn variant="soft" onClick={() => setDel(false)} style={{ flex: 1, minHeight: 48 }}>{t("Abbrechen")}</Btn>
             <Btn variant="danger" disabled={busy} onClick={() => void doDelete()} style={{ flex: 1, minHeight: 48 }}>{busy ? t("Lädt …") : t("Endgültig löschen")}</Btn>
+          </div>
+        </Sheet>
+      )}
+    </div>
+  )
+}
+
+// ═══ Testmodus (versteckt: 5× auf die Versionszeile tippen oder ?tester=1) ═══════════════════════
+let testerUnlocked = false
+let testerOn = false
+function readTester() { testerUnlocked = api.testerUnlocked(); testerOn = api.testerMode() }
+const useTester = () => {
+  const u = useSyncExternalStore(subscribe, () => testerUnlocked, () => false)
+  const o = useSyncExternalStore(subscribe, () => testerOn, () => false)
+  return [u, o] as const
+}
+/** ?tester=1 in der Adresse schaltet den Schalter frei (einmal pro Gerät). */
+function unlockFromUrl() {
+  try { if (new URLSearchParams(window.location.search).get("tester") === "1") api.unlockTester() } catch {}
+}
+
+/** Unterste Zeile der Einstellungen: App-Version. 5× tippen → Testmodus-Schalter erscheint. */
+export function VersionLine() {
+  const [taps, setTaps] = useState(0)
+  const [unlocked] = useTester()
+  useEffect(() => { unlockFromUrl(); readTester(); emit() }, [])
+  const tap = () => {
+    if (unlocked) return
+    const n = taps + 1
+    setTaps(n)
+    if (n >= 5) { api.unlockTester(); readTester(); emit(); haptic(20); flash(t("Testmodus-Schalter freigeschaltet")) }
+  }
+  return (
+    <button onClick={tap} data-version-line aria-label={t("Version {v}", { v: appVersion() })} style={{ display: "block", width: "100%", minHeight: 44, marginTop: 8, background: "none", border: "none", color: "var(--text-dim)", fontSize: "0.72rem", fontWeight: 700, textAlign: "center", WebkitTapHighlightColor: "transparent" }}>
+      Kolbi · {t("Version {v}", { v: appVersion() })}
+    </button>
+  )
+}
+
+/** Einstellungen: „Testmodus (für Tester)“ – nur sichtbar, wenn freigeschaltet. */
+export function TesterSettingsCard() {
+  const [unlocked, on] = useTester()
+  const [busy, setBusy] = useState(false)
+  const [off, setOff] = useState(false)
+  useEffect(() => { unlockFromUrl(); readTester(); emit() }, [])
+  if (!unlocked) return null
+  const apply = async (v: boolean) => {
+    setBusy(true)
+    myId = null // neu anmelden: Server-Stand + Feeds frisch
+    const ok = await api.setTester(v)
+    setBusy(false)
+    if (!ok) { flash(OFFLINE()); return }
+    readTester(); hideVer++; emit()
+    flash(v ? t("Testmodus an – deine Beiträge sehen nur andere Tester.") : t("Testmodus aus"))
+  }
+  const toggle = () => {
+    if (busy) return
+    if (on) { setOff(true); return }
+    askSocial(() => { void apply(true) })
+  }
+  const doDelete = async () => {
+    setBusy(true)
+    const ok = await deleteSocialAccount()
+    setBusy(false)
+    if (!ok) { flash(t("Gerade keine Verbindung – nichts gelöscht. Versuch es später nochmal.")); return }
+    readTester(); setOff(false); clearSocial(); emit()
+    flash(t("✓ Testprofil gelöscht"))
+  }
+  return (
+    <div className="lab-card" style={{ padding: 16, marginBottom: 12, border: "1px dashed var(--warning)" }} data-tester-settings>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 900, fontSize: "0.95rem" }}>🧪 {t("Testmodus (für Tester)")} {on && <TestBadge />}</span>
+        <button className="lab-press" role="switch" aria-checked={on} aria-label={t("Testmodus (für Tester)")} disabled={busy} onClick={toggle} style={{ width: 60, height: 44, border: "none", background: "none", padding: "7px 4px", flexShrink: 0, opacity: busy ? 0.5 : 1 }}>
+          <span style={{ display: "block", position: "relative", width: 52, height: 30, borderRadius: 999, background: on ? "var(--warning)" : "var(--surface-2)", transition: "background .25s" }}>
+            <span style={{ position: "absolute", top: 3, left: on ? 25 : 3, width: 24, height: 24, borderRadius: 999, background: "#fff", transition: "left .3s cubic-bezier(.34,1.56,.64,1)", boxShadow: "0 1px 4px rgba(0,0,0,.25)" }} />
+          </span>
+        </button>
+      </div>
+      <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", lineHeight: 1.45, marginTop: 4 }}>
+        {on ? t("An: Dein Profil und alles, was du jetzt teilst, sehen nur andere Tester. Du siehst echte Beiträge und Test-Beiträge (mit „TEST“).")
+          : t("Zum Ausprobieren von Teilen, Folgen, Reaktionen und Melden, ohne den echten Feed zu stören. Test-Inhalte sehen nur andere Tester.")}
+      </div>
+      {off && (
+        <Sheet open onClose={() => setOff(false)} z={460} portal title={t("Testmodus ausschalten?")}>
+          <div style={{ fontSize: "0.9rem", lineHeight: 1.5, fontWeight: 700 }}>{t("Beiträge, die du im Testmodus geteilt hast, bleiben versteckt – nur Tester sehen sie. Dein Profil ist danach wieder für alle sichtbar. Für einen sauberen Neustart lösch lieber das Testprofil.")}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 18 }}>
+            <Btn variant="danger" full disabled={busy} onClick={() => void doDelete()} style={{ minHeight: 48 }}>{busy ? t("Lädt …") : t("Testprofil löschen")}</Btn>
+            <Btn variant="soft" full disabled={busy} onClick={() => { setOff(false); void apply(false) }} style={{ minHeight: 48 }}>{t("Nur ausschalten")}</Btn>
+            <Btn variant="ghost" full onClick={() => setOff(false)} style={{ minHeight: 48 }}>{t("Abbrechen")}</Btn>
           </div>
         </Sheet>
       )}

@@ -41,7 +41,7 @@ import { configureStats, srcFromUrl, track, trackCheckin, trackOnce } from "@/li
 import { RoadPath } from "./path"
 import { ShareButton, makeResultCard } from "./share"
 import { CommunityConsent } from "./community"
-import { SocialHost, SocialScreen, SocialSettingsCard, clearSocial, deleteSocialAccount, hasSocialAccount, pauseSocial, startPost, useSocialSheetOpen, useSocialView } from "./social"
+import { SocialHost, SocialScreen, SocialSettingsCard, TesterSettingsCard, VersionLine, clearSocial, deleteSocialAccount, hasSocialAccount, pauseSocial, startPost, useSocialSheetOpen, useSocialView } from "./social"
 import { ExperimentSheet, ExperimentsView } from "./experiments"
 import { startExperiment, type Experiment } from "@/lib/labExperiments"
 import { removeMyResults, shareResult } from "@/lib/labCommunity"
@@ -2071,6 +2071,7 @@ function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnable
       </Card>}
 
       <SocialSettingsCard />
+      <TesterSettingsCard />
 
       {/* Lab Pro & Käufe: Tarife, Kauf, „Käufe wiederherstellen“ – sobald gekauft werden kann; in der Store-App immer (Store-Prüfung), im Web nur mit Bezahl-Schlüssel */}
       {(paymentsReady() || appPlatform() !== "web") && <button className="lab-card lab-press" onClick={() => { haptic(); onClose(); openPaywall() }} style={{
@@ -2186,6 +2187,7 @@ function SettingsSheet({ s, onClose, update, onReset, onDemo, onImport, onEnable
           : <Btn full variant="ghost" onClick={() => setConfirm(true)}>{t("Experiment zurücksetzen")}</Btn>)}
         {resetErr && <div role="alert" style={{ fontSize: "0.8rem", fontWeight: 800, textAlign: "center" }}>{resetErr}</div>}
       </div>
+      <VersionLine />
       {resetOffline && (
         <Sheet open onClose={() => setResetOffline(false)} z={470} portal title={t("Social-Konto gerade nicht erreichbar")}>
           <div style={{ fontSize: "0.9rem", lineHeight: 1.5, fontWeight: 700 }}>{t("Ohne Verbindung kann ich dein Social-Konto nicht löschen. Bisher wurde nichts gelöscht.")}</div>

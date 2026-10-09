@@ -15,6 +15,8 @@ const URL_ = "https://mkdfohmshuuiroeruyyz.supabase.co/functions/v1/lab-social"
 const CONSENT_KEY = "lab-social-consent"
 const SECRET_KEY = "lab-social-secret"
 const ID_KEY = "lab-social-id"
+const TESTER_KEY = "lab-social-tester"
+const TESTER_UNLOCK_KEY = "lab-social-tester-unlocked"
 const SECRET_RE = /^[a-f0-9]{64}$/
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 /** Bereiche, die nie veröffentlicht werden (Art. 9 DSGVO: Sexualleben) – Server und DB lehnen sie ebenfalls ab. */
@@ -26,21 +28,44 @@ const BLOCKED_LIBS = new Set(["bpc157", "tb500", "ghkcu", "cjc-ipa", "semax", "s
 export type Avatar = LabAvatar
 export type ReactionKind = "durchhalten" | "hilfreich"
 export type ReportReason = "spam" | "beleidigung" | "gesundheitsversprechen" | "sonstiges"
-export interface SocialAuthor { id: string; name: string; avatar: Avatar }
+export interface SocialAuthor { id: string; name: string; avatar: Avatar; /** Testmodus-Inhalt (nur Tester sehen ihn) */ tester?: boolean }
 export interface Post {
   id: string; author: SocialAuthor; lib: string; days: number; decision: "keep" | "maybe" | "drop"
   delta: number; dims: Record<string, number>; createdAt: string
   counts: { durchhalten: number; hilfreich: number }; mine: ReactionKind[]
+  /** Test-Inhalt (Autor im Testmodus bzw. im Testmodus geteilt) → „TEST“-Abzeichen */
+  tester?: boolean
+}
+/** Offizieller Kolbi-Post einer Community (Text vom Kolbi-Team, keine Nutzer-Inhalte). */
+export interface OfficialPost {
+  id: string
+  /** Veröffentlichungstag YYYY-MM-DD */
+  date: string
+  title: string; body: string
+  /** Bibliotheks-ID fürs 3D-Icon (./icons/<id>.webp) */
+  icon?: string
 }
 export type SocialPost = Post
 export interface SocialProfile {
   id: string; name: string; avatar: Avatar; followers: number; following: number
   isFollowing: boolean; isMe: boolean; posts: Post[]
+  /** Testmodus-Profil (nur für Tester sichtbar) */
+  tester?: boolean
   /** nur für mich sichtbar: ich habe dieses Profil blockiert (dann keine Posts) */
   blocked?: boolean
 }
-export interface SocialPage { posts: Post[]; next?: string }
-export interface SocialCommunity { id: string; kind: "lab" | "goal"; key: string; name: string; members: number; joined: boolean }
+export interface SocialPage {
+  posts: Post[]; next?: string
+  /** nur Community-Feed, erste Seite: offizielle Kolbi-Posts, neueste zuerst */
+  official?: OfficialPost[]
+}
+export interface SocialCommunity {
+  id: string; kind: "lab" | "goal"; key: string; name: string; members: number; joined: boolean
+  /** Start-Gruppe: Rang 1… (oben groß angezeigt) */
+  featured?: number
+  /** neuester sichtbarer Kolbi-Post (für „Neuer Kolbi-Post in …“) */
+  official?: { id: string; date: string }
+}
 /** Entscheidung des Betreibers über mich bzw. einen meiner Posts, mit Begründung (DSA Art. 17). */
 export interface SocialDecision {
   target: "post" | "profile"
@@ -59,6 +84,8 @@ export interface SocialAccount {
   restricted?: boolean
   /** Entscheidungen über mich/meine Posts, neueste zuerst (max. 10; leer = keine) */
   decisions: SocialDecision[]
+  /** Server-Stand des Testmodus */
+  tester?: boolean
 }
 /** Ergebnis von shareResultPost: true = geteilt · false = nicht möglich/Fehler ·
  *  "hidden" = dieser Post wurde vom Betreiber ausgeblendet · "pending" = Post ist gemeldet, Entscheidung steht aus */
@@ -71,6 +98,41 @@ export function socialConsent(): boolean {
 export function setSocialConsent(v: boolean): void {
   try { if (v) localStorage.setItem(CONSENT_KEY, "1"); else localStorage.removeItem(CONSENT_KEY) } catch { /* privat/voll */ }
   if (!v) accountP = null
+}
+
+// ── Testmodus (für Tester: Inhaber, Freunde, Zweithandy) ─────────────────────────
+// Versteckt: erst freischalten (5× auf die Versionszeile in den Einstellungen tippen oder ?tester=1), dann einschalten.
+// Im Testmodus sehen nur andere Tester mein Profil und meine Posts; ich sehe echte + Test-Inhalte (mit „TEST“).
+export function testerUnlocked(): boolean {
+  try { return localStorage.getItem(TESTER_UNLOCK_KEY) === "1" || localStorage.getItem(TESTER_KEY) === "1" } catch { return false }
+}
+export function unlockTester(): void {
+  try { localStorage.setItem(TESTER_UNLOCK_KEY, "1") } catch { /* privat/voll */ }
+}
+/** Gewünschter Testmodus auf diesem Gerät (lokal; wird mit dem Server abgeglichen). */
+export function testerMode(): boolean {
+  try { return localStorage.getItem(TESTER_KEY) === "1" } catch { return false }
+}
+function setTesterLocal(on: boolean) {
+  try { if (on) localStorage.setItem(TESTER_KEY, "1"); else localStorage.removeItem(TESTER_KEY) } catch { /* privat/voll */ }
+}
+/** Testmodus ein/aus (lokal + Server). Ohne Konto/Verbindung: false, lokal unverändert. */
+export async function setTester(on: boolean): Promise<boolean> {
+  const acc = await ensureAccount()
+  if (!acc) return false
+  if (!!acc.tester === on) { setTesterLocal(on); return true }
+  const r = await send("setTester", { on })
+  if (!ok(r)) return false
+  setTesterLocal(on)
+  acc.tester = on
+  return true
+}
+/** Nach dem Anmelden: lokalen Wunsch und Server-Stand abgleichen (lokal gewinnt). */
+export async function syncTester(): Promise<void> {
+  const acc = await ensureAccount()
+  if (!acc || !!acc.tester === testerMode()) return
+  const r = await send("setTester", { on: testerMode() })
+  if (ok(r)) acc.tester = testerMode()
 }
 
 // ── Gerät: Geheimnis + Profil-ID ──────────────────────────────────────────────
@@ -102,7 +164,7 @@ function avatarOf(v: unknown): Avatar {
 }
 function authorOf(v: unknown): SocialAuthor | null {
   if (!isObj(v) || typeof v.id !== "string" || typeof v.name !== "string") return null
-  return { id: v.id, name: v.name, avatar: avatarOf(v.avatar) }
+  return { id: v.id, name: v.name, avatar: avatarOf(v.avatar), ...(v.tester === true ? { tester: true } : {}) }
 }
 function postOf(v: unknown): Post | null {
   if (!isObj(v) || typeof v.id !== "string" || typeof v.lib !== "string" || typeof v.createdAt !== "string") return null
@@ -116,6 +178,16 @@ function postOf(v: unknown): Post | null {
     id: v.id, author, lib: v.lib, days: num(v.days), decision, delta: num(v.delta), dims, createdAt: v.createdAt,
     counts: { durchhalten: num(c.durchhalten), hilfreich: num(c.hilfreich) },
     mine: (Array.isArray(v.mine) ? v.mine : []).filter((k): k is ReactionKind => k === "durchhalten" || k === "hilfreich"),
+    ...(v.tester === true ? { tester: true } : {}),
+  }
+}
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+function officialOf(v: unknown): OfficialPost | null {
+  if (!isObj(v) || typeof v.id !== "string" || typeof v.date !== "string" || !DATE_RE.test(v.date)) return null
+  if (typeof v.title !== "string" || typeof v.body !== "string" || !v.title.trim()) return null
+  return {
+    id: v.id.slice(0, 64), date: v.date, title: v.title.slice(0, 140), body: v.body.slice(0, 1500),
+    ...(typeof v.icon === "string" && /^[a-z0-9-]{2,40}$/.test(v.icon) ? { icon: v.icon } : {}),
   }
 }
 const postsOf = (v: unknown): Post[] => (Array.isArray(v) ? v : []).map(postOf).filter((p): p is Post => !!p)
@@ -131,7 +203,8 @@ function decisionsOf(v: unknown): SocialDecision[] {
 }
 function pageOf(v: unknown): SocialPage | null {
   if (!isObj(v) || !Array.isArray(v.posts)) return null
-  return { posts: postsOf(v.posts), ...(typeof v.next === "string" && v.next ? { next: v.next } : {}) }
+  const official = Array.isArray(v.official) ? v.official.map(officialOf).filter((o): o is OfficialPost => !!o) : null
+  return { posts: postsOf(v.posts), ...(typeof v.next === "string" && v.next ? { next: v.next } : {}), ...(official ? { official } : {}) }
 }
 
 // ── Transport ─────────────────────────────────────────────────────────────────
@@ -174,7 +247,7 @@ export function ensureAccount(): Promise<SocialAccount | null> {
       set(ID_KEY, b.id)
       return {
         id: b.id, name: b.name, avatar: avatarOf(b.avatar), ...(b.restricted ? { restricted: true } : {}),
-        decisions: decisionsOf(b.decisions),
+        decisions: decisionsOf(b.decisions), ...(b.tester === true ? { tester: true } : {}),
       }
     })()
     accountP.then(a => { if (!a) accountP = null }, () => { accountP = null })
@@ -211,6 +284,7 @@ export async function getProfile(id: string): Promise<SocialProfile | null> {
   return {
     id: b.id, name: b.name, avatar: avatarOf(b.avatar), followers: num(b.followers), following: num(b.following),
     isFollowing: b.isFollowing === true, isMe: b.isMe === true, posts: postsOf(b.posts), ...(b.blocked ? { blocked: true } : {}),
+    ...(b.tester === true ? { tester: true } : {}),
   }
 }
 
@@ -268,7 +342,13 @@ export async function communities(query?: string): Promise<SocialCommunity[] | n
     // Anzeigename lokal (gleiche Übersetzung wie überall in der App), sonst der vom Server
     const local = c.kind === "lab" ? LIB_BY_ID[c.key]?.name : GOAL_BY_ID[c.key as GoalId]?.label
     if (c.kind === "lab" && !LIB_BY_ID[c.key]) return [] // in dieser App-Version unbekannt
-    return [{ id: c.id, kind: c.kind, key: c.key, name: local ?? (typeof c.name === "string" ? c.name : c.key), members: num(c.members), joined: c.joined === true }]
+    const off = isObj(c.official) && typeof c.official.id === "string" && typeof c.official.date === "string" && DATE_RE.test(c.official.date)
+      ? { official: { id: c.official.id, date: c.official.date } } : {}
+    const featured = num(c.featured)
+    return [{
+      id: c.id, kind: c.kind, key: c.key, name: local ?? (typeof c.name === "string" ? c.name : c.key), members: num(c.members), joined: c.joined === true,
+      ...(featured > 0 ? { featured } : {}), ...off,
+    }]
   })
 }
 export const join = async (id: string) => ok(await authed("join", { id }))
@@ -284,7 +364,7 @@ export async function report(target: { type: "post" | "profile"; id: string }, r
 // ── Konto löschen: alles auf dem Server, dann Geheimnis/ID/Einwilligung auf dem Gerät ──
 // Geht auch ohne (bzw. nach widerrufener) Einwilligung – Löschen muss immer möglich sein.
 export async function deleteAccount(): Promise<boolean> {
-  const clear = () => { set(ID_KEY, null); set(SECRET_KEY, null); setSocialConsent(false) }
+  const clear = () => { set(ID_KEY, null); set(SECRET_KEY, null); setTesterLocal(false); setSocialConsent(false) }
   const s = get(SECRET_KEY)
   if (!s || !SECRET_RE.test(s)) { clear(); return true } // nie ein Konto angelegt
   // nur mit Geheimnis (ohne ID-Header). Erfolg nur bei 200 oder 401 {error:"noprofile"} (= gibt es nicht mehr);

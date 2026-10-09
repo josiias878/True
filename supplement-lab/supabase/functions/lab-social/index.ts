@@ -5,14 +5,20 @@
 // Anmeldung: Gerät erzeugt ein zufälliges 32-Byte-Geheimnis (64 hex). Der Server speichert nur SHA-256 davon.
 //   Header  x-social-id: <Profil-UUID>   x-social-secret: <64 hex>
 // POST {action, lang?, ...}
-//   ensure {nameIdx?, avatar?}           → {id, name, avatar, restricted?, decisions}   (legt beim ersten Mal an; id-Header optional)
+//   ensure {nameIdx?, avatar?}           → {id, name, avatar, restricted?, tester?, decisions}   (legt beim ersten Mal an; id-Header optional)
 //     decisions: [{target: post|profile, action: hidden|banned, lib?, note, at}] – Entscheidungen des Inhabers über
 //     mich/meine Posts mit Begründung (DSA Art. 17), neueste zuerst, max. 10
 //   updateProfile {nameIdx?, avatar?}    → {ok}
-//   getProfile {id}                      → {id, name, avatar, followers, following, isFollowing, isMe, posts, blocked?}
+//   setTester {on: boolean}              → {ok}   Testmodus: Profil + danach geteilte Posts nur für andere Tester sichtbar;
+//     Tester sehen echte + Test-Inhalte (author.tester / tester = true → „TEST“-Abzeichen). Im Testmodus geteilte Posts
+//     bleiben auch nach dem Ausschalten nur für Tester sichtbar.
+//   getProfile {id}                      → {id, name, avatar, tester?, followers, following, isFollowing, isMe, posts, blocked?}
 //   follow|unfollow|block|unblock {id}   → {ok}
 //   feed {kind: following|discover, cursor?}  ·  communityFeed {id, cursor?}  → {posts, next?}
-//   communities {query?}                 → {communities: [{id, kind, key, name, members, joined}]}
+//     communityFeed liefert auf der ersten Seite (ohne cursor) zusätzlich official: [{id, date, title, body, icon?}]
+//     = offizielle Kolbi-Posts dieser Community (publish_on <= heute, nicht ausgeblendet), neueste zuerst, max. 30
+//   communities {query?}                 → {communities: [{id, kind, key, name, members, joined, featured?, official?: {id, date}}]}
+//     featured = Rang als Start-Gruppe (1…) · official = neuester sichtbarer Kolbi-Post
 //   join|leave {id}                      → {ok}
 //   shareResult {lib, days, decision, delta, dims}  → {ok} · 403 {error:"hidden"} · 409 {error:"pending"}
 //     (erneutes Teilen aktualisiert den Post an Ort und Stelle – gleiche ID, Reaktionen weg; bei offenen Meldungen gesperrt)
@@ -92,11 +98,12 @@ function parseCursor(v: unknown): { ts: string; id: string } | null | false {
   return ts && id && UUID.test(id) && Number.isFinite(Date.parse(ts)) ? { ts, id } : false
 }
 
-interface Me { id: string; name_idx: number; avatar: Avatar; hidden: boolean; banned: boolean; last_seen_on: string }
+interface Me { id: string; name_idx: number; avatar: Avatar; hidden: boolean; banned: boolean; last_seen_on: string; tester: boolean }
 interface FeedRow {
   id: string; author: string; name_idx: number; avatar: Avatar; lib: string; days: number; decision: string; delta: number | string
-  dims: Record<string, number>; created_at: string; n_durchhalten: number; n_hilfreich: number; mine: string[]
+  dims: Record<string, number>; created_at: string; n_durchhalten: number; n_hilfreich: number; mine: string[]; tester?: boolean
 }
+const OFFICIAL_MAX = 30
 
 /** Body lesen, aber höchstens MAX_BODY Bytes (auch ohne/mit falschem Content-Length) – null = zu groß */
 async function readCapped(req: Request): Promise<string | null> {
@@ -118,7 +125,7 @@ async function readCapped(req: Request): Promise<string | null> {
   return new TextDecoder().decode(all)
 }
 
-const WRITES = new Set(["updateProfile", "follow", "unfollow", "shareResult", "react", "unreact", "report", "block", "unblock", "join", "leave"])
+const WRITES = new Set(["updateProfile", "setTester", "follow", "unfollow", "shareResult", "react", "unreact", "report", "block", "unblock", "join", "leave"])
 const READS = new Set(["getProfile", "feed", "communityFeed", "communities"])
 
 Deno.serve(async req => {
@@ -140,7 +147,7 @@ Deno.serve(async req => {
   const hash = await sha256(secret)
 
   const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!)
-  const ME_COLS = "id, name_idx, avatar, hidden, banned, last_seen_on"
+  const ME_COLS = "id, name_idx, avatar, hidden, banned, last_seen_on, tester"
   const { data: meRow, error: meErr } = await db.from("social_profiles").select(ME_COLS).eq("secret_hash", hash).maybeSingle()
   if (meErr) return fail("db", 500)
   let me = meRow as Me | null
@@ -173,11 +180,14 @@ Deno.serve(async req => {
     if (decErr) return fail("db", 500)
     const decisions = ((dec ?? []) as { target: string; action: string; lib: string | null; note: string; at: string }[])
       .map(d => ({ target: d.target, action: d.action, ...(d.lib ? { lib: d.lib } : {}), note: d.note ?? "", at: d.at }))
-    return json({ id: me.id, name: nameAt(me.name_idx, en), avatar: me.avatar, ...(me.banned ? { restricted: true } : {}), decisions })
+    return json({
+      id: me.id, name: nameAt(me.name_idx, en), avatar: me.avatar, ...(me.banned ? { restricted: true } : {}),
+      ...(me.tester ? { tester: true } : {}), decisions,
+    })
   }
 
   if (!me) return fail("noprofile", 401)
-  const myId = me.id
+  const myId = me.id, iTest = !!me.tester
   if (action === "deleteAccount") {
     const { error } = await db.rpc("social_delete_profile", { p: myId })
     return error ? fail("db", 500) : json({ ok: true })
@@ -198,33 +208,45 @@ Deno.serve(async req => {
       .or(`and(blocker.eq.${myId},blocked.eq.${other}),and(blocker.eq.${other},blocked.eq.${myId})`)
     return (count ?? 0) > 0
   }
-  /** Fremdes Profil, das ich sehen darf (nicht ausgeblendet/gesperrt, keine Blockierung) */
+  /** Fremdes Profil, das ich sehen darf (nicht ausgeblendet/gesperrt; Tester-Profile nur für Tester) */
   const visibleProfile = async (id: string) => {
     if (!UUID.test(id)) return null
-    const { data } = await db.from("social_profiles").select("id, name_idx, avatar, hidden, banned").eq("id", id).maybeSingle()
+    const { data } = await db.from("social_profiles").select("id, name_idx, avatar, hidden, banned, tester").eq("id", id).maybeSingle()
     if (!data) return null
-    if (data.id !== myId && (data.hidden || data.banned)) return null
-    return data as { id: string; name_idx: number; avatar: Avatar }
+    if (data.id !== myId && (data.hidden || data.banned || (data.tester && !iTest))) return null
+    return data as { id: string; name_idx: number; avatar: Avatar; tester: boolean }
   }
   const toPost = (r: FeedRow) => ({
     id: r.id,
-    author: { id: r.author, name: nameAt(r.name_idx, en), avatar: r.avatar },
+    author: { id: r.author, name: nameAt(r.name_idx, en), avatar: r.avatar, ...(r.tester ? { tester: true } : {}) },
     lib: r.lib, days: r.days, decision: r.decision, delta: Number(r.delta), dims: r.dims ?? {},
     createdAt: r.created_at,
     counts: { durchhalten: r.n_durchhalten, hilfreich: r.n_hilfreich },
     mine: r.mine ?? [],
+    ...(r.tester ? { tester: true } : {}),
   })
   const feed = async (mode: string, opts: { community?: string; author?: string }, cursor: unknown, limit = PAGE) => {
     const c = parseCursor(cursor)
     if (c === false) return fail("cursor")
-    const { data, error } = await db.rpc("social_feed", {
+    // Offizielle Kolbi-Posts: nur Community, nur erste Seite (Client mischt sie nach Datum ein, neuester oben angepinnt)
+    let official: unknown[] | undefined
+    if (mode === "community" && !c && opts.community) {
+      const today = new Date().toISOString().slice(0, 10)
+      const { data: op, error: opErr } = await db.from("official_posts").select("id, publish_on, title_de, body_de, title_en, body_en, icon")
+        .eq("community", opts.community).eq("hidden", false).lte("publish_on", today)
+        .order("publish_on", { ascending: false }).order("id", { ascending: false }).limit(OFFICIAL_MAX)
+      if (opErr) return fail("db", 500)
+      official = ((op ?? []) as { id: string; publish_on: string; title_de: string; body_de: string; title_en: string; body_en: string; icon: string | null }[])
+        .map(o => ({ id: o.id, date: o.publish_on, title: en ? o.title_en : o.title_de, body: en ? o.body_en : o.body_de, ...(o.icon ? { icon: o.icon } : {}) }))
+    }
+    const { data, error } = await db.rpc("social_feed_v2", {
       p_me: myId, p_mode: mode, p_community: opts.community ?? null, p_author: opts.author ?? null,
       p_before_ts: c?.ts ?? null, p_before_id: c?.id ?? null, p_limit: limit,
     })
     if (error) return fail("db", 500)
     const rows = (data ?? []) as FeedRow[]
     const last = rows[rows.length - 1]
-    return json({ posts: rows.map(toPost), ...(rows.length === limit && last ? { next: `${last.created_at}|${last.id}` } : {}) })
+    return json({ posts: rows.map(toPost), ...(rows.length === limit && last ? { next: `${last.created_at}|${last.id}` } : {}), ...(official ? { official } : {}) })
   }
   const targetId = String(b.id ?? "")
 
@@ -246,6 +268,13 @@ Deno.serve(async req => {
       return error ? fail("db", 500) : json({ ok: true })
     }
 
+    case "setTester": {
+      if (typeof b.on !== "boolean") return fail("on")
+      if (b.on === iTest) return json({ ok: true })
+      const { error } = await db.from("social_profiles").update({ tester: b.on }).eq("id", myId)
+      return error ? fail("db", 500) : json({ ok: true })
+    }
+
     case "getProfile": {
       const p = await visibleProfile(targetId)
       if (!p) return fail("notfound", 404)
@@ -257,20 +286,19 @@ Deno.serve(async req => {
         const { count: mine } = await db.from("social_blocks").select("blocker", { count: "exact", head: true }).eq("blocker", myId).eq("blocked", p.id)
         iBlocked = (mine ?? 0) > 0
       }
-      const [followers, following, isFollowing] = await Promise.all([
-        db.from("social_follows").select("follower", { count: "exact", head: true }).eq("followee", p.id),
-        db.from("social_follows").select("follower", { count: "exact", head: true }).eq("follower", p.id),
-        isMe ? Promise.resolve({ count: 0 }) : db.from("social_follows").select("follower", { count: "exact", head: true }).eq("follower", myId).eq("followee", p.id),
-      ])
+      // Zähler aus meiner Sicht: Tester zählen nur für Tester
+      const { data: st, error: stErr } = await db.rpc("social_follow_stats", { p_me: myId, p_profile: p.id })
+      if (stErr) return fail("db", 500)
+      const stats = (Array.isArray(st) ? st[0] : st) as { followers: number; following: number; is_following: boolean } | null
       let posts: ReturnType<typeof toPost>[] = []
       if (!iBlocked) {
-        const { data, error } = await db.rpc("social_feed", { p_me: myId, p_mode: "profile", p_community: null, p_author: p.id, p_before_ts: null, p_before_id: null, p_limit: 50 })
+        const { data, error } = await db.rpc("social_feed_v2", { p_me: myId, p_mode: "profile", p_community: null, p_author: p.id, p_before_ts: null, p_before_id: null, p_limit: 50 })
         if (error) return fail("db", 500)
         posts = ((data ?? []) as FeedRow[]).map(toPost)
       }
       return json({
-        id: p.id, name: nameAt(p.name_idx, en), avatar: p.avatar,
-        followers: followers.count ?? 0, following: following.count ?? 0, isFollowing: (isFollowing.count ?? 0) > 0, isMe, posts,
+        id: p.id, name: nameAt(p.name_idx, en), avatar: p.avatar, ...(p.tester ? { tester: true } : {}),
+        followers: stats?.followers ?? 0, following: stats?.following ?? 0, isFollowing: !isMe && !!stats?.is_following, isMe, posts,
         ...(iBlocked ? { blocked: true } : {}),
       })
     }
@@ -315,13 +343,19 @@ Deno.serve(async req => {
     }
 
     case "communities": {
-      const { data, error } = await db.rpc("social_communities", { p_me: myId })
+      const { data, error } = await db.rpc("social_communities_v2", { p_me: myId })
       if (error) return fail("db", 500)
       const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
       const q = typeof b.query === "string" ? norm(b.query.trim().slice(0, 40)) : ""
-      const rows = ((data ?? []) as { id: string; kind: string; key: string; name_de: string; name_en: string; members: number; joined: boolean }[])
-        .filter(c => !q || [c.key, c.name_de, c.name_en].some(s => norm(s).includes(q)))
-      return json({ communities: rows.map(c => ({ id: c.id, kind: c.kind, key: c.key, name: en ? c.name_en : c.name_de, members: c.members, joined: c.joined })) })
+      const rows = ((data ?? []) as {
+        id: string; kind: string; key: string; name_de: string; name_en: string; members: number; joined: boolean
+        featured: number | null; official_id: string | null; official_on: string | null
+      }[]).filter(c => !q || [c.key, c.name_de, c.name_en].some(s => norm(s).includes(q)))
+      return json({ communities: rows.map(c => ({
+        id: c.id, kind: c.kind, key: c.key, name: en ? c.name_en : c.name_de, members: c.members, joined: c.joined,
+        ...(c.featured ? { featured: c.featured } : {}),
+        ...(c.official_id && c.official_on ? { official: { id: c.official_id, date: c.official_on } } : {}),
+      })) })
     }
     case "join": {
       if (!COMMUNITY.test(targetId)) return fail("id")
@@ -369,8 +403,8 @@ Deno.serve(async req => {
         await db.from("social_reactions").delete().eq("post", post).eq("profile", myId).eq("kind", kind)
         return json({ ok: true })
       }
-      const { data: p } = await db.from("social_posts").select("id, author, hidden").eq("id", post).maybeSingle()
-      if (!p || p.hidden) return fail("notfound", 404)
+      const { data: p } = await db.from("social_posts").select("id, author, hidden, tester").eq("id", post).maybeSingle()
+      if (!p || p.hidden || (p.tester && !iTest)) return fail("notfound", 404)
       if (p.author === myId) return fail("own")
       if (!await visibleProfile(p.author) || await blockedEither(p.author)) return fail("notfound", 404)
       const { error } = await db.from("social_reactions").upsert({ post, profile: myId, kind }, { onConflict: "post,profile,kind", ignoreDuplicates: true })

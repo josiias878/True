@@ -10,7 +10,7 @@ import { Mascot } from "./mascot"
 import { Avatar } from "./me"
 import { t } from "@/lib/labI18n"
 import { markSeen } from "@/lib/labNew"
-import { JoinRow, ModerationNotice, PostFeed, SwitchTabs, useSocialOn } from "./social"
+import { JoinRow, ModerationNotice, OfficialHint, PostFeed, SwitchTabs, useSocialOn } from "./social"
 import * as socialApi from "@/lib/labSocialApi"
 
 type FeedMode = "neueste" | "gefolgt"
@@ -152,6 +152,7 @@ export function DiscoverView({ s, today, recapReady, onRecap, onOpenLab, onSelfT
 
       {!social && <JoinRow />}
       {social && <ModerationNotice />}
+      {social && <OfficialHint />}
 
       {!social ? s1
         : mode === "gefolgt" ? (
