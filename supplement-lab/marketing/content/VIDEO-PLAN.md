@@ -42,3 +42,4 @@ Keine Wirkversprechen (nur „bei DIR“), App-Bilder als „Beispiel-Daten“, 
 - Erzeugung: Gemini Omni Flash 1.1, image-to-video, Ton + Lippen in einem Schritt (10 s = 30 Credits). Seedance/Kling mit separater Stimme taugt für Deutsch nicht (Lippen/Stimme unnatürlich).
 - Schnitt (0 Credits, Higgsfield-Sandbox): Sprache 1,2× schneller, Punch-in-Zooms an Satzgrenzen, weißer Blitz + Klick/Auslöser-SFX bei jedem Wechsel, App-Karten fahren von rechts ein (Stack, Normal-Vergleich, Kosten-Coach – Beispiel-Daten immer markiert), große Wort-Untertitel mit grünen Schlüsselwörtern, 2,2 s Schlussbild mit Whoosh.
 - Host erklärt nur die Methode, nie „meine Erfahrung“. Beim Posten Häkchen „KI-generiert“ setzen.
+- Schlussbild + Schlusssatz je Video aus [`host-serie-1.md`](./host-serie-1.md) (Verlust-Framing: nur Geld/Zeit/Klarheit, nie Gesundheitsangst).

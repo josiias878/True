@@ -1,10 +1,11 @@
-// Standbilder/Overlays (1080×1920) für Higgsfield-Probevideos. Aufruf: node frames.mjs <shotsDir> <outDir>
+// Standbilder/Overlays (1080×1920) für Higgsfield-Probevideos. Aufruf: node frames.mjs <shotsDir> <outDir> [ends]
+// Mit „ends“ nur die Schlussbilder (end, end-sparen, end-community, end-scan, end-gratis) – braucht keine App-Screenshots.
 // Regeln: keine Wirkversprechen, App-Bilder als „Beispiel-Daten“ gekennzeichnet (brand/BRAND.md, legal/health-claims-check.md).
 import { createRequire } from "module"
 import fs from "fs"
 const require = createRequire(import.meta.url)
 const { chromium } = require(require("child_process").execSync("npm root -g").toString().trim() + "/playwright")
-const [SHOTS, OUT] = process.argv.slice(2)
+const [SHOTS, OUT, ONLY] = process.argv.slice(2)
 fs.mkdirSync(OUT, { recursive: true })
 const FONT = fs.readFileSync(new URL("../../brand/fonts/Nunito-latin.woff2", import.meta.url)).toString("base64")
 const img = f => "data:image/png;base64," + fs.readFileSync(f).toString("base64")
@@ -23,6 +24,20 @@ async function shot(name, html, transparent = false) {
   await p.screenshot({ path: `${OUT}/${name}.png`, omitBackground: transparent }); await p.close(); console.log("✓", name)
 }
 const wrap = (inner) => `<div style="position:relative;width:1080px;height:1920px;overflow:hidden">${inner}</div>`
+// D: Schlussbilder (Host-Serie: Schlusssatz je Video aus content/host-serie-1.md). Kein Wirkversprechen – „wirkt“ nur „bei DIR“.
+const endFrame = (pose, text, top = 1060) => wrap(`<div style="position:absolute;inset:0;background:${BG}"></div>
+  <div style="position:absolute;left:50%;top:330px;transform:translateX(-50%);width:640px;height:640px;filter:drop-shadow(0 0 26px rgba(124,245,192,.5))">${svg(pose)}</div>
+  <div class="t" style="position:absolute;top:${top}px;left:60px;right:60px">${text}</div>
+  <div class="s" style="position:absolute;top:1370px;left:60px;right:60px">Kolbi · gratis · Link in Bio 🧪</div>`)
+const ENDS = { // Verlust-Framing nur mit Geld/Zeit/Klarheit – nie Gesundheitsangst (Art. 12 HCVO, UWG)
+  "end": ["happy", `Teste selbst,<br>was bei <em>DIR</em> wirkt`],
+  "end-sparen": ["happy", `Hör auf, für Dosen<br>zu zahlen, die bei<br><em>DIR</em> nichts tun`, 1000],
+  "end-community": ["party", `Teil dein Ergebnis –<br>statt allein bei<br><em>null</em> anzufangen`, 1000],
+  "end-scan": ["think", `Scan die Dose –<br>sonst weißt du nicht,<br><em>wofür</em> du zahlst`, 1000],
+  "end-gratis": ["party", `Wer nicht vergleicht,<br><em>rät</em>. Teste gratis.`],
+}
+for (const [n, [pose, text, top]] of Object.entries(ENDS)) await shot(n, endFrame(pose, text, top))
+if (ONLY === "ends") { await b.close(); process.exit(0) }
 // A: Hook-Overlays (transparent) für den Kolbi-Clip
 const HOOKS = {
   "hook-magnesium": `Bringt dein<br><em>Magnesium</em><br>überhaupt was?`,
@@ -40,11 +55,6 @@ await shot("coach", wrap(`<div style="position:absolute;inset:0;background:${BG}
 await shot("stack-bg", wrap(`<div style="position:absolute;inset:0;background:${BG}"></div>
   <div class="t" style="position:absolute;top:150px;left:60px;right:60px;font-size:78px">Was nehme ich –<br><em>und wofür?</em></div>
   <div class="pill">Beispiel-Daten</div>`))
-// D: Schlussbild
-await shot("end", wrap(`<div style="position:absolute;inset:0;background:${BG}"></div>
-  <div style="position:absolute;left:50%;top:330px;transform:translateX(-50%);width:640px;height:640px;filter:drop-shadow(0 0 26px rgba(124,245,192,.5))">${svg("happy")}</div>
-  <div class="t" style="position:absolute;top:1060px;left:60px;right:60px">Teste selbst,<br>was bei <em>DIR</em> wirkt</div>
-  <div class="s" style="position:absolute;top:1370px;left:60px;right:60px">Kolbi · gratis · Link in Bio 🧪</div>`))
 // E: Untertitel für das 3D-Video (transparent, oben)
 const CAPS = {
   "cap-1": `40 € im Monat …`,
