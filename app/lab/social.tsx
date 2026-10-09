@@ -9,7 +9,7 @@ import { groupInfo, groupSteps } from "@/lib/labGroups"
 import { AVATAR_ACCESSORIES, AVATAR_COLORS, AVATAR_MOODS, DEFAULT_AVATAR, LAB_GROUPS, avatarColorBg, labColor, loadAvatar, pseudoSeed, pseudonym, type LabAvatar, type LabGroup } from "@/lib/labSocial"
 import { SITE_URL, appVersion } from "@/lib/labGrow"
 import { markSeen } from "@/lib/labNew"
-import { communityPushOn, pushState, setCommunityPush } from "@/lib/labPush"
+import { clearCommunityPush, communityOffPending, communityPushOn, pushState, setCommunityPush } from "@/lib/labPush"
 import * as api from "@/lib/labSocialApi"
 import { POST_TAGS } from "@/lib/labSocialApi"
 import type { OfficialPost, Poll, PostTag, ReactionKind, ReportReason, SocialCommunity, SocialPage, SocialPost, SocialProfile } from "@/lib/labSocialApi"
@@ -77,8 +77,8 @@ export function useSocialSheetOpen(): boolean {
 /** Zurücksetzen ohne Verbindung: nur pausieren – Geheimnis + Profil-ID bleiben, damit späteres Löschen geht. */
 export function pauseSocial() {
   // Community-Zusammenfassung per Push mit abschalten (solange das Geheimnis noch gilt)
-  const auth = api.communityPushAuth()
-  if (auth && communityPushOn()) void setCommunityPush(false, auth)
+  const auth = api.communityPushAuth(true)
+  if (auth && (communityPushOn() || communityOffPending())) void setCommunityPush(false, auth) // schlägt es fehl, wird es beim nächsten Start nachgeholt
   api.setSocialConsent(false)
   myId = null
   nav = []
@@ -142,6 +142,7 @@ export async function deleteSocialAccount(): Promise<boolean> {
     api.setSocialConsent(false)
     myId = null; restricted = false; decisions = []
     try { localStorage.removeItem(DEC_SEEN_KEY) } catch {}
+    clearCommunityPush()
     setBlocked([])
   }
   return ok
@@ -862,6 +863,12 @@ function SharePostSheet({ s, suppId, onClose }: { s: LabState; suppId: string; o
 /** Einmal in LabApp einhängen: Einwilligung + Posten-Vorschau + Meldungen. */
 export function SocialHost({ s, onFlash, hold }: { s: LabState; onFlash: (m: string) => void; hold?: boolean }) {
   useEffect(() => { flashFn = onFlash }, [onFlash])
+  // Offline fehlgeschlagenes Abschalten der Community-Pushs nachholen
+  useEffect(() => {
+    if (!communityOffPending()) return
+    const auth = api.communityPushAuth(true)
+    if (auth) void setCommunityPush(false, auth)
+  }, [])
   const a = useSyncExternalStore(subscribe, () => ask, () => null)
   const pf = useSyncExternalStore(subscribe, () => postFor, () => null)
   const closeAsk = useCallback(() => { ask = null; emit() }, [])
@@ -1105,7 +1112,7 @@ export function CommunityPushAsk() {
       <span aria-hidden style={{ fontSize: "1.5rem" }}>🔔</span>
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: "block", fontWeight: 900, fontSize: "0.92rem" }}>{t("Bescheid geben, wenn es Neues gibt?")}</span>
-        <span style={{ display: "block", fontSize: "0.76rem", fontWeight: 700, color: "var(--text-dim)", lineHeight: 1.35 }}>{t("Neue Umfragen und Reaktionen aus deinen Gruppen – höchstens 1× am Tag.")}</span>
+        <span style={{ display: "block", fontSize: "0.76rem", fontWeight: 700, color: "var(--text-dim)", lineHeight: 1.35 }}>{t("Neue Umfragen in deinen Gruppen und Reaktionen auf deine Beiträge – höchstens 1× am Tag.")}</span>
       </span>
       <span style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
         <InkBtn onClick={async () => { setBusy(true); const ok = await toggleCommunityPush(true); setBusy(false); if (ok) { flash(t("✓ Ich sag dir Bescheid")); done() } else flash(OFFLINE()) }}
@@ -1152,6 +1159,13 @@ const useDiscoverVer = () => useSyncExternalStore(subscribe, () => discoverVer, 
 export function useDiscoverNew(): boolean {
   const social = useSocialOn()
   useDiscoverVer()
+  // Beim Zurückkehren in die App erneut prüfen (PWA bleibt oft tagelang im Speicher); 20-Min.-Sperre bleibt
+  const [wake, setWake] = useState(0)
+  useEffect(() => {
+    const onVis = () => { if (document.visibilityState === "visible") setWake(x => x + 1) }
+    document.addEventListener("visibilitychange", onVis)
+    return () => document.removeEventListener("visibilitychange", onVis)
+  }, [])
   useEffect(() => {
     if (!social || discoverLoading || Date.now() - discoverAt < 20 * 60_000) return
     discoverLoading = true
@@ -1169,7 +1183,7 @@ export function useDiscoverNew(): boolean {
         discoverAt = Date.now()
       } finally { discoverLoading = false; discoverVer++; emit() }
     })()
-  }, [social])
+  }, [social, wake])
   if (!social || !discoverNewest) return false
   const seen = discoverSeen()
   return !seen ? true : discoverNewest > seen
@@ -1539,7 +1553,7 @@ export function SocialSettingsCard() {
           <div style={{ fontSize: "0.9rem", lineHeight: 1.5, fontWeight: 700 }}>{t("Ausschalten pausiert nur: Dein Profil, deine Posts, Follower und Communities bleiben gespeichert und für andere sichtbar. Wenn du alles entfernen willst, lösch dein Social-Konto.")}</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 18 }}>
             <Btn variant="danger" full disabled={busy} onClick={() => void doDelete()} style={{ minHeight: 48 }}>{busy ? t("Lädt …") : t("Social-Konto löschen")}</Btn>
-            <Btn variant="soft" full onClick={() => { api.setSocialConsent(false); emit(); clearSocial(); setOff(false); flash(t("Sichtbar mitmachen ist aus. Profil und Beiträge bleiben gespeichert und für andere sichtbar, bis du sie löschst.")) }} style={{ minHeight: 48 }}>{t("Nur ausschalten")}</Btn>
+            <Btn variant="soft" full onClick={() => { pauseSocial(); clearSocial(); setOff(false); flash(t("Sichtbar mitmachen ist aus. Profil und Beiträge bleiben gespeichert und für andere sichtbar, bis du sie löschst.")) }} style={{ minHeight: 48 }}>{t("Nur ausschalten")}</Btn>
             <Btn variant="ghost" full onClick={() => setOff(false)} style={{ minHeight: 48 }}>{t("Abbrechen")}</Btn>
           </div>
         </Sheet>

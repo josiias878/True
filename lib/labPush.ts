@@ -77,22 +77,28 @@ function hash(str: string) {
 
 // ── Community-Zusammenfassung (freiwillig, max. 1×/Tag; Server: push-register social + Cron social_push_digest) ──
 const COMMUNITY_KEY = "lab-push-community"
+const COMMUNITY_OFF_PENDING = "lab-push-community-off" // Abschalten schlug fehl (offline) → beim nächsten Start nachholen
 export function communityPushOn(): boolean { try { return localStorage.getItem(COMMUNITY_KEY) === "1" } catch { return false } }
+/** Nur lokal vergessen (z. B. Social-Konto gelöscht: serverseitig ist die Verknüpfung per Cascade weg) */
+export function clearCommunityPush() { try { localStorage.removeItem(COMMUNITY_KEY); localStorage.removeItem(COMMUNITY_OFF_PENDING) } catch {} }
+export const communityOffPending = () => { try { return localStorage.getItem(COMMUNITY_OFF_PENDING) === "1" } catch { return false } }
 /** Social-Profil mit dieser Push-Adresse verknüpfen bzw. trennen. Ohne Push (Erlaubnis/Adresse) → false. */
 export async function setCommunityPush(on: boolean, social: { secret: string; lang: string }): Promise<boolean> {
   try {
     if (on && (!pushAvailable() || Notification.permission !== "granted")) return false
     const reg = await navigator.serviceWorker.getRegistration()
     const sub = await reg?.pushManager.getSubscription()
-    if (!sub) { if (!on) localStorage.removeItem(COMMUNITY_KEY); return !on }
+    if (!sub) { if (!on) clearCommunityPush(); return !on }
     const res = await fetch(REGISTER_URL, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ subscription: sub.toJSON(), social: { secret: social.secret, on, lang: social.lang } }),
     })
-    if (!res.ok) return false
-    if (on) localStorage.setItem(COMMUNITY_KEY, "1"); else localStorage.removeItem(COMMUNITY_KEY)
+    // Server bestätigt den tatsächlichen Zustand (gesperrtes Profil → social:false)
+    const body = res.ok ? await res.json().catch(() => null) as { social?: boolean } | null : null
+    if (!body || body.social !== on) { if (!on) localStorage.setItem(COMMUNITY_OFF_PENDING, "1"); return false }
+    if (on) { localStorage.setItem(COMMUNITY_KEY, "1"); localStorage.removeItem(COMMUNITY_OFF_PENDING) } else clearCommunityPush()
     return true
-  } catch { return false }
+  } catch { if (!on) try { localStorage.setItem(COMMUNITY_OFF_PENDING, "1") } catch {} ; return false }
 }
 
 /** Plan an den Push-Server schicken, wenn sich etwas geändert hat. */

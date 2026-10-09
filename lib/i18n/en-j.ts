@@ -263,7 +263,7 @@ export const EN_J: Record<string, string> = {
   "{n} Ergebnisse geteilt": "Shared {n} results",
   "Danke fürs Mitmachen – so lernen alle mit.": "Thanks for joining in – this way everyone learns along.",
   "Bescheid geben, wenn es Neues gibt?": "Let you know when there's something new?",
-  "Neue Umfragen und Reaktionen aus deinen Gruppen – höchstens 1× am Tag.": "New polls and reactions from your groups – at most once a day.",
+  "Neue Umfragen in deinen Gruppen und Reaktionen auf deine Beiträge – höchstens 1× am Tag.": "New polls in your groups and reactions to your posts – at most once a day.",
   "✓ Ich sag dir Bescheid": "✓ I'll let you know",
   "Ja": "Yes",
   "Neues aus deinen Gruppen": "News from your groups",

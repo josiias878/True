@@ -170,9 +170,10 @@ function secret(): string | null {
   return get(SECRET_KEY) === s ? s : null // ohne Speicher kein Konto (sonst entstünden Waisen-Profile)
 }
 
-/** Für die Community-Zusammenfassung per Push (push-register prüft es wie lab-social) – nur mit Einwilligung */
-export function communityPushAuth(): { secret: string; lang: string } | null {
-  if (!socialConsent()) return null
+/** Für die Community-Zusammenfassung per Push (push-register prüft es wie lab-social).
+ *  Einschalten nur mit Einwilligung; zum Abschalten (anyConsent) auch ohne – Widerruf muss immer gehen. */
+export function communityPushAuth(anyConsent = false): { secret: string; lang: string } | null {
+  if (!anyConsent && !socialConsent()) return null
   const s = get(SECRET_KEY)
   return s && SECRET_RE.test(s) ? { secret: s, lang: LANG } : null
 }
