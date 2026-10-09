@@ -61,7 +61,7 @@ export function useUnseenNews(s: LabState, today: string): LabNews[] {
 /** Alle aktuellen Neuheiten (Ticker/Archiv) + die ungesehenen; aktualisiert sich live. */
 export function useNewsFeed(s: LabState, today: string): { recent: LabNews[]; unseen: LabNews[] } {
   const unseen = useUnseenNews(s, today)
-  const recent = useMemo(() => recentNews(today), [today])
+  const recent = useMemo(() => s.demo ? [] : recentNews(today), [today, s.demo]) // Demo: nichts zeigen, Gesehen-Status nicht anfassen
   return { recent, unseen }
 }
 
@@ -134,7 +134,7 @@ export function NewsTicker({ s, today, onOpen }: { s: LabState; today: string; o
     <div style={{ marginTop: 16, width: "100%" }}>
       <style>{NEWS_CSS}</style>
       <button className="lab-press" data-news-ticker
-        onClick={() => { if (Date.now() - swipedAt.current < 400) return haptic(8); onOpen(recent, recent.indexOf(n)) }}
+        onClick={() => { if (Date.now() - swipedAt.current < 400) return; haptic(8); onOpen(recent, recent.indexOf(n)) }}
         onPointerDown={e => { down.current = { x: e.clientX, y: e.clientY }; setHold(true) }}
         onPointerUp={e => {
           const d = down.current; down.current = null; setHold(false)
@@ -144,7 +144,7 @@ export function NewsTicker({ s, today, onOpen }: { s: LabState; today: string; o
         }}
         onPointerCancel={() => { down.current = null; setHold(false) }}
         onPointerLeave={() => { if (!down.current) setHold(false) }}
-        onFocus={() => setHold(true)} onBlur={() => setHold(false)}
+        onFocus={e => { try { setHold(e.currentTarget.matches(":focus-visible")) } catch { setHold(true) } }} onBlur={() => setHold(false)}
         aria-label={`${t("Neu bei {name}", { name: MASCOT_NAME })}: ${n.title}. ${n.text} ${t("Story öffnen")}`}
         style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: 10, borderRadius: 20, border: "1px solid var(--glass-line)", background: "var(--surface-2)", color: "var(--text)", textAlign: "left", cursor: "pointer", touchAction: "pan-y", overflow: "hidden" }}>
         <span key={n.id} className={`lab-news-tick${dir < 0 ? " lab-news-tick-back" : ""}`} style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>

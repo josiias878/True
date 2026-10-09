@@ -22,7 +22,7 @@ import { markSeen } from "@/lib/labNew"
 import { CommunitySection, CostSection, StackSection, StateSection, WaySection } from "./todayStack"
 import { t, dec, clock, LOCALE } from "@/lib/labI18n"
 import { NewsRing, NewsTicker } from "./news"
-import type { LabNews } from "@/lib/labNews"
+import { recentNews, type LabNews } from "@/lib/labNews"
 
 
 const fmt = (n: number) => dec(n, 1)
@@ -184,7 +184,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
     boxShadow: "inset 0 1px 0 rgba(255,255,255,.45), inset 0 -2px 0 rgba(0,0,0,.12), 0 12px 28px rgba(46,204,138,.35)",
   }
   // Kolbi-Ticker im großen Feld, wenn gerade nichts zu tun ist – Feld wird dafür kompakter
-  const ticker = !!onNews && (main === "done" || main === "locked" || main === "notStarted") ? <NewsTicker s={s} today={today} onOpen={onNews} /> : null
+  const ticker = !!onNews && !s.demo && recentNews(today).length > 0 && (main === "done" || main === "locked" || main === "notStarted") ? <NewsTicker s={s} today={today} onOpen={onNews} /> : null
   const title = (x: React.ReactNode) => <div style={{ fontSize: "1.6rem", fontWeight: 900, letterSpacing: "-.01em", lineHeight: 1.15 }}>{x}</div>
   const sub = (x: React.ReactNode) => <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--text-dim)", marginTop: 6, lineHeight: 1.4 }}>{x}</div>
 
