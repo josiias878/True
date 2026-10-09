@@ -1,0 +1,152 @@
+[
+  {
+    "id": "kp-001",
+    "community": "goal-schlaf",
+    "publish_on": "2026-10-12",
+    "title_de": "Willkommen in der Schlaf-Gruppe",
+    "body_de": "Hi, ich bin Kolbi! Hier testen alle, ob ein Supplement BEI IHNEN einen Unterschied beim Schlaf macht. Mein Tipp zum Start: Bewerte ein paar Nächte ganz ohne Neues – das ist dein Normal. Erst danach kommt der Test.",
+    "title_en": "Welcome to the sleep group",
+    "body_en": "Hi, I'm Kolbi! Everyone here is testing whether a supplement makes a difference to THEIR sleep. My tip to start: rate a few nights without anything new – that's your normal. Only then does the test begin.",
+    "icon": "glycin"
+  },
+  {
+    "id": "kp-002",
+    "community": "goal-energie",
+    "publish_on": "2026-10-12",
+    "title_de": "Willkommen in der Energie-Gruppe",
+    "body_de": "Hi, ich bin Kolbi! Energie schwankt von Tag zu Tag – genau deshalb lohnt sich ein ehrlicher Vergleich. Halte zuerst ein paar Tage dein Normal fest und teste dann eins nach dem anderen. So siehst du, ob es bei DIR wirkt.",
+    "title_en": "Welcome to the energy group",
+    "body_en": "Hi, I'm Kolbi! Energy goes up and down from day to day – that's exactly why an honest comparison pays off. First log your normal for a few days, then test one thing at a time. That way you see whether it works for YOU.",
+    "icon": "b12"
+  },
+  {
+    "id": "kp-003",
+    "community": "goal-fokus",
+    "publish_on": "2026-10-12",
+    "title_de": "Willkommen in der Fokus-Gruppe",
+    "body_de": "Hi, ich bin Kolbi! Hier geht's um konzentrierte Tage – und darum, ehrlich zu prüfen, ob ein Supplement bei DIR einen Unterschied macht. Starte mit ein paar Tagen ohne Neues als Basis. Dann testest du ein Supplement nach dem anderen und vergleichst mit deinem Normal.",
+    "title_en": "Welcome to the focus group",
+    "body_en": "Hi, I'm Kolbi! This group is about focused days – and about honestly checking whether a supplement makes a difference for YOU. Start with a few days without anything new as your baseline. Then test one supplement at a time and compare it with your normal.",
+    "icon": "theanin"
+  },
+  {
+    "id": "kp-004",
+    "community": "goal-stress",
+    "publish_on": "2026-10-12",
+    "title_de": "Willkommen in der Stress-Gruppe",
+    "body_de": "Hi, ich bin Kolbi! Wie gestresst du dich fühlst, hängt an vielem: Arbeit, Schlaf, Kaffee, Termine. Darum zuerst ein paar Tage dein Normal festhalten, dann eins nach dem anderen testen. So findest du raus, ob ein Supplement bei DIR einen Unterschied macht.",
+    "title_en": "Welcome to the stress group",
+    "body_en": "Hi, I'm Kolbi! How stressed you feel depends on lots of things: work, sleep, coffee, appointments. So first log your normal for a few days, then test one thing at a time. That's how you find out whether a supplement makes a difference for YOU.",
+    "icon": "magnesium"
+  },
+  {
+    "id": "kp-005",
+    "community": "goal-muskel",
+    "publish_on": "2026-10-12",
+    "title_de": "Willkommen in der Muskel-Gruppe",
+    "body_de": "Hi, ich bin Kolbi! Training, Essen und Schlaf ändern sich ständig – da ist schwer zu sagen, was ein Supplement beiträgt. Halte darum zuerst dein Normal fest und teste dann eins nach dem anderen. Ehrlich vergleichen schlägt Bauchgefühl.",
+    "title_en": "Welcome to the muscle group",
+    "body_en": "Hi, I'm Kolbi! Training, food and sleep change all the time – so it's hard to tell what a supplement adds. That's why you log your normal first and then test one thing at a time. An honest comparison beats gut feeling.",
+    "icon": "kreatin"
+  },
+  {
+    "id": "kp-006",
+    "community": "goal-schlaf",
+    "publish_on": "2026-10-19",
+    "title_de": "Was war gestern Abend anders?",
+    "body_de": "Kaffee am Nachmittag, ein Glas Wein, spät aufs Handy geschaut? Solche Dinge können deine Nacht mehr verändern als jedes Supplement. Notier sie kurz mit – dann kannst du später ehrlich vergleichen, statt zu raten.",
+    "title_en": "What was different last night?",
+    "body_en": "Coffee in the afternoon, a glass of wine, late screen time? Things like that can change your night more than any supplement. Jot them down – then you can compare honestly later instead of guessing.",
+    "icon": "koffein"
+  },
+  {
+    "id": "kp-007",
+    "community": "goal-energie",
+    "publish_on": "2026-10-26",
+    "title_de": "Eins nach dem anderen",
+    "body_de": "Drei neue Supplements auf einmal? Dann weißt du am Ende nicht, welches was gemacht hat. Starte lieber mit einem, gib ihm ein paar Wochen und vergleiche mit deinem Normal. Kleiner Denkanstoß: Was würdest du als Erstes testen?",
+    "title_en": "One thing at a time",
+    "body_en": "Three new supplements at once? Then you won't know which one did what. Better to start with one, give it a few weeks and compare it with your normal. Something to think about: what would you test first?",
+    "icon": "multivitamin"
+  },
+  {
+    "id": "kp-008",
+    "community": "goal-fokus",
+    "publish_on": "2026-11-02",
+    "title_de": "Gute Tage zählen auch",
+    "body_de": "Fokus bewerten wir gern nur, wenn's schlecht läuft. Trag auch die guten Tage ein – sonst wirkt dein Normal schlechter, als es ist. Und notier Störfaktoren wie wenig Schlaf oder viel Kaffee, damit der Vergleich fair bleibt.",
+    "title_en": "Good days count too",
+    "body_en": "We tend to rate our focus only when it's going badly. Log the good days too – otherwise your normal looks worse than it is. And note things like short sleep or lots of coffee so the comparison stays fair.",
+    "icon": null
+  },
+  {
+    "id": "kp-009",
+    "community": "goal-stress",
+    "publish_on": "2026-11-09",
+    "title_de": "Was der Claim sagt – und was nicht",
+    "body_de": "„Magnesium trägt zu einer normalen Funktion des Nervensystems bei.“ Das ist ein zugelassener EU-Claim. Ob du dich damit anders fühlst, verrät er dir nicht – das findest nur du mit einem ehrlichen Test heraus. Zur Menge: Packung lesen oder Arzt fragen.",
+    "title_en": "What the claim says – and what it doesn't",
+    "body_en": "\"Magnesium contributes to normal functioning of the nervous system.\" That's an approved EU claim. It doesn't tell you whether you'll feel any different – only an honest test can show you that. For the amount: check the pack or ask your doctor.",
+    "icon": "magnesium"
+  },
+  {
+    "id": "kp-010",
+    "community": "goal-muskel",
+    "publish_on": "2026-11-16",
+    "title_de": "Trainingsplan als Störfaktor",
+    "body_de": "Neues Supplement und gleichzeitig neuer Trainingsplan? Dann ist kaum zu sagen, was den Unterschied macht. Wenn's geht: erst eins ändern, das andere gleich lassen. Und Ruhetage, Schlaf und Essen kurz notieren.",
+    "title_en": "Your training plan is a variable too",
+    "body_en": "New supplement and a new training plan at the same time? Then it's hard to tell what made the difference. If you can: change one thing and keep the other the same. And jot down rest days, sleep and food.",
+    "icon": "whey"
+  },
+  {
+    "id": "kp-011",
+    "community": "goal-schlaf",
+    "publish_on": "2026-11-23",
+    "title_de": "Gleiche Zeit, gleiche Frage",
+    "body_de": "Bewerte deinen Schlaf am besten jeden Morgen um ähnliche Zeit – bevor der Tag dein Gefühl verändert. So bleiben deine Werte vergleichbar. Kleiner Denkanstoß: Woran merkst du eigentlich, dass du gut geschlafen hast?",
+    "title_en": "Same time, same question",
+    "body_en": "Try to rate your sleep each morning at about the same time – before the day changes how you feel. That keeps your ratings comparable. Something to think about: how do you actually notice that you slept well?",
+    "icon": null
+  },
+  {
+    "id": "kp-012",
+    "community": "goal-energie",
+    "publish_on": "2026-11-30",
+    "title_de": "Was B12 laut EU darf",
+    "body_de": "„Vitamin B12 trägt zur Verringerung von Müdigkeit und Ermüdung bei.“ So lautet der zugelassene EU-Claim. Ob DU davon etwas merkst, ist eine andere Frage – genau dafür ist dein Test da. Menge: laut Packung oder nach Rücksprache mit dem Arzt.",
+    "title_en": "What B12 is allowed to claim in the EU",
+    "body_en": "\"Vitamin B12 contributes to the reduction of tiredness and fatigue.\" That's the approved EU claim. Whether YOU notice anything is a different question – that's exactly what your test is for. Amount: as on the pack or after talking to your doctor.",
+    "icon": "b12"
+  },
+  {
+    "id": "kp-013",
+    "community": "goal-fokus",
+    "publish_on": "2026-12-07",
+    "title_de": "Ehrlich bleiben, auch wenn's nichts bringt",
+    "body_de": "Kein Unterschied zu deinem Normal? Das ist auch ein Ergebnis – und vielleicht spart es dir Geld. Bewerte so ehrlich wie möglich, auch wenn du dir etwas anderes erhofft hast. Genau dafür testest du.",
+    "title_en": "Stay honest, even if it does nothing",
+    "body_en": "No difference from your normal? That's a result too – and it might save you money. Rate as honestly as you can, even if you were hoping for something else. That's exactly why you're testing.",
+    "icon": null
+  },
+  {
+    "id": "kp-014",
+    "community": "goal-stress",
+    "publish_on": "2026-12-14",
+    "title_de": "Dezember zählt anders",
+    "body_de": "Weihnachtsfeiern, Geschenke, Jahresende – im Dezember ist vieles nicht normal. Notier solche Tage kurz, damit sie deinen Vergleich nicht verfälschen. Vielleicht lohnt es sich, einen neuen Test erst im Januar zu starten.",
+    "title_en": "December counts differently",
+    "body_en": "Holiday parties, gifts, end of the year – a lot about December isn't normal. Make a quick note on days like that so they don't skew your comparison. It might be worth starting a new test in January instead.",
+    "icon": null
+  },
+  {
+    "id": "kp-015",
+    "community": "goal-muskel",
+    "publish_on": "2026-12-21",
+    "title_de": "Jahresrückblick in Zahlen",
+    "body_de": "Schau dir zum Jahresende deine eigenen Tests an: Was hast du ausprobiert, was hat bei DIR einen Unterschied gemacht, was nicht? Ein Supplement ohne Unterschied darfst du auch weglassen. Kleiner Denkanstoß: Was testest du als Nächstes?",
+    "title_en": "Your year in numbers",
+    "body_en": "At the end of the year, look back at your own tests: what did you try, what made a difference for YOU, what didn't? A supplement that made no difference is one you can drop. Something to think about: what will you test next?",
+    "icon": "kreatin"
+  }
+]
