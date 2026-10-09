@@ -5,7 +5,7 @@
 // Keine Dosierempfehlung: Kolbi schlägt nur neutrale Formen vor (1–3 Kapseln, 1–5 Tropfen …),
 // nie Mengen aus der Bibliothek.
 
-import { LIB_BY_ID, type LabState, type MySupp, type Portion, type PortionUnit, type Stock, type StockForm } from "./supplementLab"
+import { LIB_BY_ID, type LabState, type MySupp, type Portion, type PortionUnit, type Stock, type StockForm, type TakenAmount } from "./supplementLab"
 import { t, LOCALE } from "./labI18n"
 
 const num = (n: number) => (Math.round(n * 100) / 100).toLocaleString(LOCALE)
@@ -38,10 +38,11 @@ const UNIT_RE: [RegExp, PortionUnit][] = [
 
 /** „2000 IE“, „1 Kapsel“, „5 g“, „2 caps“ → Menge; Bereiche („3–5 g“) und Unklares → null. */
 export function parsePortion(text: string | undefined): Portion | null {
-  const m = (text ?? "").trim().match(/^(\d{1,3}(?:[.,]\d{3})+|\d+(?:[.,]\d+)?)\s*([a-zµ.äöü]+)\.?$/i)
+  // Tausenderpunkt nur ohne führende 0 („2.000 IE“), „0.125 mg“ bleibt eine Dezimalzahl
+  const m = (text ?? "").trim().match(/^([1-9]\d{0,2}(?:[.,]\d{3})+|\d+(?:[.,]\d+)?)\s*([a-zµ.äöü]+)\.?$/i)
   if (!m) return null
   const raw = m[1]
-  const n = /^\d{1,3}([.,]\d{3})+$/.test(raw) ? Number(raw.replace(/[.,]/g, "")) : Number(raw.replace(",", "."))
+  const n = /^[1-9]\d{0,2}([.,]\d{3})+$/.test(raw) ? Number(raw.replace(/[.,]/g, "")) : Number(raw.replace(",", "."))
   const u = UNIT_RE.find(([re]) => re.test(m[2]))?.[1]
   return u && n > 0 && n < 1e6 ? { n, u } : null
 }
@@ -86,9 +87,12 @@ export function amountOn(s: LabState, date: string, x: MySupp | undefined): Port
 }
 
 /** Menge für den Tag setzen (mutiert s). null = Eintrag entfernen (dann gilt wieder die Standard-Menge). */
-export function setAmount(s: LabState, date: string, id: string, p: Portion | null) {
+export function setAmount(s: LabState, date: string, id: string, p: Portion | null, f?: number) {
   const day = { ...(s.tookAmt?.[date] ?? {}) }
-  if (p) day[id] = { n: p.n, u: p.u }
+  // Verhältnis zur Standard-Menge JETZT festhalten → ein später geänderter Standard ändert den Vorrat nicht rückwirkend
+  const x = s.supps.find(q => q.id === id)
+  const ff = p ? f ?? (x ? amountFactor(x, p) : null) : null
+  if (p) day[id] = ff != null ? { n: p.n, u: p.u, f: Math.round(ff * 1000) / 1000 } : { n: p.n, u: p.u }
   else delete day[id]
   const next = { ...s.tookAmt }
   if (Object.keys(day).length) next[date] = day
@@ -105,13 +109,14 @@ export function recordDefaultAmount(s: LabState, date: string, id: string) {
 
 /** Standard-Menge eines Supplements setzen (mutiert s). Optional gleich die heutige Menge mit. */
 export function setPortion(s: LabState, id: string, p: Portion, date?: string): LabState {
-  s.supps = s.supps.map(x => x.id === id ? { ...x, portion: { n: p.n, u: p.u } } : x)
+  // Heutige Menge zuerst gegen den BISHERIGEN Standard einordnen (Vorrat), dann den Standard wechseln
   if (date && (s.took[date] ?? []).includes(id)) setAmount(s, date, id, p)
+  s.supps = s.supps.map(x => x.id === id ? { ...x, portion: { n: p.n, u: p.u } } : x)
   return s
 }
 
 /** Faktor gegenüber der Standard-Menge (für Anzeige „2×“); null, wenn nicht vergleichbar. */
-export function amountFactor(x: MySupp, amt: Portion | null): number | null {
+export function amountFactor(x: MySupp, amt: Portion | TakenAmount | null): number | null {
   const std = defaultPortion(x)
   if (!amt || !std || std.u !== amt.u || std.n <= 0) return null
   return amt.n / std.n
@@ -126,6 +131,6 @@ export function stockUse(s: LabState, x: MySupp, st: Stock, date: string, perUse
   const amt = s.tookAmt?.[date]?.[x.id]
   if (!amt || !(s.took[date] ?? []).includes(x.id)) return perUse
   if (amt.u === stockUnit(st.form)) return st.form === "tropfen" ? amt.n / dropsPerMl : amt.n
-  const f = amountFactor(x, amt)
+  const f = amt.f ?? amountFactor(x, amt)
   return f != null ? f * perUse : perUse
 }

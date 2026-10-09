@@ -10,7 +10,7 @@ import {
   nextCandidates, suppStatus, takingInfo, avgIntakeMinutes, phaseEndsAt, fmtCountdown, nowTime, closeActive, looksPrescribed,
   startTest, startStack, startCheck, applyVerdict, resolveCheck, fromMin, timeTip, LIB_BY_ID, slotMinutes, libDoseLabel,
   isCheckinLocked, checkinOpensMin, extrasOn, MORNING_DELAYS, MORNING_DELAY_DEFAULT, morningMin,
-  type SlotId, type LabState, type Decision, type Dim, type PhaseWindow, type MySupp, type LibSupp, type Settings, type CheckIn, type Scores, type SuppStatusKey,
+  type SlotId, type LabState, type Decision, type Dim, type PhaseWindow, type MySupp, type LibSupp, type Settings, type CheckIn, type Scores, type SuppStatusKey, type TakenAmount,
 } from "@/lib/supplementLab"
 import { applyTaken, checkLabReminders, downloadIcs, hasNativeReminders, onNotifTaken, syncNativeReminders } from "@/lib/labReminders"
 import { addExtra, syncAlcoholTag, unsyncAlcoholTag, eveningDims, morningAnswered, putCheckin, removeExtra, saveMorning, setDaySides, sidesOf, type ExtraInput } from "@/lib/labDay"
@@ -25,7 +25,7 @@ import { CoachBubble, HelpSheet, KolbiTip, MASCOT_NAME, Mascot } from "./mascot"
 import { InstallHint } from "./install"
 import { DailyRound, dayProgress, roundSteps, withMorning, type RoundStep } from "./round"
 import { factsFor, partnerTips, recentSides, sideCauses } from "@/lib/labKnowledge"
-import { openShop, refillStock, shoppingList, stockInfo } from "@/lib/labStock"
+import { alignStockToPortion, openShop, refillStock, shoppingList, stockInfo } from "@/lib/labStock"
 import { ShopButton, ShoppingCard, StockCard, StockSheet } from "./stock"
 import { BadgeGrid, KnowledgeAlbum, KolbiPage } from "./kolbi"
 import { QuickSheet, TodayView } from "./today"
@@ -489,12 +489,13 @@ export default function LabApp() {
     }, on ? undefined : { amount: 5, label: t("Eingenommen") })
   }, [s.took, today, update])
   /** „Heute nicht“ (Wischen bzw. Knopf im Detail) setzen oder aufheben – entfernt einen Genommen-Haken für heute. */
-  const skipToday = useCallback((id: string, on: boolean, restore?: { at?: string }) => {
+  const skipToday = useCallback((id: string, on: boolean, restore?: { at?: string; amt?: TakenAmount }) => {
     update(p => {
       setSkipped(p, today, id, on)
       if (!on && restore) { // Rückgängig nach „Heute nicht“ auf abgehakter Zeile → Haken samt Uhrzeit zurück
         p.took[today] = [...new Set([...(p.took[today] ?? []), id])]
         if (restore.at) p.tookAt[today] = { ...(p.tookAt[today] ?? {}), [id]: restore.at }
+        if (restore.amt) setAmount(p, today, id, restore.amt, restore.amt.f)
       }
       return p
     })
@@ -680,7 +681,7 @@ export default function LabApp() {
             onCheckin={setCheckinDate} onPhase={setPhaseSheet} goTab={goTab} onVorrat={() => { setLab(null); setLaborView("vorrat"); goTab("labor") }}
             onExtra={addExtraV} onExtraRemove={removeExtraV} onAddMany={() => setAddMany(true)}
             onAmount={(id, p) => update(q => { setAmount(q, today, id, p); return q })}
-            onPortion={(id, p) => { update(q => { setPortion(q, id, p, today); return q }); setFlash(t("✓ Gemerkt: {amount}", { amount: portionLabel(p) })) }}
+            onPortion={(id, p) => { update(q => alignStockToPortion(setPortion(q, id, p, today), id, today)); setFlash(t("✓ Gemerkt: {amount}", { amount: portionLabel(p) })) }}
             onOpenSupp={id => { setLaborView(null); setLab({ suppId: id, tab: "ueberblick" }); goTab("labor") }}
             onOpenLab={libId => { const x = s.supps.find(q => q.lib === libId); setLaborView(null); setLab({ suppId: x?.id, libId, tab: "andere" }); goTab("labor") }} />}
 
@@ -1059,7 +1060,7 @@ function SuppSheet({ s, id, today, adv, onClose, update, onAction, onVerdict, on
             style={{ width: 150, padding: "8px 10px", borderRadius: 10, fontSize: "0.85rem" }} />
         </label>
         <div style={{ marginTop: 10 }}>
-          <PortionPick x={x} value={defaultPortion(x)} onPick={p => update(q => setPortion(q, id, p, today))} label={t("Menge pro Einnahme – wird beim Abhaken mitgespeichert (optional).")} />
+          <PortionPick x={x} value={defaultPortion(x)} onPick={p => update(q => alignStockToPortion(setPortion(q, id, p, today), id, today))} label={t("Menge pro Einnahme – wird beim Abhaken mitgespeichert (optional).")} />
         </div>
       </Card>
 

@@ -434,12 +434,15 @@ export function CheckInSheet({ s, date, phaseLabel, onDone, onClose, onAddExtra,
   const sleptMorning = morningAnswered(s, date)
   const [extraOpen, setExtraOpen] = useState(false)
   const [scores, setScores] = useState<Scores>(existing?.scores ?? {})
-  const [touched, setTouched] = useState<Set<Dim>>(new Set(existing && !existing.quick ? (Object.keys(existing.scores) as Dim[]) : []))
+  // Selbst angetippte Bereiche (bei gespeicherten „genauer“-Check-ins ohne die damals nur vorbelegten estDims)
+  const [touched, setTouched] = useState<Set<Dim>>(new Set(existing && !existing.quick ? (Object.keys(existing.scores) as Dim[]).filter(d => !existing.estDims?.includes(d)) : []))
   const [overall, setOverall] = useState<number | undefined>(existing ? existing.face ?? Math.round(daySum(existing)) : undefined)
   // Schnellantwort merken (Lernen): auch nach „genauer“; alte 1-Klick-Check-ins: alle Sterne = Gesicht
   const [face, setFace] = useState<number | undefined>(existing?.face ?? (existing?.quick ? Math.round(daySum(existing)) : undefined))
   // Sterne gerade von Kolbi aus früheren „genauer“-Bewertungen vorgeschlagen (nicht selbst vergeben)?
   const [fromLearn, setFromLearn] = useState(!!existing?.est)
+  // „✓ Passt“: Vorschlag übernommen – bleibt eine (geschätzte) Schnellantwort, lernt nicht mit
+  const [accepted, setAccepted] = useState(false)
   const others = useMemo(() => { const c = { ...s.checkins }; delete c[date]; return { checkins: c } }, [s.checkins, date])
   const [tags, setTags] = useState<string[]>(() => existing ? existing.tags : prefillTags(s, date))
   const [note, setNote] = useState(existing?.note ?? "")
@@ -456,7 +459,6 @@ export function CheckInSheet({ s, date, phaseLabel, onDone, onClose, onAddExtra,
     setFromLearn(sug.learned && touched.size < dims.length)
     setScores(prev => { const n = { ...prev }; dims.forEach(d => { if (!touched.has(d.id)) n[d.id] = sug.scores[d.id] ?? v }); return n })
   }
-  const confirmAll = () => { setTouched(new Set(dims.map(d => d.id))); setFromLearn(false) }
   const setDim = (d: Dim, v: number) => { setScores(p => ({ ...p, [d]: v })); setTouched(t => new Set(t).add(d)) }
   const filled = dims.filter(d => scores[d.id] != null)
   const avg = filled.length ? filled.reduce((a, d) => a + scores[d.id]!, 0) / filled.length : null
@@ -465,9 +467,11 @@ export function CheckInSheet({ s, date, phaseLabel, onDone, onClose, onAddExtra,
     const full: Scores = {}
     dims.forEach(d => { full[d.id] = scores[d.id] ?? overall ?? 3 })
     const quick = touched.size === 0
+    // Nicht angetippte Bereiche stammen aus Gesicht/Vorschlag → markieren, damit sie nicht als selbst vergeben lernen
+    const estDims = quick ? [] : dims.map(d => d.id).filter(d => !touched.has(d))
     onDone({
       date, scores: full, tags, sides, ...(Object.keys(suspect).length ? { suspect } : {}), note: note.trim(), quick,
-      ...(face != null ? { face } : {}), ...(quick && fromLearn ? { est: true } : {}),
+      ...(face != null ? { face } : {}), ...(quick && fromLearn ? { est: true } : {}), ...(estDims.length ? { estDims } : {}),
     })
   }
 
@@ -498,13 +502,13 @@ export function CheckInSheet({ s, date, phaseLabel, onDone, onClose, onAddExtra,
             <Label>{t("Einzeln bewerten (optional)")}</Label>
             {avg != null && <span style={{ fontSize: "0.85rem", fontWeight: 900, color: "#f5b400" }}>Ø ★ {dec(avg, 1)}</span>}
           </div>
-          {fromLearn && touched.size < dims.length && (
+          {fromLearn && !accepted && touched.size === 0 && (
             <div className="lab-rise" style={{ display: "flex", alignItems: "center", gap: 8, margin: "2px 0 8px", padding: "6px 6px 6px 12px", borderRadius: 14, background: "var(--accent-dim)" }}>
               <span style={{ flex: 1, minWidth: 0, fontSize: "0.8rem", fontWeight: 800, lineHeight: 1.35 }}>
                 {t("💡 Von Kolbi vorgeschlagen – passt?")}
                 <span style={{ display: "block", fontSize: "0.7rem", fontWeight: 700, color: "var(--text-dim)" }}>{t("So hast du bei „{label}“ sonst bewertet. Tippe einen Stern zum Ändern.", { label: FACE_LABELS[(face ?? overall ?? 3) - 1] })}</span>
               </span>
-              <button className="lab-press" onClick={() => { haptic(8); confirmAll() }} style={{ flexShrink: 0, minHeight: 44, padding: "0 14px", borderRadius: 12, border: "none", background: "var(--surface)", color: "var(--accent-ink)", fontWeight: 900, fontSize: "0.82rem" }}>{t("✓ Passt")}</button>
+              <button className="lab-press" onClick={() => { haptic(8); setAccepted(true); if (existing) save() }} style={{ flexShrink: 0, minHeight: 44, padding: "0 14px", borderRadius: 12, border: "none", background: "var(--surface)", color: "var(--accent-ink)", fontWeight: 900, fontSize: "0.82rem" }}>{t("✓ Passt")}</button>
             </div>
           )}
           {dims.map(d => (

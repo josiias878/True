@@ -6,7 +6,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   FACES, LIB_BY_ID, LIB_SIDES, SIDE_BY_ID, addDays, checkinsIn, daySum, diffDays, extraKey, extrasOn, fmtDate, intakeOn, isHere, libOf,
   meanScore, phaseWindows, skippedOn, streak, suppColor,
-  type LabState, type LibSupp, type MySupp, type Portion,
+  type LabState, type LibSupp, type MySupp, type Portion, type TakenAmount,
 } from "@/lib/supplementLab"
 import { caffeineToday, recentExtras, type ExtraInput } from "@/lib/labDay"
 import { costSummary, fmtEuro, monthlyCost } from "@/lib/labStock"
@@ -200,7 +200,7 @@ export function StackSection({ s, today, onTake, onSkip, onExtra, onExtraRemove,
   /** Menge heute ändern (½ · 1× · 2× · +1) bzw. Standard-Menge setzen (setzt die heutige mit, falls abgehakt) */
   onAmount: (id: string, p: Portion) => void; onPortion: (id: string, p: Portion) => void
   /** „Heute nicht“ setzen (true) oder aufheben (false) */
-  onSkip: (id: string, on: boolean, restore?: { at?: string }) => void
+  onSkip: (id: string, on: boolean, restore?: { at?: string; amt?: TakenAmount }) => void
   onExtra: (date: string, item: ExtraInput, label: string) => void; onExtraRemove: (date: string, id: string) => void
   onOpenSupp: (id: string) => void; onVorrat: () => void; onAddMany: () => void; goTab: (t: string) => void
 }) {
@@ -287,10 +287,10 @@ export function StackSection({ s, today, onTake, onSkip, onExtra, onExtraRemove,
   /** Läuft gerade der Test genau dieses Mittels? Dann zählt jeder Tag. */
   const inTest = (id: string) => w?.kind === "test" && w.suppId === id
   // Vorher abgehakt? Haken + Uhrzeit merken, damit „Rückgängig“ ihn wiederherstellt.
-  const prevTaken = useRef<Record<string, { at?: string }>>({})
+  const prevTaken = useRef<Record<string, { at?: string; amt?: TakenAmount }>>({})
   const skip = (x: MySupp) => {
     coachDone()
-    if (s.took[today]?.includes(x.id)) prevTaken.current[x.id] = { at: s.tookAt?.[today]?.[x.id] }
+    if (s.took[today]?.includes(x.id)) prevTaken.current[x.id] = { at: s.tookAt?.[today]?.[x.id], amt: s.tookAmt?.[today]?.[x.id] }
     else delete prevTaken.current[x.id]
     onSkip(x.id, true)
     setUndo({ id: x.id, name: x.name, test: inTest(x.id), k: Date.now() })

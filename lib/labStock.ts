@@ -7,7 +7,7 @@ import {
   type LabState, type LibSupp, type MySupp, type Stock, type StockForm,
 } from "./supplementLab"
 import { t, euro, isEn, LOCALE } from "./labI18n"
-import { stockUse } from "./labDose"
+import { stockUse, stockUnit } from "./labDose"
 
 // „Tropfen“ allein ist im Wörterbuch schon als Einzahl belegt („pro Tropfen“ → drop), daher hier direkt.
 export const FORMS: Record<StockForm, {
@@ -281,4 +281,17 @@ export function costSummary(s: LabState, today = todayIso()): CostSummary {
 function diffDaysSafe(a: string, b: string) {
   const [y1, m1, d1] = a.split("-").map(Number), [y2, m2, d2] = b.split("-").map(Number)
   return Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86400000)
+}
+
+/**
+ * Standard-Menge in der Vorrats-Einheit gewählt (z. B. 2 Kapseln) → Vorrat-Menge pro Einnahme angleichen.
+ * Der bisherige Verbrauch wird vorher festgeschrieben (Rest + Datum), damit sich nichts rückwirkend ändert. Mutiert s.
+ */
+export function alignStockToPortion(s: LabState, id: string, today = todayIso()): LabState {
+  const x = s.supps.find(q => q.id === id)
+  const st = x?.stock, p = x?.portion
+  if (!x || !st || !p || p.u !== stockUnit(st.form) || st.perDay === p.n) return s
+  const info = stockInfo(s, x)
+  s.supps = s.supps.map(q => q.id === id && q.stock ? { ...q, stock: { ...q.stock, perDay: p.n, left: info ? Math.round(info.left * 1000) / 1000 : q.stock.left, at: today } } : q)
+  return s
 }

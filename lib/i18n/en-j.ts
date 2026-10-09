@@ -126,7 +126,7 @@ export const EN_J: Record<string, string> = {
   "✓ Passt": "✓ Fits",
   "Heute: {label}": "Today: {label}",
   "Gestern: {label}": "Yesterday: {label}",
-  "Sterne von Kolbi vorgeschlagen – passt?": "Stars suggested by Kolbi – do they fit?",
+  "Sterne von Kolbi vorgeschlagen": "Stars suggested by Kolbi",
   "Sterne je Bereich nachtragen": "Add stars for each area",
   "HEUTE GENOMMEN": "TAKEN TODAY",
   "MENGE PRO EINNAHME": "AMOUNT PER INTAKE",

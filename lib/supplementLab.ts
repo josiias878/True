@@ -809,6 +809,8 @@ export interface MySupp {
 /** Einheit einer Einnahme-Menge: stk = Kapsel/Tablette/Stück. */
 export type PortionUnit = "stk" | "tropfen" | "g" | "mg" | "µg" | "IE" | "ml"
 export interface Portion { n: number; u: PortionUnit }
+/** Genommene Menge an einem Tag; f = Verhältnis zur Standard-Menge beim Eintragen (für den Vorrat, bleibt bei neuem Standard gleich). */
+export interface TakenAmount extends Portion { f?: number }
 
 /** Form der Packung: Kapseln/Tabletten (Stück), Pulver (g), Tropfen (Flasche in ml, Tagesmenge in Tropfen), Flüssig (ml). */
 export type StockForm = "kapseln" | "pulver" | "tropfen" | "fluessig"
@@ -851,6 +853,8 @@ export interface CheckIn {
   face?: number
   /** Sterne von Kolbi aus früheren „genauer“-Bewertungen geschätzt (nicht einzeln vergeben). Gilt nur zusammen mit quick. */
   est?: boolean
+  /** Nach „genauer“: Bereiche, die NICHT selbst angetippt wurden (Wert aus Gesicht/Vorschlag) – lernen nicht mit. */
+  estDims?: Dim[]
 }
 
 /**
@@ -914,7 +918,7 @@ export interface LabState {
   extra?: Record<string, ExtraIntake[]>    // Datum → spontane Extra-Einnahmen
   daySides?: Record<string, DaySides>      // Datum → Beschwerden, solange es noch keinen Check-in gibt
   skipped?: Record<string, string[]>       // Datum → bewusst ausgelassene Supplement-IDs („Heute nicht“)
-  tookAmt?: Record<string, Record<string, Portion>> // Datum → Supplement → tatsächlich genommene Menge (fehlt = Standard)
+  tookAmt?: Record<string, Record<string, TakenAmount>> // Datum → Supplement → tatsächlich genommene Menge (fehlt = Standard)
 }
 
 export const STORAGE_KEY = "true-supplement-lab-v1"
@@ -1046,18 +1050,27 @@ function sanitizeDayData(s: LabState) {
     s.skipped = out
   }
   if (s.tookAmt !== undefined) {
-    const out: Record<string, Record<string, Portion>> = {}
+    const out: Record<string, Record<string, TakenAmount>> = {}
     if (isObj(s.tookAmt)) for (const [d, m] of Object.entries(s.tookAmt)) {
       if (!DATE_RE.test(d) || !isObj(m)) continue
-      const day: Record<string, Portion> = {}
-      for (const [id, p] of Object.entries(m)) if (okPortion(p)) day[id] = { n: p.n, u: p.u }
+      const day: Record<string, TakenAmount> = {}
+      for (const [id, p] of Object.entries(m)) if (okPortion(p)) {
+        day[id] = { n: p.n, u: p.u }
+        const f = (p as { f?: unknown }).f
+        if (typeof f === "number" && f > 0 && f < 1000) day[id].f = f
+      }
       if (Object.keys(day).length) out[d] = day
     }
     s.tookAmt = out
   }
   s.supps = s.supps.map(x => x.portion === undefined || okPortion(x.portion) ? x : { ...x, portion: undefined })
   for (const c of Object.values(s.checkins)) {
-    if (c.face !== undefined && !okScore(c.face)) delete c.face
+    if (c.face !== undefined && !(okScore(c.face) && Number.isInteger(c.face))) delete c.face
+    if (c.estDims !== undefined) {
+      const ok = Array.isArray(c.estDims) ? [...new Set(c.estDims.filter(d => typeof d === "string" && d in DIM_BY_ID))] : []
+      if (ok.length) c.estDims = ok
+      else delete c.estDims
+    }
     if (c.est !== undefined && (c.est !== true || !c.quick)) delete c.est
   }
   for (const [d, m] of Object.entries(s.morning ?? {})) {

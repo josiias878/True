@@ -28,6 +28,9 @@ try {
     assert.deepEqual(D.parsePortion("2 caps"), { n: 2, u: "stk" })
     assert.deepEqual(D.parsePortion("50 µg"), { n: 50, u: "µg" })
     assert.deepEqual(D.parsePortion("3,5 g"), { n: 3.5, u: "g" })
+    assert.deepEqual(D.parsePortion("0.125 mg"), { n: 0.125, u: "mg" })
+    assert.deepEqual(D.parsePortion("0,125 mg"), { n: 0.125, u: "mg" })
+    assert.deepEqual(D.parsePortion("1,000 IU"), { n: 1000, u: "IE" })
     assert.equal(D.parsePortion("3–5 g"), null)
     assert.equal(D.parsePortion("laut Packung"), null)
     assert.equal(D.parsePortion(""), null)
@@ -51,10 +54,10 @@ try {
     const s = state({ supps: [supp({ portion: { n: 1, u: "stk" } })] })
     s.took[today] = ["vitd"]
     D.recordDefaultAmount(s, today, "vitd")
-    assert.deepEqual(s.tookAmt[today].vitd, { n: 1, u: "stk" })
+    assert.deepEqual(s.tookAmt[today].vitd, { n: 1, u: "stk", f: 1 })
     D.setAmount(s, today, "vitd", D.scalePortion({ n: 1, u: "stk" }, 2))
     D.recordDefaultAmount(s, today, "vitd") // überschreibt nicht
-    assert.deepEqual(D.amountOn(s, today, s.supps[0]), { n: 2, u: "stk" })
+    assert.deepEqual(D.amountOn(s, today, s.supps[0]), { n: 2, u: "stk", f: 2 })
     L.setSkipped(s, today, "vitd", true)
     assert.equal(s.tookAmt[today]?.vitd, undefined)
   })
@@ -72,12 +75,33 @@ try {
     assert.equal(s.tookAmt?.[today]?.vitd, undefined)
     s.took[today] = ["vitd"]
     D.setPortion(s, "vitd", { n: 2, u: "tropfen" }, today)
-    assert.deepEqual(s.tookAmt[today].vitd, { n: 2, u: "tropfen" })
+    assert.deepEqual(s.tookAmt[today].vitd, { n: 2, u: "tropfen", f: 0.4 }) // Verhältnis zum bisherigen Standard (5 Tropfen)
   })
   await test("Benachrichtigung „✓ Genommen“ speichert die Standard-Menge mit", () => {
     const s = state({ supps: [supp({ portion: { n: 2000, u: "IE" } })] })
     R.applyTaken(s, { date: today, ids: ["vitd"], at: "08:00" })
-    assert.deepEqual(s.tookAmt[today].vitd, { n: 2000, u: "IE" })
+    assert.deepEqual(s.tookAmt[today].vitd, { n: 2000, u: "IE", f: 1 })
+  })
+  await test("Neuer Standard ändert den Vorrat nicht rückwirkend", () => {
+    const y = L.addDays(today, -1), at = L.addDays(today, -3)
+    const drops = { form: "tropfen", pack: 10, perDay: 1, left: 10, at }
+    const v = state({ supps: [supp({ stock: drops, portion: { n: 2000, u: "IE" } })] })
+    v.took[y] = ["vitd"]
+    D.setAmount(v, y, "vitd", { n: 4000, u: "IE" }) // 2× → f = 2
+    assert.equal(v.tookAmt[y].vitd.f, 2)
+    const before = S.stockInfo(v, v.supps[0]).left
+    D.setPortion(v, "vitd", { n: 4000, u: "IE" }, today)
+    assert.equal(S.stockInfo(v, v.supps[0]).left, before)
+  })
+  await test("Standard in Vorrats-Einheit gleicht Menge pro Einnahme an, ohne Rückwirkung", () => {
+    const y = L.addDays(today, -1), at = L.addDays(today, -3)
+    const s = state({ supps: [supp({ id: "mg", lib: "magnesium", stock: { form: "kapseln", pack: 60, perDay: 1, left: 60, at } })] })
+    s.took[y] = ["mg"]
+    const before = S.stockInfo(s, s.supps[0]).left
+    S.alignStockToPortion(D.setPortion(s, "mg", { n: 2, u: "stk" }, today), "mg", today)
+    assert.equal(s.supps[0].stock.perDay, 2)
+    assert.equal(s.supps[0].stock.at, today)
+    assert.equal(S.stockInfo(s, s.supps[0]).left, before)
   })
   await test("Vorrat sinkt nach tatsächlicher Menge (gleiche Einheit und per Verhältnis)", () => {
     const y = L.addDays(today, -1), y2 = L.addDays(today, -2), at = L.addDays(today, -3)
@@ -106,13 +130,20 @@ try {
     assert.deepEqual(r.scores, { energie: 3, fokus: 3, stimmung: 3 })
     assert.equal(r.est, false)
   })
-  await test("Ab 3: persönlicher Durchschnitt (gerundet), als geschätzt markiert", () => {
+  await test("Ab 3: persönliche Verteilung, Mittel bleibt am Gesicht, als geschätzt markiert", () => {
     const s = state()
     const vals = [[4, 2, 3], [5, 2, 3], [4, 3, 3]]
     vals.forEach(([e, f, m], k) => { const d = L.addDays(today, -1 - k); s.checkins[d] = ci(d, { face: 3, quick: false, scores: { energie: e, fokus: f, stimmung: m } }) })
     const r = N.quickScores(s, 3, dims)
     assert.deepEqual(r.scores, { energie: 4, fokus: 2, stimmung: 3 })
     assert.equal(r.est, true)
+    assert.equal(L.daySum(ci(today, { scores: r.scores })), 3)
+    // „Okay“, aber sonst immer hoch bewertet → Tageswert bleibt trotzdem bei Okay, nicht bei Gut
+    const hi = state()
+    for (let k = 0; k < 3; k++) { const d = L.addDays(today, -1 - k); hi.checkins[d] = ci(d, { face: 3, quick: false, scores: { energie: 5, fokus: 4, stimmung: 4, ruhe: 4 } }) }
+    const h = N.quickScores(hi, 3, ["energie", "fokus", "stimmung", "ruhe"])
+    assert.ok(Math.abs(L.daySum(ci(today, { scores: h.scores })) - 3) <= 0.25, JSON.stringify(h.scores))
+    assert.ok(L.daySum(ci(today, { scores: h.scores })) < 4)
     // andere Schnellantwort: noch nichts gelernt
     assert.deepEqual(N.quickScores(s, 4, dims).scores, { energie: 4, fokus: 4, stimmung: 4 })
   })
@@ -125,8 +156,17 @@ try {
   })
   await test("Bereich mit zu wenig Beispielen bleibt beim Gesicht", () => {
     const s = state()
-    for (let k = 0; k < 3; k++) { const d = L.addDays(today, -1 - k); s.checkins[d] = ci(d, { face: 4, quick: false, scores: k ? { energie: 2 } : { energie: 2, fokus: 5 } }) }
-    assert.deepEqual(N.suggestScores(s, 4, dims).scores, { energie: 2, fokus: 4, stimmung: 4 })
+    for (let k = 0; k < 3; k++) { const d = L.addDays(today, -1 - k); s.checkins[d] = ci(d, { face: 4, quick: false, scores: k ? { energie: 2, fokus: 4 } : { energie: 2, fokus: 4, stimmung: 5 } }) }
+    // energie Ø2, fokus Ø4 → Mittel 3; um Gesicht 4: energie 3, fokus 5; stimmung (1 Beispiel) = 4
+    assert.deepEqual(N.suggestScores(s, 4, dims).scores, { energie: 3, fokus: 5, stimmung: 4 })
+  })
+  await test("Nur selbst angetippte Bereiche lernen (estDims nach „genauer“ zählen nicht)", () => {
+    const s = state()
+    // Nach Vorschlag nur Energie angetippt – Fokus/Stimmung waren vorbelegt
+    for (let k = 0; k < 3; k++) { const d = L.addDays(today, -1 - k); s.checkins[d] = ci(d, { face: 3, quick: false, estDims: ["fokus", "stimmung"], scores: { energie: 5, fokus: 1, stimmung: 1 } }) }
+    const r = N.suggestScores(s, 3, dims)
+    assert.equal(r.learned, false) // nur 1 gelernter Bereich → keine Verteilung
+    assert.deepEqual(r.scores, { energie: 3, fokus: 3, stimmung: 3 })
   })
   await test("Auswertung: geschätzter Check-in zählt wie eine Schnellantwort (1 Tag, Ø der Sterne)", () => {
     const c = ci(today, { face: 3, quick: true, est: true, scores: { energie: 4, fokus: 2, stimmung: 3 } })
@@ -142,11 +182,13 @@ try {
     assert.equal(s.checkins[today].face, undefined)
     assert.deepEqual(s.took[today], ["vitd"])
     const bad = L.hydrate({ ...old, supps: [supp({ portion: { n: -1, u: "x" } })], tookAmt: { [today]: { vitd: { n: 2, u: "stk" }, x: { n: "a" } }, nope: {} },
-      checkins: { [today]: ci(today, { quick: false, est: true, face: 9, scores: { energie: 3 } }) } })
+      checkins: { [today]: ci(today, { quick: false, est: true, face: 9, estDims: ["energie", "nope", 3], scores: { energie: 3 } }), [L.addDays(today, -1)]: ci(L.addDays(today, -1), { quick: true, face: 2.5, scores: { energie: 3 } }) } })
     assert.equal(bad.supps[0].portion, undefined)
     assert.deepEqual(bad.tookAmt, { [today]: { vitd: { n: 2, u: "stk" } } })
     assert.equal(bad.checkins[today].est, undefined) // est nur zusammen mit quick
     assert.equal(bad.checkins[today].face, undefined)
+    assert.deepEqual(bad.checkins[today].estDims, ["energie"])
+    assert.equal(bad.checkins[L.addDays(today, -1)].face, undefined) // keine halben Gesichter
   })
 } finally {
   await server.close()

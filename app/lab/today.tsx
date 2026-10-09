@@ -5,7 +5,7 @@ import React, { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import {
   FACES, FACE_LABELS, STORE_MODE, addDays, dayRef, nightRef, checkinOpensMin, daySum, fmtCountdown, fromMin, intakeOn, streak, extrasOn, skippedOn,
-  type LabState, type PhaseWindow, type Portion,
+  type LabState, type PhaseWindow, type Portion, type TakenAmount,
 } from "@/lib/supplementLab"
 import { sidesOf, type ExtraInput } from "@/lib/labDay"
 import type { CoachAction, CoachMsg } from "@/lib/labCoach"
@@ -98,7 +98,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
   /** Erinnerungen an, aber Push aus („off“: einschaltbar) bzw. blockiert („denied“) → dezenter Hinweis */
   pushHint: "off" | "denied" | null; onPush: () => void
   onAction: (a: CoachAction, id: string) => void
-  onRound: (steps: RoundStep[]) => void; onTakeAll: (ids: string[]) => void; onTake: (id: string) => void; onSkip: (id: string, on: boolean, restore?: { at?: string }) => void
+  onRound: (steps: RoundStep[]) => void; onTakeAll: (ids: string[]) => void; onTake: (id: string) => void; onSkip: (id: string, on: boolean, restore?: { at?: string; amt?: TakenAmount }) => void
   onMorning: (v: { sleep?: number; fit?: number }) => void; onUnlock: () => void; onCheckin: (d: string) => void
   onPhase: (w: PhaseWindow) => void; goTab: (t: string) => void; onVorrat: () => void
   onExtra: (date: string, item: ExtraInput, label: string) => void; onExtraRemove: (date: string, id: string) => void
@@ -258,7 +258,9 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
           {sub(fill >= 1 ? (st > 1 ? t("{n} Tage am Stück. Stark!", { n: st }) : t("Bis morgen!")) : t("Ich melde mich, wenn wieder etwas dran ist."))}
           {checked && (
             <button onClick={() => onCheckin(today)} className="lab-press" style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 8, minHeight: 44, padding: "8px 16px", borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text)", fontWeight: 800, fontSize: "0.82rem" }}>
-              {FACES[Math.round(daySum(checked)) - 1]} {t("Heute")} {fmt(daySum(checked))}★ · <span style={{ color: "var(--accent)" }}>{checked.quick ? t("genauer") : t("ändern")}</span>
+              {checked.quick && checked.face
+                ? <>{FACES[checked.face - 1]} {t("Heute: {label}", { label: FACE_LABELS[checked.face - 1] })}</>
+                : <>{FACES[Math.round(daySum(checked)) - 1]} {t("Heute")} {fmt(daySum(checked))}★</>} · <span style={{ color: "var(--accent)" }}>{checked.quick ? t("genauer") : t("ändern")}</span>
             </button>
           )}
           {pushRow}
@@ -312,7 +314,7 @@ function RefineRow({ s, today, hideToday, onCheckin }: { s: LabState; today: str
       <span aria-hidden style={{ fontSize: "1.25rem" }}>{FACES[face - 1]}</span>
       <span style={{ flex: 1, minWidth: 0, fontSize: "0.84rem", fontWeight: 800 }}>
         {date === today ? t("Heute: {label}", { label: FACE_LABELS[face - 1] }) : t("Gestern: {label}", { label: FACE_LABELS[face - 1] })}
-        <span style={{ display: "block", fontSize: "0.74rem", fontWeight: 700, color: "var(--text-dim)" }}>{q.est ? t("Sterne von Kolbi vorgeschlagen – passt?") : t("Sterne je Bereich nachtragen")}</span>
+        <span style={{ display: "block", fontSize: "0.74rem", fontWeight: 700, color: "var(--text-dim)" }}>{q.est ? t("Sterne von Kolbi vorgeschlagen") : t("Sterne je Bereich nachtragen")}</span>
       </span>
       <span style={{ color: "var(--accent-ink)", fontWeight: 900, fontSize: "0.84rem", whiteSpace: "nowrap" }}>{t("genauer")} ›</span>
     </button>
