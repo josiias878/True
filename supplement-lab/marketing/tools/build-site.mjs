@@ -57,7 +57,7 @@ for (const n of Object.values(TRACKER)) for (const ext of [".pdf", "-p1.webp", "
 /** Impressum-Daten des Inhabers – EINE Stelle für alle Rechtsseiten (DE + EN) und die Pressemappe.
  *  Erst wenn alle vier ausgefüllt sind, werden die [Platzhalter] beim Bauen ersetzt → Seite indexierbar.
  *  Leer oder unvollständig = Entwurf (noindex), Ausgabe unverändert. */
-const OWNER = { "Vorname Nachname": "Marvin Gognon", "Straße Hausnummer": "Kantstr. 8", "PLZ Ort": "", "E-Mail-Adresse": "" }
+const OWNER = { "Vorname Nachname": "Marvin Gognon", "Straße Hausnummer": "Kantstr. 8", "PLZ Ort": "51379 Leverkusen", "E-Mail-Adresse": "" }
 const OWNER_OK = Object.values(OWNER).every(v => v.trim())
 if (!OWNER_OK && Object.values(OWNER).some(v => v.trim())) console.log("⚠️ OWNER unvollständig – bleibt Entwurf (noindex)")
 const PLACEHOLDER = /\[(Vorname Nachname|Straße Hausnummer|PLZ Ort|E-Mail-Adresse)\]/
