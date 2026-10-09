@@ -65,6 +65,7 @@ tr:last-child td{border-bottom:none;font-weight:900}
       <div class="stat"><b>316,0</b><span>Credits für Kolbi gesamt</span></div>
       <div class="stat"><b>9.10.</b><span>Stand</span></div>
     </div>
+    <div class="rule"><strong>Zum Weiterschicken:</strong> Die Seite <span class="tags">kolbi-smoky.vercel.app/video/archiv/</span> zeigt alle Videos mit „Herunterladen“-Knopf und funktioniert für jeden, ohne Anmeldung. <div class="row" style="margin-top:8px"><a class="btn" href="https://kolbi-smoky.vercel.app/video/archiv/" target="_blank" rel="noopener">Seite öffnen</a><button id="shareAll">Link kopieren</button></div></div>
     <div class="rule"><strong>Beim Posten:</strong> Bei Host-Videos in TikTok und Instagram das Häkchen „KI-generiert“ setzen. Immer die Original-Datei hochladen, nie ein von TikTok heruntergeladenes Video.</div>
   </header>
 
@@ -148,9 +149,13 @@ for(const v of V){
   cp.addEventListener("click",()=>{const txt=v.cap+(v.tags&&v.tags.startsWith("#")?"\n\n"+v.tags:"");
     const done=()=>{cp.textContent="Kopiert";setTimeout(()=>cp.textContent="Caption kopieren",1600)};
     try{navigator.clipboard.writeText(txt).then(done,()=>sel(c))}catch(e){sel(c)}});
-  const op=el("a","btn","Original öffnen");op.href="videos/"+v.f+".mp4";op.target="_blank";op.rel="noopener";
-  row.append(cp,op);b.append(row);c.append(b);
+  const url="https://kolbi-smoky.vercel.app/video/archiv/"+v.f+".mp4";
+  const op=el("a","btn","Öffnen / Speichern");op.href=url;op.target="_blank";op.rel="noopener";
+  const lk=el("button",null,"Link kopieren");lk.addEventListener("click",()=>copy(url,lk,"Link kopieren"));
+  if(v.g==="testGrid") row.append(cp); else row.append(cp,op,lk);b.append(row);c.append(b);
   document.getElementById(v.g).append(c);
 }
+function copy(t,btn,label){const ok=()=>{btn.textContent="Kopiert";setTimeout(()=>btn.textContent=label,1600)};try{navigator.clipboard.writeText(t).then(ok,()=>{btn.textContent=t})}catch(e){btn.textContent=t}}
+document.getElementById("shareAll").addEventListener("click",e=>copy("https://kolbi-smoky.vercel.app/video/archiv/",e.currentTarget,"Link kopieren"));
 function sel(card){const p=card.querySelector(".cap");const r=document.createRange();r.selectNodeContents(p);const s=getSelection();s.removeAllRanges();s.addRange(r)}
 </script>
