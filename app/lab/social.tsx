@@ -9,6 +9,7 @@ import { groupInfo, groupSteps } from "@/lib/labGroups"
 import { AVATAR_ACCESSORIES, AVATAR_COLORS, AVATAR_MOODS, DEFAULT_AVATAR, LAB_GROUPS, avatarColorBg, labColor, loadAvatar, pseudoSeed, pseudonym, type LabAvatar, type LabGroup } from "@/lib/labSocial"
 import { SITE_URL, appVersion } from "@/lib/labGrow"
 import { markSeen } from "@/lib/labNew"
+import { communityPushOn, pushState, setCommunityPush } from "@/lib/labPush"
 import * as api from "@/lib/labSocialApi"
 import { POST_TAGS } from "@/lib/labSocialApi"
 import type { OfficialPost, Poll, PostTag, ReactionKind, ReportReason, SocialCommunity, SocialPage, SocialPost, SocialProfile } from "@/lib/labSocialApi"
@@ -75,6 +76,9 @@ export function useSocialSheetOpen(): boolean {
 }
 /** Zurücksetzen ohne Verbindung: nur pausieren – Geheimnis + Profil-ID bleiben, damit späteres Löschen geht. */
 export function pauseSocial() {
+  // Community-Zusammenfassung per Push mit abschalten (solange das Geheimnis noch gilt)
+  const auth = api.communityPushAuth()
+  if (auth && communityPushOn()) void setCommunityPush(false, auth)
   api.setSocialConsent(false)
   myId = null
   nav = []
@@ -1068,6 +1072,109 @@ function StartGroupCard({ c0, onJoined }: { c0: SocialCommunity; onJoined?: () =
   )
 }
 
+// ═══ Wiederkommen: Community-Push + Punkt am Entdecken-Reiter ═════════════════════════════════
+const ASKED_KEY = "lab-community-push-asked"
+let communityPushVer = 0
+/** Push-Erlaubnis da (Erinnerungen an)? – asynchron, einmal je Anzeige */
+function usePushOn(): boolean | null {
+  const [on, setOn] = useState<boolean | null>(null)
+  useEffect(() => { let a = true; void pushState().then(v => { if (a) setOn(v === "on") }).catch(() => { if (a) setOn(false) }); return () => { a = false } }, [])
+  return on
+}
+async function toggleCommunityPush(on: boolean): Promise<boolean> {
+  const auth = api.communityPushAuth()
+  if (!auth) return false
+  await ensureMe()
+  const ok = await setCommunityPush(on, auth)
+  if (ok) { communityPushVer++; emit() }
+  return ok
+}
+const useCommunityPushVer = () => useSyncExternalStore(subscribe, () => communityPushVer, () => 0)
+
+/** Einmalige Frage in Entdecken: „Bescheid geben, wenn es in deinen Gruppen Neues gibt?“ (nur mit Push + Social) */
+export function CommunityPushAsk() {
+  const social = useSocialOn()
+  const push = usePushOn()
+  useCommunityPushVer()
+  const [hidden, setHidden] = useState(() => { try { return localStorage.getItem(ASKED_KEY) === "1" } catch { return true } })
+  const [busy, setBusy] = useState(false)
+  if (!social || push !== true || hidden || communityPushOn()) return null
+  const done = () => { try { localStorage.setItem(ASKED_KEY, "1") } catch {} ; setHidden(true) }
+  return (
+    <div className="lab-card lab-rise" data-community-push-ask style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 20 }}>
+      <span aria-hidden style={{ fontSize: "1.5rem" }}>🔔</span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: "block", fontWeight: 900, fontSize: "0.92rem" }}>{t("Bescheid geben, wenn es Neues gibt?")}</span>
+        <span style={{ display: "block", fontSize: "0.76rem", fontWeight: 700, color: "var(--text-dim)", lineHeight: 1.35 }}>{t("Neue Umfragen und Reaktionen aus deinen Gruppen – höchstens 1× am Tag.")}</span>
+      </span>
+      <span style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+        <InkBtn onClick={async () => { setBusy(true); const ok = await toggleCommunityPush(true); setBusy(false); if (ok) { flash(t("✓ Ich sag dir Bescheid")); done() } else flash(OFFLINE()) }}
+          disabled={busy} style={{ minHeight: 40, padding: "0 14px", fontSize: "0.84rem", borderRadius: 12 }}>{t("Ja")}</InkBtn>
+        <button className="lab-press" onClick={done} style={{ minHeight: 36, border: "none", background: "none", color: "var(--text-dim)", fontWeight: 800, fontSize: "0.76rem" }}>{t("Nein danke")}</button>
+      </span>
+    </div>
+  )
+}
+
+/** Schalter in Einstellungen › Social-Konto */
+function CommunityPushRow() {
+  const push = usePushOn()
+  useCommunityPushVer()
+  const [busy, setBusy] = useState(false)
+  const on = communityPushOn()
+  const can = push === true
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 6 }}>
+      <span style={{ minWidth: 0 }}>
+        <span style={{ display: "block", fontWeight: 800, fontSize: "0.9rem" }}>{t("Neues aus deinen Gruppen")}</span>
+        <span style={{ display: "block", fontSize: "0.74rem", color: "var(--text-dim)", lineHeight: 1.35 }}>{can || on ? t("Push höchstens 1× am Tag, nur Anzahlen") : t("Dafür zuerst Erinnerungen (Push) einschalten")}</span>
+      </span>
+      <button className="lab-press" role="switch" aria-checked={on} aria-label={t("Neues aus deinen Gruppen")} disabled={busy || (!can && !on)} onClick={async () => {
+        setBusy(true); const ok = await toggleCommunityPush(!on); setBusy(false); if (!ok) flash(OFFLINE())
+      }} style={{ width: 60, height: 44, border: "none", background: "none", padding: "7px 4px", flexShrink: 0, opacity: !can && !on ? 0.5 : 1 }}>
+        <span style={{ display: "block", position: "relative", width: 52, height: 30, borderRadius: 999, background: on ? "var(--accent)" : "var(--surface-2)", transition: "background .25s" }}>
+          <span style={{ position: "absolute", top: 3, left: on ? 25 : 3, width: 24, height: 24, borderRadius: 999, background: "#fff", transition: "left .3s cubic-bezier(.34,1.56,.64,1)", boxShadow: "0 1px 4px rgba(0,0,0,.25)" }} />
+        </span>
+      </button>
+    </div>
+  )
+}
+
+// Punkt am Entdecken-Reiter: Neues aus Gruppen/Gefolgten seit dem letzten Besuch (Abfrage höchstens alle 20 Min.)
+const DISCOVER_SEEN_KEY = "lab-discover-seen"
+let discoverNewest = 0, discoverAt = 0, discoverLoading = false, discoverVer = 0
+const discoverSeen = () => { try { return Number(localStorage.getItem(DISCOVER_SEEN_KEY) ?? "0") || 0 } catch { return 0 } }
+export function markDiscoverSeen() {
+  try { localStorage.setItem(DISCOVER_SEEN_KEY, String(Date.now())) } catch {}
+  discoverVer++; emit()
+}
+const useDiscoverVer = () => useSyncExternalStore(subscribe, () => discoverVer, () => 0)
+export function useDiscoverNew(): boolean {
+  const social = useSocialOn()
+  useDiscoverVer()
+  useEffect(() => {
+    if (!social || discoverLoading || Date.now() - discoverAt < 20 * 60_000) return
+    discoverLoading = true
+    void (async () => {
+      try {
+        const me = await ensureMe()
+        const a = await api.feed("following", undefined, { home: true })
+        if (!a) return
+        const times = [
+          ...a.posts.filter(p => p.author?.id !== me).map(p => Date.parse(p.createdAt)),
+          ...(a.official ?? []).map(o => Date.parse(`${o.date}T06:00:00Z`)),
+          ...(a.polls ?? []).filter(q => !q.mine).map(q => Date.parse(`${q.date}T06:00:00Z`)),
+        ].filter(Number.isFinite)
+        discoverNewest = times.length ? Math.max(...times) : 0
+        discoverAt = Date.now()
+      } finally { discoverLoading = false; discoverVer++; emit() }
+    })()
+  }, [social])
+  if (!social || !discoverNewest) return false
+  const seen = discoverSeen()
+  return !seen ? true : discoverNewest > seen
+}
+
 // ═══ Home-Feed (Heute) ═══════════════════════════════════════════════════════════════════════
 type FeedItem = { k: "post"; p: SocialPost; at: number } | { k: "off"; o: OfficialPost; at: number } | { k: "poll"; q: Poll; at: number }
 const HOME_FEED_MAX = 10
@@ -1399,6 +1506,7 @@ export function SocialSettingsCard() {
           </span>
         </button>
       </div>
+      {on && <CommunityPushRow />}
       <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", lineHeight: 1.45 }}>
         {locked ? <>{t("Dein Social-Konto ist gesperrt. Du kannst es nur noch löschen.")}{banReason() && <> {t("Begründung: {note}", { note: banReason() })}</>}</>
           : on ? t("Andere sehen dein Pseudonym, deinen Kolbi-Avatar und was du postest. Tagesdaten und Notizen bleiben privat.")

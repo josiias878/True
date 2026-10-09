@@ -156,6 +156,10 @@ The following is stored with Supabase (Frankfurt, section 11):
   high”) – no free text.
 - **Polls:** for Kolbi polls in communities, the answer you chose from a fixed list. Others only see the totals per
   answer, not who voted how.
+- **“News from your groups” (only if you switch it on):** a link between your social profile and this device’s push
+  address (section 6) plus the time of the last check. Once a day we count new Kolbi polls and posts in your groups and
+  new reactions to your posts and send you at most one notification with these counts (no names, no health data).
+  Switch off: Settings › Social account; turning off push or deleting the account removes the link automatically.
 - **Following:** whom you follow and who follows you.
 - **Reactions:** which reaction (“Keep going”, “Helpful”) you gave on which post.
 - **Communities:** which predefined communities you have joined (labs for a supplement or goal communities such as

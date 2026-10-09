@@ -165,6 +165,11 @@ Gespeichert wird bei Supabase (Frankfurt, Abschnitt 11):
   Liste (z. B. „Abends genommen“, „Preis zu hoch“) – kein eigener Text.
 - **Umfragen:** bei Kolbi-Umfragen in Communities deine gewählte Antwort aus einer festen Liste. Andere sehen nur die
   Gesamtzahlen je Antwort, nicht, wer wie abgestimmt hat.
+- **„Neues aus deinen Gruppen“ (nur wenn du es einschaltest):** eine Verknüpfung deines Social-Profils mit der
+  Push-Adresse dieses Geräts (Abschnitt 6) und der Zeitpunkt der letzten Prüfung. Einmal am Tag zählen wir neue
+  Kolbi-Umfragen und -Posts in deinen Gruppen und neue Reaktionen auf deine Beiträge und schicken dir höchstens eine
+  Nachricht mit diesen Anzahlen (ohne Namen, ohne Gesundheitsdaten). Ausschalten: Einstellungen › Social-Konto; beim
+  Abschalten von Push oder Löschen des Kontos entfällt die Verknüpfung automatisch.
 - **Folgen:** wem du folgst und wer dir folgt.
 - **Reaktionen:** welche Reaktion („Durchhalten“, „Hilfreich“) du bei welchem Post gegeben hast.
 - **Communities:** welchen vorgegebenen Communities du beigetreten bist (Labs zu einem Supplement oder

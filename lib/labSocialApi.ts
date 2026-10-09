@@ -170,6 +170,31 @@ function secret(): string | null {
   return get(SECRET_KEY) === s ? s : null // ohne Speicher kein Konto (sonst entstünden Waisen-Profile)
 }
 
+/** Für die Community-Zusammenfassung per Push (push-register prüft es wie lab-social) – nur mit Einwilligung */
+export function communityPushAuth(): { secret: string; lang: string } | null {
+  if (!socialConsent()) return null
+  const s = get(SECRET_KEY)
+  return s && SECRET_RE.test(s) ? { secret: s, lang: LANG } : null
+}
+
+// ── Eigene Community-Aktivität (nur lokal, für den Wochenrückblick) ──────────
+const LOG_KEY = "lab-community-log"
+type LogEntry = { k: "vote" | "post"; d: string; id?: string }
+function readLog(): LogEntry[] {
+  try { const v = JSON.parse(get(LOG_KEY) ?? "[]"); return Array.isArray(v) ? v.filter((x): x is LogEntry => isObj(x) && (x.k === "vote" || x.k === "post") && typeof x.d === "string") : [] } catch { return [] }
+}
+function logCommunity(k: LogEntry["k"], id?: string) {
+  const log = readLog()
+  if (id && log.some(x => x.k === k && x.id === id)) return // Stimme geändert = keine neue Umfrage
+  const d = new Date(); const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+  set(LOG_KEY, JSON.stringify([...log, { k, d: day, ...(id ? { id } : {}) }].slice(-200)))
+}
+/** Umfragen/Posts in den 7 Tagen bis einschließlich end (YYYY-MM-DD) */
+export function communityWeek(start: string, end: string): { votes: number; posts: number } {
+  const w = readLog().filter(x => x.d >= start && x.d <= end)
+  return { votes: w.filter(x => x.k === "vote").length, posts: w.filter(x => x.k === "post").length }
+}
+
 // ── Antworten prüfen (lieber „keine Daten“ als ein Absturz) ──────────────────
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v)
 const num = (v: unknown, d = 0) => (typeof v === "number" && Number.isFinite(v) ? v : d)
@@ -363,7 +388,7 @@ export async function shareResultPost(s: LabState, suppId: string, tags: PostTag
   if (!p) return false
   const clean = [...new Set(tags.filter(isPostTag))].slice(0, 3)
   const r = await authed("shareResult", { ...p, tags: clean })
-  if (ok(r)) return true
+  if (ok(r)) { logCommunity("post"); return true }
   const err = isObj(r?.body) ? r.body.error : null
   if (r?.status === 403 && err === "hidden") return "hidden"
   if (r?.status === 409 && err === "pending") return "pending"
@@ -371,7 +396,12 @@ export async function shareResultPost(s: LabState, suppId: string, tags: PostTag
 }
 
 // ── Kolbi-Umfragen ────────────────────────────────────────────────────────────
-export const vote = async (poll: string, option: string) => ID_RE.test(poll) && ID_RE.test(option) && ok(await authed("vote", { poll, option }))
+export async function vote(poll: string, option: string): Promise<boolean> {
+  if (!ID_RE.test(poll) || !ID_RE.test(option)) return false
+  const done = ok(await authed("vote", { poll, option }))
+  if (done) logCommunity("vote", poll)
+  return done
+}
 
 // ── Communities (nur vordefiniert: Labs + Ziele) ─────────────────────────────
 export async function communities(query?: string): Promise<SocialCommunity[] | null> {

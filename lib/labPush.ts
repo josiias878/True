@@ -66,12 +66,33 @@ export async function disablePush() {
   } catch {}
   localStorage.removeItem(PUSH_ON_KEY)
   localStorage.removeItem(HASH_KEY)
+  localStorage.removeItem(COMMUNITY_KEY) // Push-Adresse gelöscht → Verknüpfung entfällt serverseitig mit
 }
 
 function hash(str: string) {
   let h = 5381
   for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0
   return String(h >>> 0)
+}
+
+// ── Community-Zusammenfassung (freiwillig, max. 1×/Tag; Server: push-register social + Cron social_push_digest) ──
+const COMMUNITY_KEY = "lab-push-community"
+export function communityPushOn(): boolean { try { return localStorage.getItem(COMMUNITY_KEY) === "1" } catch { return false } }
+/** Social-Profil mit dieser Push-Adresse verknüpfen bzw. trennen. Ohne Push (Erlaubnis/Adresse) → false. */
+export async function setCommunityPush(on: boolean, social: { secret: string; lang: string }): Promise<boolean> {
+  try {
+    if (on && (!pushAvailable() || Notification.permission !== "granted")) return false
+    const reg = await navigator.serviceWorker.getRegistration()
+    const sub = await reg?.pushManager.getSubscription()
+    if (!sub) { if (!on) localStorage.removeItem(COMMUNITY_KEY); return !on }
+    const res = await fetch(REGISTER_URL, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subscription: sub.toJSON(), social: { secret: social.secret, on, lang: social.lang } }),
+    })
+    if (!res.ok) return false
+    if (on) localStorage.setItem(COMMUNITY_KEY, "1"); else localStorage.removeItem(COMMUNITY_KEY)
+    return true
+  } catch { return false }
 }
 
 /** Plan an den Push-Server schicken, wenn sich etwas geändert hat. */

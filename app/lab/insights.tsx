@@ -10,6 +10,7 @@ import { dimLabel, findPatterns, type Pattern } from "@/lib/labPatterns"
 import { fmtGap, interactionChecks, type PairCheck } from "@/lib/labInteractions"
 import { pathStops } from "@/lib/labPath"
 import { learnedFacts } from "@/lib/labKnowledge"
+import { communityWeek, socialConsent } from "@/lib/labSocialApi"
 import { Btn, Label } from "./ui"
 import { Mascot } from "./mascot"
 import { ShareButton, makeWeekCard } from "./share"
@@ -319,6 +320,8 @@ export function WeekRecap({ s, end, today, onClose }: { s: LabState; end: string
   const facts = learnedFacts(s).length
   const upcoming = pathStops(s, today, new Date(), false).stops.filter(x => x.date > today).slice(0, 3)
   const st = streak(s)
+  // Community-Woche (nur lokal gezählt, nur mit Social-Einwilligung und wenn etwas passiert ist)
+  const cw = !s.demo && socialConsent() ? communityWeek(days[0], end) : { votes: 0, posts: 0 }
 
   const slides: { bg: string; body: React.ReactNode }[] = [
     { bg: "linear-gradient(160deg, #2ECC8A, #1baf9a 50%, #3987e5)", body: (
@@ -392,6 +395,17 @@ export function WeekRecap({ s, end, today, onClose }: { s: LabState; end: string
         <div className="lab-late" style={{ marginTop: 14, opacity: 0.9, fontWeight: 700 }}>{t("Muster finde ich, sobald ein paar mehr Tage da sind 🔍")}</div>
       </>
     ) },
+    ...(cw.votes + cw.posts > 0 ? [{ bg: "linear-gradient(160deg, #3987e5, #2ECC8A)", body: (
+      <>
+        <div style={{ fontSize: "0.8rem", fontWeight: 900, letterSpacing: ".12em", opacity: 0.9 }}>{t("DEINE COMMUNITY-WOCHE")}</div>
+        <div className="lab-float" style={{ marginTop: 14 }}><Mascot mood="party" size={110} glow /></div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 16, width: "100%", maxWidth: 300 }}>
+          {cw.votes > 0 && <div className="lab-pop" style={{ padding: "12px 14px", borderRadius: 18, background: "rgba(255,255,255,.14)", fontWeight: 900, fontSize: "1.05rem" }}>🗳️ {cw.votes === 1 ? t("1 Kolbi-Umfrage beantwortet") : t("{n} Kolbi-Umfragen beantwortet", { n: cw.votes })}</div>}
+          {cw.posts > 0 && <div className="lab-pop" style={{ animationDelay: ".15s", padding: "12px 14px", borderRadius: 18, background: "rgba(255,255,255,.14)", fontWeight: 900, fontSize: "1.05rem" }}>📣 {cw.posts === 1 ? t("1 Ergebnis geteilt") : t("{n} Ergebnisse geteilt", { n: cw.posts })}</div>}
+        </div>
+        <div className="lab-late" style={{ marginTop: 16, fontWeight: 800, opacity: 0.95 }}>{t("Danke fürs Mitmachen – so lernen alle mit.")}</div>
+      </>
+    ) }] : []),
     { bg: "linear-gradient(160deg, #0b0b1a, #2b2b55)", body: (
       <>
         <div style={{ fontSize: "0.8rem", fontWeight: 900, letterSpacing: ".12em", opacity: 0.9 }}>{t("NÄCHSTE WOCHE")}</div>

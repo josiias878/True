@@ -44,7 +44,7 @@ import { configureStats, srcFromUrl, track, trackCheckin, trackOnce } from "@/li
 import { RoadPath } from "./path"
 import { ShareButton, makeResultCard } from "./share"
 import { CommunityConsent } from "./community"
-import { SocialHost, SocialScreen, SocialSettingsCard, TesterSettingsCard, VersionLine, clearSocial, deleteSocialAccount, hasSocialAccount, pauseSocial, startPost, useSocialSheetOpen, useSocialView } from "./social"
+import { markDiscoverSeen, useDiscoverNew, SocialHost, SocialScreen, SocialSettingsCard, TesterSettingsCard, VersionLine, clearSocial, deleteSocialAccount, hasSocialAccount, pauseSocial, startPost, useSocialSheetOpen, useSocialView } from "./social"
 import { ExperimentSheet, ExperimentsView } from "./experiments"
 import { startExperiment, type Experiment } from "@/lib/labExperiments"
 import { removeMyResults, shareResult } from "@/lib/labCommunity"
@@ -123,6 +123,9 @@ function markTaken(p: LabState, date: string, id: string) {
 
 function initialTab(): Tab {
   try {
+    // Aus einer Benachrichtigung (?tab=entdecken) direkt in den Reiter
+    const q = new URLSearchParams(window.location.search).get("tab")
+    if (q && TABS.some(x => x.id === q)) { window.history.replaceState(null, "", window.location.pathname); return q as Tab }
     const v = localStorage.getItem("true-lab-tab") ?? ""
     return TABS.some(x => x.id === v) ? v as Tab : OLD_TAB[v] ?? "heute"
   } catch { return "heute" }
@@ -301,6 +304,9 @@ export default function LabApp() {
   useEffect(() => { window.scrollTo({ top: 0 }) }, [laborView, meView, lab?.suppId, lab?.libId, !!lab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { try { localStorage.setItem("true-lab-tab", tab) } catch {} }, [tab])
+  // Punkt am Entdecken-Reiter: Neues aus Gruppen/Gefolgten; beim Öffnen von Entdecken als gesehen merken
+  const discoverNew = useDiscoverNew()
+  useEffect(() => { if (tab === "entdecken") markDiscoverSeen() }, [tab, discoverNew])
   useEffect(() => { if (!flash) return; const t = setTimeout(() => setFlash(null), 2600); return () => clearTimeout(t) }, [flash])
 
   // Erinnerungen prüfen, solange die App offen ist (System-Benachrichtigung, je 1× pro Tag)
@@ -789,7 +795,7 @@ export default function LabApp() {
             const { icon, label: l } = TABS.find(x => x.id === id)!
             const on = tab === id
             const badge = id === "labor" ? shoppingList(s, today).count : 0
-            const dot = (id === "ich" && kolbiTips.length > 0) || (id === "entdecken" && recapAvailable(s, now, today).ready)
+            const dot = (id === "ich" && kolbiTips.length > 0) || (id === "entdecken" && (recapAvailable(s, now, today).ready || discoverNew))
             return (
               <button key={id} onClick={() => {
                 if (on) { clearSocial(); if (id === "labor") { setLab(null); setLaborView(null) } if (id === "ich") setMeView(null); window.scrollTo({ top: 0, behavior: "smooth" }); return }

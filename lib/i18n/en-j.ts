@@ -255,5 +255,20 @@ export const EN_J: Record<string, string> = {
   "Erzähl mehr – bis zu 3 Bausteine (freiwillig)": "Tell more – up to 3 tags (optional)",
   "Erfahrungs-Bausteine": "Experience tags",
   "Mitreden mit einem Tipp": "Join in with one tap",
-  "Kolbi-Umfragen in jeder Gruppe und Erfahrungs-Bausteine beim Posten.": "Kolbi polls in every group and experience tags when you post."
+  "Kolbi-Umfragen in jeder Gruppe und Erfahrungs-Bausteine beim Posten.": "Kolbi polls in every group and experience tags when you post.",
+  "DEINE COMMUNITY-WOCHE": "YOUR COMMUNITY WEEK",
+  "1 Kolbi-Umfrage beantwortet": "Answered 1 Kolbi poll",
+  "{n} Kolbi-Umfragen beantwortet": "Answered {n} Kolbi polls",
+  "1 Ergebnis geteilt": "Shared 1 result",
+  "{n} Ergebnisse geteilt": "Shared {n} results",
+  "Danke fürs Mitmachen – so lernen alle mit.": "Thanks for joining in – this way everyone learns along.",
+  "Bescheid geben, wenn es Neues gibt?": "Let you know when there's something new?",
+  "Neue Umfragen und Reaktionen aus deinen Gruppen – höchstens 1× am Tag.": "New polls and reactions from your groups – at most once a day.",
+  "✓ Ich sag dir Bescheid": "✓ I'll let you know",
+  "Ja": "Yes",
+  "Neues aus deinen Gruppen": "News from your groups",
+  "Push höchstens 1× am Tag, nur Anzahlen": "Push at most once a day, counts only",
+  "Dafür zuerst Erinnerungen (Push) einschalten": "Turn on reminders (push) first",
+  "Kolbi sagt Bescheid": "Kolbi lets you know",
+  "Neues aus deinen Gruppen höchstens 1× am Tag – plus Punkt am Entdecken-Reiter.": "News from your groups at most once a day – plus a dot on the Discover tab."
 }

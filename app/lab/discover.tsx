@@ -14,7 +14,7 @@ import { Mascot } from "./mascot"
 import { Avatar } from "./me"
 import { t } from "@/lib/labI18n"
 import { markSeen } from "@/lib/labNew"
-import { JoinRow, ModerationNotice, OfficialHint, PostFeed, SwitchTabs, useSocialOn } from "./social"
+import { CommunityPushAsk, JoinRow, ModerationNotice, OfficialHint, PostFeed, SwitchTabs, useSocialOn } from "./social"
 import * as socialApi from "@/lib/labSocialApi"
 
 type FeedMode = "neueste" | "gefolgt"
@@ -177,6 +177,7 @@ export function DiscoverView({ s, today, now, checkinLocked, recapReady, onRecap
       {/* Lebendiger Einstieg: So teilst du · Mein Weg · Deine Gruppen (wischbar) */}
       <HowToShare />
       <WaySection s={s} today={today} stops={road.stops} onOpen={() => setDaySheet(true)} />
+      {social && <CommunityPushAsk />}
       {social && <CommunitySection s={s} overview={ov} onDiscover={onCommunities} onOpenLab={libId => onOpenLab(libId, "andere")} />}
       {daySheet && (
         <Sheet open onClose={() => setDaySheet(false)} title={t("🗺️ Dein Tag")}>
