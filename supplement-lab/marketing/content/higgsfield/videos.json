@@ -1,0 +1,13 @@
+{
+  "_hinweis": "Archiv der fertigen Videos (Name → Quell-URL). Workflow .github/workflows/fetch-videos.yml lädt sie nach supplement-lab/marketing/videos/<name>.mp4 (720×1280, mit Ton, ≤ 8 MB) + <name>.jpg als Poster.",
+  "videos": {
+    "kolbi-01-schrank": "https://d2ol7oe51mr4n9.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/1251a6f6-9b46-441e-8c83-bfc40be33302.mp4",
+    "kolbi-02-testet": "https://d2ol7oe51mr4n9.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/90a9b3a0-17ff-4fca-9856-3d53e9c0ebad.mp4",
+    "kolbi-03-dein-normal": "https://d2ol7oe51mr4n9.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/2ef42bd1-38e2-4815-87e3-fc17efa0ef72.mp4",
+    "host-de-01-welches-wirkt": "https://d2ol7oe51mr4n9.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/b01d5d68-7dbb-432e-9b91-d75784db1210.mp4",
+    "host-de-03-stack-kosten": "https://d2ol7oe51mr4n9.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/5d95e1f2-d9e7-42cb-b03c-de811fdc7981.mp4",
+    "host-de-05-dein-normal": "https://d2ol7oe51mr4n9.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/cdb090c5-41bc-4115-b592-efadb16ab734.mp4",
+    "host-de-00-fuenf-supplements": "https://d2ol7oe51mr4n9.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/5dd6399a-0a0b-4304-9657-8edc21cc5121.mp4",
+    "host-en-test-rohclip": "https://d8j0ntlcm91z4.cloudfront.net/user_3JeByYXVlH5eTSVFGJ3z8mz9BEn/hf_20261009_023608_4a099c4e-004d-4047-aefc-36018e92dc2b.mp4"
+  }
+}
