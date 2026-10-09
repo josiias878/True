@@ -239,7 +239,7 @@ export const EN_J: Record<string, string> = {
   "Zum Essen genommen": "Taken with food",
   "Würde weitertesten": "Would keep testing",
   "Kaum Unterschied gemerkt": "Barely noticed a difference",
-  "Braucht wohl länger": "Probably needs longer",
+  "Noch zu früh für ein Urteil": "Too early to tell",
   "Geschmack okay": "Taste okay",
   "Geschmack schlecht": "Bad taste",
   "Preis okay": "Price okay",

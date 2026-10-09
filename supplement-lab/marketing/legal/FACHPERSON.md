@@ -191,6 +191,14 @@ Beta-Test über Google Play/TestFlight ab Ende Oktober.
 
 ---
 
+**F3. „Mitreden“ umgesetzt (Stand 9. Okt 2026) – bitte mitprüfen**
+- Erfahrungs-Bausteine beim Posten (max. 3, feste Liste, kein Freitext): Morgens/Abends/Zum Essen genommen, Würde
+  weitertesten, Kaum Unterschied gemerkt, Noch zu früh für ein Urteil, Geschmack okay/schlecht, Preis okay/zu hoch,
+  Kapseln groß, **Leichte Beschwerden gemerkt** (gesundheitsnah, über die Art.-9-Einwilligung aus §8a abgedeckt?).
+- Kolbi-Umfragen je Community (vom Betreiber vorgegeben, Antworten aus fester Liste, nur Summen sichtbar), u. a.
+  „Wann gehst du ins Bett?“, „**Was stört deinen Schlaf am häufigsten?**“, „Wie viele Kaffees am Tag?“ – reichen
+  Einwilligung + Datenschutz §8a? Liste: `supabase/migrations/20261010120000_social_mitreden.sql`.
+
 ## Antworten der Fachperson (hier eintragen)
 
 | Nr. | Antwort / Entscheidung | Datum | Umgesetzt in |
@@ -216,3 +224,4 @@ Beta-Test über Google Play/TestFlight ab Ende Oktober.
 | E4 | | | |
 | F1 | | | |
 | F2 | | | |
+| F3 | | | |

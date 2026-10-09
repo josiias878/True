@@ -219,7 +219,7 @@ const TAG_INFO: Record<PostTag, { emoji: string; label: () => string }> = {
   "zum-essen": { emoji: "🍽️", label: () => t("Zum Essen genommen") },
   "weiter-testen": { emoji: "🔁", label: () => t("Würde weitertesten") },
   "kaum-unterschied": { emoji: "🤷", label: () => t("Kaum Unterschied gemerkt") },
-  "braucht-zeit": { emoji: "⏳", label: () => t("Braucht wohl länger") },
+  "braucht-zeit": { emoji: "⏳", label: () => t("Noch zu früh für ein Urteil") },
   "geschmack-ok": { emoji: "👌", label: () => t("Geschmack okay") },
   "geschmack-schlecht": { emoji: "😖", label: () => t("Geschmack schlecht") },
   "preis-ok": { emoji: "💶", label: () => t("Preis okay") },

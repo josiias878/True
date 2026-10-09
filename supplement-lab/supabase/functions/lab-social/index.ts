@@ -465,7 +465,8 @@ Deno.serve(async req => {
           const { error: tErr } = tags.length
             ? await db.from("social_post_tags").upsert({ post: mine.id, tags, updated_at: new Date().toISOString() }, { onConflict: "post" })
             : await db.from("social_post_tags").delete().eq("post", mine.id)
-          if (tErr) return fail("db", 500)
+          // Post ist schon geteilt – nicht als Fehler melden (sonst teilt man erneut und verliert Reaktionen)
+          if (tErr) return json({ ok: true, tags: false })
         }
         return json({ ok: true })
       }
@@ -496,7 +497,8 @@ Deno.serve(async req => {
       if (!POLL_ID.test(poll)) return fail("poll")
       if (!OPTION_ID.test(option)) return fail("option")
       const today = new Date().toISOString().slice(0, 10)
-      const { data: q } = await db.from("community_polls").select("id, options, hidden, publish_on").eq("id", poll).maybeSingle()
+      const { data: q, error: qErr } = await db.from("community_polls").select("id, options, hidden, publish_on").eq("id", poll).maybeSingle()
+      if (qErr) return fail("db", 500)
       if (!q || q.hidden || q.publish_on > today) return fail("notfound", 404)
       const opts = (Array.isArray(q.options) ? q.options : []) as { id: string }[]
       if (!opts.some(o => o.id === option)) return fail("option")
