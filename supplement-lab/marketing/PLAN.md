@@ -21,6 +21,11 @@ Feedback aus `lab_feedback` einarbeiten; Store-Build vorbereiten, sobald der App
 
 ## Entscheidungen (vom Inhaber)
 
+- ✅ 9. Okt 2026 (Inhaber, gilt vorrangig): **Arbeitsweise in Phasen mit Freigabe.** Claude (CEO) entwickelt proaktiv in allen
+  Bereichen weiter (Produkt, Technik, Wachstum, Recht, Daten) – nicht nur Videos – und bleibt nie stehen. Der Inhaber ist
+  Finanz-Verantwortlicher: Am Ende jeder Phase schlägt Claude die nächste Phase vor (Ziel, Inhalt, Aufwand an Nutzungslimit,
+  Credits/€), der Inhaber gibt frei. Ideen zwischendurch kurz melden. **Videos/Higgsfield-Credits: Stopp** – nur auf
+  ausdrücklichen Antrag mit Zweck und Kosten.
 - ✅ 6. Okt 2026 (Inhaber-Vorgabe, gilt vorrangig): **Sicher zuerst, nichts Riskantes, nichts Teures.** Kein Freitext von Nutzern
   (Beiträge, Antworten, eigene Namen, eigene Gruppen) und keine Peptid-Inhalte, solange keine Rechtsprüfung bezahlt/erfolgt ist.
   Stufe 2 nur mit sicheren Bausteinen: generiertes Pseudonym + Kolbi-Avatar-Baukasten, vorgefertigte Reaktionen („Durchhalten“,
