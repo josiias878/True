@@ -2,3 +2,6 @@
 
 /* Name unter dem App-Icon */
 "CFBundleDisplayName" = "Kolbi";
+
+/* Kamera: nur zum Lesen des Strichcodes (Supplement per Barcode hinzufügen) */
+"NSCameraUsageDescription" = "Kolbi nutzt die Kamera nur, um den Strichcode einer Supplement-Packung zu lesen. Das Bild bleibt auf deinem Gerät – nachgeschlagen wird nur die Nummer.";

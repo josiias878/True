@@ -33,13 +33,15 @@ Daten an einen Server gehen nur in diesen Fällen:
 - **standardmäßig an, jederzeit abschaltbar:** die anonyme Nutzungsstatistik ohne Geräte-ID (Abschnitt 5);
 - **nur wenn du die Funktion selbst nutzt bzw. einschaltest:** Push-Erinnerungen in der Web-App (Abschnitt 6),
   Kalender-Abo (Abschnitt 7), Community (Abschnitt 8, mit ausdrücklicher Einwilligung), Social-Funktionen
-  (Abschnitt 8a, mit ausdrücklicher Einwilligung) und Feedback (Abschnitt 9).
+  (Abschnitt 8a, mit ausdrücklicher Einwilligung), Feedback (Abschnitt 9) und Supplement per Barcode hinzufügen
+  (Abschnitt 9a).
 
 **Nicht enthalten:** Version 1.0 liest keine Daten aus Apple Health oder Google Health Connect. Sollte eine solche
 Anbindung später angeboten werden, passen wir diese Erklärung vorher an; die Anbindung würde nur nach deiner
 ausdrücklichen Einwilligung in der App und in den Systemeinstellungen deines Geräts aktiv. Es gibt außerdem keine
 Werbung, keine Werbe-ID, keine Werbe- oder Tracking-SDKs, keine Standortdaten und keinen Zugriff auf Kontakte,
-Kamera, Mikrofon oder deinen Kalender.
+Mikrofon oder deinen Kalender. Die Kamera nutzt die App nur, wenn du selbst einen Barcode scannst (Abschnitt 9a);
+das Kamerabild verlässt dein Gerät dabei nie.
 
 ## 3. Speicherung auf deinem Gerät (§ 25 TDDDG)
 
@@ -205,6 +207,40 @@ persönlichen Gesundheitsdaten hinein. Wir nutzen das Feedback nur, um die App z
 spätestens nach 12 Monaten. Rechtsgrundlage: Art. 6 Abs. 1 lit. a DSGVO (Einwilligung durch Abschicken). Da wir
 dich nicht identifizieren können, können wir einzelne Einträge nachträglich nicht dir zuordnen.
 
+## 9a. Supplement per Barcode hinzufügen (optional)
+
+Beim Hinzufügen eines Supplements kannst du den Strichcode (EAN/UPC) der Packung mit der Kamera scannen oder die
+Nummer eintippen.
+
+- **Kamera:** Die App fragt beim ersten Scan nach der Kamera-Erlaubnis deines Geräts. Das Kamerabild wird
+  **ausschließlich auf deinem Gerät** ausgewertet; es wird weder gespeichert noch hochgeladen. Weiter verwendet wird
+  nur die erkannte Zahlenfolge.
+- **Nachschlagen:** Die App schickt die Zahlenfolge zusammen mit der zufälligen, anonymen App-Geräte-ID (dieselbe
+  wie in Abschnitt 8; auf dem Gerät erzeugt, keine Hardware- oder Werbe-ID) an unseren Server bei Supabase
+  (Abschnitt 11). Der Server sucht zuerst in unserer eigenen Zuordnungstabelle (Strichcode → Eintrag aus der
+  Kolbi-Bibliothek, ggf. Produktname und Menge pro Portion) und fragt sonst **Open Food Facts** ab (siehe unten).
+  Die Geräte-ID wird dabei nur als Einweg-Prüfsumme (Hash) für eine Missbrauchsbremse verwendet; diese Zähler
+  werden nach höchstens 2 Tagen gelöscht.
+- **Open Food Facts:** Open Food Facts ist eine offene Produktdatenbank (Open Food Facts, gemeinnütziger Verein,
+  Frankreich). Die Abfrage stellt **unser Server**, nicht dein Gerät; Open Food Facts erhält nur die Zahlenfolge –
+  keine Geräte-ID und nicht deine IP-Adresse. Die Antwort (Produktname, Marke, Zutaten, Kategorien, Nährstoffangaben)
+  speichern wir bis zu 30 Tage zwischen, um die Datenbank zu schonen. In der App zeigen wir nur Name und Marke;
+  Werbe- oder Gesundheitsaussagen aus Open Food Facts übernehmen wir nicht. Die Daten stehen unter der Open Database
+  License (ODbL); die App weist im Ergebnis darauf hin („Daten teilweise von Open Food Facts (ODbL)“).
+- **Zuordnung teilen (abschaltbar):** Wählst du nach dem Scan einen Eintrag aus der Bibliothek, schickt die App –
+  solange der Haken „Zuordnung anonym teilen“ gesetzt ist – nur **Strichcode + gewählte Bibliotheks-ID(s)**. Wir
+  speichern dazu eine Prüfsumme aus Strichcode und Geräte-ID, damit jedes Gerät pro Produkt nur einmal zählt; weil sie
+  für jeden Strichcode anders ausfällt, lassen sich Meldungen zu verschiedenen Produkten nicht demselben Gerät
+  zuordnen. Kein Freitext, kein Name, keine Einnahme- oder Gesundheitsdaten. Eine Zuordnung gilt erst als bestätigt,
+  wenn mindestens zwei Geräte übereinstimmend gemeldet haben; bis dahin sehen andere sie nur als Vorschlag
+  („von anderen Nutzern zugeordnet“). Bestätigte Zuordnungen (Strichcode, Bibliotheks-ID, Produktname aus Open Food
+  Facts) enthalten keinen Personenbezug.
+
+Was du am Ende hinzufügst, bleibt wie alle Einträge nur auf deinem Gerät (Abschnitt 2). Rechtsgrundlage:
+Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse, Supplements schnell und richtig zu erkennen und die Funktion vor
+Missbrauch zu schützen). Ohne Scan funktioniert die App unverändert; das Teilen der Zuordnung kannst du vor jedem
+Hinzufügen abwählen, die Kamera-Erlaubnis jederzeit in den Geräteeinstellungen entziehen.
+
 ## 10. In-App-Käufe (nur Store-Apps)
 
 Käufe von „Lab Pro“ (Abo oder einmaliger Kauf) werden vollständig über Apple bzw. Google abgewickelt; es gelten
@@ -225,9 +261,9 @@ In der Web-App gibt es derzeit keine Käufe. Sollten sie dort angeboten werden, 
 Die Store-Apps können das Bewertungsfenster von Apple bzw. Google anzeigen. Eine Bewertung geht direkt an den Store;
 wir sehen nur, was dort öffentlich erscheint.
 
-## 11. Supabase (Server für die Abschnitte 5–9 einschließlich 8a)
+## 11. Supabase (Server für die Abschnitte 5–9a)
 
-Statistik, Web-Push, Kalender-Abo, Community, Social-Funktionen und Feedback laufen über **Supabase** (Supabase, Inc., USA) als
+Statistik, Web-Push, Kalender-Abo, Community, Social-Funktionen, Feedback und das Nachschlagen von Barcodes laufen über **Supabase** (Supabase, Inc., USA) als
 Auftragsverarbeiter. Die Datenbank liegt in einem Rechenzentrum in **Frankfurt am Main (EU)**. Wie bei jedem
 Internet-Aufruf erreicht der Server technisch deine IP-Adresse; unsere Funktionen speichern sie nicht in den
 genannten Daten. Alle Verbindungen sind per HTTPS verschlüsselt.
@@ -264,6 +300,9 @@ Inhalte gehen, entscheidest du.
 - Community: bis du deine Beiträge löschst.
 - Social-Funktionen: bis du das Social-Konto löschst (dann sofort).
 - Feedback: höchstens 12 Monate.
+- Barcode: Zwischenspeicher von Open Food Facts bis zu 30 Tage (Nicht-gefunden-Einträge 2 Tage); Zähler der
+  Missbrauchsbremse höchstens 2 Tage; Zuordnungen und Meldungen (ohne Personenbezug, siehe Abschnitt 9a) dauerhaft,
+  solange die Funktion besteht.
 - RevenueCat: solange es für die Prüfung deiner Käufe nötig ist.
 - Hosting-Logs bei Vercel: nach den Fristen von Vercel.
 
@@ -273,7 +312,7 @@ Du hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Vera
 sowie das Recht, eine Einwilligung jederzeit mit Wirkung für die Zukunft zu widerrufen.
 
 **Widerspruchsrecht:** Soweit wir Daten auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO verarbeiten (Abschnitte 4, 5,
-8a, 10, 12), kannst du aus Gründen, die sich aus deiner besonderen Situation ergeben, jederzeit widersprechen (Art. 21
+8a, 9a, 10, 12), kannst du aus Gründen, die sich aus deiner besonderen Situation ergeben, jederzeit widersprechen (Art. 21
 DSGVO). Bei der Statistik genügt es, sie in den Einstellungen abzuschalten.
 
 Da wir die Server-Daten keiner Person zuordnen können, nutze bitte die Lösch- und Ausschalt-Funktionen in der App
@@ -286,4 +325,5 @@ Funktionen. Es findet keine automatisierte Entscheidungsfindung oder Profilbildu
 ## 16. Keine Weitergabe, kein Tracking
 
 Wir verkaufen keine Daten, nutzen keine Werbe-Tracker und keine Cookies zu Werbezwecken. Dienstleister (Vercel,
-Supabase, RevenueCat) verarbeiten Daten nur in unserem Auftrag.
+Supabase, RevenueCat) verarbeiten Daten nur in unserem Auftrag. Open Food Facts erhält von unserem Server nur
+gescannte Strichcode-Nummern (Abschnitt 9a).

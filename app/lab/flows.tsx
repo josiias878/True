@@ -16,6 +16,7 @@ import { Btn, Capsule, Card, FaceRow, Label, Segmented, Stars, SuppIcon, TagChip
 import { suggestScores } from "@/lib/labLearn"
 import { KolbiTip, MASCOT_NAME, Mascot } from "./mascot"
 import { InstallHint } from "./install"
+import { ScanSheet } from "./scan"
 import type { Mood } from "@/lib/labCoach"
 import { t, dec, clock } from "@/lib/labI18n"
 
@@ -35,6 +36,7 @@ export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd,
   const [crowd, setCrowd] = useState<Record<string, { n: number; keepPct: number | null }>>({})
   useEffect(() => { let on = true; fetchOverview().then(v => { if (on && v?.libs) setCrowd(v.libs) }); return () => { on = false } }, [])
   const [paste, setPaste] = useState("")
+  const [scan, setScan] = useState(false)
   const sel = new Set(selected.map(s => s.lib ?? s.id))
   const ql = q.trim().toLowerCase()
   const parsed = useMemo(() => parseSuppList(paste), [paste])
@@ -61,9 +63,11 @@ export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd,
 
   return (
     <div>
-      <div style={{ marginBottom: 14 }}>
+      <div style={{ marginBottom: 10 }}>
         <Segmented value={mode} onChange={setMode} options={[{ id: "tap", label: t("👆 Antippen") }, { id: "paste", label: t("📋 Liste einfügen") }]} />
       </div>
+      <Btn variant="soft" full onClick={() => setScan(true)} style={{ padding: "11px 16px", fontSize: "0.88rem", marginBottom: 14 }}>{t("📷 Scannen")} <span style={{ fontWeight: 600, color: "var(--text-dim)" }}>{t("· Strichcode der Packung")}</span></Btn>
+      {scan && <ScanSheet owned={sel} onClose={() => setScan(false)} onAdd={items => { onPasteAdd(items); const l = items[0]?.lib; if (l) setLastAdded(l); setMode("tap") }} />}
 
       {mode === "paste" ? (
         <div className="lab-rise">

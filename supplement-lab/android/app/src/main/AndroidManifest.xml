@@ -44,6 +44,11 @@
     <!-- Erinnerungen (lokale Benachrichtigungen): ab Android 13 fragt die App einmal nach Erlaubnis.
          Kommt auch über @capacitor/local-notifications, hier zur Klarheit ausdrücklich. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Barcode-Scan (Supplement hinzufügen): Kamera im WebView über getUserMedia. Capacitor fragt beim ersten Scan
+         zur Laufzeit nach. Bild bleibt auf dem Gerät, nur die Zahl wird nachgeschlagen. Kamera ist optional
+         (required="false"), damit Geräte ohne Kamera die App weiter installieren können. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <!-- Bewusst ENTFERNT (Merge-Regel, die Bibliotheken bringen sie sonst mit):
          · SCHEDULE_EXACT_ALARM (@capacitor/local-notifications): Erinnerungen laufen ungenau

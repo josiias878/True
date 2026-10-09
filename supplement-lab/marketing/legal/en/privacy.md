@@ -34,12 +34,13 @@ Data is sent to a server only in these cases:
 - **on by default, can be turned off at any time:** the anonymous usage stats without a device ID (section 5);
 - **only if you use or switch on the feature yourself:** push reminders in the web app (section 6), calendar
   subscription (section 7), community (section 8, with explicit consent), social features (section 8a, with
-  explicit consent) and feedback (section 9).
+  explicit consent), feedback (section 9) and adding a supplement by barcode (section 9a).
 
 **Not included:** version 1.0 does not read any data from Apple Health or Google Health Connect. If such a connection
 is offered later, we will update this policy beforehand; it would only become active after your explicit consent in
 the app and in your device’s system settings. There is also no advertising, no advertising ID, no advertising or
-tracking SDKs, no location data and no access to contacts, camera, microphone or your calendar.
+tracking SDKs, no location data and no access to contacts, microphone or your calendar. The app only uses the camera
+when you scan a barcode yourself (section 9a); the camera image never leaves your device.
 
 ## 3. Storage on your device (Section 25 TDDDG)
 
@@ -194,6 +195,36 @@ personal health data. We use the feedback only to improve the app and delete it 
 basis: Art. 6(1)(a) GDPR (consent by sending). Because we cannot identify you, we cannot link individual entries to
 you afterwards.
 
+## 9a. Adding a supplement by barcode (optional)
+
+When adding a supplement, you can scan the barcode (EAN/UPC) on the pack with your camera or type in the number.
+
+- **Camera:** the app asks for your device’s camera permission on the first scan. The camera image is processed
+  **only on your device**; it is neither stored nor uploaded. Only the recognised number is used further.
+- **Lookup:** the app sends the number together with the random, anonymous app device ID (the same as in section 8;
+  generated on the device, not a hardware or advertising ID) to our server at Supabase (section 11). The server
+  first checks our own mapping table (barcode → entry from the Kolbi library, possibly product name and amount per
+  serving) and otherwise queries **Open Food Facts** (see below). The device ID is only used as a one-way checksum
+  (hash) for abuse protection; these counters are deleted after at most 2 days.
+- **Open Food Facts:** Open Food Facts is an open product database (Open Food Facts, non-profit association, France).
+  The request is made by **our server**, not your device; Open Food Facts only receives the number – no device ID and
+  not your IP address. We cache the answer (product name, brand, ingredients, categories, nutrient details) for up to
+  30 days to spare the database. In the app we only show the name and brand; we do not take over advertising or
+  health statements from Open Food Facts. The data is licensed under the Open Database License (ODbL); the app says
+  so in the result (“Data partly from Open Food Facts (ODbL)”).
+- **Sharing the match (can be switched off):** if you pick an entry from the library after a scan, the app sends –
+  as long as “Share the match anonymously” is ticked – only **barcode + chosen library ID(s)**. We store a checksum
+  of barcode and device ID so that each device counts only once per product; because it is different for every
+  barcode, reports on different products cannot be linked to the same device. No free text, no name, no intake or
+  health data. A match only counts as confirmed once at least two devices have reported the same; until then, others
+  only see it as a suggestion (“matched by other users”). Confirmed matches (barcode, library ID, product name from
+  Open Food Facts) contain no personal reference.
+
+Whatever you add in the end stays on your device like all entries (section 2). Legal basis: Art. 6(1)(f) GDPR
+(legitimate interest in recognising supplements quickly and correctly and protecting the feature from abuse). The app
+works the same without scanning; you can untick sharing before each add and revoke the camera permission at any
+time in your device settings.
+
 ## 10. In-app purchases (store apps only)
 
 Purchases of “Lab Pro” (subscription or one-time purchase) are handled entirely by Apple or Google; their privacy
@@ -213,9 +244,9 @@ There are currently no purchases in the web app. If they are offered there, we w
 The store apps may show Apple’s or Google’s rating dialog. A rating goes directly to the store; we only see what is
 publicly shown there.
 
-## 11. Supabase (server for sections 5–9 including 8a)
+## 11. Supabase (server for sections 5–9a)
 
-Stats, web push, calendar subscription, community, social features and feedback run on **Supabase** (Supabase, Inc., USA) as a
+Stats, web push, calendar subscription, community, social features, feedback and barcode lookups run on **Supabase** (Supabase, Inc., USA) as a
 processor. The database is located in a data centre in **Frankfurt am Main (EU)**. As with any internet request, the
 server technically receives your IP address; our functions do not store it in the data described. All connections
 are encrypted via HTTPS.
@@ -249,6 +280,8 @@ If you share a result card or an invitation, the app uses your device’s share 
 - Community: until you delete your contributions.
 - Social features: until you delete your social account (then immediately).
 - Feedback: at most 12 months.
+- Barcode: Open Food Facts cache up to 30 days (not-found entries 2 days); abuse-protection counters at most 2 days;
+  matches and reports (no personal reference, see section 9a) permanently, as long as the feature exists.
 - RevenueCat: as long as needed to verify your purchases.
 - Hosting logs at Vercel: according to Vercel’s retention periods.
 
@@ -257,7 +290,7 @@ If you share a result card or an invitation, the app uses your device’s share 
 You have the right of access, rectification, erasure, restriction of processing and data portability, as well as the
 right to withdraw consent at any time with effect for the future.
 
-**Right to object:** insofar as we process data on the basis of Art. 6(1)(f) GDPR (sections 4, 5, 8a, 10, 12), you can
+**Right to object:** insofar as we process data on the basis of Art. 6(1)(f) GDPR (sections 4, 5, 8a, 9a, 10, 12), you can
 object at any time on grounds relating to your particular situation (Art. 21 GDPR). For the stats, simply turn them
 off in the settings.
 
@@ -271,4 +304,5 @@ There is no automated decision-making or profiling.
 ## 16. No selling, no tracking
 
 We don’t sell any data, and we don’t use advertising trackers or cookies for advertising purposes. Service providers
-(Vercel, Supabase, RevenueCat) process data only on our behalf.
+(Vercel, Supabase, RevenueCat) process data only on our behalf. Open Food Facts only receives scanned barcode
+numbers from our server (section 9a).

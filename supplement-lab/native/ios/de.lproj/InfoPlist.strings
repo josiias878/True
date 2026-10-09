@@ -5,3 +5,6 @@
 
 /* Nur nötig, wenn das Apple-Health-Plugin (capacitor-supp-health) aktiv ist */
 "NSHealthShareUsageDescription" = "Kolbi liest nur deine Schlafdauer und HRV aus Apple Health, um sie neben deinen Check-ins anzuzeigen. Die Werte bleiben auf deinem Gerät und werden nie hochgeladen.";
+
+/* Kamera: nur zum Lesen des Strichcodes (Supplement per Barcode hinzufügen) */
+"NSCameraUsageDescription" = "Kolbi nutzt die Kamera nur, um den Strichcode einer Supplement-Packung zu lesen. Das Bild bleibt auf deinem Gerät – nachgeschlagen wird nur die Nummer.";

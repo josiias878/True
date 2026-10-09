@@ -2,3 +2,6 @@
 
 /* Name below the app icon */
 "CFBundleDisplayName" = "Kolbi";
+
+/* Camera: only to read the barcode (add a supplement by barcode) */
+"NSCameraUsageDescription" = "Kolbi uses the camera only to read the barcode on a supplement pack. The image stays on your device; only the number is looked up.";

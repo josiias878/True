@@ -20,6 +20,8 @@
     "@revenuecat/purchases-capacitor": "^13.7.0",
     "@revenuecat/purchases-js": "^1.67.1",
     "@vercel/analytics": "^1.4.1",
+    "@zxing/browser": "0.2.0",
+    "@zxing/library": "0.22.0",
     "capacitor-supp-health": "file:./packages/capacitor-supp-health",
     "react": "19.2.4",
     "react-dom": "19.2.4"

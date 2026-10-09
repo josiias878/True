@@ -15,7 +15,8 @@ export interface CommunityStats {
   dims?: Record<string, number>; sides?: Record<string, number>; avgDays?: number
 }
 
-function device() {
+/** Zufällige anonyme Geräte-ID (nur lokal erzeugt, keine Hardware-ID) – auch für lib/labBarcode.ts. */
+export function device() {
   try {
     let d = localStorage.getItem(DEVICE_KEY)
     if (!d || !/^[a-f0-9]{32}$/.test(d)) {

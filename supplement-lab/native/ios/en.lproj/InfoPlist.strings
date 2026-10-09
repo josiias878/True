@@ -5,3 +5,6 @@
 
 /* Only needed if the Apple Health plugin (capacitor-supp-health) is enabled */
 "NSHealthShareUsageDescription" = "Kolbi only reads your sleep duration and HRV from Apple Health to show them next to your check-ins. The data stays on your device and is never uploaded.";
+
+/* Camera: only to read the barcode (add a supplement by barcode) */
+"NSCameraUsageDescription" = "Kolbi uses the camera only to read the barcode on a supplement pack. The image stays on your device; only the number is looked up.";
