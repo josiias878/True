@@ -1,0 +1,156 @@
+<title>Kolbi Videoarchiv</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: kurzer Kopf mit Credit-Stand, dann zwei Regale (Host · Kolbi) mit hochkant Video-Karten im Raster */
+:root{
+  --bg:#f3f4fb; --surface:#ffffff; --ink:#191a33; --muted:#5d6080; --line:#dfe1ef;
+  --mint:#1f9d76; --mint-soft:#dcf5ec; --gold:#8a5a00; --gold-soft:#fdf0cf; --rose:#b23a5e; --rose-soft:#fbe3ea;
+  --display:"Nunito",ui-rounded,"Segoe UI",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12132a; --surface:#1b1d3a; --ink:#eef0ff; --muted:#a3a7cc; --line:#2c2f55;
+  --mint:#4fe0b0; --mint-soft:#163a35; --gold:#f6c453; --gold-soft:#3a3220; --rose:#ff8fb0; --rose-soft:#3d2234; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12132a; --surface:#1b1d3a; --ink:#eef0ff; --muted:#a3a7cc; --line:#2c2f55;
+  --mint:#4fe0b0; --mint-soft:#163a35; --gold:#f6c453; --gold-soft:#3a3220; --rose:#ff8fb0; --rose-soft:#3d2234; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--display);font-weight:600;font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:28px 56px;display:grid;gap:36px}
+h1{font-size:clamp(28px,5vw,40px);font-weight:900;margin:0;letter-spacing:-.01em;text-wrap:balance}
+h2{font-size:22px;font-weight:900;margin:0;text-wrap:balance}
+.lead{color:var(--muted);margin:6px 0 0;max-width:62ch}
+.head{display:grid;gap:18px}
+.stats{display:flex;flex-wrap:wrap;gap:10px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 14px;display:grid;gap:2px;min-width:0}
+.stat b{font-family:var(--mono);font-size:20px;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.rule{background:var(--gold-soft);color:var(--ink);border-radius:14px;padding:12px 14px;max-width:70ch;font-size:14px}
+.shelf{display:grid;gap:14px}
+.shelf p{margin:0;color:var(--muted);max-width:62ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+video{display:block;width:100%;aspect-ratio:9/16;max-width:100%;background:#0d0e20;object-fit:cover}
+.body{padding:14px;display:grid;gap:10px;min-width:0}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.top h3{margin:0;font-size:17px;font-weight:900;text-wrap:balance}
+.len{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap}
+.pill{justify-self:start;font-size:12px;font-weight:800;border-radius:999px;padding:3px 10px}
+.ok{background:var(--mint-soft);color:var(--mint)}
+.plan{background:var(--gold-soft);color:var(--gold)}
+.test{background:var(--rose-soft);color:var(--rose)}
+.cap{font-size:13.5px;color:var(--ink);white-space:pre-line;margin:0;border-left:3px solid var(--line);padding-left:10px}
+.tags{font-family:var(--mono);font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+button,.btn{font:inherit;font-weight:800;font-size:13px;border-radius:10px;padding:7px 12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;text-decoration:none}
+button:hover,.btn:hover{border-color:var(--mint)}
+button:focus-visible,.btn:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+.tablebox{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line)}
+td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:none;font-weight:900}
+.foot{color:var(--muted);font-size:13px}
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1>Kolbi Videoarchiv</h1>
+      <p class="lead">Alle fertigen Videos für TikTok und Instagram an einem Ort. Video antippen zum Abspielen, Caption kopieren, über „Original öffnen“ aufs Handy speichern.</p>
+    </div>
+    <div class="stats" aria-label="Überblick">
+      <div class="stat"><b>4</b><span>Host-Videos DE</span></div>
+      <div class="stat"><b>3</b><span>Kolbi-Videos</span></div>
+      <div class="stat"><b>316,0</b><span>Credits für Kolbi gesamt</span></div>
+      <div class="stat"><b>9.10.</b><span>Stand</span></div>
+    </div>
+    <div class="rule"><strong>Beim Posten:</strong> Bei Host-Videos in TikTok und Instagram das Häkchen „KI-generiert“ setzen. Immer die Original-Datei hochladen, nie ein von TikTok heruntergeladenes Video.</div>
+  </header>
+
+  <section class="shelf" id="host">
+    <h2>Host-Serie DE</h2>
+    <p>Fester deutscher Host im Podcast-Studio. Aufbau: Hook in Sekunde 1, Vorteil, Verlust am Ende, Schlussbild mit Kolbi.</p>
+    <div class="grid" id="hostGrid"></div>
+  </section>
+
+  <section class="shelf" id="kolbi">
+    <h2>Kolbi-Videos (3D)</h2>
+    <p>Kolbi selbst als Figur, Stimme „Max“. Eingeplant für Woche 1 ab Montag, 12. Oktober.</p>
+    <div class="grid" id="kolbiGrid"></div>
+  </section>
+
+  <section class="shelf" id="test">
+    <h2>Tests &amp; Rohclips</h2>
+    <p>Zum Vergleich aufgehoben, nicht zum Posten.</p>
+    <div class="grid" id="testGrid"></div>
+  </section>
+
+  <section class="shelf" id="credits">
+    <h2>Credits für Kolbi</h2>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th>Datum</th><th>Was</th><th class="n">Credits</th></tr></thead>
+        <tbody>
+          <tr><td>8.10.</td><td>Kolbi „Supplement-Schrank“ + Testclip</td><td class="n">46,1</td></tr>
+          <tr><td>8.10.</td><td>Kolbi „testet“ + „Dein Normal“ + 5 Test-Icons</td><td class="n">52,3</td></tr>
+          <tr><td>8.10.</td><td>3D-Icons für 61 Supplements + Kapsel</td><td class="n">28,5</td></tr>
+          <tr><td>9.10.</td><td>Host-Bilder (4 Kandidaten + 2 Studios)</td><td class="n">3,0</td></tr>
+          <tr><td>9.10.</td><td>Tests: Kling EN 25 · Seedance DE 11,1 · Gemini DE 30</td><td class="n">66,1</td></tr>
+          <tr><td>9.10.</td><td>Host-Serie: Video 1, 3, 5 + Video 1 neu</td><td class="n">120,0</td></tr>
+          <tr><td></td><td>Gesamt</td><td class="n">316,0</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="foot">Schnitt, Untertitel, Soundeffekte und Prüfungen laufen in der Sandbox und kosten 0 Credits.</p>
+  </section>
+</div>
+
+<script>
+const V=[
+ {g:"hostGrid",f:"host-de-01-welches-wirkt",t:"Welches wirkt bei DIR?",len:"10 s",st:["ok","Bereit"],
+  cap:"Mehrere Supplements im Schrank – und keine Ahnung, welches bei dir wirkt? Mit Kolbi testest du eins nach dem anderen, mit deinen eigenen Werten. Jedes Supplement, das bei dir nicht wirkt, kostet dich jeden Monat Geld. Gratis im Browser, Link in Bio.",
+  tags:"#supplements #selbsttest #nahrungsergänzung #biohacking #kolbi"},
+ {g:"hostGrid",f:"host-de-03-stack-kosten",t:"Was kostet dein Stack?",len:"10 s",st:["ok","Bereit"],
+  cap:"Trag Preis und Vorrat ein – Kolbi rechnet, was dein Stack im Monat kostet, und stellt es neben dein eigenes Testergebnis. Rechenbeispiel: 3 Dosen à 20 € = 60 € im Monat. Du entscheidest. Gratis, Link in Bio.",
+  tags:"#supplements #geldsparen #nahrungsergänzung #stack #kolbi"},
+ {g:"hostGrid",f:"host-de-05-dein-normal",t:"Erst dein Normal",len:"10 s",st:["ok","Bereit"],
+  cap:"Ohne dein Normal weißt du nicht, womit du vergleichst. Kolbi hält erst ein paar Tage deine normalen Werte fest – dann testest du. Sonst zahlst du für ein Bauchgefühl. Gratis im Browser, Link in Bio.",
+  tags:"#selbsttest #baseline #supplements #biohacking #kolbi"},
+ {g:"hostGrid",f:"host-de-00-fuenf-supplements",t:"Fünf Supplements",len:"10 s",st:["plan","Erster Schnitt · altes Schlussbild"],
+  cap:"Du nimmst fünf Supplements – aber weißt du eigentlich, welches davon bei dir wirklich was bringt? Teste eins nach dem anderen. Mit deinen eigenen Daten. Gratis, Link in Bio.",
+  tags:"#supplements #selbsttest #kolbi"},
+ {g:"kolbiGrid",f:"kolbi-01-schrank",t:"Supplement-Schrank",len:"19 s",st:["plan","Geplant · Mo 12.10. 18:30"],
+  cap:"Dein Supplement-Schrank, wenn du ehrlich bist 🫙🫙🫙\nMal grob überschlagen: Was gibst du im Monat dafür aus? Und welches davon merkst du BEI DIR wirklich?\nKolbi testet mit dir eins nach dem anderen – und du behältst nur, was bei dir einen Unterschied macht 🧪\nSchreib mir: Wie viele Dosen stehen bei dir? 👇\nGratis-Beta, Link in Bio",
+  tags:"Hashtags: siehe Wochen-Mappe 1"},
+ {g:"kolbiGrid",f:"kolbi-02-testet",t:"Kolbi testet",len:"16 s",st:["plan","Geplant · Mi 14.10. 18:30"],
+  cap:"Ein Supplement. Zwei Wochen. Deine eigenen Daten 🧪\nStatt zu raten, was das Internet sagt: Du testest eins nach dem anderen, tippst abends 1 Minute ein, wie's dir geht – und Kolbi vergleicht mit deinem Normal. Am Ende: behalten, vielleicht oder raus.\nWelches Supplement würdest du als erstes testen? 👇\nLink in Bio",
+  tags:"Hashtags: siehe Wochen-Mappe 1"},
+ {g:"kolbiGrid",f:"kolbi-03-dein-normal",t:"Kolbi erklärt: Dein Normal",len:"20 s",st:["plan","Geplant · Fr 16.10. 18:30"],
+  cap:"Warum du erst dein Normal brauchst 📊\nWenn du nicht weißt, wie du dich OHNE fühlst, kannst du nicht sehen, ob sich MIT etwas ändert. Deshalb startet Kolbi mit ein paar Reset-Tagen – das ist deine Vergleichslinie. Die Kurve im Video ist ein Beispiel, deine sieht anders aus.\nHast du schon mal ein Supplement ohne Vergleich angefangen? 🙋\nLink in Bio",
+  tags:"Hashtags: siehe Wochen-Mappe 1"},
+ {g:"testGrid",f:"host-en-test-rohclip",t:"Host EN (Rohclip)",len:"10 s",st:["test","Test · für späteren EN-Kanal"],
+  cap:"Englischer Testclip mit der Frau im LED-Studio. Noch ohne Schnitt, Untertitel und Schlussbild.",tags:""}
+];
+const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.textContent=h;return e};
+for(const v of V){
+  const c=el("article","card");
+  const vid=el("video");vid.controls=true;vid.preload="none";vid.playsInline=true;
+  vid.poster="videos/"+v.f+".jpg";vid.src="videos/"+v.f+".mp4";vid.setAttribute("aria-label",v.t);
+  c.append(vid);
+  const b=el("div","body");
+  const top=el("div","top");top.append(el("h3",null,v.t),el("span","len",v.len));b.append(top);
+  b.append(el("span","pill "+v.st[0],v.st[1]));
+  b.append(el("p","cap",v.cap));
+  if(v.tags)b.append(el("div","tags",v.tags));
+  const row=el("div","row");
+  const cp=el("button",null,"Caption kopieren");
+  cp.addEventListener("click",()=>{const txt=v.cap+(v.tags&&v.tags.startsWith("#")?"\n\n"+v.tags:"");
+    const done=()=>{cp.textContent="Kopiert";setTimeout(()=>cp.textContent="Caption kopieren",1600)};
+    try{navigator.clipboard.writeText(txt).then(done,()=>sel(c))}catch(e){sel(c)}});
+  const op=el("a","btn","Original öffnen");op.href="videos/"+v.f+".mp4";op.target="_blank";op.rel="noopener";
+  row.append(cp,op);b.append(row);c.append(b);
+  document.getElementById(v.g).append(c);
+}
+function sel(card){const p=card.querySelector(".cap");const r=document.createRange();r.selectNodeContents(p);const s=getSelection();s.removeAllRanges();s.addRange(r)}
+</script>
