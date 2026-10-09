@@ -48,6 +48,9 @@ import { removeMyResults, shareResult } from "@/lib/labCommunity"
 import { calendarNames, calendarOn, calendarUrls, disableCalendar, enableCalendar, setCalendarNames, syncCalendar } from "@/lib/labCalendar"
 import { CostCard, InteractionCard, PatternStrip, WeekRecap, recapAvailable, recapWeekEnd } from "./insights"
 import { interactionChecks } from "@/lib/labInteractions"
+import { defaultPortion, portionLabel, recordDefaultAmount, setAmount, setPortion } from "@/lib/labDose"
+import { PortionPick } from "./dose"
+import { quickScores } from "@/lib/labLearn"
 import { TAG_EMOJI, findPatterns } from "@/lib/labPatterns"
 import { pathStops, type Stop } from "@/lib/labPath"
 import { t, dec, clock, isEn, LANG, setLang, canSwitchLang } from "@/lib/labI18n"
@@ -103,15 +106,16 @@ const STATUS_STYLE: Record<SuppStatusKey, { bg: string; fg: string }> = {
 }
 
 function quickCheckin(s: LabState, date: string, v: number): CheckIn {
-  const scores: Scores = {}
-  eveningDims(s, date).forEach(d => { scores[d.id] = v })
-  return { date, scores, tags: [], note: "", quick: true, at: date === todayIso() ? nowTime() : undefined }
+  // Schnellantwort: Sterne aus dem Gelernten (≥3 „genauer“ mit derselben Antwort), sonst alle = Gesicht
+  const { scores, est } = quickScores(s, v, eveningDims(s, date).map(d => d.id))
+  return { date, scores, tags: [], note: "", quick: true, face: v, ...(est ? { est } : {}), at: date === todayIso() ? nowTime() : undefined }
 }
 
 function markTaken(p: LabState, date: string, id: string) {
   p.took[date] = [...new Set([...(p.took[date] ?? []), id])]
   setSkipped(p, date, id, false) // doch genommen → „Heute nicht“ aufheben
   if (date === todayIso()) p.tookAt[date] = { ...(p.tookAt[date] ?? {}), [id]: nowTime() }
+  recordDefaultAmount(p, date, id) // Standard-Menge mitspeichern (falls bekannt)
 }
 
 function initialTab(): Tab {
@@ -479,7 +483,7 @@ export default function LabApp() {
   const toggleTook = useCallback((id: string) => {
     const on = (s.took[today] ?? []).includes(id)
     update(p => {
-      if (on) { p.took[today] = (p.took[today] ?? []).filter(x => x !== id); if (p.tookAt[today]) delete p.tookAt[today][id] }
+      if (on) { p.took[today] = (p.took[today] ?? []).filter(x => x !== id); if (p.tookAt[today]) delete p.tookAt[today][id]; setAmount(p, today, id, null) }
       else markTaken(p, today, id)
       return p
     }, on ? undefined : { amount: 5, label: t("Eingenommen") })
@@ -675,6 +679,8 @@ export default function LabApp() {
             onUnlock={() => { setUnlockedFor(today); setRound(roundSteps(s, today, now, false)) }}
             onCheckin={setCheckinDate} onPhase={setPhaseSheet} goTab={goTab} onVorrat={() => { setLab(null); setLaborView("vorrat"); goTab("labor") }}
             onExtra={addExtraV} onExtraRemove={removeExtraV} onAddMany={() => setAddMany(true)}
+            onAmount={(id, p) => update(q => { setAmount(q, today, id, p); return q })}
+            onPortion={(id, p) => { update(q => { setPortion(q, id, p, today); return q }); setFlash(t("✓ Gemerkt: {amount}", { amount: portionLabel(p) })) }}
             onOpenSupp={id => { setLaborView(null); setLab({ suppId: id, tab: "ueberblick" }); goTab("labor") }}
             onOpenLab={libId => { const x = s.supps.find(q => q.lib === libId); setLaborView(null); setLab({ suppId: x?.id, libId, tab: "andere" }); goTab("labor") }} />}
 
@@ -1052,6 +1058,9 @@ function SuppSheet({ s, id, today, adv, onClose, update, onAction, onVerdict, on
           <input value={x.dose} placeholder={t("laut Packung")} onChange={e => { const v = e.target.value; update(p => { p.supps = p.supps.map(q => q.id === id ? { ...q, dose: v } : q); return p }) }}
             style={{ width: 150, padding: "8px 10px", borderRadius: 10, fontSize: "0.85rem" }} />
         </label>
+        <div style={{ marginTop: 10 }}>
+          <PortionPick x={x} value={defaultPortion(x)} onPick={p => update(q => setPortion(q, id, p, today))} label={t("Menge pro Einnahme – wird beim Abhaken mitgespeichert (optional).")} />
+        </div>
       </Card>
 
       {(() => {

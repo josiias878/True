@@ -9,6 +9,7 @@ import {
 import { morningAnswered } from "./labDay"
 import { partnerTips } from "./labKnowledge"
 import { LOW_DAYS, buyInfo, inUse, stockInfo } from "./labStock"
+import { recordDefaultAmount } from "./labDose"
 import { t, clock } from "./labI18n"
 
 const APP_URL = STORE_MODE ? "" : "https://get-true.de/lab"
@@ -331,6 +332,7 @@ export function applyTaken(s: LabState, a: NotifTaken): string[] {
   s.took[a.date] = [...new Set([...(s.took[a.date] ?? []), ...ids])]
   ids.forEach(id => setSkipped(s, a.date, id, false))
   if (a.at) s.tookAt[a.date] = { ...Object.fromEntries(ids.map(id => [id, a.at!])), ...(s.tookAt[a.date] ?? {}) }
+  ids.forEach(id => recordDefaultAmount(s, a.date, id)) // Standard-Menge mitspeichern (wie Abhaken in der App)
   return ids
 }
 

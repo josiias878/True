@@ -4,8 +4,8 @@
 import React, { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import {
-  FACES, STORE_MODE, addDays, dayRef, nightRef, checkinOpensMin, daySum, fmtCountdown, fromMin, intakeOn, streak, extrasOn, skippedOn,
-  type LabState, type PhaseWindow,
+  FACES, FACE_LABELS, STORE_MODE, addDays, dayRef, nightRef, checkinOpensMin, daySum, fmtCountdown, fromMin, intakeOn, streak, extrasOn, skippedOn,
+  type LabState, type PhaseWindow, type Portion,
 } from "@/lib/supplementLab"
 import { sidesOf, type ExtraInput } from "@/lib/labDay"
 import type { CoachAction, CoachMsg } from "@/lib/labCoach"
@@ -91,7 +91,7 @@ function greeting(now: Date) {
 
 type Main = "notStarted" | "reveal" | "morning" | "take" | "checkin" | "locked" | "done"
 
-export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, recap, onRecap, pushHint, onPush, onAction, onRound, onTakeAll, onTake, onSkip, onMorning, onUnlock, onCheckin, onPhase, goTab, onVorrat, onExtra, onExtraRemove, onOpenSupp, onOpenLab, onAddMany }: {
+export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, recap, onRecap, pushHint, onPush, onAction, onRound, onTakeAll, onTake, onSkip, onMorning, onUnlock, onCheckin, onPhase, goTab, onVorrat, onExtra, onExtraRemove, onOpenSupp, onOpenLab, onAddMany, onAmount, onPortion }: {
   s: LabState; wins: PhaseWindow[]; today: string; now: Date; pending: RoundStep[]; checkinLocked: boolean; tips: CoachMsg[]
   /** Wochenrückblick bereit und noch nicht gesehen → schmale Zeile unter der Hauptsache */
   recap: { ready: boolean; end: string }; onRecap: () => void
@@ -103,6 +103,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
   onPhase: (w: PhaseWindow) => void; goTab: (t: string) => void; onVorrat: () => void
   onExtra: (date: string, item: ExtraInput, label: string) => void; onExtraRemove: (date: string, id: string) => void
   onOpenSupp: (id: string) => void; onOpenLab: (libId: string) => void; onAddMany: () => void
+  onAmount: (id: string, p: Portion) => void; onPortion: (id: string, p: Portion) => void
 }) {
   const [mHold, setMHold] = useState(false)
   const [sheet, setSheet] = useState<null | "day" | "normal">(null)
@@ -264,11 +265,12 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
         </>}
       </div>
 
+      {!notStarted && <RefineRow s={s} today={today} hideToday={main === "done"} onCheckin={onCheckin} />}
       {showRecap && <RecapTeaser slim end={recap.end} onOpen={onRecap} />}
       {showTip && <KolbiSays msg={top} more={tips.length - 1} onAction={onAction} onMore={() => goTab("kolbi")} tail={!showRecap} />}
 
       {/* ── Feste Bereiche: Stack · Kosten & Coach · Zustand · Weg · Community ── */}
-      <StackSection s={s} today={today} onTake={onTake} onSkip={onSkip} onExtra={onExtra} onExtraRemove={onExtraRemove} onOpenSupp={onOpenSupp} onVorrat={onVorrat} onAddMany={onAddMany} goTab={goTab} />
+      <StackSection s={s} today={today} onTake={onTake} onSkip={onSkip} onExtra={onExtra} onExtraRemove={onExtraRemove} onOpenSupp={onOpenSupp} onVorrat={onVorrat} onAddMany={onAddMany} goTab={goTab} onAmount={onAmount} onPortion={onPortion} />
       <CostSection s={s} today={today} onVorrat={onVorrat} onAction={onAction} />
       <StateSection s={s} today={today} onOpen={() => goTab("reise")} />
       <WaySection s={s} today={today} stops={road.stops} onOpen={() => setSheet(w?.kind === "baseline" && !notStarted ? "normal" : "day")} />
@@ -288,6 +290,32 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
         </Sheet>
       )}
     </div>
+  )
+}
+
+/**
+ * „genauer“ jederzeit: Schnellantwort von heute (wenn die Hauptkarte etwas anderes zeigt) bzw. von gestern
+ * (Nachtrag-Zeitraum, solange heute noch kein Check-in da ist) mit 1 Tipp in Sterne je Bereich öffnen.
+ */
+function RefineRow({ s, today, hideToday, onCheckin }: { s: LabState; today: string; hideToday: boolean; onCheckin: (d: string) => void }) {
+  const y = addDays(today, -1)
+  const c = s.checkins[today]
+  const date = c ? (c.quick && !hideToday ? today : null) : s.checkins[y]?.quick ? y : null
+  if (!date) return null
+  const q = s.checkins[date]
+  const face = q.face ?? Math.round(daySum(q))
+  return (
+    <button className="lab-press" onClick={() => { haptic(); onCheckin(date) }} style={{
+      display: "flex", alignItems: "center", gap: 10, width: "100%", minHeight: 48, padding: "8px 14px", borderRadius: 16,
+      border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", textAlign: "left",
+    }}>
+      <span aria-hidden style={{ fontSize: "1.25rem" }}>{FACES[face - 1]}</span>
+      <span style={{ flex: 1, minWidth: 0, fontSize: "0.84rem", fontWeight: 800 }}>
+        {date === today ? t("Heute: {label}", { label: FACE_LABELS[face - 1] }) : t("Gestern: {label}", { label: FACE_LABELS[face - 1] })}
+        <span style={{ display: "block", fontSize: "0.74rem", fontWeight: 700, color: "var(--text-dim)" }}>{q.est ? t("Sterne von Kolbi vorgeschlagen – passt?") : t("Sterne je Bereich nachtragen")}</span>
+      </span>
+      <span style={{ color: "var(--accent-ink)", fontWeight: 900, fontSize: "0.84rem", whiteSpace: "nowrap" }}>{t("genauer")} ›</span>
+    </button>
   )
 }
 

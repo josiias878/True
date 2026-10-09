@@ -802,7 +802,13 @@ export interface MySupp {
   away?: string
   /** Vorrat: Packung, Tagesmenge, Reichweite (optional). */
   stock?: Stock
+  /** Standard-Menge pro Einnahme (z. B. 1 Kapsel, 2000 IE) – wird beim Abhaken mitgespeichert (lib/labDose.ts). */
+  portion?: Portion
 }
+
+/** Einheit einer Einnahme-Menge: stk = Kapsel/Tablette/Stück. */
+export type PortionUnit = "stk" | "tropfen" | "g" | "mg" | "µg" | "IE" | "ml"
+export interface Portion { n: number; u: PortionUnit }
 
 /** Form der Packung: Kapseln/Tabletten (Stück), Pulver (g), Tropfen (Flasche in ml, Tagesmenge in Tropfen), Flüssig (ml). */
 export type StockForm = "kapseln" | "pulver" | "tropfen" | "fluessig"
@@ -841,6 +847,10 @@ export interface CheckIn {
   at?: string     // Uhrzeit des Check-ins (HH:MM), automatisch
   /** „Ich vermute: …“ je Beschwerde → SuspectOption.key (Supplement-ID aus dem Plan oder "x:<extraKey>"). Fehlt = weiß nicht. */
   suspect?: Record<string, string>
+  /** Schnellantwort (Gesicht 1–5), aus der die Sterne entstanden sind – auch nach „genauer“ gemerkt (Lernen, lib/labLearn.ts). */
+  face?: number
+  /** Sterne von Kolbi aus früheren „genauer“-Bewertungen geschätzt (nicht einzeln vergeben). Gilt nur zusammen mit quick. */
+  est?: boolean
 }
 
 /**
@@ -904,6 +914,7 @@ export interface LabState {
   extra?: Record<string, ExtraIntake[]>    // Datum → spontane Extra-Einnahmen
   daySides?: Record<string, DaySides>      // Datum → Beschwerden, solange es noch keinen Check-in gibt
   skipped?: Record<string, string[]>       // Datum → bewusst ausgelassene Supplement-IDs („Heute nicht“)
+  tookAmt?: Record<string, Record<string, Portion>> // Datum → Supplement → tatsächlich genommene Menge (fehlt = Standard)
 }
 
 export const STORAGE_KEY = "true-supplement-lab-v1"
@@ -970,6 +981,8 @@ export function hydrate(raw: unknown): LabState {
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const okScore = (v: unknown): v is number => typeof v === "number" && v >= 1 && v <= 5
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v)
+const PORTION_UNITS: PortionUnit[] = ["stk", "tropfen", "g", "mg", "µg", "IE", "ml"]
+const okPortion = (v: unknown): v is Portion => isObj(v) && typeof v.n === "number" && v.n > 0 && v.n < 1e6 && PORTION_UNITS.includes(v.u as PortionUnit)
 
 /**
  * Neue optionale Felder (morning, extra, daySides) robust einlesen – kaputte Einträge werden still verworfen,
@@ -1032,6 +1045,21 @@ function sanitizeDayData(s: LabState) {
     }
     s.skipped = out
   }
+  if (s.tookAmt !== undefined) {
+    const out: Record<string, Record<string, Portion>> = {}
+    if (isObj(s.tookAmt)) for (const [d, m] of Object.entries(s.tookAmt)) {
+      if (!DATE_RE.test(d) || !isObj(m)) continue
+      const day: Record<string, Portion> = {}
+      for (const [id, p] of Object.entries(m)) if (okPortion(p)) day[id] = { n: p.n, u: p.u }
+      if (Object.keys(day).length) out[d] = day
+    }
+    s.tookAmt = out
+  }
+  s.supps = s.supps.map(x => x.portion === undefined || okPortion(x.portion) ? x : { ...x, portion: undefined })
+  for (const c of Object.values(s.checkins)) {
+    if (c.face !== undefined && !okScore(c.face)) delete c.face
+    if (c.est !== undefined && (c.est !== true || !c.quick)) delete c.est
+  }
   for (const [d, m] of Object.entries(s.morning ?? {})) {
     const c = s.checkins[d]
     if (c && m.schlaf != null && c.scores.schlaf !== m.schlaf) c.scores = { ...c.scores, schlaf: m.schlaf }
@@ -1062,6 +1090,7 @@ export function setSkipped(s: LabState, date: string, id: string, on: boolean) {
     s.skipped = { ...s.skipped, [date]: [...new Set([...cur, id])] }
     if (s.took[date]?.includes(id)) s.took[date] = s.took[date].filter(x => x !== id)
     if (s.tookAt[date]?.[id]) { const rest = { ...s.tookAt[date] }; delete rest[id]; s.tookAt[date] = rest }
+    if (s.tookAmt?.[date]?.[id]) { const rest = { ...s.tookAmt[date] }; delete rest[id]; s.tookAmt = { ...s.tookAmt, [date]: rest } }
   } else if (cur.includes(id)) {
     const next = { ...s.skipped }
     const left = cur.filter(x => x !== id)

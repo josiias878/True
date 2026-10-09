@@ -6,7 +6,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   FACES, LIB_BY_ID, LIB_SIDES, SIDE_BY_ID, addDays, checkinsIn, daySum, diffDays, extraKey, extrasOn, fmtDate, intakeOn, isHere, libOf,
   meanScore, phaseWindows, skippedOn, streak, suppColor,
-  type LabState, type LibSupp, type MySupp,
+  type LabState, type LibSupp, type MySupp, type Portion,
 } from "@/lib/supplementLab"
 import { caffeineToday, recentExtras, type ExtraInput } from "@/lib/labDay"
 import { costSummary, fmtEuro, monthlyCost } from "@/lib/labStock"
@@ -19,6 +19,8 @@ import type { SocialPost } from "@/lib/labSocialApi"
 import { markSeen, seenNew } from "@/lib/labNew"
 import { t, dec, clock, isEn, LOCALE } from "@/lib/labI18n"
 import { Btn, Sheet, SuppIcon, SuppTitle, haptic } from "./ui"
+import { AmountChips, PortionPick } from "./dose"
+import { amountOn, defaultPortion, portionLabel } from "@/lib/labDose"
 import { ExtraList } from "./day"
 import { NewBadge } from "./newbadge"
 import { Mascot } from "./mascot"
@@ -192,15 +194,19 @@ function SwipeRow({ action, tone, onAction, onSwipe, hint, divider, children }: 
 
 // ── 1 · Mein Stack heute ─────────────────────────────────────────────────────
 
-export function StackSection({ s, today, onTake, onSkip, onExtra, onExtraRemove, onOpenSupp, onVorrat, onAddMany, goTab }: {
+export function StackSection({ s, today, onTake, onSkip, onExtra, onExtraRemove, onOpenSupp, onVorrat, onAddMany, goTab, onAmount, onPortion }: {
   s: LabState; today: string
   onTake: (id: string) => void
+  /** Menge heute ändern (½ · 1× · 2× · +1) bzw. Standard-Menge setzen (setzt die heutige mit, falls abgehakt) */
+  onAmount: (id: string, p: Portion) => void; onPortion: (id: string, p: Portion) => void
   /** „Heute nicht“ setzen (true) oder aufheben (false) */
   onSkip: (id: string, on: boolean, restore?: { at?: string }) => void
   onExtra: (date: string, item: ExtraInput, label: string) => void; onExtraRemove: (date: string, id: string) => void
   onOpenSupp: (id: string) => void; onVorrat: () => void; onAddMany: () => void; goTab: (t: string) => void
 }) {
   const [info, setInfo] = useState<string | null>(null)
+  // Zuletzt abgehakt → darunter die Mengen-Chips (bleiben stehen, bis etwas anderes abgehakt wird)
+  const [amtFor, setAmtFor] = useState<string | null>(null)
   const [undo, setUndo] = useState<{ id: string; name: string; test: boolean; k: number } | null>(null)
   // Kolbi-Hinweis „nach links wischen“: einmalig, bis „Verstanden“ oder die erste Wisch-Geste (lokal gemerkt)
   const [coach, setCoach] = useState(false)
@@ -314,6 +320,7 @@ export function StackSection({ s, today, onTake, onSkip, onExtra, onExtraRemove,
           const on = took.includes(x.id)
           const off = !on && skipList.includes(x.id)
           const at = s.tookAt[today]?.[x.id]
+          const amt = on ? amountOn(s, today, x) : null
           const icon = (
             <span aria-hidden style={{ width: 38, height: 38, borderRadius: 12, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.15rem",
               background: `color-mix(in srgb, ${suppColor(x)} 20%, var(--surface-2))`, filter: off ? "grayscale(1)" : undefined }}><SuppIcon lib={x.lib} emoji={x.emoji} size={32} /></span>
@@ -337,7 +344,8 @@ export function StackSection({ s, today, onTake, onSkip, onExtra, onExtraRemove,
             </SwipeRow>
           )
           return (
-            <SwipeRow key={x.id} divider={i > 0} action={t("Heute nicht")} tone="skip" onAction={() => skip(x)} onSwipe={coachDone} hint={coach && i === 0}>
+            <React.Fragment key={x.id}>
+            <SwipeRow divider={i > 0} action={t("Heute nicht")} tone="skip" onAction={() => skip(x)} onSwipe={coachDone} hint={coach && i === 0}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0" }}>
               <button className="lab-press" onClick={() => { haptic(); seen(); setUndo(null); setInfo(x.id) }} aria-label={t("{name}: wofür, Timing, Nebenwirkungen", { name: x.name })} style={{
                 flex: 1, minWidth: 0, minHeight: 52, display: "flex", alignItems: "center", gap: 10, padding: "4px 0", border: "none", background: "none", color: "var(--text)", textAlign: "left",
@@ -345,20 +353,27 @@ export function StackSection({ s, today, onTake, onSkip, onExtra, onExtraRemove,
                 {icon}
                 <span style={{ minWidth: 0, flex: 1 }}>
                   <span style={{ ...ellipsis, fontWeight: 800, fontSize: "0.94rem" }}>{x.name}</span>
+                  {amt && <span style={{ ...ellipsis, fontSize: "0.76rem", lineHeight: 1.35, fontWeight: 800, color: "var(--accent-ink)" }}>✓ {portionLabel(amt)}</span>}
                   <span style={{ ...(libOf(x)?.claim ? { display: "block" } : { display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }), fontSize: "0.76rem", lineHeight: 1.35, color: "var(--text-dim)", fontWeight: 600 }}>{purposeShort(libOf(x))}</span>
                 </span>
               </button>
               {on ? (
-                <button className="lab-press" aria-pressed onClick={() => { haptic(8); onTake(x.id) }} aria-label={t("{name} genommen – rückgängig", { name: x.name })} style={{
+                <button className="lab-press" aria-pressed onClick={() => { haptic(8); if (amtFor === x.id) setAmtFor(null); onTake(x.id) }} aria-label={t("{name} genommen – rückgängig", { name: x.name })} style={{
                   ...pill, minWidth: 76, padding: "0 12px", border: "none", background: "var(--accent-dim)", color: "var(--accent-ink)", fontVariantNumeric: "tabular-nums",
                 }}>✓{at ? ` ${at}` : ""}</button>
               ) : (
-                <button className="lab-press" aria-pressed={false} onClick={() => { haptic(12); seen(); onTake(x.id) }} style={{
+                <button className="lab-press" aria-pressed={false} onClick={() => { haptic(12); seen(); setAmtFor(x.id); onTake(x.id) }} style={{
                   ...pill, minWidth: 76, padding: "0 14px", border: "1.5px solid var(--border)", background: "var(--surface)", color: "var(--text)",
                 }}>{t("Genommen")}</button>
               )}
             </div>
             </SwipeRow>
+            {on && amtFor === x.id && (
+              <div className="lab-rise" style={{ padding: "2px 0 10px 48px" }}>
+                <AmountChips x={x} amt={s.tookAmt?.[today]?.[x.id] ?? null} onAmount={p => onAmount(x.id, p)} onPortion={p => onPortion(x.id, p)} />
+              </div>
+            )}
+            </React.Fragment>
           )
         })}
       </div>
@@ -408,7 +423,7 @@ export function StackSection({ s, today, onTake, onSkip, onExtra, onExtraRemove,
         <button className="lab-press" onClick={() => { seen(); onAddMany() }} style={{ ...linkBtn, marginTop: 4 }}>{t("＋ Mehrere auf einmal eintragen")}</button>
       </div>
 
-      {open && <SuppInfoSheet s={s} x={open} onClose={() => setInfo(null)} onVorrat={() => { setInfo(null); onVorrat() }} onOpen={() => { setInfo(null); onOpenSupp(open.id) }}
+      {open && <SuppInfoSheet s={s} x={open} today={today} onAmount={p => onAmount(open.id, p)} onPortion={p => onPortion(open.id, p)} onClose={() => setInfo(null)} onVorrat={() => { setInfo(null); onVorrat() }} onOpen={() => { setInfo(null); onOpenSupp(open.id) }}
         skip={rowIds.has(open.id) ? { off: skipList.includes(open.id), test: inTest(open.id), set: on => { setInfo(null); if (on) { haptic(12); skip(open) } else unskip(open) } } : undefined} />}
 
       {undo && (
@@ -440,8 +455,9 @@ function sameText(claim: string | undefined, effect: string) {
 }
 
 /** Detail-Ebene je Supplement: wofür (lang), Timing, Vorsicht, mögliche Nebenwirkungen, Kosten. */
-function SuppInfoSheet({ s, x, onClose, onVorrat, onOpen, skip }: {
-  s: LabState; x: MySupp; onClose: () => void; onVorrat: () => void; onOpen: () => void
+function SuppInfoSheet({ s, x, today, onAmount, onPortion, onClose, onVorrat, onOpen, skip }: {
+  s: LabState; x: MySupp; today: string; onAmount: (p: Portion) => void; onPortion: (p: Portion) => void
+  onClose: () => void; onVorrat: () => void; onOpen: () => void
   /** Steht heute im Stack: „Heute nicht genommen“ (off = schon ausgelassen, test = läuft gerade sein Test) */
   skip?: { off: boolean; test: boolean; set: (on: boolean) => void }
 }) {
@@ -452,6 +468,14 @@ function SuppInfoSheet({ s, x, onClose, onVorrat, onOpen, skip }: {
   const body: React.CSSProperties = { fontSize: "0.9rem", lineHeight: 1.5 }
   return (
     <Sheet open onClose={onClose} title={<SuppTitle lib={x.lib} emoji={x.emoji} name={x.name} />}>
+      {/* Menge: heute genommen → ½ · 1× · 2× · +1; sonst die Standard-Menge (optional) */}
+      {(s.took[today] ?? []).includes(x.id) ? <>
+        {head(t("HEUTE GENOMMEN"))}
+        <AmountChips x={x} amt={s.tookAmt?.[today]?.[x.id] ?? null} onAmount={onAmount} onPortion={onPortion} />
+      </> : <>
+        {head(t("MENGE PRO EINNAHME"))}
+        <PortionPick x={x} value={defaultPortion(x)} onPick={onPortion} label={t("Wird beim Abhaken mitgespeichert – optional.")} />
+      </>}
       {head(t("WOFÜR"))}
       {lib ? <>
         {lib.claim && <div style={{ ...body, fontWeight: 800 }}>{lib.claim}</div>}

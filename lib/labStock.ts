@@ -7,6 +7,7 @@ import {
   type LabState, type LibSupp, type MySupp, type Stock, type StockForm,
 } from "./supplementLab"
 import { t, euro, isEn, LOCALE } from "./labI18n"
+import { stockUse } from "./labDose"
 
 // „Tropfen“ allein ist im Wörterbuch schon als Einzahl belegt („pro Tropfen“ → drop), daher hier direkt.
 export const FORMS: Record<StockForm, {
@@ -36,13 +37,18 @@ export function doseLabel(st: Pick<Stock, "form" | "perDay">) {
   return `${n} ml`
 }
 
-/** Einnahmetage seit dem Eintragen (ab dem Folgetag; geplant, abgehakt oder als Extra-Einnahme eingetragen). */
-function usedSince(s: LabState, id: string, from: string) {
+/**
+ * Verbrauch seit dem Eintragen (ab dem Folgetag) in Packungs-Einheiten: je Einnahmetag (geplant, abgehakt oder als
+ * Extra-Einnahme eingetragen) die übliche Menge – an abgehakten Tagen mit eingetragener Menge die tatsächliche (labDose).
+ */
+function usedSince(s: LabState, x: MySupp, st: Stock, from: string) {
   const today = todayIso()
-  const lib = s.supps.find(x => x.id === id)?.lib
+  const id = x.id, lib = x.lib
+  const per = perUse(st)
   let n = 0
   for (let d = addDays(from, 1), k = 0; d <= today && k < 800; d = addDays(d, 1), k++) {
-    if ((s.took[d] ?? []).includes(id) || (intakeOn(s, d).includes(id) && !skippedOn(s, d).includes(id)) || (s.extra?.[d] ?? []).some(e => e.supp === id || (!!lib && e.lib === lib))) n++
+    if ((s.took[d] ?? []).includes(id)) n += stockUse(s, x, st, d, per, DROPS_PER_ML)
+    else if ((intakeOn(s, d).includes(id) && !skippedOn(s, d).includes(id)) || (s.extra?.[d] ?? []).some(e => e.supp === id || (!!lib && e.lib === lib))) n += per
   }
   return n
 }
@@ -54,7 +60,7 @@ export function stockInfo(s: LabState, x: MySupp | undefined): StockInfo | null 
   if (!x || !st) return null
   const per = perUse(st)
   if (per <= 0) return null
-  const left = Math.max(0, st.left - usedSince(s, x.id, st.at) * per)
+  const left = Math.max(0, st.left - usedSince(s, x, st, st.at))
   const uses = Math.floor(left / per + 1e-9)
   const days = libOf(x)?.weekly ? uses * 7 : uses
   return { left, uses, days, until: days > 0 ? addDays(todayIso(), days) : null, pct: Math.min(1, left / Math.max(st.pack, left, 1e-9)), low: days <= LOW_DAYS, empty: uses <= 0 }
