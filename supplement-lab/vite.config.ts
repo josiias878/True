@@ -24,6 +24,8 @@ export default defineConfig({
     alias: [
       { find: "next/link", replacement: path.resolve(import.meta.dirname, "src/shims/next-link.tsx") },
       { find: /^@\//, replacement: path.resolve(import.meta.dirname, "..") + "/" },
+      // Geteilte Dateien (app/lab/scan.tsx) liegen außerhalb – zxing aus diesem node_modules nehmen (frischer Clone hat kein Root-node_modules)
+      { find: /^@zxing\/(browser|library)$/, replacement: path.resolve(import.meta.dirname, "node_modules/@zxing") + "/$1" },
     ],
     // Nur eine React-Kopie (die geteilten Dateien liegen außerhalb dieses Ordners)
     dedupe: ["react", "react-dom"],
