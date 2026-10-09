@@ -333,7 +333,7 @@ export function OfficialCard({ o, pinned, where, onOpen }: { o: OfficialPost; pi
   const clamp: React.CSSProperties = onOpen ? { display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden" } : {}
   return (
     <article className="lab-card lab-rise" data-official={o.id} onClick={onOpen ? () => { haptic(); onOpen() } : undefined} role={onOpen ? "button" : undefined} tabIndex={onOpen ? 0 : undefined}
-      onKeyDown={onOpen ? e => { if (e.key === "Enter") onOpen() } : undefined}
+      onKeyDown={onOpen ? e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen() } } : undefined}
       style={{ padding: 0, overflow: "hidden", borderRadius: 24, border: "1px solid var(--accent)", cursor: onOpen ? "pointer" : undefined }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px 6px" }}>
         <PublicAvatar avatar={DEFAULT_AVATAR} size={40} />
@@ -890,7 +890,7 @@ function meta(c: SocialCommunity) {
 }
 const membersText = (n: number) => n === 1 ? t("1 Mitglied") : t("{n} Mitglieder", { n: n.toLocaleString(LOCALE) })
 
-function useJoin(c0: SocialCommunity) {
+function useJoin(c0: SocialCommunity, onJoined?: () => void) {
   const [c, setC] = useState(c0)
   useEffect(() => { setC(c0) }, [c0])
   const toggle = async () => {
@@ -900,7 +900,7 @@ function useJoin(c0: SocialCommunity) {
     set(!was)
     await ensureMe()
     const ok = await (was ? api.leave(c.id) : api.join(c.id))
-    if (!ok) { set(was); flash(OFFLINE()) } else if (!was) flash(t("✓ Beigetreten"))
+    if (!ok) { set(was); flash(OFFLINE()) } else if (!was) { flash(t("✓ Beigetreten")); onJoined?.() }
   }
   return [c, toggle] as const
 }
@@ -926,8 +926,8 @@ function CommunityTile({ c0 }: { c0: SocialCommunity }) {
 }
 
 /** Start-Gruppe: große Zeile mit einem Beitreten-Knopf (ein Tipp). */
-function StartGroupCard({ c0 }: { c0: SocialCommunity }) {
-  const [c, toggle] = useJoin(c0)
+function StartGroupCard({ c0, onJoined }: { c0: SocialCommunity; onJoined?: () => void }) {
+  const [c, toggle] = useJoin(c0, onJoined)
   const m = meta(c)
   return (
     <div className="lab-card lab-rise" data-community={c.id} data-featured={c.featured} style={{ position: "relative", overflow: "hidden", display: "flex", alignItems: "center", gap: 12, padding: "12px 12px 12px 16px", borderRadius: 22 }}>
@@ -954,6 +954,8 @@ const HOME_FEED_MAX = 10
  * Noch keine Gruppe → Start-Gruppen mit einem Tipp beitreten. Fehler → null (Bereich zeigt dann nur den Rest).
  */
 export function HomeFeed({ myLibs, onSelfTest, onEmpty }: { myLibs: Set<string>; onSelfTest?: (libId: string) => void; onEmpty?: (empty: boolean) => void }) {
+  // Stabiler Schlüssel: nur neu laden, wenn sich die Menge der Supplements wirklich ändert (nicht bei jeder Einnahme)
+  const libsKey = [...myLibs].sort().join(",")
   const [st, setSt] = useState<{ state: "loading" | "ok" | "offline"; items: FeedItem[]; comms: SocialCommunity[] }>({ state: "loading", items: [], comms: [] })
   const [reload, setReload] = useState(0)
   const [idx, setIdx] = useState(0)
@@ -966,7 +968,7 @@ export function HomeFeed({ myLibs, onSelfTest, onEmpty }: { myLibs: Set<string>;
     let on = true
     void (async () => {
       await ensureMe()
-      const [a, cs] = await Promise.all([api.feed("following"), api.communities()])
+      const [a, cs] = await Promise.all([api.feed("following", undefined, { home: true }), api.communities()])
       if (!on) return
       if (!a) { setSt({ state: "offline", items: [], comms: [] }); return }
       let posts = a.posts
@@ -982,7 +984,7 @@ export function HomeFeed({ myLibs, onSelfTest, onEmpty }: { myLibs: Set<string>;
       if (on) setSt({ state: "ok", items, comms: Array.isArray(cs) ? cs : [] })
     })()
     return () => { on = false }
-  }, [reload, myLibs])
+  }, [reload, libsKey]) // eslint-disable-line react-hooks/exhaustive-deps
   const items = st.items.filter(it => it.k === "off" || visible(it.p))
   const joined = st.comms.filter(c => c.joined)
   const start = st.comms.filter(c => c.featured && !c.joined).sort((a, b) => (a.featured ?? 99) - (b.featured ?? 99)).slice(0, 3)
@@ -1009,10 +1011,11 @@ export function HomeFeed({ myLibs, onSelfTest, onEmpty }: { myLibs: Set<string>;
             <div key={it.k === "post" ? it.p.id : `o-${it.o.id}`} role="listitem" style={{ flex: `0 0 ${items.length === 1 ? "100%" : "88%"}`, scrollSnapAlign: "start", minWidth: 0 }}>
               {it.k === "post"
                 ? <PostCard p={it.p} onSelfTest={onSelfTest} compact />
-                : <OfficialCard o={it.o} where={name(it.o.community)} onOpen={() => {
+                : (() => {
                     const c = st.comms.find(x => x.id === it.o.community)
-                    if (c) { markOfficialSeen(c.id, { id: it.o.id, date: it.o.date }); openSocial({ kind: "community", id: c.id, c }) }
-                  }} />}
+                    // Community unbekannt (alte App-Version / offline) → voller Text, nicht anklickbar
+                    return <OfficialCard o={it.o} where={name(it.o.community)} onOpen={c ? () => { markOfficialSeen(c.id, { id: it.o.id, date: it.o.date }); openSocial({ kind: "community", id: c.id, c }) } : undefined} />
+                  })()}
             </div>
           ))}
         </div>
@@ -1025,8 +1028,8 @@ export function HomeFeed({ myLibs, onSelfTest, onEmpty }: { myLibs: Set<string>;
       {!joined.length && start.length > 0 && (
         <div style={{ marginTop: items.length ? 12 : 0 }}>
           <div style={{ fontSize: "0.82rem", fontWeight: 800, color: "var(--text-dim)", margin: "0 0 8px" }}>{t("Tritt einer Start-Gruppe bei – dann füllt sich dein Feed:")}</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }} onClick={() => setTimeout(() => setReload(x => x + 1), 1200)}>
-            {start.map(c => <StartGroupCard key={c.id} c0={c} />)}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {start.map(c => <StartGroupCard key={c.id} c0={c} onJoined={() => setReload(x => x + 1)} />)}
           </div>
         </div>
       )}

@@ -298,9 +298,10 @@ export const block = async (id: string) => UUID_RE.test(id) && ok(await authed("
 export const unblock = async (id: string) => UUID_RE.test(id) && ok(await authed("unblock", { id }))
 
 // ── Feeds (chronologisch, kein Ranking) ───────────────────────────────────────
-export async function feed(kind: "following" | "discover", cursor?: string): Promise<SocialPage | null> {
+export async function feed(kind: "following" | "discover", cursor?: string, opts?: { home?: boolean }): Promise<SocialPage | null> {
   if (kind !== "following" && kind !== "discover") return null
-  const r = await authed("feed", { kind, ...(cursor ? { cursor } : {}) })
+  // home: nur der Home-Feed bekommt zusätzlich Kolbi-Posts aus den beigetretenen Gruppen (Entdecken › Gefolgt nicht)
+  const r = await authed("feed", { kind, ...(cursor ? { cursor } : {}), ...(opts?.home && kind === "following" ? { home: true } : {}) })
   return r?.status === 200 ? pageOf(r.body) : null
 }
 export async function communityFeed(id: string, cursor?: string): Promise<SocialPage | null> {

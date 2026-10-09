@@ -17,7 +17,7 @@
 //   feed {kind: following|discover, cursor?}  ·  communityFeed {id, cursor?}  → {posts, next?}
 //     communityFeed liefert auf der ersten Seite (ohne cursor) zusätzlich official: [{id, date, title, body, icon?}]
 //     = offizielle Kolbi-Posts dieser Community (publish_on <= heute, nicht ausgeblendet), neueste zuerst, max. 30
-//     feed following (erste Seite) liefert official: [{id, community, date, title, body, icon?}] aus allen beigetretenen
+//     feed following mit home: true (erste Seite) liefert official: [{id, community, date, title, body, icon?}] aus allen beigetretenen
 //     Communities der letzten 21 Tage, max. 10 (für den Home-Feed)
 //   communities {query?}                 → {communities: [{id, kind, key, name, members, joined, featured?, official?: {id, date}}]}
 //     featured = Rang als Start-Gruppe (1…) · official = neuester sichtbarer Kolbi-Post
@@ -229,7 +229,7 @@ Deno.serve(async req => {
     mine: r.mine ?? [],
     ...(r.tester ? { tester: true } : {}),
   })
-  const feed = async (mode: string, opts: { community?: string; author?: string }, cursor: unknown, limit = PAGE) => {
+  const feed = async (mode: string, opts: { community?: string; author?: string; home?: boolean }, cursor: unknown, limit = PAGE) => {
     const c = parseCursor(cursor)
     if (c === false) return fail("cursor")
     // Offizielle Kolbi-Posts: nur Community, nur erste Seite (Client mischt sie nach Datum ein, neuester oben angepinnt)
@@ -244,7 +244,7 @@ Deno.serve(async req => {
         .map(o => ({ id: o.id, date: o.publish_on, title: en ? o.title_en : o.title_de, body: en ? o.body_en : o.body_de, ...(o.icon ? { icon: o.icon } : {}) }))
     }
     // Home-Feed („following“, erste Seite): Kolbi-Posts aus meinen Gruppen der letzten OFFICIAL_HOME_DAYS Tage, mit Community-ID
-    if (mode === "following" && !c) {
+    if (mode === "following" && !c && opts.home) {
       const { data: mem, error: memErr } = await db.from("community_members").select("community").eq("profile", myId).limit(100)
       if (memErr) return fail("db", 500)
       const ids = ((mem ?? []) as { community: string }[]).map(m => m.community)
@@ -360,7 +360,7 @@ Deno.serve(async req => {
     case "feed": {
       const kind = b.kind === "following" ? "following" : b.kind === "discover" ? "discover" : null
       if (!kind) return fail("kind")
-      return await feed(kind, {}, b.cursor)
+      return await feed(kind, { home: kind === "following" && b.home === true }, b.cursor)
     }
     case "communityFeed": {
       if (!COMMUNITY.test(targetId)) return fail("id")
