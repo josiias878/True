@@ -4,7 +4,8 @@
 // Lese-Flächen neutral (Grafit/Weiß), Lab-/Ziel-Farben nur als Akzent, Grün→Blau nur für „Selbst testen“.
 // Server-Aufrufe ausschließlich über lib/labSocialApi (Edge Function „lab-social“).
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
-import { DIMS, GOALS, LIB_BY_ID, type LabState, type LibSupp } from "@/lib/supplementLab"
+import { DIMS, GOALS, GOAL_BY_ID, LIB_BY_ID, STORE_MODE, type GoalId, type LabState, type LibSupp } from "@/lib/supplementLab"
+import { groupInfo, groupSteps } from "@/lib/labGroups"
 import { AVATAR_ACCESSORIES, AVATAR_COLORS, AVATAR_MOODS, DEFAULT_AVATAR, LAB_GROUPS, avatarColorBg, labColor, loadAvatar, pseudoSeed, pseudonym, type LabAvatar, type LabGroup } from "@/lib/labSocial"
 import { SITE_URL, appVersion } from "@/lib/labGrow"
 import { markSeen } from "@/lib/labNew"
@@ -890,6 +891,30 @@ function meta(c: SocialCommunity) {
 }
 const membersText = (n: number) => n === 1 ? t("1 Mitglied") : t("{n} Mitglieder", { n: n.toLocaleString(LOCALE) })
 
+/** Gruppen-Symbol: 3D-Bild (Ziel-Gruppen, Store-App) bzw. Supplement-Symbol (Labs), sonst Emoji. */
+function GroupIcon({ c, size }: { c: SocialCommunity; size: number }) {
+  const m = meta(c)
+  const [bad, setBad] = useState(false)
+  if (c.kind === "lab") return <SuppIcon lib={c.key} emoji={m.emoji} size={size} />
+  const src = STORE_MODE ? groupInfo(c).icon : undefined
+  if (!src || bad) return <>{m.emoji}</>
+  return <img src={src} alt="" width={size} height={size} draggable={false} onError={() => setBad(true)} data-group-icon={c.key}
+    style={{ width: size, height: size, objectFit: "contain", display: "block", pointerEvents: "none" }} />
+}
+
+/** Beispiel-Beitrag (klar markiert) – zeigt neuen Gruppen, wie ein geteiltes Ergebnis aussieht. Keine echte Person. */
+function examplePost(c: SocialCommunity): SocialPost | null {
+  const ok = (id: string) => { const l = LIB_BY_ID[id]; return !!l && !l.rx && l.category !== "Peptide" && l.category !== "Verschriebene Medikamente" }
+  const lib = c.kind === "lab" ? c.key : (GOAL_BY_ID[c.key as GoalId]?.suggest ?? []).find(ok)
+  if (!lib || !ok(lib)) return null
+  const dims = (c.kind === "goal" ? GOAL_BY_ID[c.key as GoalId]?.dims ?? [] : ["energie", "schlaf"]).filter(d => d !== "libido").slice(0, 2)
+  return {
+    id: `example-${c.id}`, author: { id: "example", name: t("Beispiel-Profil"), avatar: DEFAULT_AVATAR },
+    lib, days: 14, decision: "keep", delta: 0.6, dims: Object.fromEntries(dims.map((d, i) => [d, i ? 0.3 : 0.6])),
+    createdAt: new Date().toISOString(), counts: { durchhalten: 0, hilfreich: 0 }, mine: [],
+  }
+}
+
 function useJoin(c0: SocialCommunity, onJoined?: () => void) {
   const [c, setC] = useState(c0)
   useEffect(() => { setC(c0) }, [c0])
@@ -916,7 +941,7 @@ function CommunityTile({ c0 }: { c0: SocialCommunity }) {
     <div className="lab-card lab-rise" data-community={c.id} style={{ position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", borderRadius: 22 }}>
       <span aria-hidden style={{ position: "absolute", left: 0, right: 0, top: 0, height: 4, background: m.color }} />
       <button className="lab-press" onClick={() => openSocial({ kind: "community", id: c.id, c })} style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, padding: "16px 12px 8px", background: "none", border: "none", color: "var(--text)", textAlign: "left", minHeight: 108 }}>
-        <span style={{ width: 42, height: 42, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.35rem", background: `color-mix(in srgb, ${m.color} 20%, var(--surface-2))` }}>{m.emoji}</span>
+        <span style={{ width: 46, height: 46, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.35rem", background: `color-mix(in srgb, ${m.color} 20%, var(--surface-2))` }}><GroupIcon c={c} size={40} /></span>
         <span style={{ fontWeight: 900, fontSize: "0.95rem", lineHeight: 1.2, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.title}</span>
         <span style={{ fontSize: "0.74rem", fontWeight: 800, color: "var(--text-dim)" }}>{membersText(c.members)}</span>
       </button>
@@ -933,7 +958,7 @@ function StartGroupCard({ c0, onJoined }: { c0: SocialCommunity; onJoined?: () =
     <div className="lab-card lab-rise" data-community={c.id} data-featured={c.featured} style={{ position: "relative", overflow: "hidden", display: "flex", alignItems: "center", gap: 12, padding: "12px 12px 12px 16px", borderRadius: 22 }}>
       <span aria-hidden style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 5, background: m.color }} />
       <button className="lab-press" onClick={() => openSocial({ kind: "community", id: c.id, c })} style={{ flex: 1, minWidth: 0, minHeight: 56, display: "flex", alignItems: "center", gap: 12, background: "none", border: "none", color: "var(--text)", textAlign: "left", padding: 0 }}>
-        <span style={{ width: 52, height: 52, borderRadius: 16, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.6rem", background: `color-mix(in srgb, ${m.color} 22%, var(--surface-2))` }}>{m.emoji}</span>
+        <span style={{ width: 56, height: 56, borderRadius: 16, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.6rem", background: `color-mix(in srgb, ${m.color} 22%, var(--surface-2))` }}><GroupIcon c={c} size={48} /></span>
         <span style={{ minWidth: 0 }}>
           <span style={{ display: "block", fontWeight: 900, fontSize: "1.05rem", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.title}</span>
           <span style={{ display: "block", fontSize: "0.78rem", fontWeight: 800, color: "var(--text-dim)" }}>{membersText(c.members)}</span>
@@ -1100,19 +1125,67 @@ function CommunityScreen({ id, c0, onSelfTest }: { id: string; c0?: SocialCommun
 function CommunityBody({ c0, onSelfTest }: { c0: SocialCommunity; onSelfTest?: (libId: string) => void }) {
   const [c, toggle] = useJoin(c0)
   const m = meta(c)
+  const info = groupInfo(c, m.title)
+  const [headBad, setHeadBad] = useState(false)
+  const head = STORE_MODE && info.head && !headBad ? info.head : undefined
+  const ex = examplePost(c)
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <TabHead onBack={backSocial} kicker={m.kicker} title={m.title}
-        right={<span aria-hidden style={{ width: 48, height: 48, borderRadius: 16, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", background: `color-mix(in srgb, ${m.color} 24%, var(--surface-2))`, border: `2px solid ${m.color}` }}>{m.emoji}</span>} />
-      <div className="lab-card lab-rise" style={{ padding: "22px 18px", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, textAlign: "center", borderRadius: 28 }}>
-        <div style={{ fontSize: "3rem", fontWeight: 900, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{c.members.toLocaleString(LOCALE)}</div>
-        <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--text-dim)" }}>{c.members === 1 ? t("Mitglied") : t("Mitglieder")}</div>
-        <div style={{ width: "100%", maxWidth: 320, marginTop: 10 }}><JoinBtn joined={c.joined} onClick={() => void toggle()} /></div>
+        right={<span aria-hidden style={{ width: 48, height: 48, borderRadius: 16, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", background: `color-mix(in srgb, ${m.color} 24%, var(--surface-2))`, border: `2px solid ${m.color}` }}><GroupIcon c={c} size={40} /></span>} />
+
+      {/* Kopf: Kolbi-Bild (Ziel-Gruppen) bzw. Supplement-Symbol mit Kolbi (Labs) + Mitglieder + Beitreten */}
+      <div className="lab-card lab-rise" data-group-head={c.id} style={{ padding: 0, overflow: "hidden", borderRadius: 28 }}>
+        {head ? (
+          <img src={head} alt="" draggable={false} onError={() => setHeadBad(true)} style={{ width: "100%", aspectRatio: "16 / 9", objectFit: "cover", display: "block" }} />
+        ) : (
+          <div aria-hidden style={{ aspectRatio: "16 / 7", display: "flex", alignItems: "center", justifyContent: "center", gap: 18, background: `linear-gradient(135deg, color-mix(in srgb, ${m.color} 38%, #14142a), #14142a)` }}>
+            <span className="lab-float" style={{ fontSize: "3.2rem", lineHeight: 1 }}><GroupIcon c={c} size={96} /></span>
+            <Mascot size={86} mood="happy" />
+          </div>
+        )}
+        <div style={{ padding: "16px 16px 18px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <PublicAvatar avatar={DEFAULT_AVATAR} size={30} />
+            <span style={{ fontSize: "0.78rem", fontWeight: 900, color: "var(--text-dim)" }}>{t("Kolbi erklärt")}</span>
+          </div>
+          <div style={{ fontSize: "1.05rem", fontWeight: 900, marginTop: 8 }}>{t("Worum es hier geht")}</div>
+          <div style={{ fontSize: "0.92rem", fontWeight: 600, lineHeight: 1.5, marginTop: 4 }}>{info.about}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 14 }}>
+            <span style={{ fontSize: "0.86rem", fontWeight: 800, color: "var(--text-dim)", whiteSpace: "nowrap" }}>{membersText(c.members)}</span>
+            <div style={{ flex: 1 }}><JoinBtn joined={c.joined} onClick={() => void toggle()} /></div>
+          </div>
+        </div>
       </div>
+
+      {/* So machst du mit */}
+      <div className="lab-card lab-rise" style={{ padding: "16px 16px 8px", borderRadius: 24 }}>
+        <div style={{ fontSize: "1.05rem", fontWeight: 900, marginBottom: 8 }}>{t("So machst du mit")}</div>
+        {groupSteps().map((st, i) => (
+          <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "8px 0", borderTop: i ? "1px solid var(--border)" : "none" }}>
+            <span aria-hidden style={{ width: 40, height: 40, borderRadius: 14, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", background: "var(--surface-2)" }}>{st.emoji}</span>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: "block", fontWeight: 900, fontSize: "0.92rem" }}>{i + 1}. {st.title}</span>
+              <span style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-dim)", lineHeight: 1.45 }}>{st.text}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {ex && (
+        <div data-example-post>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.82rem", fontWeight: 900, color: "var(--text-dim)", padding: "0 2px 8px" }}>
+            <span style={{ padding: "2px 8px", borderRadius: 999, background: "var(--warning-dim)", border: "1px solid var(--warning)", color: "var(--text)", fontSize: "0.7rem", letterSpacing: ".04em" }}>{t("BEISPIEL")}</span>
+            {t("So sieht ein geteiltes Ergebnis aus")}
+          </div>
+          <div style={{ opacity: 0.92 }}><PostCard p={ex} preview /></div>
+        </div>
+      )}
+
       <div style={{ fontSize: "0.82rem", fontWeight: 900, color: "var(--text-dim)", padding: "0 2px" }}>{t("Beiträge")}</div>
       <PostFeed feedKey={`c-${c.id}`} load={cur => api.communityFeed(c.id, cur)} onSelfTest={onSelfTest}
         onOfficial={o => { if (o[0]) markOfficialSeen(c.id, o[0]) }}
-        empty={<Empty title={t("Noch keine Beiträge")} text={t("Sobald jemand hier ein Ergebnis postet, siehst du es hier.")} />} />
+        empty={<Empty title={t("Noch keine Beiträge")} text={t("Sei die erste Person, die hier ein Ergebnis teilt – Kolbi zeigt dir nach deinem Test, wie es geht.")} />} />
     </div>
   )
 }

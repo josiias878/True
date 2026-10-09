@@ -9,17 +9,14 @@ import {
 } from "@/lib/supplementLab"
 import { sidesOf, type ExtraInput } from "@/lib/labDay"
 import type { CoachAction, CoachMsg } from "@/lib/labCoach"
-import { pathStops, type Stop } from "@/lib/labPath"
 import { Btn, Capsule, DayKicker, DemoBadge, Sheet, TabHead, haptic } from "./ui"
 import { Mascot, MASCOT_NAME } from "./mascot"
 import { MorningPanel, type DayTab } from "./day"
 import { dayProgress, type RoundStep } from "./round"
-import { RoadPath } from "./path"
-import { ProfileCard } from "./profile"
 import { NewBadge, useMarkSeen } from "./newbadge"
 import { RecapTeaser } from "./insights"
 import { markSeen } from "@/lib/labNew"
-import { CommunitySection, CostSection, StackSection, StateSection, WaySection } from "./todayStack"
+import { CostSection, StackSection, StateSection } from "./todayStack"
 import { t, dec, clock, LOCALE } from "@/lib/labI18n"
 import { NewsRing, NewsTicker } from "./news"
 import { recentNews, type LabNews } from "@/lib/labNews"
@@ -93,7 +90,7 @@ function greeting(now: Date) {
 
 type Main = "notStarted" | "reveal" | "morning" | "take" | "checkin" | "locked" | "done"
 
-export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, recap, onRecap, pushHint, onPush, onAction, onRound, onTakeAll, onTake, onSkip, onMorning, onUnlock, onCheckin, onPhase, goTab, onVorrat, onExtra, onExtraRemove, onOpenSupp, onOpenLab, onAddMany, onAmount, onPortion, onNews }: {
+export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, recap, onRecap, pushHint, onPush, onAction, onRound, onTakeAll, onTake, onSkip, onMorning, onUnlock, onCheckin, goTab, onVorrat, onExtra, onExtraRemove, onOpenSupp, onAddMany, onAmount, onPortion, onNews }: {
   s: LabState; wins: PhaseWindow[]; today: string; now: Date; pending: RoundStep[]; checkinLocked: boolean; tips: CoachMsg[]
   /** Wochenrückblick bereit und noch nicht gesehen → schmale Zeile unter der Hauptsache */
   recap: { ready: boolean; end: string }; onRecap: () => void
@@ -110,10 +107,8 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
   onNews?: (items: LabNews[], start?: number) => void
 }) {
   const [mHold, setMHold] = useState(false)
-  const [sheet, setSheet] = useState<null | "day" | "normal">(null)
   const first = wins[0]
   const notStarted = !!first && today < first.start
-  const w = wins.find(x => today >= x.start && today <= x.end) ?? null
   const checked = s.checkins[today]
   const yesterday = addDays(today, -1)
   const sleepy = !!first && yesterday >= first.start && !s.checkins[yesterday] && !checked
@@ -161,22 +156,6 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
       {pushHint === "off" && <Btn onClick={onPush} style={{ minHeight: 44, padding: "8px 16px", fontSize: "0.84rem", borderRadius: 12 }}>{t("An")}</Btn>}
     </div>
   ) : null
-
-  const road = pathStops(s, today, now, checkinLocked)
-  const onStop = (sp: Stop) => {
-    switch (sp.kind) {
-      case "take": if (sp.suppId) { haptic(12); onTake(sp.suppId) } break
-      case "morning": setSheet(null); onRound([{ kind: "morning" }]); break
-      case "checkin": setSheet(null); if (sp.state === "now") onRound(checks.length ? checks : pending); else if (sp.state === "done") onCheckin(today); break
-      case "result": setSheet(null); if (sp.date === today) onRound(reveal.length ? reveal : pending); else if (w) onPhase(w); break
-      case "startTest": setSheet(null); if (sp.suppId) onAction({ kind: "startTest", suppId: sp.suppId }, "path"); break
-      case "stack": setSheet(null); if (sp.key === "start-stack") onAction({ kind: "startStack" }, "path"); else goTab("stack"); break
-      case "stock": setSheet(null); onVorrat(); break
-      case "streak": setSheet(null); goTab("kolbi"); break
-      case "reset": setSheet(null); if (first) onPhase(first); break
-      default: setSheet(null); if (w) onPhase(w)
-    }
-  }
 
   const bigBtn: React.CSSProperties = {
     marginTop: 18, display: "inline-flex", alignItems: "center", gap: 8, padding: "15px 30px", borderRadius: 999, border: "none",
@@ -285,22 +264,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
       <div id="lab-today-stack" style={{ scrollMarginTop: 16 }}><StackSection s={s} today={today} onTake={onTake} onSkip={onSkip} onExtra={onExtra} onExtraRemove={onExtraRemove} onOpenSupp={onOpenSupp} onVorrat={onVorrat} onAddMany={onAddMany} goTab={goTab} onAmount={onAmount} onPortion={onPortion} /></div>
       <CostSection s={s} today={today} onVorrat={onVorrat} onAction={onAction} />
       <StateSection s={s} today={today} onOpen={() => goTab("reise")} />
-      <WaySection s={s} today={today} stops={road.stops} onOpen={() => setSheet(w?.kind === "baseline" && !notStarted ? "normal" : "day")} />
-      <CommunitySection s={s} onDiscover={() => goTab("entdecken")} onOpenLab={onOpenLab} />
 
-      {sheet === "day" && (
-        <Sheet open onClose={() => setSheet(null)} title={t("🗺️ Dein Tag")}>
-          {road.stops.length > 0 ? <RoadPath stops={road.stops} goal={road.goal} today={today} onStop={onStop} />
-            : <div style={{ color: "var(--text-dim)", fontSize: "0.9rem", padding: 8 }}>{t("Heute steht nichts an.")}</div>}
-          <Btn variant="soft" full onClick={() => { setSheet(null); goTab("reise") }} style={{ marginTop: 12 }}>{t("Ganzer Verlauf ›")}</Btn>
-        </Sheet>
-      )}
-      {sheet === "normal" && first && (
-        <Sheet open onClose={() => setSheet(null)} title={t("🧘 Dein Normal")}>
-          <ProfileCard s={s} first={first} today={today} onCheckin={() => { setSheet(null); if (checked) onCheckin(today); else onRound(checks.length ? checks : pending) }} />
-          <Btn variant="soft" full onClick={() => { setSheet(null); onPhase(first) }} style={{ marginTop: 12 }}>{t("Reset-Phase ansehen ›")}</Btn>
-        </Sheet>
-      )}
     </div>
   )
 }

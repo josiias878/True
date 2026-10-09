@@ -705,7 +705,8 @@ export default function LabApp() {
             onOpenSupp={id => { setLaborView(null); setLab({ suppId: id, tab: "ueberblick" }); goTab("labor") }}
             onOpenLab={libId => { const x = s.supps.find(q => q.lib === libId); setLaborView(null); setLab({ suppId: x?.id, libId, tab: "andere" }); goTab("labor") }} />}
 
-          {tab === "entdecken" && <DiscoverView s={s} today={today} recapReady={recapAvailable(s, now, today).ready} onRecap={() => setRecapEnd(recapWeekEnd(now, today))}
+          {tab === "entdecken" && <DiscoverView s={s} today={today} now={now} checkinLocked={checkinLocked} goTab={goTab}
+            onCommunities={() => { showCommunitiesNext(); setLab(null); setLaborView(null); goTab("labor") }} recapReady={recapAvailable(s, now, today).ready} onRecap={() => setRecapEnd(recapWeekEnd(now, today))}
             onOpenLab={(libId, t2) => { const x = s.supps.find(q => q.lib === libId); setLaborView(null); setLab({ suppId: x?.id, libId, tab: t2 ?? "ueberblick" }); goTab("labor") }}
             onSelfTest={libId => selfTest(libId)} onJoin={() => setAskCommunity(null)} onFlash={setFlash} goLabor={() => goTab("meine")} />}
 

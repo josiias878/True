@@ -32,6 +32,8 @@ export type LabNews = {
 const VIDEO_BASE = "https://kolbi-smoky.vercel.app/video/archiv/kolbi-02-testet"
 
 export const LAB_NEWS: LabNews[] = [
+  { id: "2026-10-groups-alive", date: "2026-10-09", art: "groups", img: "./groups/head-schlaf.webp", action: "communities",
+    title: t("Jede Gruppe mit Kolbi-Steckbrief"), text: t("Bild, Worum es geht und So machst du mit – plus Erklär-Video in Entdecken.") },
   { id: "2026-10-feed", date: "2026-10-09", art: "groups", img: "./news/news-gruppen.webp", action: "communities",
     title: t("Dein Feed auf Heute"), text: t("Wisch durch Beiträge aus deinen Gruppen – direkt auf Heute.") },
   { id: "2026-10-scan", date: "2026-10-09", art: "scan", img: "./news/news-scan.webp", action: "scan",

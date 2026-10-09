@@ -684,7 +684,7 @@ export function CommunitySection({ s, onDiscover, onOpenLab }: { s: LabState; on
 
   return (
     <div ref={ref}>
-      <Section title={t("Community")} onMore={onDiscover} moreLabel={t("Entdecken öffnen")}>
+      <Section title={t("Deine Gruppen")} onMore={onDiscover} moreLabel={t("Alle Communities")}>
         {!social ? (
           <button className="lab-press" onClick={() => { seen(); onDiscover() }} style={{
             width: "100%", minHeight: 52, display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 16, border: "none",

@@ -5,7 +5,11 @@ import React, { useEffect, useState } from "react"
 import { diffDays, phaseAt, type LabState, type LibSupp } from "@/lib/supplementLab"
 import { fetchOverview } from "@/lib/labCommunity"
 import { LAB_GROUPS, feedOrder, keepWords, labColor, labGroup, tierOf, WORDS_MIN, type FeedEntry } from "@/lib/labSocial"
-import { Btn, DemoBadge, SuppIcon, TabHead, haptic } from "./ui"
+import { Btn, DemoBadge, Sheet, SuppIcon, TabHead, haptic } from "./ui"
+import { pathStops, type Stop } from "@/lib/labPath"
+import { RoadPath } from "./path"
+import { CommunitySection, WaySection } from "./todayStack"
+import { HowToShare } from "./howto"
 import { Mascot } from "./mascot"
 import { Avatar } from "./me"
 import { t } from "@/lib/labI18n"
@@ -74,10 +78,24 @@ function ResultCard({ e, onOpen, onSelfTest }: { e: FeedEntry; onOpen: () => voi
   )
 }
 
-export function DiscoverView({ s, today, recapReady, onRecap, onOpenLab, onSelfTest, onJoin, onFlash, goLabor }: {
-  s: LabState; today: string; recapReady: boolean; onRecap: () => void
+export function DiscoverView({ s, today, now, checkinLocked, recapReady, onRecap, onOpenLab, onSelfTest, onJoin, onFlash, goLabor, goTab, onCommunities }: {
+  s: LabState; today: string; now: Date; checkinLocked: boolean; recapReady: boolean; onRecap: () => void
   onOpenLab: (libId: string, tab?: "andere") => void; onSelfTest: (libId: string) => void; onJoin: () => void; onFlash: (m: string) => void; goLabor: () => void
+  /** Mein Weg: Stopps führen zu Heute/Kolbi/Vorrat/Verlauf */
+  goTab: (to: string) => void
+  /** Alle Communities (Labor › Communities) */
+  onCommunities: () => void
 }) {
+  const [daySheet, setDaySheet] = useState(false)
+  const road = pathStops(s, today, now, checkinLocked)
+  // Aufgaben liegen auf Heute (dort zeigt das große Feld, was jetzt dran ist); Rest an seinen Ort
+  const onStop = (sp: Stop) => {
+    setDaySheet(false)
+    haptic(8)
+    if (sp.kind === "streak") goTab("kolbi")
+    else if (sp.kind === "stock") goTab("labor")
+    else goTab("heute")
+  }
   const [ov, setOv] = useState<Overview | null | "loading">("loading")
   useEffect(() => { let on = true; fetchOverview().then(v => { if (on) setOv(v) }); return () => { on = false } }, [])
   const feed = ov && ov !== "loading" ? feedOrder(s, ov.libs) : []
@@ -153,6 +171,18 @@ export function DiscoverView({ s, today, recapReady, onRecap, onOpenLab, onSelfT
       {!social && <JoinRow />}
       {social && <ModerationNotice />}
       {social && <OfficialHint />}
+
+      {/* Lebendiger Einstieg: So teilst du · Mein Weg · Deine Gruppen (wischbar) */}
+      <HowToShare />
+      <WaySection s={s} today={today} stops={road.stops} onOpen={() => setDaySheet(true)} />
+      {social && <CommunitySection s={s} onDiscover={onCommunities} onOpenLab={libId => onOpenLab(libId, "andere")} />}
+      {daySheet && (
+        <Sheet open onClose={() => setDaySheet(false)} title={t("🗺️ Dein Tag")}>
+          {road.stops.length > 0 ? <RoadPath stops={road.stops} goal={road.goal} today={today} onStop={onStop} />
+            : <div style={{ color: "var(--text-dim)", fontSize: "0.9rem", padding: 8 }}>{t("Heute steht nichts an.")}</div>}
+          <Btn variant="soft" full onClick={() => { setDaySheet(false); goTab("reise") }} style={{ marginTop: 12 }}>{t("Ganzer Verlauf ›")}</Btn>
+        </Sheet>
+      )}
 
       {!social ? s1
         : mode === "gefolgt" ? (
