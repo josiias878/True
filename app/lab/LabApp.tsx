@@ -30,7 +30,10 @@ import { ShopButton, ShoppingCard, StockCard, StockSheet } from "./stock"
 import { BadgeGrid, KnowledgeAlbum, KolbiPage } from "./kolbi"
 import { QuickSheet, TodayView } from "./today"
 import { DiscoverView } from "./discover"
-import { LabPage, LaborHome, type LabTab, type LaborView } from "./labor"
+import { LabPage, LaborHome, showCommunitiesNext, type LabTab, type LaborView } from "./labor"
+import { NewsStories } from "./news"
+import { ScanSheet } from "./scan"
+import type { LabNews, NewsAction } from "@/lib/labNews"
 import { MeHome, type MeView } from "./me"
 import { useMarkSeen } from "./newbadge"
 import { FounderWelcome, PaywallSheet, ProGate, ReviewSheet, appPlatform } from "./grow"
@@ -262,6 +265,8 @@ export default function LabApp() {
   const [lab, setLab] = useState<{ suppId?: string; libId?: string; tab: LabTab } | null>(null)
   const [meView, setMeView] = useState<MeView | null>(null)
   const [quickOpen, setQuickOpen] = useState(false)
+  const [news, setNews] = useState<LabNews[] | null>(null) // „Neu bei Kolbi“-Storys offen
+  const [newsScan, setNewsScan] = useState(false) // Deep-Link: Scanner direkt
   const [expOpen, setExpOpen] = useState<Experiment | null>(null)
   const [resView, setResView] = useState<"auswertung" | "verlauf">("auswertung")
   const [tabDir, setTabDir] = useState(1)
@@ -634,6 +639,16 @@ export default function LabApp() {
     if (steps.length) { setUnlockedFor(todayIso()); setRound(steps) }
   }, [init])
 
+  // „Neu bei Kolbi“ → „Ausprobieren“: dorthin, wo die Funktion wohnt
+  const newsAction = (a: NonNullable<NewsAction>) => {
+    switch (a) {
+      case "scan": setNewsScan(true); break
+      case "checkin": setCheckinDate(today); break
+      case "communities": showCommunitiesNext(); setLab(null); setLaborView(null); goTab("labor"); break
+      case "stack": goTab("heute"); setTimeout(() => { try { document.getElementById("lab-today-stack")?.scrollIntoView({ behavior: "smooth", block: "start" }) } catch {} }, 120); break
+    }
+  }
+
   // ── Onboarding ──
   if (!s.startDate) {
     return (
@@ -680,6 +695,7 @@ export default function LabApp() {
             onUnlock={() => { setUnlockedFor(today); setRound(roundSteps(s, today, now, false)) }}
             onCheckin={setCheckinDate} onPhase={setPhaseSheet} goTab={goTab} onVorrat={() => { setLab(null); setLaborView("vorrat"); goTab("labor") }}
             onExtra={addExtraV} onExtraRemove={removeExtraV} onAddMany={() => setAddMany(true)}
+            onNews={setNews}
             onAmount={(id, p) => update(q => { setAmount(q, today, id, p); return q })}
             onPortion={(id, p) => { update(q => alignStockToPortion(setPortion(q, id, p, today), id, today)); setFlash(t("✓ Gemerkt: {amount}", { amount: portionLabel(p) })) }}
             onOpenSupp={id => { setLaborView(null); setLab({ suppId: id, tab: "ueberblick" }); goTab("labor") }}
@@ -851,6 +867,14 @@ export default function LabApp() {
         })
         setReclassifyIds(null)
       }} />}
+      {news && <NewsStories items={news} onClose={() => setNews(null)} onAction={a => { setNews(null); newsAction(a) }} />}
+      {newsScan && <ScanSheet owned={new Set(s.supps.map(x => x.lib).filter((x): x is string => !!x))} onClose={() => setNewsScan(false)}
+        onAdd={items => {
+          const fresh = items.filter(it => it.lib ? !s.supps.some(x => x.lib === it.lib!.id) : !s.supps.some(x => !x.lib && x.name.toLowerCase() === it.name.toLowerCase()))
+          update(p => { fresh.forEach(it => p.supps.push(makeSupp(it.lib, it.name, p.supps, it.dose))); return p })
+          setNewsScan(false)
+          if (fresh.length) setFlash(fresh.length === 1 ? t("✓ 1 Supplement hinzugefügt") : t("✓ {n} Supplements hinzugefügt", { n: fresh.length }))
+        }} />}
       {addMany && <AddManySheet s={s} update={update} onClose={() => setAddMany(false)} onDone={n => { setAddMany(false); setFlash(n === 1 ? t("✓ 1 Supplement hinzugefügt") : t("✓ {n} Supplements hinzugefügt", { n })) }} />}
       {pickOpen && <PickNextSheet s={s} onClose={() => setPickOpen(false)} update={update} onStart={id => { setPickOpen(false); runAction({ kind: "startTest", suppId: id }, "pick") }} />}
       {testSetup && <TestSetupSheet s={s} suppId={testSetup} onClose={() => setTestSetup(null)}

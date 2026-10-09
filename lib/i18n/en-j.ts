@@ -166,5 +166,22 @@ export const EN_J: Record<string, string> = {
   "Neu scannen": "Scan again",
   "Als eigenes": "Add as my own",
   "Bitte Angaben mit der Packung vergleichen.": "Please compare the details with the pack.",
-  "Daten teilweise von": "Data partly from"
+  "Daten teilweise von": "Data partly from",
+  "Neu bei Kolbi: 1 Neuheit ansehen": "New at Kolbi: see 1 update",
+  "Neu bei Kolbi: {n} Neuheiten ansehen": "New at Kolbi: see {n} updates",
+  "Video gerade nicht erreichbar – später nochmal reinschauen.": "Video not available right now – check back later.",
+  "Video abspielen": "Play video",
+  "Neu bei {name}": "New at {name}",
+  "Ausprobieren": "Try it",
+  "Tippen für weiter · nach unten wischen zum Schließen": "Tap for next · swipe down to close",
+  "Nach unten wischen zum Schließen": "Swipe down to close",
+  "Scan deine Dose": "Scan your bottle",
+  "Strichcode in die Kamera halten – Kolbi trägt sie für dich ein.": "Hold the barcode up to the camera – Kolbi adds it for you.",
+  "Menge mit einem Tipp": "Amount in one tap",
+  "½ · 1× · 2× direkt nach dem Abhaken – ohne extra Bildschirm.": "½ · 1× · 2× right after checking it off – no extra screen.",
+  "Kolbi lernt deine Sterne": "Kolbi learns your stars",
+  "Nach ein paar Check-ins schlägt Kolbi deine üblichen Sterne vor – du bestätigst nur.": "After a few check-ins, Kolbi suggests your usual stars – you just confirm.",
+  "Schlaf, Energie, Fokus, Stress, Muskeln – mit einem Tipp beitreten.": "Sleep, energy, focus, stress, muscle – join with one tap.",
+  "Kolbi im Labor": "Kolbi in the lab",
+  "Ein kurzer Blick hinter die Kulissen.": "A quick look behind the scenes."
 }

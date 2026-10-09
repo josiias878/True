@@ -21,6 +21,8 @@ import { RecapTeaser } from "./insights"
 import { markSeen } from "@/lib/labNew"
 import { CommunitySection, CostSection, StackSection, StateSection, WaySection } from "./todayStack"
 import { t, dec, clock, LOCALE } from "@/lib/labI18n"
+import { NewsRing } from "./news"
+import type { LabNews } from "@/lib/labNews"
 
 
 const fmt = (n: number) => dec(n, 1)
@@ -91,7 +93,7 @@ function greeting(now: Date) {
 
 type Main = "notStarted" | "reveal" | "morning" | "take" | "checkin" | "locked" | "done"
 
-export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, recap, onRecap, pushHint, onPush, onAction, onRound, onTakeAll, onTake, onSkip, onMorning, onUnlock, onCheckin, onPhase, goTab, onVorrat, onExtra, onExtraRemove, onOpenSupp, onOpenLab, onAddMany, onAmount, onPortion }: {
+export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, recap, onRecap, pushHint, onPush, onAction, onRound, onTakeAll, onTake, onSkip, onMorning, onUnlock, onCheckin, onPhase, goTab, onVorrat, onExtra, onExtraRemove, onOpenSupp, onOpenLab, onAddMany, onAmount, onPortion, onNews }: {
   s: LabState; wins: PhaseWindow[]; today: string; now: Date; pending: RoundStep[]; checkinLocked: boolean; tips: CoachMsg[]
   /** Wochenrückblick bereit und noch nicht gesehen → schmale Zeile unter der Hauptsache */
   recap: { ready: boolean; end: string }; onRecap: () => void
@@ -104,6 +106,8 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
   onExtra: (date: string, item: ExtraInput, label: string) => void; onExtraRemove: (date: string, id: string) => void
   onOpenSupp: (id: string) => void; onOpenLab: (libId: string) => void; onAddMany: () => void
   onAmount: (id: string, p: Portion) => void; onPortion: (id: string, p: Portion) => void
+  /** „Neu bei Kolbi“-Kreis antippen → Storys mit diesen (ungesehenen) Neuheiten */
+  onNews?: (items: LabNews[]) => void
 }) {
   const [mHold, setMHold] = useState(false)
   const [sheet, setSheet] = useState<null | "day" | "normal">(null)
@@ -187,6 +191,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
       <TabHead kicker={`${now.toLocaleDateString(LOCALE, { weekday: "long" })} · ${t("nur für dich")}`} title={greeting(now)}
         right={<>
           {s.demo && <DemoBadge />}
+          {onNews && <NewsRing s={s} today={today} onOpen={onNews} />}
           {!STORE_MODE && <Link href="/home" aria-label={t("Zurück zu TRUE")} style={{ color: "var(--text-dim)", textDecoration: "none", fontSize: "0.8rem", fontWeight: 800 }}>TRUE</Link>}
         </>} />
 
@@ -272,7 +277,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
       {showTip && <KolbiSays msg={top} more={tips.length - 1} onAction={onAction} onMore={() => goTab("kolbi")} tail={!showRecap} />}
 
       {/* ── Feste Bereiche: Stack · Kosten & Coach · Zustand · Weg · Community ── */}
-      <StackSection s={s} today={today} onTake={onTake} onSkip={onSkip} onExtra={onExtra} onExtraRemove={onExtraRemove} onOpenSupp={onOpenSupp} onVorrat={onVorrat} onAddMany={onAddMany} goTab={goTab} onAmount={onAmount} onPortion={onPortion} />
+      <div id="lab-today-stack" style={{ scrollMarginTop: 16 }}><StackSection s={s} today={today} onTake={onTake} onSkip={onSkip} onExtra={onExtra} onExtraRemove={onExtraRemove} onOpenSupp={onOpenSupp} onVorrat={onVorrat} onAddMany={onAddMany} goTab={goTab} onAmount={onAmount} onPortion={onPortion} /></div>
       <CostSection s={s} today={today} onVorrat={onVorrat} onAction={onAction} />
       <StateSection s={s} today={today} onOpen={() => goTab("reise")} />
       <WaySection s={s} today={today} stops={road.stops} onOpen={() => setSheet(w?.kind === "baseline" && !notStarted ? "normal" : "day")} />

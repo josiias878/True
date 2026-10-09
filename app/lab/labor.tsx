@@ -18,6 +18,8 @@ import { CommunitiesView, LabJoinPill, LabPosts, SwitchTabs, startPost } from ".
 export type LabTab = "ueberblick" | "andere" | "beitraege" | "wissen"
 type LaborMode = "labs" | "communities"
 let lastLaborMode: LaborMode = "labs" // bleibt beim Zurückkommen aus einer Community erhalten
+/** Beim nächsten Öffnen von Labor direkt „Communities“ zeigen (Deep-Link, z. B. aus „Neu bei Kolbi“) */
+export function showCommunitiesNext() { lastLaborMode = "communities" }
 export type LaborView = "stack" | "exp" | "vorrat"
 
 const ORDER: SuppStatusKey[] = ["testing", "verdict", "observing", "waiting", "kept", "constant", "maybe", "away", "paused", "dropped"]
