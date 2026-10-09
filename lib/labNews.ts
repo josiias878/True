@@ -32,7 +32,7 @@ const VIDEO_BASE = "https://kolbi-smoky.vercel.app/video/archiv/kolbi-02-testet"
 
 export const LAB_NEWS: LabNews[] = [
   { id: "2026-10-scan", date: "2026-10-09", art: "scan", img: "./news/news-scan.webp", action: "scan",
-    title: t("Scan deine Dose"), text: t("Strichcode in die Kamera halten – Kolbi trägt sie für dich ein.") },
+    title: t("Scan dein Supplement"), text: t("Strichcode in die Kamera halten – Kolbi trägt es für dich ein.") },
   { id: "2026-10-dose", date: "2026-10-09", art: "dose", img: "./news/news-menge.webp", action: "stack",
     title: t("Menge mit einem Tipp"), text: t("½ · 1× · 2× direkt nach dem Abhaken – ohne extra Bildschirm.") },
   { id: "2026-10-stars", date: "2026-10-09", art: "stars", img: "./news/news-sterne.webp", action: "checkin",
@@ -75,6 +75,24 @@ export function unseenNews(news: LabNews[], installDate: string | null, today: s
 export function newsFor(s: { demo?: boolean; startDate: string | null; checkins?: Record<string, unknown>; took?: Record<string, unknown> }, today: string, seen: string[], news: LabNews[] = LAB_NEWS, lang: Lang = LANG): LabNews[] {
   if (s.demo) return []
   return unseenNews(news, installDateOf(s), today, seen, lang)
+}
+
+/** So viele Neuheiten bleiben dauerhaft im Kolbi-Ticker auf Heute (und im Kreis zum Nochmal-Ansehen) */
+export const NEWS_FEED_MAX = 6
+
+/**
+ * Kolbi-Ticker / Archiv: die neuesten Neuheiten unabhängig vom Gesehen-Status und vom Installationstag –
+ * damit man Storys jederzeit nochmal ansehen kann und auch neue Nutzer sehen, dass sich Kolbi weiterentwickelt.
+ * Nicht aus der Zukunft, nur passende Sprache. Neueste zuerst.
+ */
+export function recentNews(today: string, news: LabNews[] = LAB_NEWS, lang: Lang = LANG, max = NEWS_FEED_MAX): LabNews[] {
+  if (!isIso(today)) return []
+  return news
+    .map((n, i) => ({ n, i }))
+    .filter(({ n }) => (!n.lang || n.lang === lang) && isIso(n.date) && n.date <= today)
+    .sort((a, b) => (a.n.date === b.n.date ? a.i - b.i : a.n.date < b.n.date ? 1 : -1))
+    .slice(0, max)
+    .map(({ n }) => n)
 }
 
 /**

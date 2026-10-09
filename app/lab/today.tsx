@@ -21,7 +21,7 @@ import { RecapTeaser } from "./insights"
 import { markSeen } from "@/lib/labNew"
 import { CommunitySection, CostSection, StackSection, StateSection, WaySection } from "./todayStack"
 import { t, dec, clock, LOCALE } from "@/lib/labI18n"
-import { NewsRing } from "./news"
+import { NewsRing, NewsTicker } from "./news"
 import type { LabNews } from "@/lib/labNews"
 
 
@@ -107,7 +107,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
   onOpenSupp: (id: string) => void; onOpenLab: (libId: string) => void; onAddMany: () => void
   onAmount: (id: string, p: Portion) => void; onPortion: (id: string, p: Portion) => void
   /** „Neu bei Kolbi“-Kreis antippen → Storys mit diesen (ungesehenen) Neuheiten */
-  onNews?: (items: LabNews[]) => void
+  onNews?: (items: LabNews[], start?: number) => void
 }) {
   const [mHold, setMHold] = useState(false)
   const [sheet, setSheet] = useState<null | "day" | "normal">(null)
@@ -183,6 +183,8 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
     background: "var(--lab-grad)", color: "#fff", fontWeight: 900, fontSize: "1.05rem",
     boxShadow: "inset 0 1px 0 rgba(255,255,255,.45), inset 0 -2px 0 rgba(0,0,0,.12), 0 12px 28px rgba(46,204,138,.35)",
   }
+  // Kolbi-Ticker im großen Feld, wenn gerade nichts zu tun ist – Feld wird dafür kompakter
+  const ticker = !!onNews && (main === "done" || main === "locked" || main === "notStarted") ? <NewsTicker s={s} today={today} onOpen={onNews} /> : null
   const title = (x: React.ReactNode) => <div style={{ fontSize: "1.6rem", fontWeight: 900, letterSpacing: "-.01em", lineHeight: 1.15 }}>{x}</div>
   const sub = (x: React.ReactNode) => <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--text-dim)", marginTop: 6, lineHeight: 1.4 }}>{x}</div>
 
@@ -198,7 +200,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
       {/* ── Die eine Hauptsache ── */}
       <div className="lab-rise" style={{
         position: "relative", overflow: "hidden", isolation: "isolate", borderRadius: 30, padding: "22px 18px 24px", textAlign: "center",
-        minHeight: tipsShown && top ? undefined : "min(44vh, 380px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        minHeight: (tipsShown && top) || ticker ? undefined : "min(44vh, 380px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         background: "var(--surface)", border: "1px solid var(--glass-line)",
       }}>
         {/* Marken-Licht: Selbsttest-Fläche */}
@@ -215,6 +217,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
         {main === "notStarted" && <>
           {title(t("Bald geht's los"))}
           {sub(t("Start in {time} – bis dahin alles wie gewohnt.", { time: startIn != null ? fmtCountdown(startIn) : t("Kürze") }))}
+          {ticker}
         </>}
 
         {main === "reveal" && <>
@@ -255,6 +258,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
           {title(t("Bis zum Check-in hast du frei"))}
           {sub(t("Ich melde mich am Abend für deine Minute."))}
           <div style={{ marginTop: 16, width: "100%" }}><LockedCheckin unlockAt={lockedUntil} now={now} onUnlock={onUnlock} /></div>
+          {ticker}
           {pushRow}
         </>}
 
@@ -268,6 +272,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
                 : <>{FACES[Math.round(daySum(checked)) - 1]} {t("Heute")} {fmt(daySum(checked))}★</>} · <span style={{ color: "var(--accent)" }}>{checked.quick ? t("genauer") : t("ändern")}</span>
             </button>
           )}
+          {ticker}
           {pushRow}
         </>}
       </div>

@@ -175,8 +175,8 @@ export const EN_J: Record<string, string> = {
   "Ausprobieren": "Try it",
   "Tippen für weiter · nach unten wischen zum Schließen": "Tap for next · swipe down to close",
   "Nach unten wischen zum Schließen": "Swipe down to close",
-  "Scan deine Dose": "Scan your bottle",
-  "Strichcode in die Kamera halten – Kolbi trägt sie für dich ein.": "Hold the barcode up to the camera – Kolbi adds it for you.",
+  "Scan dein Supplement": "Scan your supplement",
+  "Strichcode in die Kamera halten – Kolbi trägt es für dich ein.": "Hold the barcode up to the camera – Kolbi adds it for you.",
   "Menge mit einem Tipp": "Amount in one tap",
   "½ · 1× · 2× direkt nach dem Abhaken – ohne extra Bildschirm.": "½ · 1× · 2× right after checking it off – no extra screen.",
   "Kolbi lernt deine Sterne": "Kolbi learns your stars",
@@ -186,5 +186,7 @@ export const EN_J: Record<string, string> = {
   "Ein kurzer Blick hinter die Kulissen.": "A quick look behind the scenes.",
   "Pausieren": "Pause",
   "Weiter abspielen": "Resume",
-  "{i} von {n}": "{i} of {n}"
+  "{i} von {n}": "{i} of {n}",
+  "Neuigkeiten von Kolbi nochmal ansehen": "Watch Kolbi's updates again",
+  "Story öffnen": "Open story"
 }

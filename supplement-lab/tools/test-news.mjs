@@ -32,6 +32,12 @@ try {
       else assert.ok(n.action, `${n.id}: Ausprobieren braucht ein Ziel`)
     }
   })
+  await test("Ticker: neueste zuerst, unabhängig vom Installationstag, ohne Zukunft, max. Anzahl, Sprache", () => {
+    assert.deepEqual(N.recentNews("2026-10-09", list, "de").map(n => n.id), ["b", "c", "a", "old"])
+    assert.deepEqual(N.recentNews("2026-10-09", list, "de", 2).map(n => n.id), ["b", "c"])
+    assert.deepEqual(N.recentNews("2026-10-09", [item("en", "2026-10-02", { lang: "en" }), item("x", "2026-10-03")], "de").map(n => n.id), ["x"])
+    assert.deepEqual(N.recentNews("kaputt", list, "de"), [])
+  })
   await test("vor dem Onboarding (kein Installationstag) → nichts", () => {
     assert.deepEqual(N.eligibleNews(list, null, "2026-10-09"), [])
     assert.equal(N.installDateOf({ startDate: null }), null)

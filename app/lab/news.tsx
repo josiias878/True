@@ -1,10 +1,11 @@
 "use client"
 // ── „Neu bei Kolbi“: kleiner Story-Kreis auf Heute + Vollbild-Storys (Daten: lib/labNews.ts) ─────
-// Kreis nur, solange ungesehene Neuheiten existieren – sonst rendert er nichts (kein Platzverbrauch).
+// Kreis leuchtet bei ungesehenen Neuheiten; danach bleibt er ruhig stehen (Storys jederzeit nochmal ansehen).
+// Dazu der Kolbi-Ticker im großen Feld auf Heute, wenn gerade nichts zu tun ist.
 // Storys: Fortschrittsbalken, rechts/links tippen = weiter/zurück, gedrückt halten = Pause,
 // nach unten wischen / ✕ / Esc = schließen, Auto-Weiter nach 6 s. Bewegung reduzieren → keine Animationen.
-import React, { useCallback, useEffect, useRef, useState } from "react"
-import { markNewsSeen, newsFor, onNewsSeenChange, seenNews, type LabNews, type NewsAction } from "@/lib/labNews"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { markNewsSeen, newsFor, onNewsSeenChange, recentNews, seenNews, type LabNews, type NewsAction } from "@/lib/labNews"
 import { suppIconSrc } from "@/lib/labIcons"
 import { STORE_MODE, fmtDate, type LabState } from "@/lib/supplementLab"
 import { Mascot, MASCOT_NAME } from "./mascot"
@@ -32,8 +33,13 @@ const NEWS_CSS = `
 .lab-news-spark { position: absolute; width: 14px; height: 14px; pointer-events: none; background: radial-gradient(circle, #fff 0 18%, rgba(255,230,150,.9) 30%, rgba(255,209,102,0) 70%); clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%); animation: labNewsSpark 2.4s ease-in-out infinite; opacity: 0; }
 @keyframes labNewsSpark { 0%,100% { opacity: 0; transform: scale(.3) rotate(0) } 45% { opacity: 1; transform: scale(1.15) rotate(45deg) } 70% { opacity: 0; transform: scale(.5) rotate(90deg) } }
 .lab-news-in { animation: labRise .4s cubic-bezier(.2,.9,.3,1) both; }
+.lab-news-tick { animation: labNewsTick .45s cubic-bezier(.2,.9,.3,1) both; }
+@keyframes labNewsTick { from { opacity: 0; transform: translateX(18px) } to { opacity: 1; transform: none } }
+.lab-news-tick-back { animation-name: labNewsTickBack; }
+@keyframes labNewsTickBack { from { opacity: 0; transform: translateX(-18px) } to { opacity: 1; transform: none } }
+.lab-news-dot { animation: labNewsGlow 2.2s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .lab-news-ring, .lab-news-glow, .lab-news-scanline, .lab-news-pop, .lab-news-float, .lab-news-orbit, .lab-news-orbit > span > span, .lab-news-star, .lab-news-hero, .lab-news-spark, .lab-news-in { animation: none !important; }
+  .lab-news-ring, .lab-news-glow, .lab-news-scanline, .lab-news-pop, .lab-news-float, .lab-news-orbit, .lab-news-orbit > span > span, .lab-news-star, .lab-news-hero, .lab-news-spark, .lab-news-in, .lab-news-tick, .lab-news-dot { animation: none !important; }
   .lab-news-scanline { top: 48%; }
   .lab-news-spark { opacity: 0; }
 }
@@ -52,21 +58,114 @@ export function useUnseenNews(s: LabState, today: string): LabNews[] {
   return list
 }
 
-/** Kleiner runder Kolbi-Kreis mit leuchtendem Ring – nur bei ungesehenen Neuheiten. */
-export function NewsRing({ s, today, onOpen }: { s: LabState; today: string; onOpen: (items: LabNews[]) => void }) {
-  const items = useUnseenNews(s, today)
-  if (!items.length) return null
+/** Alle aktuellen Neuheiten (Ticker/Archiv) + die ungesehenen; aktualisiert sich live. */
+export function useNewsFeed(s: LabState, today: string): { recent: LabNews[]; unseen: LabNews[] } {
+  const unseen = useUnseenNews(s, today)
+  const recent = useMemo(() => recentNews(today), [today])
+  return { recent, unseen }
+}
+
+/** Kleiner runder Kolbi-Kreis: leuchtender Ring bei Ungesehenem, sonst ruhig – öffnet dann alle aktuellen Storys. */
+export function NewsRing({ s, today, onOpen }: { s: LabState; today: string; onOpen: (items: LabNews[], start?: number) => void }) {
+  const { recent, unseen } = useNewsFeed(s, today)
+  if (!recent.length && !unseen.length) return null
+  const fresh = unseen.length > 0
   return (
-    <button onClick={() => { haptic(8); onOpen(items) }} className="lab-press lab-pop" data-news-ring
-      aria-label={items.length === 1 ? t("Neu bei Kolbi: 1 Neuheit ansehen") : t("Neu bei Kolbi: {n} Neuheiten ansehen", { n: items.length })}
+    <button onClick={() => { haptic(8); onOpen(fresh ? unseen : recent) }} className="lab-press lab-pop" data-news-ring
+      aria-label={fresh ? (unseen.length === 1 ? t("Neu bei Kolbi: 1 Neuheit ansehen") : t("Neu bei Kolbi: {n} Neuheiten ansehen", { n: unseen.length })) : t("Neuigkeiten von Kolbi nochmal ansehen")}
       style={{ position: "relative", width: 48, height: 48, flexShrink: 0, padding: 0, border: "none", background: "transparent", borderRadius: 999 }}>
       <style>{NEWS_CSS}</style>
-      <span aria-hidden className="lab-news-glow" />
-      <span aria-hidden className="lab-news-ring" />
-      <span aria-hidden style={{ position: "absolute", inset: 3, borderRadius: 999, background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+      {fresh && <span aria-hidden className="lab-news-glow" />}
+      <span aria-hidden className={fresh ? "lab-news-ring" : undefined} style={fresh ? undefined : { position: "absolute", inset: 0, borderRadius: 999, background: "var(--border)" }} />
+      <span aria-hidden style={{ position: "absolute", inset: fresh ? 3 : 2, borderRadius: 999, background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
         <span style={{ marginTop: 4 }}><Mascot size={36} mood="happy" /></span>
       </span>
     </button>
+  )
+}
+
+const ART_EMOJI: Record<LabNews["art"], string> = { scan: "📷", dose: "💊", stars: "⭐", groups: "👥", video: "🎬" }
+
+/** Vorschaubild im Ticker: 3D-Bild (Store-App) bzw. Video-Poster, sonst Emoji */
+function Thumb({ n }: { n: LabNews }) {
+  const [bad, setBad] = useState(false)
+  const src = n.art === "video" ? n.video?.poster : STORE_MODE ? n.img : undefined
+  return (
+    <span aria-hidden style={{ width: 56, height: 56, borderRadius: 16, flexShrink: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "#14142a" }}>
+      {src && !bad
+        ? <img src={src} alt="" draggable={false} onError={() => setBad(true)} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+        : <span style={{ fontSize: "1.6rem", lineHeight: 1 }}>{ART_EMOJI[n.art]}</span>}
+    </span>
+  )
+}
+
+const TICK_MS = 5500
+
+/**
+ * Kolbi-Ticker: kompakte Neuigkeiten-Zeile im großen Feld auf Heute (nur, wenn gerade nichts zu tun ist).
+ * Wechselt alle 5,5 s von selbst (nicht bei „Bewegung reduzieren“, nicht während Finger/Fokus darauf liegt),
+ * wischen = vor/zurück, tippen = Story an dieser Stelle öffnen.
+ */
+export function NewsTicker({ s, today, onOpen }: { s: LabState; today: string; onOpen: (items: LabNews[], start?: number) => void }) {
+  const { recent, unseen } = useNewsFeed(s, today)
+  const [i, setI] = useState(0)
+  const [dir, setDir] = useState(1)
+  const [hold, setHold] = useState(false)
+  const [hidden, setHidden] = useState(false)
+  const [still] = useState(reducedMotion)
+  const down = useRef<{ x: number; y: number } | null>(null)
+  const swipedAt = useRef(0) // Klick direkt nach einem Wisch ignorieren
+  const len = recent.length
+  const step = useCallback((d: number) => { setDir(d); setI(x => (x + d + len) % Math.max(1, len)) }, [len])
+  useEffect(() => {
+    const onVis = () => setHidden(document.visibilityState === "hidden")
+    document.addEventListener("visibilitychange", onVis)
+    return () => document.removeEventListener("visibilitychange", onVis)
+  }, [])
+  useEffect(() => {
+    if (len < 2 || hold || hidden || still) return
+    const tm = setTimeout(() => step(1), TICK_MS)
+    return () => clearTimeout(tm)
+  }, [i, len, hold, hidden, still, step])
+  if (!len) return null
+  const n = recent[Math.min(i, len - 1)]
+  const isNew = unseen.some(u => u.id === n.id)
+  return (
+    <div style={{ marginTop: 16, width: "100%" }}>
+      <style>{NEWS_CSS}</style>
+      <button className="lab-press" data-news-ticker
+        onClick={() => { if (Date.now() - swipedAt.current < 400) return haptic(8); onOpen(recent, recent.indexOf(n)) }}
+        onPointerDown={e => { down.current = { x: e.clientX, y: e.clientY }; setHold(true) }}
+        onPointerUp={e => {
+          const d = down.current; down.current = null; setHold(false)
+          if (!d) return
+          const dx = e.clientX - d.x
+          if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(e.clientY - d.y)) { swipedAt.current = Date.now(); step(dx < 0 ? 1 : -1) }
+        }}
+        onPointerCancel={() => { down.current = null; setHold(false) }}
+        onPointerLeave={() => { if (!down.current) setHold(false) }}
+        onFocus={() => setHold(true)} onBlur={() => setHold(false)}
+        aria-label={`${t("Neu bei {name}", { name: MASCOT_NAME })}: ${n.title}. ${n.text} ${t("Story öffnen")}`}
+        style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: 10, borderRadius: 20, border: "1px solid var(--glass-line)", background: "var(--surface-2)", color: "var(--text)", textAlign: "left", cursor: "pointer", touchAction: "pan-y", overflow: "hidden" }}>
+        <span key={n.id} className={`lab-news-tick${dir < 0 ? " lab-news-tick-back" : ""}`} style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
+          <Thumb n={n} />
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.68rem", fontWeight: 900, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--accent)" }}>
+              {isNew && <span aria-hidden className="lab-news-dot" style={{ width: 7, height: 7, borderRadius: 999, background: "#2ECC8A", flexShrink: 0 }} />}
+              {t("Neu bei {name}", { name: MASCOT_NAME })}
+            </span>
+            <span style={{ display: "block", fontWeight: 900, fontSize: "0.95rem", lineHeight: 1.25, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n.title}</span>
+            <span style={{ display: "block", fontWeight: 600, fontSize: "0.78rem", lineHeight: 1.35, color: "var(--text-dim)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n.text}</span>
+          </span>
+        </span>
+        <span aria-hidden style={{ color: "var(--text-dim)", fontWeight: 900, fontSize: "1.1rem", flexShrink: 0 }}>›</span>
+      </button>
+      {len > 1 && (
+        <div aria-hidden style={{ display: "flex", justifyContent: "center", gap: 5, marginTop: 8 }}>
+          {recent.map((x, j) => <span key={x.id} style={{ width: j === i ? 16 : 6, height: 6, borderRadius: 6, background: j === i ? "var(--accent)" : "var(--border)", transition: "width .3s ease, background .3s ease" }} />)}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -230,8 +329,8 @@ type VState = "loading" | "playing" | "failed" | "idle" | "ended"
 
 const FOCUSABLE = "button:not([disabled]), [href], video[controls], [tabindex]:not([tabindex='-1'])"
 
-export function NewsStories({ items, onClose, onAction }: { items: LabNews[]; onClose: () => void; onAction: (a: NonNullable<NewsAction>) => void }) {
-  const [idx, setIdx] = useState(0)
+export function NewsStories({ items, start = 0, onClose, onAction }: { items: LabNews[]; start?: number; onClose: () => void; onAction: (a: NonNullable<NewsAction>) => void }) {
+  const [idx, setIdx] = useState(() => Math.min(Math.max(0, start), Math.max(0, items.length - 1)))
   const [held, setHeld] = useState(false)
   const [hidden, setHidden] = useState(false)
   const [userPaused, setUserPaused] = useState(false)
@@ -240,7 +339,7 @@ export function NewsStories({ items, onClose, onAction }: { items: LabNews[]; on
   const [dragY, setDragY] = useState(0)
   const rootRef = useRef<HTMLDivElement | null>(null)
   const closeRef = useRef<HTMLButtonElement | null>(null)
-  const idxRef = useRef(0)
+  const idxRef = useRef(idx)
   useEffect(() => { idxRef.current = idx }, [idx])
   const n = items[idx]
   const mediaPaused = held || hidden || userPaused // Video anhalten

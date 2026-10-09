@@ -265,7 +265,7 @@ export default function LabApp() {
   const [lab, setLab] = useState<{ suppId?: string; libId?: string; tab: LabTab } | null>(null)
   const [meView, setMeView] = useState<MeView | null>(null)
   const [quickOpen, setQuickOpen] = useState(false)
-  const [news, setNews] = useState<LabNews[] | null>(null) // „Neu bei Kolbi“-Storys offen
+  const [news, setNews] = useState<{ items: LabNews[]; start: number } | null>(null) // „Neu bei Kolbi“-Storys offen
   const [newsScan, setNewsScan] = useState(false) // Deep-Link: Scanner direkt
   const [expOpen, setExpOpen] = useState<Experiment | null>(null)
   const [resView, setResView] = useState<"auswertung" | "verlauf">("auswertung")
@@ -699,7 +699,7 @@ export default function LabApp() {
             onUnlock={() => { setUnlockedFor(today); setRound(roundSteps(s, today, now, false)) }}
             onCheckin={setCheckinDate} onPhase={setPhaseSheet} goTab={goTab} onVorrat={() => { setLab(null); setLaborView("vorrat"); goTab("labor") }}
             onExtra={addExtraV} onExtraRemove={removeExtraV} onAddMany={() => setAddMany(true)}
-            onNews={setNews}
+            onNews={(items, start = 0) => setNews({ items, start })}
             onAmount={(id, p) => update(q => { setAmount(q, today, id, p); return q })}
             onPortion={(id, p) => { update(q => alignStockToPortion(setPortion(q, id, p, today), id, today)); setFlash(t("✓ Gemerkt: {amount}", { amount: portionLabel(p) })) }}
             onOpenSupp={id => { setLaborView(null); setLab({ suppId: id, tab: "ueberblick" }); goTab("labor") }}
@@ -871,7 +871,7 @@ export default function LabApp() {
         })
         setReclassifyIds(null)
       }} />}
-      {news && <NewsStories items={news} onClose={() => setNews(null)} onAction={a => { setNews(null); newsAction(a) }} />}
+      {news && <NewsStories items={news.items} start={news.start} onClose={() => setNews(null)} onAction={a => { setNews(null); newsAction(a) }} />}
       {newsScan && <ScanSheet owned={new Set(s.supps.map(x => x.lib).filter((x): x is string => !!x))} onClose={() => setNewsScan(false)}
         onAdd={items => {
           const fresh = items.filter(it => it.lib ? !s.supps.some(x => x.lib === it.lib!.id) : !s.supps.some(x => !x.lib && x.name.toLowerCase() === it.name.toLowerCase()))
