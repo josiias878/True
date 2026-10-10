@@ -1517,7 +1517,9 @@ export function computeBadges(s: LabState): string[] {
   if (st >= 7) got.add("streak7")
   if (s.reminders.enabled) got.add("reminder")
   const base = phaseWindows(s).find(p => p.kind === "baseline")
-  if (base && todayIso() > base.end && checkinsIn(s, base).length >= 4) got.add("reset")
+  // Grenze an die Pausenlänge gekoppelt (Standard-Pause 3 Tage → 3 Check-ins, ab 4 Tagen höchstens 4); einmal verdiente Abzeichen bleiben (got startet mit s.badges)
+  const need = base ? Math.max(1, Math.min(4, base.days)) : 4
+  if (base && todayIso() > base.end && checkinsIn(s, base).length >= need) got.add("reset")
   const verdicts = Object.values(s.verdicts)
   if (verdicts.length >= 1) got.add("verdict1")
   if (verdicts.length >= 3) got.add("verdict3")

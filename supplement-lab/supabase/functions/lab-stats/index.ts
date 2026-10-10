@@ -11,6 +11,8 @@ const EVENTS = new Set([
   "onboarding_view", "demo", "onboarded", "onboarded_pwa", "first_checkin", "checkin", "checkins_3", "checkins_7", "checkins_14", "checkins_30",
   "verdict", "experiment", "push_on", "invite", "share_card", "recap", "review_love", "review_ok", "review_meh", "feedback",
   "paywall_view", "purchase", "restore",
+  // Startklar (2026-10): Morgen-Frage, Extra-Einnahme, Onboarding-Schritte, Start-Check-in, Wiederkommen Tag 2/7
+  "morning_checkin", "extra_intake", "onb_0", "onb_1", "onb_2", "onb_3", "onb_4", "start_checkin", "app_open_d2", "app_open_d7",
 ])
 const SRC = /^[a-z]{1,20}$/
 

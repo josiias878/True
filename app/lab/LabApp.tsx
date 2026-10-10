@@ -40,7 +40,7 @@ import { FounderWelcome, PaywallSheet, ProGate, ReviewSheet, appPlatform } from 
 import { ProfileCard } from "./profile"
 import { SITE_URL, betaOpen, claimFounder, markPurchased, markReviewAsked, openPaywall, shouldAskReview, type ProFeature } from "@/lib/labGrow"
 import { checkEntitlement, paymentsReady } from "@/lib/labBilling"
-import { configureStats, srcFromUrl, track, trackCheckin, trackOnce } from "@/lib/labStats"
+import { configureStats, srcFromUrl, track, trackAppOpen, trackCheckin, trackOnce } from "@/lib/labStats"
 import { RoadPath } from "./path"
 import { ShareButton, makeResultCard } from "./share"
 import { CommunityConsent } from "./community"
@@ -468,6 +468,7 @@ export default function LabApp() {
   // Anonyme Statistik: Einstellung + Herkunftskanal; erste Ansicht des Onboardings; Wochenrückblick geöffnet
   useEffect(() => { configureStats(!!s.statsOff, s.src ?? srcFromUrl()) }, [s.statsOff, s.src])
   useEffect(() => { if (!s.startDate) trackOnce("onboarding_view") }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { trackAppOpen(s.startDate, s.demo) }, [s.startDate, s.demo]) // Wiederkommen Tag 2 / Tag 7 (je einmal pro Gerät)
   useEffect(() => { if (recapEnd) track("recap") }, [recapEnd])
   // Pro-Seite: kann von überall geöffnet werden (openPaywall in lib/labGrow.ts)
   useEffect(() => {
