@@ -21,6 +21,8 @@ Feedback aus `lab_feedback` einarbeiten; Store-Build vorbereiten, sobald der App
 
 ## Entscheidungen (vom Inhaber)
 
+- ✅ 10. Okt 2026 (Inhaber): **Dauerfreigabe technische Schritte.** SQL/Migrationen, Server-Funktionen und Deploys (App, Website) innerhalb einer freigegebenen Phase macht Claude ohne Einzel-Bestätigung. Weiterhin mit Freigabe: neue Phasen, Geld, Higgsfield-Credits, Videos, Rechtsprüfung.
+
 - ✅ 9. Okt 2026 (Inhaber, gilt vorrangig): **Arbeitsweise in Phasen mit Freigabe.** Claude (CEO) entwickelt proaktiv in allen
   Bereichen weiter (Produkt, Technik, Wachstum, Recht, Daten) – nicht nur Videos – und bleibt nie stehen. Der Inhaber ist
   Finanz-Verantwortlicher: Am Ende jeder Phase schlägt Claude die nächste Phase vor (Ziel, Inhalt, Aufwand an Nutzungslimit,

@@ -78,9 +78,12 @@ function hash(str: string) {
 // ── Community-Zusammenfassung (freiwillig, max. 1×/Tag; Server: push-register social + Cron social_push_digest) ──
 const COMMUNITY_KEY = "lab-push-community"
 const COMMUNITY_OFF_PENDING = "lab-push-community-off" // Abschalten schlug fehl (offline) → beim nächsten Start nachholen
+const COMMUNITY_LANG = "lab-push-community-lang" // Sprache, mit der der Server die Zusammenfassung schickt
 export function communityPushOn(): boolean { try { return localStorage.getItem(COMMUNITY_KEY) === "1" && localStorage.getItem(COMMUNITY_OFF_PENDING) !== "1" } catch { return false } }
 /** Nur lokal vergessen (z. B. Social-Konto gelöscht: serverseitig ist die Verknüpfung per Cascade weg) */
-export function clearCommunityPush() { try { localStorage.removeItem(COMMUNITY_KEY); localStorage.removeItem(COMMUNITY_OFF_PENDING) } catch {} }
+export function clearCommunityPush() { try { localStorage.removeItem(COMMUNITY_KEY); localStorage.removeItem(COMMUNITY_OFF_PENDING); localStorage.removeItem(COMMUNITY_LANG) } catch {} }
+/** App-Sprache gewechselt, seit der Server die Sprache kennt? (dann neu verknüpfen) */
+export const communityLangStale = (lang: string) => { try { return communityPushOn() && localStorage.getItem(COMMUNITY_LANG) !== lang } catch { return false } }
 export const communityOffPending = () => { try { return localStorage.getItem(COMMUNITY_OFF_PENDING) === "1" } catch { return false } }
 /** Social-Profil mit dieser Push-Adresse verknüpfen bzw. trennen. Ohne Push (Erlaubnis/Adresse) → false. */
 export async function setCommunityPush(on: boolean, social: { secret: string; lang: string }): Promise<boolean> {
@@ -98,7 +101,7 @@ export async function setCommunityPush(on: boolean, social: { secret: string; la
     // Server bestätigt den tatsächlichen Zustand (gesperrtes Profil → social:false)
     const body = res.ok ? await res.json().catch(() => null) as { social?: boolean } | null : null
     if (!body || body.social !== on) { if (!on) localStorage.setItem(COMMUNITY_OFF_PENDING, "1"); return false }
-    if (on) { localStorage.setItem(COMMUNITY_KEY, "1"); localStorage.removeItem(COMMUNITY_OFF_PENDING) } else clearCommunityPush()
+    if (on) { localStorage.setItem(COMMUNITY_KEY, "1"); localStorage.setItem(COMMUNITY_LANG, social.lang); localStorage.removeItem(COMMUNITY_OFF_PENDING) } else clearCommunityPush()
     return true
   } catch { if (!on) try { localStorage.setItem(COMMUNITY_OFF_PENDING, "1") } catch {} ; return false }
 }

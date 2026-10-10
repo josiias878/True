@@ -9,7 +9,7 @@ import { groupInfo, groupSteps } from "@/lib/labGroups"
 import { AVATAR_ACCESSORIES, AVATAR_COLORS, AVATAR_MOODS, DEFAULT_AVATAR, LAB_GROUPS, avatarColorBg, labColor, loadAvatar, pseudoSeed, pseudonym, type LabAvatar, type LabGroup } from "@/lib/labSocial"
 import { SITE_URL, appVersion } from "@/lib/labGrow"
 import { markSeen } from "@/lib/labNew"
-import { clearCommunityPush, communityOffPending, communityPushOn, pushState, setCommunityPush } from "@/lib/labPush"
+import { clearCommunityPush, communityLangStale, communityOffPending, communityPushOn, pushState, setCommunityPush } from "@/lib/labPush"
 import * as api from "@/lib/labSocialApi"
 import { POST_TAGS } from "@/lib/labSocialApi"
 import type { OfficialPost, Poll, PostTag, ReactionKind, ReportReason, SocialCommunity, SocialPage, SocialPost, SocialProfile } from "@/lib/labSocialApi"
@@ -863,11 +863,15 @@ function SharePostSheet({ s, suppId, onClose }: { s: LabState; suppId: string; o
 /** Einmal in LabApp einhängen: Einwilligung + Posten-Vorschau + Meldungen. */
 export function SocialHost({ s, onFlash, hold }: { s: LabState; onFlash: (m: string) => void; hold?: boolean }) {
   useEffect(() => { flashFn = onFlash }, [onFlash])
-  // Offline fehlgeschlagenes Abschalten der Community-Pushs nachholen
+  // Offline fehlgeschlagenes Abschalten der Community-Pushs nachholen; nach Sprachwechsel neue Sprache melden
   useEffect(() => {
-    if (!communityOffPending()) return
-    const auth = api.communityPushAuth(true)
-    if (auth) void setCommunityPush(false, auth)
+    if (communityOffPending()) {
+      const auth = api.communityPushAuth(true)
+      if (auth) void setCommunityPush(false, auth)
+      return
+    }
+    const auth = api.communityPushAuth()
+    if (auth && communityLangStale(auth.lang)) void setCommunityPush(true, auth)
   }, [])
   const a = useSyncExternalStore(subscribe, () => ask, () => null)
   const pf = useSyncExternalStore(subscribe, () => postFor, () => null)
