@@ -70,10 +70,11 @@ Store-Apps ist Vercel Web Analytics nicht eingebaut.
 ## 5. Anonyme Nutzungsstatistik (Web-App und Store-Apps, standardmäßig an, abschaltbar)
 
 Damit wir sehen, ob die App hilft und welche Wege zu ihr führen, meldet die App einzelne Ereignisse, z. B.
-„Einrichtung abgeschlossen“, „erster Check-in“, „7. Check-in“, „Wochenrückblick geöffnet“, „Tarife angesehen“,
-„Kauf abgeschlossen“. Übertragen werden nur: das Ereignis, die App-Sprache und – falls du über einen Link wie
+„Einrichtungs-Schritt 2 erreicht“, „Einrichtung abgeschlossen“, „erster Check-in“, „Check-in am Starttag“, „7. Check-in“,
+„App ab Tag 2 bzw. Tag 7 wieder geöffnet“, „Wochenrückblick geöffnet“, „Tarife angesehen“, „Kauf abgeschlossen“. Übertragen werden nur: das Ereignis, die App-Sprache und – falls du über einen Link wie
 `…/reddit` gekommen bist – der Kanalname, oder in Test-Versionen (Beta) ohne solchen Link ein fester Test-Kanal (z. B. „playtest“). Damit der Kanal auch bei späteren Ereignissen mitgezählt wird, merkt sich die App ihn lokal auf
-deinem Gerät, ebenso deine Einstellung, ob die Statistik aus ist.
+deinem Gerät, ebenso deine Einstellung, ob die Statistik aus ist, und welche einmaligen Ereignisse (z. B. „wieder
+geöffnet ab Tag 2“) schon gemeldet wurden – damit sie nur einmal zählen.
 
 Bei Supabase (Frankfurt, Abschnitt 11) wird daraus nur ein **Tageszähler** erhöht (z. B. „1. Okt · erster
 Check-in · Deutsch · reddit: 12“). Gespeichert werden ausschließlich Tag, Ereignis, Sprache, Kanal und Anzahl –

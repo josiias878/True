@@ -68,9 +68,11 @@ pages and paths are used). Vercel Web Analytics is not built into the store apps
 ## 5. Anonymous usage stats (web app and store apps, on by default, can be turned off)
 
 So we can see whether the app helps and which paths lead people to it, the app reports single events, e.g. “setup
-completed”, “first check-in”, “7th check-in”, “weekly recap opened”, “plans viewed”, “purchase completed”. Only the
+step 2 reached”, “setup completed”, “first check-in”, “check-in on start day”, “7th check-in”, “app reopened from day 2
+or day 7”, “weekly recap opened”, “plans viewed”, “purchase completed”. Only the
 event, the app language and – if you came through a link like `…/reddit` – the channel name, or in test versions (beta) without such a link a fixed test channel (e.g. “playtest”), are sent. So that the channel is also counted for later events, the app
-remembers it locally on your device, as well as your setting for whether the stats are off.
+remembers it locally on your device, as well as your setting for whether the stats are off and which one-time events
+(e.g. “reopened from day 2”) have already been reported – so they only count once.
 
 At Supabase (Frankfurt, section 11) this only increments a **daily counter** (e.g. “Oct 1 · first check-in ·
 English · reddit: 12”). Only the day, event, language, channel and count are stored – **no device ID, no IP address, no content and no health values**; individual people cannot be identified in the stats.
