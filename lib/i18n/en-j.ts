@@ -291,5 +291,6 @@ export const EN_J: Record<string, string> = {
   "Start-Check-in am ersten Tag": "Start check-in on day one",
   "Einrichten in 3 Schritten – und gleich am ersten Tag einchecken, ohne bis zum Abend zu warten.": "Set up in 3 steps – and check in on day one, without waiting for the evening.",
   "Tippe die Sterne pro Bereich – so, wie es sich gerade anfühlt.": "Tap the stars for each area – the way it feels right now.",
-  "Wie geht's dir gerade?": "How are you right now?"
+  "Wie geht's dir gerade?": "How are you right now?",
+  "Heute schon etwas genommen? Dann starte lieber morgen – so bleibt die Pause fair.": "Already taken something today? Then better start tomorrow – that keeps the break fair."
 }

@@ -395,6 +395,9 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
           <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", lineHeight: 1.5 }}>
             {t("⚕️ Kein medizinischer Rat. Verschriebene Medikamente nie eigenmächtig absetzen.")}
           </div>
+          <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", lineHeight: 1.5, marginTop: 6 }}>
+            {t("Heute schon etwas genommen? Dann starte lieber morgen – so bleibt die Pause fair.")}
+          </div>
           {footer(
             <div style={{ display: "flex", gap: 8 }}>
               <Btn full onClick={() => start(0)}>{t("Heute starten 🚀")}</Btn>
