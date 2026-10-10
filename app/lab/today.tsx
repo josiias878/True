@@ -248,7 +248,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
         </>}
 
         {main === "done" && <>
-          {title(startDay && checked && fill < 1 ? t("Start geschafft!") : fill >= 1 ? t("Heute alles erledigt") : t("Gerade nichts zu tun"))}
+          {title(startDay && checked ? t("Start geschafft!") : fill >= 1 ? t("Heute alles erledigt") : t("Gerade nichts zu tun"))}
           {sub(startDay && checked ? t("Ändert sich bis zum Abend etwas, pass den Check-in einfach an – es zählt ein Wert pro Tag.")
             : fill >= 1 ? (st > 1 ? t("{n} Tage am Stück. Stark!", { n: st }) : t("Bis morgen!")) : t("Ich melde mich, wenn wieder etwas dran ist."))}
           {checked && (
@@ -270,7 +270,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
           border: "none", background: "var(--surface-2)", color: "var(--text-dim)", textAlign: "left", fontSize: "0.82rem", fontWeight: 700,
         }}>
           <span aria-hidden>⏰</span>
-          <span style={{ flex: 1, minWidth: 0 }}>{t("Passt {time} Aufstehen?", { time: clock(s.settings.wake) })}</span>
+          <span style={{ flex: 1, minWidth: 0 }}>{t("Aufstehen um {time} – passt das?", { time: clock(s.settings.wake) })}</span>
           <span style={{ color: "var(--accent-ink)", fontWeight: 900 }}>{t("Ändern")} ›</span>
         </button>
       )}

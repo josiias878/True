@@ -97,9 +97,11 @@ export async function setCommunityPush(on: boolean, social: { secret: string; la
       body: JSON.stringify({ subscription: sub.toJSON(), social: { secret: social.secret, on, lang: social.lang } }),
     })
     // Profil schon weg (401) → Verknüpfung per Cascade gelöscht, nichts mehr nachzuholen
-    if (!on && res.status === 401) { clearCommunityPush(); return true }
+    if (res.status === 401) { clearCommunityPush(); return !on }
     // Server bestätigt den tatsächlichen Zustand (gesperrtes Profil → social:false)
     const body = res.ok ? await res.json().catch(() => null) as { social?: boolean } | null : null
+    // Server lehnt Einschalten ab (z. B. gesperrtes Profil) → lokal aus, sonst fragt jeder Start erneut
+    if (on && body?.social === false) { clearCommunityPush(); return false }
     if (!body || body.social !== on) { if (!on) localStorage.setItem(COMMUNITY_OFF_PENDING, "1"); return false }
     if (on) { localStorage.setItem(COMMUNITY_KEY, "1"); localStorage.setItem(COMMUNITY_LANG, social.lang); localStorage.removeItem(COMMUNITY_OFF_PENDING) } else clearCommunityPush()
     return true

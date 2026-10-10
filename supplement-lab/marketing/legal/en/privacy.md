@@ -81,7 +81,7 @@ The stats are **switched on by default**. You can turn them off at any time in S
 after that, the app sends no more events. Legal basis: Art. 6(1)(f) GDPR (legitimate interest in improving the app);
 you can object at any time with the switch.
 
-> **Draft – to be clarified by a professional:** Whether storing the channel and the stats setting locally for the counting requires consent under Section 25 TDDDG (then: stats only after opt-in), or whether the legitimate interest with an opt-out is sufficient, will be reviewed before publication. This section will be updated afterwards.
+> **Draft – to be clarified by a professional:** Whether storing the channel, the stats setting and the marker for already reported one-time events locally for the counting requires consent under Section 25 TDDDG (then: stats only after opt-in), or whether the legitimate interest with an opt-out is sufficient, will be reviewed before publication. This section will be updated afterwards.
 
 ## 6. Push reminders (web app only, optional)
 

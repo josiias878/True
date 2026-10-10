@@ -271,7 +271,7 @@ export const EN_J: Record<string, string> = {
   "Dafür zuerst Erinnerungen (Push) einschalten": "Turn on reminders (push) first",
   "Kolbi sagt Bescheid": "Kolbi lets you know",
   "Neues aus deinen Gruppen höchstens 1× am Tag – plus Punkt am Entdecken-Reiter.": "News from your groups at most once a day – plus a dot on the Discover tab.",
-  "In ein paar Tagen weißt du, was dir wirklich etwas bringt": "In a few days you'll know what's really worth it for you",
+  "In gut einer Woche siehst du, was dir wirklich etwas bringt": "In about a week you'll see what's really worth it for you",
   "Ich bin {name}. Du tippst jeden Tag kurz, wie es dir geht – ich vergleiche und zeige dir, was sich bei dir verändert.": "I'm {name}. Every day you tap in quickly how you feel – I compare and show you what changes for you.",
   "Heute: kurz einchecken": "Today: a quick check-in",
   "So lerne ich dein Normal kennen – dauert 1 Minute.": "That's how I learn your normal – takes 1 minute.",
@@ -287,10 +287,12 @@ export const EN_J: Record<string, string> = {
   "1 Minute – so lerne ich dein Normal kennen. Am Abend kannst du ihn noch anpassen.": "1 minute – that's how I learn your normal. You can still adjust it in the evening.",
   "Start geschafft!": "You've started!",
   "Ändert sich bis zum Abend etwas, pass den Check-in einfach an – es zählt ein Wert pro Tag.": "If anything changes by evening, just adjust the check-in – one value counts per day.",
-  "Passt {time} Aufstehen?": "Waking up at {time} – right?",
+  "Aufstehen um {time} – passt das?": "Waking up at {time} – right?",
   "Start-Check-in am ersten Tag": "Start check-in on day one",
   "Einrichten in 3 Schritten – und gleich am ersten Tag einchecken, ohne bis zum Abend zu warten.": "Set up in 3 steps – and check in on day one, without waiting for the evening.",
   "Tippe die Sterne pro Bereich – so, wie es sich gerade anfühlt.": "Tap the stars for each area – the way it feels right now.",
   "Wie geht's dir gerade?": "How are you right now?",
-  "Heute schon etwas genommen? Dann starte lieber morgen – so bleibt die Pause fair.": "Already taken something today? Then better start tomorrow – that keeps the break fair."
+  "Heute schon etwas genommen? Dann starte lieber morgen – so bleibt die Pause fair.": "Already taken something today? Then better start tomorrow – that keeps the break fair.",
+  "🌙 Tag 1 geschafft": "🌙 Day 1 done",
+  "Passt dein Start-Check-in von heute noch? Kurz anpassen – es zählt ein Wert pro Tag.": "Does today's start check-in still fit? Adjust it quickly – one value counts per day."
 }

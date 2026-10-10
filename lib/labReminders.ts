@@ -232,6 +232,13 @@ export function notificationPlan(s: LabState, days = 7, now = new Date()): Plann
       })
     }
 
+    // Starttag: Start-Check-in war eine Momentaufnahme vom Tag → abends einmal sanft fragen, ob er noch passt
+    const startCi = date === today && s.startDate === today ? s.checkins[date] : undefined
+    if (startCi?.at && toMin(startCi.at) < toMin(s.reminders.checkin) - 60) {
+      const at = atDate(date, toMin(s.reminders.checkin))
+      const text = { title: t("🌙 Tag 1 geschafft"), body: t("Passt dein Start-Check-in von heute noch? Kurz anpassen – es zählt ein Wert pro Tag.") }
+      out.push({ key: `checkin-${date}`, kind: "checkin", url: round, at, date, ...text, generic: text })
+    }
     // Abends: Tagesrunde (+ Serien-Retter heute). Einnahmen ±60 Min. davon werden mitgenommen → weniger Pings.
     if (!(date === today && s.checkins[date])) {
       let m = toMin(s.reminders.checkin)

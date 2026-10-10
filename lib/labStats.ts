@@ -44,7 +44,7 @@ export function track(e: StatEvent): boolean {
 
 // Lokaler Merker „schon einmal gesendet“ – eigener Schlüssel, getrennt vom Nutzerstand (true-supplement-lab-v1),
 // enthält nur Ereignisnamen, wird nie übertragen.
-const DEVICE_ONCE = new Set<StatEvent>(["onboarding_view", "app_open_d2", "app_open_d7"])
+const DEVICE_ONCE = new Set<StatEvent>(["onboarding_view", "onb_0", "onb_1", "onb_2", "onb_3", "app_open_d2", "app_open_d7"])
 const SENT_KEY = "true-supplement-lab-stats-sent-v1"
 /** null = Speicher nicht nutzbar (privates Fenster o. Ä.) → dann nur pro Seitenaufruf, nichts merken */
 function readSent(): StatEvent[] | null {

@@ -293,7 +293,7 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
           <div style={{ display: "flex", justifyContent: "center", margin: "28px 0 8px" }}>
             <div className="lab-float"><Mascot mood="happy" size={150} /></div>
           </div>
-          <div style={{ textAlign: "center", fontSize: "1.75rem", fontWeight: 900, lineHeight: 1.15, margin: "8px 0 10px", textWrap: "balance" }}>{t("In ein paar Tagen weißt du, was dir wirklich etwas bringt")}</div>
+          <div style={{ textAlign: "center", fontSize: "1.75rem", fontWeight: 900, lineHeight: 1.15, margin: "8px 0 10px", textWrap: "balance" }}>{t("In gut einer Woche siehst du, was dir wirklich etwas bringt")}</div>
           <div style={{ textAlign: "center", fontSize: "1rem", color: "var(--text-dim)", lineHeight: 1.5, marginBottom: 22, textWrap: "balance" }}>
             {t("Ich bin {name}. Du tippst jeden Tag kurz, wie es dir geht – ich vergleiche und zeige dir, was sich bei dir verändert.", { name: MASCOT_NAME })}
           </div>

@@ -85,7 +85,7 @@ Die Statistik ist **standardmäßig eingeschaltet**. Du kannst sie jederzeit in 
 „📊 Anonyme Statistik“ abschalten; danach sendet die App keine Ereignisse mehr. Rechtsgrundlage: Art. 6 Abs. 1
 lit. f DSGVO (berechtigtes Interesse an der Verbesserung der App); Widerspruch jederzeit über den Schalter.
 
-> **Entwurf – Klären durch Fachperson:** Ob die lokale Speicherung des Kanals und der Statistik-Einstellung für die Zählung unter § 25 TDDDG eine Einwilligung erfordert (dann: Statistik erst nach Zustimmung) oder ob das berechtigte Interesse mit Abschaltmöglichkeit genügt, wird vor Veröffentlichung fachlich geprüft. Dieser Abschnitt wird danach angepasst.
+> **Entwurf – Klären durch Fachperson:** Ob die lokale Speicherung des Kanals, der Statistik-Einstellung und des Merkers für bereits gemeldete Einmal-Ereignisse für die Zählung unter § 25 TDDDG eine Einwilligung erfordert (dann: Statistik erst nach Zustimmung) oder ob das berechtigte Interesse mit Abschaltmöglichkeit genügt, wird vor Veröffentlichung fachlich geprüft. Dieser Abschnitt wird danach angepasst.
 
 ## 6. Push-Erinnerungen (nur Web-App, optional)
 

@@ -380,7 +380,8 @@ export default function LabApp() {
   const saveCheckin = useCallback((c: CheckIn) => {
     const isNew = !s.checkins[c.date]
     const refined = !isNew && s.checkins[c.date]?.quick && !c.quick
-    const at = c.at ?? s.checkins[c.date]?.at ?? (c.date === todayIso() ? nowTime() : undefined)
+    // Heute angepasst → aktuelle Uhrzeit (z. B. Start-Check-in vom Vormittag am Abend überarbeitet)
+    const at = c.at ?? (c.date === todayIso() ? nowTime() : s.checkins[c.date]?.at)
     update(p => {
       // Beschwerden kommen vorbelegt (sidesOf) aus der UI → dann gilt genau diese Auswahl, auch „keine“
       if (c.sides && p.daySides?.[c.date]) { const rest = { ...p.daySides }; delete rest[c.date]; p.daySides = rest }
