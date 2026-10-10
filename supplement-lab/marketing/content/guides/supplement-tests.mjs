@@ -34,7 +34,7 @@ export const TESTS = [
     en: { slug: "lions-mane", name: "Lion's Mane", why: "Many people take lion's mane and mostly pay attention to focus and mood.", when: "During the test, take it at the same time every day – many take it in the morning.", tip: "Focus varies a lot with sleep and workload. Rate it in Kolbi every evening looking back at the whole day – not just the last hour." } },
   { id: "probiotika", emoji: "🦠", onset: "mittel", watch: ["verdauung", "stimmung"],
     de: { slug: "probiotika", name: "Probiotika", why: "Viele nehmen Probiotika und achten auf ihre Verdauung und ihr allgemeines Wohlbefinden.", when: "Nimm sie im Test jeden Tag zur gleichen Zeit, wie auf der Packung angegeben.", tip: "Ernährung im Test möglichst gleich halten – ein Urlaub oder eine neue Diät mitten im Test macht den Vergleich wertlos." },
-    en: { slug: "probiotics", name: "Probiotics", why: "Many people take probiotics and pay attention to their digestion and general well-being.", when: "During the test, take them at the same time every day, as stated on the pack.", tip: "Keep your diet as stable as possible during the test – a holiday or a new diet in the middle makes the comparison worthless." } },
+    en: { slug: "probiotics", name: "Probiotics", plural: true, why: "Many people take probiotics and pay attention to their digestion and general well-being.", when: "During the test, take them at the same time every day, as stated on the pack.", tip: "Keep your diet as stable as possible during the test – a holiday or a new diet in the middle makes the comparison worthless." } },
   // ── Etappe 2 (Okt 2026, Nachfrage laut research/2026-10-demand.md) ──
   // Optionale Felder je Sprache: notice (Kasten „Wichtig vorab“), faqMore (zusätzliche FAQ), faq (ersetzt alle FAQ),
   // title/desc/lead2 (eigener Rahmen), step1 ({dims} = Bereiche), step2h ({len} = Testdauer), mistake, onsetNote, cta {h, p, btn}
@@ -64,7 +64,8 @@ export const TESTS = [
       faqMore: [["How much zinc is too much?", "For adults, EFSA sets 25 mg a day (from all sources combined) as the upper limit for long-term intake. Count the zinc in multivitamins and other supplements too. Anything beyond that is for a doctor or pharmacist to advise on."]] } },
   { id: "eisen", emoji: "🩸", onset: "langsam", watch: ["energie", "koerper"],
     de: { slug: "eisen", name: "Eisen", title: "Wirkt Eisen bei mir? Erst Blutbild, dann Befinden festhalten",
-      desc: "Eisen ist nichts zum Ausprobieren: erst Blutbild (Ferritin) und Absprache mit Ärztin oder Arzt. So hältst du nebenbei fest, wie es dir geht – ohne Laborwerte zu ersetzen.",
+      seoTitle: "Eisen: erst Blutbild, dann Befinden festhalten",
+      desc: "Eisen nicht auf Verdacht nehmen: erst Blutbild (Ferritin) und Ärztin oder Arzt. So hältst du nebenbei fest, wie es dir geht – ohne Laborwerte zu ersetzen.",
       why: "Eisen ist kein Supplement zum Ausprobieren. Viele nehmen es erst, nachdem ein Blutbild (Ferritin) einen niedrigen Wert gezeigt hat und Ärztin oder Arzt zugestimmt haben – und achten dann nebenbei auf Energie und Körpergefühl.",
       lead2: "Ob die Einnahme bei dir passt, zeigt dein Blutwert. Kolbi hilft dir, nebenbei festzuhalten, wie es dir geht – so geht's.",
       notice: "**Bitte nicht auf Verdacht testen.** Eisen nimmst du nur nach einem Blutbild (Ferritin) und in Absprache mit Ärztin oder Arzt – zu viel Eisen schadet dem Körper. Kolbi hilft dir, dein Befinden nebenbei festzuhalten. Laborwerte ersetzt das nicht.",
@@ -80,7 +81,8 @@ export const TESTS = [
         ["Was, wenn ich keinen Unterschied merke?", "Bei Eisen sagt das der Kontroll-Blutwert, nicht dein Gefühl. Wenn sich dein Befinden kaum von deinem Normal unterscheidet, ist das eine nützliche Notiz für das Gespräch mit Ärztin oder Arzt – aber kein Grund, eigenmächtig etwas zu ändern."]],
       cta: { h: "Kolbi schreibt dein Befinden mit", p: "Für alle, die Eisen nach Blutbild und in Absprache nehmen: Normal, Abend-Check-in, ehrlicher Vergleich – als Ergänzung zu deinen Laborwerten. In der Beta kostenlos, ohne Konto.", btn: "Befinden festhalten" } },
     en: { slug: "iron", name: "Iron", title: "Does iron work for me? Blood test first, then track how you feel",
-      desc: "Iron isn't something to just try: get a blood test (ferritin) and agree it with your doctor first. Here's how to track how you feel alongside – without replacing lab values.",
+      seoTitle: "Iron: blood test first, then track how you feel",
+      desc: "Don't take iron on a hunch: blood test (ferritin) and your doctor first. Here's how to track how you feel alongside – without replacing lab values.",
       why: "Iron isn't a supplement to just try out. Many people only take it after a blood test (ferritin) showed a low value and their doctor agreed – and then also pay attention to energy and how their body feels.",
       lead2: "Whether it's right for you is shown by your blood values. Kolbi helps you keep track of how you feel alongside – here's how.",
       notice: "**Please don't test this on a hunch.** Only take iron after a blood test (ferritin) and in agreement with your doctor – too much iron harms the body. Kolbi helps you keep track of how you feel alongside. It doesn't replace lab values.",
@@ -113,13 +115,17 @@ export function testPage(item, lang) {
   const x = item[lang], en = lang === "en", o = ONSET[item.onset][lang]
   const dims = item.watch.map(d => DIMS[d][en ? 1 : 0])
   const b = s => s.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
-  const title = x.title ?? (en ? `Does ${x.name} work for me? How to test it yourself` : `Wirkt ${x.name} bei mir? So testest du es selbst`)
-  const desc = x.desc ?? (en ? `A simple self-test for ${x.name}: track your normal, take only ${x.name}, rate ${dims.length} things each evening, compare honestly. No promises – just your own data.`
-    : `Einfacher Selbsttest für ${x.name}: dein Normal festhalten, nur ${x.name} nehmen, abends ${dims.length} Dinge bewerten, ehrlich vergleichen. Keine Versprechen – nur deine eigenen Daten.`)
+  const does = x.plural ? "Do" : "Does"
+  const title = x.title ?? (en ? `${does} ${x.name} work for me? How to test it yourself` : `Wirkt ${x.name} bei mir? So testest du es selbst`)
+  /** <title> (≤ 60 mit „ – Kolbi“): Suchbegriff vorn („Magnesium testen“ / „Does magnesium work for you“) */
+  const seoTitle = x.seoTitle ?? (en ? `${does} ${x.name} work for you? How to test it` : `${x.name} testen: Wirkt es bei mir? Selbsttest`)
+  /** description ≤ 155 */
+  const desc = x.desc ?? (en ? `Test ${x.name} on yourself: 7 days of your normal, then only ${x.name}, rate ${dims.length} things each evening, compare honestly. No promises, just your data.`
+    : `${x.name} selbst testen: 7 Tage dein Normal, dann nur ${x.name}, abends ${dims.length} Dinge bewerten, ehrlich vergleichen. Keine Versprechen, nur deine Daten.`)
   const faq = x.faq ? [...x.faq] : en ? [
     [`How long should I test ${x.name}?`, `${o[0]}. ${o[1]}`],
     [`What should I pay attention to with ${x.name}?`, `Many people watch ${dims.map(d => d.slice(d.indexOf(" ") + 1).toLowerCase()).join(", ")}. Rate the same things every evening – before (your normal) and during the test.`],
-    [`How do I know ${x.name} makes no difference for me?`, `If your averages during the test are barely different from your normal (less than about half a star on a 5-star scale) and your disruptors were similar, it probably makes no noticeable difference for you right now.`],
+    [`How do I know ${x.name} ${x.plural ? "make" : "makes"} no difference for me?`, `If your averages during the test are barely different from your normal (less than about half a star on a 5-star scale) and your disruptors were similar, it probably makes no noticeable difference for you right now.`],
   ] : [
     [`Wie lange sollte ich ${x.name} testen?`, `${o[0]}. ${o[1]}`],
     [`Worauf soll ich bei ${x.name} achten?`, `Viele achten auf ${dims.map(d => d.slice(d.indexOf(" ") + 1)).join(", ")}. Bewerte jeden Abend dieselben Dinge – vorher (dein Normal) und während des Tests.`],
@@ -155,5 +161,5 @@ ${steps.map(([h, p]) => `<div class="tstep"><h3>${h}</h3><p>${p}</p></div>`).joi
 ${faq.map(([q, a]) => `<details class="tfaq"><summary>${q}</summary><p>${a}</p></details>`).join("\n")}
 <p class="fine" style="margin-top:22px">⚠️ ${en ? "This is not medical advice and makes no claims about effects. If you take medication, are pregnant or have a health condition, talk to a doctor or pharmacist before starting or stopping anything."
     : "Keine medizinische Beratung und keine Aussage über Wirkungen. Wenn du Medikamente nimmst, schwanger bist oder Vorerkrankungen hast, sprich vor dem Starten oder Absetzen mit Ärztin, Arzt oder Apotheke."}</p>`
-  return { title, desc, html, faq, slug: x.slug, name: x.name, cta: x.cta }
+  return { title, seoTitle, desc, html, faq, slug: x.slug, name: x.name, cta: x.cta }
 }

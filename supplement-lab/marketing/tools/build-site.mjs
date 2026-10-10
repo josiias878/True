@@ -108,10 +108,10 @@ function md(t) {
 // ── Texte je Sprache ─────────────────────────────────────────────────────────
 const L = {
   de: {
-    base: "", lang: "de", ogTitle: "Kolbi – Finde raus, welche Supplements bei dir wirken",
+    base: "", lang: "de", ogTitle: "Kolbi – Supplement-Tagebuch: Finde raus, was bei dir wirkt",
     desc: "Teste deine Supplements eins nach dem anderen, vergleiche mit deinem Normal und spar dir, was nichts bringt. Ohne Konto, Daten bleiben auf deinem Gerät.",
     open: "Beta öffnen", tagline: "Finde raus, was bei dir wirkt.",
-    guide: { href: "/ratgeber/supplements-selbst-testen", label: "Ratgeber: Supplements selbst testen", file: "content/guides/supplements-selbst-testen.md", desc: "Schritt-für-Schritt-Anleitung: So testest du Supplements im Selbstversuch – Baseline, eins nach dem anderen, Abend-Check-in, Vergleich.", cta: "Kolbi macht das automatisch – kostenlos testen" }, other: { href: "/en", label: "EN", hint: "🇬🇧 English version" },
+    guide: { seoTitle: "Supplements selbst testen: Anleitung in 5 Schritten – Kolbi", href: "/ratgeber/supplements-selbst-testen", label: "Ratgeber: Supplements selbst testen", file: "content/guides/supplements-selbst-testen.md", desc: "Wirkt mein Supplement? So testest du Supplements im Selbstversuch: Baseline, eins nach dem anderen, Abend-Check-in, ehrlicher Vergleich.", cta: "Kolbi macht das automatisch – kostenlos testen" }, other: { href: "/en", label: "EN", hint: "🇬🇧 English version" },
     legal: [["impressum", "Impressum", "impressum"], ["datenschutz", "Datenschutz", "datenschutz"], ["nutzungsbedingungen", "Nutzungsbedingungen", "nutzungsbedingungen"]],
     legalTitles: { impressum: "Impressum", datenschutz: "Datenschutzerklärung", nutzungsbedingungen: "Nutzungsbedingungen" },
     fine: "Kolbi ist ein Tagebuch- und Experimentier-Werkzeug, kein Medizinprodukt. Keine Diagnose, keine Heilversprechen – die Ergebnisse sind deine persönliche Einschätzung. Bei Beschwerden, Schwangerschaft oder Medikamenten sprich vorher mit Ärztin, Arzt oder Apotheke.",
@@ -125,10 +125,10 @@ const L = {
     lines: ["Hihi, das kitzelt! 😄", "Ich teste mit dir. 🧪", "Erst Reset, dann Test!", "Behalten oder raus? Ich zeig's dir.", "Hi, ich bin Kolbi! 👋"],
   },
   en: {
-    base: "/en", lang: "en", ogTitle: "Kolbi – Find out which supplements actually work for you",
-    desc: "Test your supplements one at a time, compare with your own normal and stop paying for what doesn't work for you. No account, your data stays on your device.",
+    base: "/en", lang: "en", ogTitle: "Kolbi – Supplement tracker: find out what works for you",
+    desc: "Test your supplements one at a time, compare with your own normal and stop paying for what doesn't work for you. No account, data stays on your device.",
     open: "Open beta", tagline: "Find out what works for you.",
-    guide: { href: "/en/guide/how-to-test-supplements", label: "Guide: how to test supplements", file: "content/guides/how-to-test-supplements.md", desc: "Step-by-step guide to testing supplements on yourself – baseline, one at a time, evening check-in, comparison.", cta: "Kolbi does this for you – try it free" }, other: { href: "/", label: "DE", hint: "🇩🇪 Deutsche Version" },
+    guide: { seoTitle: "How to test supplements on yourself: 5 steps – Kolbi", href: "/en/guide/how-to-test-supplements", label: "Guide: how to test supplements", file: "content/guides/how-to-test-supplements.md", desc: "Does my supplement work? How to test supplements on yourself: baseline, one at a time, evening check-in, honest comparison.", cta: "Kolbi does this for you – try it free" }, other: { href: "/", label: "DE", hint: "🇩🇪 Deutsche Version" },
     legal: [["imprint", "Legal notice", "en/imprint"], ["privacy", "Privacy", "en/privacy"], ["terms", "Terms", "en/terms"]],
     legalTitles: { imprint: "Legal notice", privacy: "Privacy Policy", terms: "Terms of Use" },
     fine: "Kolbi is a journaling and self-experiment tool, not a medical device. No diagnosis, no health claims – results are your personal rating. If you have health issues, are pregnant or take medication, talk to your doctor or pharmacist first.",
@@ -143,18 +143,27 @@ const L = {
   },
 }
 
+const { TESTS, testPage } = await import("../content/guides/supplement-tests.mjs")
+
 // ── Gemeinsames Gerüst ───────────────────────────────────────────────────────
 const CSS = fs.readFileSync(new URL("./site.css", import.meta.url), "utf8")
 const JS = fs.readFileSync(new URL("./site.js", import.meta.url), "utf8")
 /** alt = { de: "/pfad", en: "/en/pfad" }: hreflang-Paar (absolut) + Sprachumschalter/Fußzeilen-Link zum Gegenstück. */
+/** SEO-Grenzen (Google kürzt sonst): title ≤ 60, description ≤ 155 Zeichen – Bau bricht nicht ab, meldet aber. */
+const SEO_WARN = []
 const page = (l0, { title, desc, body, path = "", alt, head = "" }) => {
   const ol = l0.lang === "de" ? "en" : "de", abs = u => SITE + (u === "/" ? "" : u)
+  if (title.length > 60) SEO_WARN.push(`title ${title.length} > 60: ${title}`)
+  if (desc.length > 155) SEO_WARN.push(`description ${desc.length} > 155: ${desc}`)
+  /** canonical = eigene Adresse aus dem hreflang-Paar. Kanal-Kopien (/tiktok …) erben die Startseite → zeigen auf / bzw. /en. */
+  const canon = alt?.[l0.lang]
   const l = alt ? { ...l0, other: { ...l0.other, href: alt[ol] } } : l0
   return `<!doctype html>
 <html lang="${l.lang}"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${title}</title><meta name="description" content="${desc}">
 ${DRAFT ? '<meta name="robots" content="noindex, nofollow">' : ""}
+${canon ? `<link rel="canonical" href="${abs(canon)}">` : ""}
 ${alt ? `<link rel="alternate" hreflang="de" href="${abs(alt.de)}"><link rel="alternate" hreflang="en" href="${abs(alt.en)}"><link rel="alternate" hreflang="x-default" href="${abs(alt.de)}">` : ""}
 ${GSC_META}${head}<meta name="theme-color" content="#14122b">
 <meta property="og:title" content="${title}"><meta property="og:description" content="${desc}">
@@ -197,8 +206,10 @@ function jumpCta(l, A) {
     <p class="store-note"><a href="${A}" data-cta="hero-web">${J.web}</a></p>`
 }
 
+/** Startseite → Selbsttests (interne Links für SEO; meistgesuchte zuerst, laut research/2026-10-demand.md) */
+const HOME_TESTS = ["magnesium", "kreatin", "ashwagandha", "vitd", "melatonin", "omega3"]
 function home(l) {
-  const T = l.t, J = l.jump, A = `${APP}?lang=${l.lang}`
+  const T = l.t, J = l.jump, A = `${APP}?lang=${l.lang}`, en = l.lang === "en", tb = en ? "/en/self-test" : "/selbsttest"
   const stepArt = ["schrank", "sortiert", "jubel"]
   return page(l, { title: l.ogTitle, desc: l.desc, alt: { de: "/", en: "/en" },
     head: has(K3D.hero) ? `<link rel="preload" as="image" href="/${K3D.hero}" fetchpriority="high">` : "", body: `
@@ -223,6 +234,13 @@ function home(l) {
   <div class="steps">${l.steps.map(([k, n, h, d], i) => `<article class="card step reveal">${k3d(K3D[stepArt[i]], k)}<span class="num">${n}</span><h3>${h}</h3><p>${d}</p></article>`).join("")}</div>
   <ul class="trust">${T.trust.map(x => `<li>${x}</li>`).join("")}</ul>
   <p class="founder-line">${J.founder}</p>
+</section>
+
+<section class="wrap section">
+  <h2>${en ? "Does your supplement work for you? Test it yourself" : "Wirkt dein Supplement bei dir? Teste es selbst"}</h2>
+  <p class="sub">${en ? `Free step-by-step self-tests for ${TESTS.length} supplements – works with the app or on paper.` : `Kostenlose Schritt-für-Schritt-Selbsttests für ${TESTS.length} Supplements – mit der App oder auf Papier.`}</p>
+  <div class="tchips">${HOME_TESTS.map(id => TESTS.find(t => t.id === id)).map(it => `<a class="tchip" href="${tb}/${it[l.lang].slug}">${it.emoji} ${en ? `Test ${it.en.name}` : `${it.de.name} testen`}</a>`).join("")}<a class="tchip" href="${tb}">${en ? `All ${TESTS.length} self-tests →` : `Alle ${TESTS.length} Selbsttests →`}</a></div>
+  <p style="margin-top:14px"><a href="${l.guide.href}">📘 ${l.guide.label} →</a></p>
 </section>
 
 <section class="wrap section">
@@ -258,11 +276,14 @@ for (const [i, n] of ["imprint", "privacy", "terms"].entries()) {
 
 // ── Ratgeber ────────────────────────────────────────────────────────────────
 for (const l of Object.values(L)) {
-  const g = l.guide, src = fs.readFileSync(g.file, "utf8")
-  const title = src.split("\n")[0].replace(/^# /, "")
+  const g = l.guide, src = fs.readFileSync(g.file, "utf8"), en = l.lang === "en", tb = en ? "/en/self-test" : "/selbsttest"
   fs.mkdirSync(`${OUT}${g.href.slice(0, g.href.lastIndexOf("/"))}`, { recursive: true })
-  fs.writeFileSync(`${OUT}${g.href}.html`, page(l, { title: `${title} – Kolbi`, desc: g.desc, path: "guide", alt: { de: L.de.guide.href, en: L.en.guide.href }, body: `<main class="wrap doc guide">${md(src)}
-    <p style="margin-top:22px"><a href="${l.lang === "en" ? "/en/template" : "/vorlage"}">${l.lang === "en" ? "📄 Prefer paper? Free printable tracker (PDF) →" : "📄 Lieber auf Papier? Gratis-Vorlage zum Ausdrucken (PDF) →"}</a></p>
+  fs.writeFileSync(`${OUT}${g.href}.html`, page(l, { title: g.seoTitle, desc: g.desc, path: "guide", alt: { de: L.de.guide.href, en: L.en.guide.href }, body: `<main class="wrap doc guide">${md(src)}
+    <h2>${en ? "Self-tests for single supplements" : "Selbsttests für einzelne Supplements"}</h2>
+    <p>${en ? "The method above, applied to one supplement each – with what people pay attention to and how long to test:" : "Die Methode oben, angewendet auf je ein Supplement – mit Bereichen, auf die Leute achten, und passender Testdauer:"}</p>
+    <div class="tchips">${TESTS.map(it => `<a class="tchip" href="${tb}/${it[l.lang].slug}">${it.emoji} ${it.id === "eisen" ? it[l.lang].name : en ? `Test ${it.en.name}` : `${it.de.name} testen`}</a>`).join("")}</div>
+    <p style="margin-top:14px"><a href="${tb}">${en ? `All ${TESTS.length} self-tests at a glance →` : `Alle ${TESTS.length} Selbsttests im Überblick →`}</a></p>
+    <p style="margin-top:8px"><a href="${en ? "/en/template" : "/vorlage"}">${en ? "📄 Prefer paper? Free printable tracker (PDF) →" : "📄 Lieber auf Papier? Gratis-Vorlage zum Ausdrucken (PDF) →"}</a></p>
     <div class="card founder" style="margin-top:36px">${kolbi("party-alive")}<div><h2>${l.tagline}</h2><a class="btn" href="${APP}?lang=${l.lang}" data-cta="guide">${g.cta}</a></div></div></main>` }))
 }
 
@@ -270,11 +291,11 @@ for (const l of Object.values(L)) {
 // [emoji, DE, EN, €/Monat, App-Bibliotheks-ID → ?s= wählt sie im Onboarding schon aus]
 const CALC_ITEMS = [["🌙", "Magnesium", "Magnesium", 10, "magnesium"], ["🌞", "Vitamin D3 + K2", "Vitamin D3 + K2", 6, "vitd"], ["🐟", "Omega-3", "Omega-3", 15, "omega3"], ["🏋️", "Kreatin", "Creatine", 12, "kreatin"], ["🛡️", "Zink", "Zinc", 5, "zink"], ["🌈", "Multivitamin", "Multivitamin", 12, "multivitamin"], ["🌿", "Ashwagandha", "Ashwagandha", 15, "ashwagandha"], ["🍵", "L-Theanin", "L-Theanine", 15, "theanin"], ["🔋", "Vitamin B12", "Vitamin B12", 6, "b12"], ["🦠", "Probiotika", "Probiotics", 20, "probiotika"], ["✨", "Kollagen", "Collagen", 30, "kollagen"], ["🥛", "Whey Protein", "Whey protein", 35, "whey"], ["❤️", "Coenzym Q10", "Coenzyme Q10", 20, "q10"], ["🍄", "Lion's Mane", "Lion's Mane", 25, "lionsmane"]]
 const CALC = {
-  de: { path: "/rechner", title: "Supplement-Kosten-Rechner: Was kostet dein Schrank im Jahr?", h: "Was kostet dein Supplement-Schrank?", lead: "Hak an, was du nimmst – Preise sind grobe Schätzwerte pro Monat, du kannst sie anpassen.",
+  de: { path: "/rechner", title: "Supplement-Kosten-Rechner: Was kostet dein Schrank?", desc: "Rechne aus, was deine Supplements im Monat und im Jahr kosten – und was du sparst, wenn eins bei dir keinen spürbaren Unterschied macht. Gratis.", h: "Was kostet dein Supplement-Schrank?", lead: "Hak an, was du nimmst – Preise sind grobe Schätzwerte pro Monat, du kannst sie anpassen.",
     month: "im Monat", year: "im Jahr", what1: "Und wenn eins davon bei dir keinen spürbaren Unterschied macht?", what2: "Und wenn 2 davon bei dir keinen spürbaren Unterschied machen?",
     save1: "Dann zahlst du dafür {x} im Jahr – ohne es zu merken.", save2: "Dann zahlst du dafür {x} im Jahr – ohne es zu merken.", range: "{a} bis {b}", upto: "bis zu {b}",
     none: "Hak mindestens ein Supplement an.", cta: "Finde mit Kolbi heraus, welche – kostenlos", share: "📤 Ergebnis teilen", shareText: "Mein Supplement-Schrank kostet {y} im Jahr 😳 Was kostet deiner?", note: "Schätzwerte für typische Monatsmengen. Kolbi sagt dir nicht, was „wirkt“ – sondern hilft dir, es bei dir selbst zu testen.", cur: (v) => `${Math.round(v).toLocaleString("de-DE")} €` },
-  en: { path: "/en/calculator", title: "Supplement cost calculator: what does your shelf cost per year?", h: "What does your supplement shelf cost?", lead: "Tick what you take – prices are rough monthly estimates, you can adjust them.",
+  en: { path: "/en/calculator", title: "Supplement cost calculator: your shelf per year", desc: "Work out what your supplements cost per month and per year – and what you'd save if one makes no noticeable difference for you. Free.", h: "What does your supplement shelf cost?", lead: "Tick what you take – prices are rough monthly estimates, you can adjust them.",
     month: "per month", year: "per year", what1: "And if one of them makes no noticeable difference for you?", what2: "And if 2 of them make no noticeable difference for you?",
     save1: "Then you're paying {x} a year for it – without noticing.", save2: "Then you're paying {x} a year for them – without noticing.", range: "{a} to {b}", upto: "up to {b}",
     none: "Tick at least one supplement.", cta: "Find out which with Kolbi – free", share: "📤 Share result", shareText: "My supplement shelf costs {y} a year 😳 What does yours cost?", note: "Estimates for typical monthly amounts. Kolbi doesn't tell you what \"works\" – it helps you test it on yourself.", cur: (v) => `€${Math.round(v).toLocaleString("en-US")}` },
@@ -284,7 +305,7 @@ for (const [lang, C] of Object.entries(CALC)) {
   const rows = CALC_ITEMS.map(([e, de, en, pr, id], i) => `<label class="calc-row"><input type="checkbox" data-i="${i}" data-id="${id}"${i < 3 ? " checked" : ""}><span class="ce">${e}</span><span class="cn">${lang === "en" ? en : de}</span><input type="number" min="0" step="1" value="${pr}" data-p="${i}" aria-label="€"><span class="cu">€</span></label>`).join("")
   const curFn = C.cur.toString()
   fs.mkdirSync(`${OUT}${C.path.slice(0, C.path.lastIndexOf("/")) || ""}`, { recursive: true })
-  fs.writeFileSync(`${OUT}${C.path}.html`, page(l, { title: `${C.title} – Kolbi`, desc: C.lead, path: "calc", alt: { de: CALC.de.path, en: CALC.en.path }, body: `<main class="wrap doc">
+  fs.writeFileSync(`${OUT}${C.path}.html`, page(l, { title: `${C.title} – Kolbi`, desc: C.desc, path: "calc", alt: { de: CALC.de.path, en: CALC.en.path }, body: `<main class="wrap doc">
 <style>.calc-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:var(--card);border:1px solid var(--line);margin:6px 0;cursor:pointer}
 .calc-row input[type=checkbox]{width:20px;height:20px;accent-color:#2ECC8A}.ce{font-size:1.3rem}.cn{flex:1;font-weight:800}
 .calc-row input[type=number]{width:64px;padding:6px 8px;border-radius:10px;border:1px solid var(--line);background:#0e0c20;color:var(--text);font:inherit;text-align:right}
@@ -332,7 +353,6 @@ for (const [lang, C] of Object.entries(CALC)) {
 }
 
 // ── Selbsttest-Seiten je Supplement (SEO: „Wirkt X bei mir?“) ─────────────────
-const { TESTS, testPage } = await import("../content/guides/supplement-tests.mjs")
 const TEST_BASE = { de: "/selbsttest", en: "/en/self-test" }
 for (const lang of ["de", "en"]) {
   const l = L[lang], en = lang === "en", base = TEST_BASE[lang], other = en ? "de" : "en"
@@ -343,16 +363,17 @@ for (const lang of ["de", "en"]) {
     const ld = { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: p.faq.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) }
     const more = pages.filter(x => x.it !== it).map(x => `<a class="tchip" href="${base}/${x.p.slug}">${x.it.emoji} ${x.p.name}</a>`).join("")
     const src = "test" + it.id.replace(/[^a-z]/g, "")
-    fs.writeFileSync(`${OUT}${href}.html`, page(l, { title: `${p.title} – Kolbi`, desc: p.desc, path: "test", alt: { [lang]: href, [other]: ohref },
+    fs.writeFileSync(`${OUT}${href}.html`, page(l, { title: `${p.seoTitle} – Kolbi`, desc: p.desc, path: "test", alt: { [lang]: href, [other]: ohref },
       head: `<script type="application/ld+json">${JSON.stringify(ld)}</script>`,
       body: `<main class="wrap doc guide">${p.html}
 <div class="card founder" style="margin-top:32px">${kolbi("party-alive")}<div><h2>${p.cta?.h ?? (en ? `Kolbi runs this ${p.name} test with you` : `Kolbi macht diesen ${p.name}-Test mit dir`)}</h2><p>${p.cta?.p ?? (en ? "Normal, test phase, evening check-in, honest comparison – with reminders. Free in the beta, no account." : "Normal, Testphase, Abend-Check-in, ehrlicher Vergleich – mit Erinnerungen. In der Beta kostenlos, ohne Konto.")}</p><a class="btn" href="${APP}?lang=${lang}&src=${src}" data-cta="${src}">${p.cta?.btn ?? (en ? "Start the test for free" : "Test kostenlos starten")}</a></div></div>
 <h2>${en ? "More self-tests" : "Weitere Selbsttests"}</h2><div class="tchips">${more}</div>
 <p style="margin-top:18px"><a href="${en ? "/en/template" : "/vorlage"}">${en ? `📄 Prefer paper? Free printable tracker for your ${p.name} test →` : `📄 Lieber auf Papier? Gratis-Vorlage für deinen ${p.name}-Test →`}</a></p>
-<p style="margin-top:8px"><a href="${en ? "/en/calculator" : "/rechner"}">${en ? "💸 What does your supplement shelf cost per year? →" : "💸 Was kostet dein Supplement-Schrank im Jahr? →"}</a></p></main>` }))
+<p style="margin-top:8px"><a href="${en ? "/en/calculator" : "/rechner"}">${en ? "💸 What does your supplement shelf cost per year? →" : "💸 Was kostet dein Supplement-Schrank im Jahr? →"}</a></p>
+<p style="margin-top:8px"><a href="${l.guide.href}">${en ? "📘 The method in detail: how to test supplements on yourself →" : "📘 Die Methode ausführlich: Supplements selbst testen →"}</a></p></main>` }))
   }
   // Übersicht
-  const hubT = en ? `Does my supplement work for me? Self-tests for ${TESTS.length} supplements` : `Wirkt mein Supplement bei mir? Selbsttests für ${TESTS.length} Supplements`
+  const hubT = en ? `Does my supplement work for me? ${TESTS.length} self-tests` : `Wirkt mein Supplement bei mir? ${TESTS.length} Selbsttests`
   fs.writeFileSync(`${OUT}${base}.html`, page(l, { title: `${hubT} – Kolbi`, desc: en ? "Step-by-step self-tests: find your normal, test one supplement at a time, compare honestly. No promises – just your own data." : "Schritt-für-Schritt-Selbsttests: dein Normal festhalten, eins nach dem anderen testen, ehrlich vergleichen. Keine Versprechen – nur deine eigenen Daten.", path: "test", alt: TEST_BASE,
     body: `<main class="wrap doc"><p class="kicker">🧪 ${en ? "Self-tests" : "Selbsttests"}</p><h1>${en ? "Does it work for <span class=\"grad\">you</span>?" : "Wirkt es bei <span class=\"grad\">dir</span>?"}</h1>
 <p class="lead">${en ? "Pick a supplement – each guide shows what people pay attention to, how long to test and how to compare honestly." : "Such dir ein Supplement aus – jede Anleitung zeigt, worauf Leute achten, wie lange du testest und wie du ehrlich vergleichst."}</p>
@@ -363,8 +384,8 @@ for (const lang of ["de", "en"]) {
 
 // ── Druck-Vorlage: Download-Seiten (Lead-Magnet, Motor 1) ─────────────────────
 const TPL = {
-  de: { path: "/vorlage", src: "vorlage", other: "/en/template", title: "Supplements selbst testen: Vorlage zum Ausdrucken (PDF)",
-    desc: "Gratis-Vorlage (A4-PDF) für deinen Supplement-Selbsttest: 7 Tage dein Normal festhalten, eins nach dem anderen testen, abends bewerten, ehrlich vergleichen.",
+  de: { path: "/vorlage", src: "vorlage", other: "/en/template", title: "Supplement-Selbsttest: Vorlage zum Ausdrucken (PDF)",
+    desc: "Gratis-Vorlage (A4-PDF) für deinen Supplement-Selbsttest: 7 Tage dein Normal festhalten, eins nach dem anderen testen, abends bewerten, vergleichen.",
     kicker: "📄 Gratis-Vorlage · A4 · PDF", h: 'Supplements selbst testen – <span class="grad">auf Papier</span>',
     lead: "Halte 7 Abende dein Normal fest, teste dann ein Supplement nach dem anderen und vergleiche am Ende ehrlich mit deinem Durchschnitt. Zwei A4-Seiten, kostenlos, ohne Anmeldung – ausdrucken, abends eine Minute ankreuzen.",
     alt: ["Vorschau Seite 1: Dein Normal – 7 Tage", "Vorschau Seite 2: Test – bis zu 14 Tage mit Vergleich"],
@@ -372,7 +393,7 @@ const TPL = {
     inH: "Was drin ist", items: ["<b>Seite 1 · Dein Normal:</b> 7 Tage × Schlaf, Energie, Fokus, Stimmung, Ruhe + ein eigener Bereich – je 1 bis 5 ankreuzen, Störfaktoren notieren.", "<b>Seite 2 · Test:</b> bis zu 14 Tage für genau ein Supplement, gleiche Bereiche, Durchschnitt-Zeile.", "<b>So vergleichst du:</b> Ø Normal gegen Ø Test, Faustregel für kleine Unterschiede, Gegenprobe – dann behalten, vielleicht oder raus."],
     appH: "Kein Bock auf Papier? Kolbi macht das automatisch.", appP: "Erinnert dich abends, notiert Störfaktoren, rechnet die Durchschnitte und vergleicht mit deinem Normal. In der Beta kostenlos, ohne Konto – deine Daten bleiben auf deinem Handy.", appBtn: "Kolbi kostenlos starten",
     more: ["/selbsttest", `🧪 Selbsttests für ${TESTS.length} Supplements →`], calc: ["/rechner", "💸 Was kostet dein Supplement-Schrank im Jahr? →"], lang: "🇬🇧 English version" },
-  en: { path: "/en/template", src: "template", other: "/vorlage", title: "Supplement self-test tracker: free printable template (PDF)",
+  en: { path: "/en/template", src: "template", other: "/vorlage", title: "Supplement self-test tracker: free printable PDF",
     desc: "Free printable A4 tracker for testing supplements on yourself: record your normal for 7 days, test one at a time, rate every evening, compare honestly.",
     kicker: "📄 Free template · A4 · PDF", h: 'Test your supplements – <span class="grad">on paper</span>',
     lead: "Record your normal for 7 evenings, then test one supplement at a time and compare honestly with your average at the end. Two A4 pages, free, no sign-up – print it and tick a few boxes each evening.",
@@ -480,4 +501,5 @@ fs.writeFileSync(`${OUT}/vercel.json`, JSON.stringify({
     { source: "/(video|img/3d)/(.*)", headers: [{ key: "Cache-Control", value: "public, max-age=604800" }] },
   ],
 }, null, 2))
+for (const w of SEO_WARN) console.log("⚠️ SEO:", w)
 console.log(`✓ site/ gebaut${DRAFT ? " (Entwurf: noindex, Impressum-Platzhalter offen)" : ""}`)
