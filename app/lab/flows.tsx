@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import {
-  FACES, FACE_LABELS, LIBRARY, ROUTE_INFO, SUPP_COLORS, CATEGORIES, GOALS, RHYTHMS, TRAININGS,
+  FACES, FACE_LABELS, LIBRARY, ROUTE_INFO, SUPP_COLORS, CATEGORIES, GOALS,
   todayIso, addDays, dayRef, makeSupp, autoOrder, parseSuppList, goalRelevance, extrasOn,
   defaultCheckinTime, libOf, daySum, libTimeTip, STORE_MODE,
   type CheckIn, type Dim, type LabState, type MySupp, type Settings, type LibSupp, type GoalId, type Scores,
@@ -19,6 +19,7 @@ import { InstallHint } from "./install"
 import { ScanSheet } from "./scan"
 import type { Mood } from "@/lib/labCoach"
 import { t, dec, clock } from "@/lib/labI18n"
+import { trackOnce } from "@/lib/labStats"
 
 // ── Supplement-Auswahl: antippen oder Liste einfügen ───────────────────────────
 
@@ -173,9 +174,11 @@ export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd,
 
 export interface OnboardResult { state: Partial<LabState>; wantsCalendar: boolean }
 
+const ONB_EVENTS = ["onb_0", "onb_1", "onb_2", "onb_3"] as const
+
 const RESET_OPTIONS = [
-  { days: 3, label: t("3 Tage"), sub: t("schnell") },
-  { days: 5, label: t("5 Tage"), sub: t("empfohlen") },
+  { days: 3, label: t("3 Tage"), sub: t("Standard") },
+  { days: 5, label: t("5 Tage"), sub: t("etwas genauer") },
   { days: 7, label: t("7 Tage"), sub: t("am genauesten") },
 ]
 
@@ -203,10 +206,11 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
   const [step, setStep] = useState(0)
   const [goals, setGoals] = useState<GoalId[]>([])
   const [supps, setSupps] = useState<MySupp[]>(prefillSupps)
-  const [rhythm, setRhythm] = useState("normal")
-  const [settings, setSettings] = useState<Settings>({ wake: "07:00", bed: "23:00", training: null, washoutDays: 1 })
-  const [trainingSet, setTrainingSet] = useState(false)
-  const [baseline, setBaseline] = useState(5)
+  // Aufsteh-/Trainingszeit fragt das Onboarding nicht mehr ab: Standardwerte, später unter Einstellungen änderbar
+  // (Heute zeigt am Starttag dezent „Passt 7:00 Aufstehen? Ändern“).
+  const settings: Settings = { wake: "07:00", bed: "23:00", training: null, washoutDays: 1 }
+  // 3 Tage Pause als Standard: reicht für einen ersten Ausgangswert, 5/7 Tage bleiben wählbar (genauer)
+  const [baseline, setBaseline] = useState(3)
   const [remind, setRemind] = useState<boolean>(true)
 
   const toggleSupp = (lib: LibSupp) => setSupps(prev => prev.some(s => s.lib === lib.id) ? prev.filter(s => s.lib !== lib.id) : [...prev, makeSupp(lib, lib.name, prev)])
@@ -237,8 +241,10 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
     if (remind && "Notification" in window && Notification.permission === "default") Notification.requestPermission().catch(() => {})
   }
 
-  const STEPS = 4
+  const STEPS = 3
   const next = () => setStep(s => s + 1)
+  // Trichter: jeder erreichte Schritt zählt einmal pro Seitenaufruf (Startbildschirm = onb_0)
+  useEffect(() => { trackOnce(ONB_EVENTS[step]) }, [step])
 
   // Kolbi + Sprechblase oben auf jeder Seite
   const kolbi = (mood: Mood, text: React.ReactNode) => (
@@ -287,12 +293,12 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
           <div style={{ display: "flex", justifyContent: "center", margin: "28px 0 8px" }}>
             <div className="lab-float"><Mascot mood="happy" size={150} /></div>
           </div>
-          <div style={{ textAlign: "center", fontSize: "2rem", fontWeight: 900, lineHeight: 1.1, margin: "8px 0 10px" }}>{t("Hi, ich bin {name}!", { name: MASCOT_NAME })}</div>
-          <div style={{ textAlign: "center", fontSize: "1.02rem", color: "var(--text-dim)", lineHeight: 1.5, marginBottom: 22, textWrap: "balance" }}>
-            {t("Ich finde mit dir heraus, welche Supplements bei dir wirklich wirken. Du tippst nur, ich plane und werte aus.")}
+          <div style={{ textAlign: "center", fontSize: "1.75rem", fontWeight: 900, lineHeight: 1.15, margin: "8px 0 10px", textWrap: "balance" }}>{t("In ein paar Tagen weißt du, was dir wirklich etwas bringt")}</div>
+          <div style={{ textAlign: "center", fontSize: "1rem", color: "var(--text-dim)", lineHeight: 1.5, marginBottom: 22, textWrap: "balance" }}>
+            {t("Ich bin {name}. Du tippst jeden Tag kurz, wie es dir geht – ich vergleiche und zeige dir, was sich bei dir verändert.", { name: MASCOT_NAME })}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
-            {[["🧘", t("Ein paar Tage nichts nehmen"), t("So lerne ich dein Normal kennen.")], ["🔬", t("Dann eins nach dem anderen testen"), t("Immer nur ein Supplement für ein paar Tage.")], ["🏆", t("Am Ende: dein Stack"), t("Was du behältst, nimmst du zusammen – ich behalte es im Blick.")]].map(([e, ti, d]) => (
+            {[["👋", t("Heute: kurz einchecken"), t("So lerne ich dein Normal kennen – dauert 1 Minute.")], ["🔬", t("Dann eins nach dem anderen testen"), t("Vorher ein paar Tage Pause – nur so habe ich einen fairen Vergleich.")], ["🏆", t("Am Ende: dein Stack"), t("Was du behältst, nimmst du zusammen – ich behalte es im Blick.")]].map(([e, ti, d]) => (
               <div key={ti} style={{ display: "flex", gap: 12, alignItems: "center", padding: "10px 12px", borderRadius: 16, background: "var(--surface)", border: "1px solid var(--border)" }}>
                 <span style={{ fontSize: "1.5rem" }}>{e}</span>
                 <div><div style={{ fontWeight: 800, fontSize: "0.92rem" }}>{ti}</div><div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>{d}</div></div>
@@ -335,54 +341,34 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
 
       {step === 3 && (
         <div className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          {kolbi("sleepy", <>{t("Damit ich dich")} <b>{t("zur richtigen Uhrzeit")}</b> {t("erinnere: Wie sieht dein Tag aus?")}</>)}
-          {question(t("Wann stehst du auf?"))}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, marginBottom: 10 }}>
-            {RHYTHMS.map(r => tile(rhythm === r.id, () => { setRhythm(r.id); setSettings(s => ({ ...s, wake: r.wake, bed: r.bed })) }, r.emoji, r.label, `${r.wake}–${r.bed}`))}
-          </div>
-          <button onClick={() => setRhythm("custom")} style={{ background: "none", border: "none", color: "var(--text-dim)", fontSize: "0.85rem", fontWeight: 700, textAlign: "left", padding: "6px 0", cursor: "pointer" }}>
-            {rhythm === "custom" ? t("Deine Zeiten:") : t("✏️ Andere Zeiten eingeben")}
-          </button>
-          {rhythm === "custom" && (
-            <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-              {([["wake", t("🌅 Aufstehen")], ["bed", t("🛌 Schlafen")]] as const).map(([k, l]) => (
-                <label key={k} style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4, fontWeight: 800, fontSize: "0.8rem" }}>{l}
-                  <input type="time" value={settings[k]} onChange={ev => setSettings(s => ({ ...s, [k]: ev.target.value }))} style={{ padding: "10px", borderRadius: 12, fontWeight: 700, fontSize: "1rem" }} />
-                </label>
-              ))}
-            </div>
-          )}
-          <div style={{ fontWeight: 900, fontSize: "1.05rem", margin: "18px 0 10px" }}>{t("Und wann trainierst du meistens?")}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6 }}>
-            {TRAININGS.map(tr => tile(trainingSet && settings.training === tr.time, () => { setSettings(s => ({ ...s, training: tr.time })); setTrainingSet(true) }, tr.emoji, tr.label))}
-          </div>
-          {footer(<Btn full onClick={next}>{t("Weiter")}</Btn>)}
-        </div>
-      )}
-
-      {step === 4 && (
-        <div className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           {kolbi("party", <>{t("Alles klar,")} <b>{t("ich hab deinen Plan")}</b>{t(". Ab jetzt sage ich dir jeden Tag, was dran ist.")}</>)}
           {question(t("Wann legst du los?"))}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+            <div style={{ padding: "12px 14px", borderRadius: 16, background: "var(--surface)", border: "1px solid var(--border)" }}>
+              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                <span style={{ fontSize: "1.5rem" }}>🧘</span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 800 }}>{t("Zuerst {n} Tage Pause", { n: baseline })}</div>
+                  <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", lineHeight: 1.4 }}>{t("Damit ich fair vergleichen kann: So geht's dir ohne Supplements. Täglich 1 Minute einchecken.")}</div>
+                </div>
+              </div>
+              <div role="radiogroup" aria-label={t("Wie lange willst du pausieren?")} style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6, marginTop: 10 }}>
+                {RESET_OPTIONS.map(o => (
+                  <button key={o.days} role="radio" aria-checked={baseline === o.days} className="lab-press" onClick={() => setBaseline(o.days)} style={{
+                    padding: "6px 4px", borderRadius: 12, color: "var(--text)", fontSize: "0.78rem", fontWeight: 800, lineHeight: 1.25,
+                    border: baseline === o.days ? "2px solid var(--accent)" : "1px solid var(--border)", background: baseline === o.days ? "var(--accent-dim)" : "var(--surface)",
+                  }}>{o.label}<br /><span style={{ fontSize: "0.66rem", fontWeight: 700, color: "var(--text-dim)" }}>{o.sub}</span></button>
+                ))}
+              </div>
+            </div>
             {[
-              ["🧘", t("{n} Tage Reset", { n: baseline }), t("nichts nehmen, jeden Abend 1 Tipp")],
               ["🔬", testOrder.length === 1 ? t("Dann 1 Test, einzeln") : t("Dann {n} Tests, einzeln", { n: testOrder.length }), testOrder.slice(0, 4).map(x => x.name).join(" → ") + (testOrder.length > 4 ? " …" : "")],
               ["🏆", t("Dein Stack"), t("alles Behaltene zusammen")],
             ].map(([e, ti, d]) => (
-              <div key={ti} style={{ display: "flex", gap: 12, alignItems: "center", padding: "12px 14px", borderRadius: 16, background: "var(--surface)", border: "1px solid var(--border)" }}>
+              <div key={ti} style={{ display: "flex", gap: 12, alignItems: "center", padding: "10px 14px", borderRadius: 16, background: "var(--surface)", border: "1px solid var(--border)" }}>
                 <span style={{ fontSize: "1.5rem" }}>{e}</span>
                 <div style={{ minWidth: 0 }}><div style={{ fontWeight: 800 }}>{ti}</div><div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>{d}</div></div>
               </div>
-            ))}
-          </div>
-          <div style={{ fontSize: "0.8rem", fontWeight: 800, color: "var(--text-dim)", marginBottom: 6 }}>{t("Wie lange willst du pausieren?")}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6, marginBottom: 10 }}>
-            {RESET_OPTIONS.map(o => (
-              <button key={o.days} className="lab-press" onClick={() => setBaseline(o.days)} style={{
-                padding: "8px 4px", borderRadius: 14, color: "var(--text)", fontSize: "0.8rem", fontWeight: 800, lineHeight: 1.25,
-                border: baseline === o.days ? "2px solid var(--accent)" : "1px solid var(--border)", background: baseline === o.days ? "var(--accent-dim)" : "var(--surface)",
-              }}>{o.label}<br /><span style={{ fontSize: "0.68rem", fontWeight: 700, color: "var(--text-dim)" }}>{o.sub}</span></button>
             ))}
           </div>
           {rx.length > 0 && <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", lineHeight: 1.45, marginBottom: 10 }}>💊 {t("Ausnahme:")} <b>{rx.map(x => x.name).join(", ")}</b> {t("ist ärztlich verordnet und läuft einfach weiter.")}</div>}
@@ -390,13 +376,12 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
             <div style={{ marginBottom: 10, fontSize: "0.78rem", color: "var(--text-dim)", lineHeight: 1.45 }}>{t("☕ Ohne Kaffee sind Kopfschmerzen in den ersten Tagen normal. Wenn du Kaffee nicht testen willst, entferne ihn einfach aus deiner Liste.")}</div>
           )}
           <button className="lab-press" onClick={() => setRemind(r => !r)} aria-pressed={!!remind} style={{
-            display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 16, marginBottom: 12,
+            display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "8px 12px", borderRadius: 14, marginBottom: 10,
             border: remind ? "2px solid var(--accent)" : "1px solid var(--border)", background: remind ? "var(--accent-dim)" : "var(--surface)", color: "var(--text)",
           }}>
-            <span style={{ fontSize: "1.4rem" }}>{remind ? "🔔" : "🔕"}</span>
-            <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ display: "block", fontWeight: 800, fontSize: "0.9rem" }}>{t("Soll ich dich erinnern?")}</span>
-              <span style={{ display: "block", fontSize: "0.74rem", color: "var(--text-dim)", lineHeight: 1.4 }}>{t("Ich melde mich")} {t("zur Einnahme-Zeit")} {t("und")} {t("abends um {time}", { time: clock(defaultCheckinTime(settings)) })}{remind && !hasNativeReminders() ? ` · ${t("📅 Beim Start trage ich die Termine in deinen Kalender ein, damit es auch klappt, wenn die App zu ist.")}` : ""}</span>
+            <span style={{ fontSize: "1.2rem" }}>{remind ? "🔔" : "🔕"}</span>
+            <span style={{ flex: 1, minWidth: 0, fontSize: "0.84rem", lineHeight: 1.35 }}>
+              <b>{t("Erinnerungen")}</b> <span style={{ color: "var(--text-dim)", fontSize: "0.76rem" }}>{t("zur Einnahme + abends {time}", { time: clock(defaultCheckinTime(settings)) })}{remind && !hasNativeReminders() ? ` · ${t("📅 kommen beim Start in deinen Kalender")}` : ""}</span>
             </span>
             <span style={{ fontWeight: 900, fontSize: "0.8rem", color: remind ? "var(--accent)" : "var(--text-dim)" }}>{remind ? t("An") : t("Aus")}</span>
           </button>

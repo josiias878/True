@@ -90,7 +90,7 @@ function greeting(now: Date) {
 
 type Main = "notStarted" | "reveal" | "morning" | "take" | "checkin" | "locked" | "done"
 
-export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, recap, onRecap, pushHint, onPush, onAction, onRound, onTakeAll, onTake, onSkip, onMorning, onUnlock, onCheckin, goTab, onVorrat, onExtra, onExtraRemove, onOpenSupp, onAddMany, onAmount, onPortion, onNews }: {
+export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, recap, onRecap, pushHint, onPush, onAction, onRound, onTakeAll, onTake, onSkip, onMorning, onUnlock, onCheckin, goTab, onVorrat, onExtra, onExtraRemove, onOpenSupp, onAddMany, onAmount, onPortion, onNews, onSettings }: {
   s: LabState; wins: PhaseWindow[]; today: string; now: Date; pending: RoundStep[]; checkinLocked: boolean; tips: CoachMsg[]
   /** Wochenrückblick bereit und noch nicht gesehen → schmale Zeile unter der Hauptsache */
   recap: { ready: boolean; end: string }; onRecap: () => void
@@ -105,6 +105,8 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
   onAmount: (id: string, p: Portion) => void; onPortion: (id: string, p: Portion) => void
   /** „Neu bei Kolbi“-Kreis antippen → Storys mit diesen (ungesehenen) Neuheiten */
   onNews?: (items: LabNews[], start?: number) => void
+  /** Einstellungen öffnen (Starttag: „Passt 7:00 Aufstehen? Ändern“ – das Onboarding fragt die Zeiten nicht mehr ab) */
+  onSettings?: () => void
 }) {
   const [mHold, setMHold] = useState(false)
   const first = wins[0]
@@ -119,9 +121,13 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
   const checks = pending.filter(p => p.kind === "checkin" || p.kind === "sides")
   const morningDue = pending.some(p => p.kind === "morning")
   const lockedUntil = !checked && checkinLocked ? fromMin(checkinOpensMin(s)) : null
+  // Starttag: Start-Check-in kommt vor allem anderen (LabApp sperrt ihn an diesem Tag nicht)
+  const startDay = !!first && s.startDate === today && !notStarted
+  const startCheckin = startDay && !checked && checks.some(p => p.kind === "checkin" && !p.date)
 
   const main: Main = notStarted ? "notStarted"
     : reveal.length ? "reveal"
+    : startCheckin ? "checkin"
     : morningDue || mHold ? "morning"
     : takes.length ? "take"
     : checks.length ? "checkin"
@@ -228,8 +234,8 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
 
         {main === "checkin" && <>
           <DayKicker>{dayRef(catchUp ? yesterday : today, today)}</DayKicker>
-          {title(catchUp ? t("Gestern fehlt noch") : t("Wie war dein Tag?"))}
-          {sub(catchUp ? t("1 Minute nachtragen – sonst fehlt der Tag im Vergleich.") : t("1 Minute. Ich vergleiche mit deinem Normal."))}
+          {title(startCheckin ? t("Start-Check-in: Wie geht's dir gerade?") : catchUp ? t("Gestern fehlt noch") : t("Wie war dein Tag?"))}
+          {sub(startCheckin ? t("1 Minute – so lerne ich dein Normal kennen. Am Abend kannst du ihn noch anpassen.") : catchUp ? t("1 Minute nachtragen – sonst fehlt der Tag im Vergleich.") : t("1 Minute. Ich vergleiche mit deinem Normal."))}
           <button onClick={() => { haptic(); onRound(checks) }} className="lab-press lab-drop" style={bigBtn}>▶ {catchUp ? t("Nachtragen") : t("Check-in starten")}</button>
         </>}
 
@@ -242,8 +248,9 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
         </>}
 
         {main === "done" && <>
-          {title(fill >= 1 ? t("Heute alles erledigt") : t("Gerade nichts zu tun"))}
-          {sub(fill >= 1 ? (st > 1 ? t("{n} Tage am Stück. Stark!", { n: st }) : t("Bis morgen!")) : t("Ich melde mich, wenn wieder etwas dran ist."))}
+          {title(startDay && checked && fill < 1 ? t("Start geschafft!") : fill >= 1 ? t("Heute alles erledigt") : t("Gerade nichts zu tun"))}
+          {sub(startDay && checked ? t("Ändert sich bis zum Abend etwas, pass den Check-in einfach an – es zählt ein Wert pro Tag.")
+            : fill >= 1 ? (st > 1 ? t("{n} Tage am Stück. Stark!", { n: st }) : t("Bis morgen!")) : t("Ich melde mich, wenn wieder etwas dran ist."))}
           {checked && (
             <button onClick={() => onCheckin(today)} className="lab-press" style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 8, minHeight: 44, padding: "8px 16px", borderRadius: 999, border: "none", background: "var(--surface-2)", color: "var(--text)", fontWeight: 800, fontSize: "0.82rem" }}>
               {checked.quick && checked.face
@@ -257,6 +264,16 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
       </div>
 
       {!notStarted && <RefineRow s={s} today={today} hideToday={main === "done"} onCheckin={onCheckin} />}
+      {startDay && onSettings && !s.demo && (
+        <button className="lab-press" onClick={onSettings} style={{
+          display: "flex", alignItems: "center", gap: 10, width: "100%", minHeight: 44, padding: "6px 14px", borderRadius: 16,
+          border: "none", background: "var(--surface-2)", color: "var(--text-dim)", textAlign: "left", fontSize: "0.82rem", fontWeight: 700,
+        }}>
+          <span aria-hidden>⏰</span>
+          <span style={{ flex: 1, minWidth: 0 }}>{t("Passt {time} Aufstehen?", { time: clock(s.settings.wake) })}</span>
+          <span style={{ color: "var(--accent-ink)", fontWeight: 900 }}>{t("Ändern")} ›</span>
+        </button>
+      )}
       {showRecap && <RecapTeaser slim end={recap.end} onOpen={onRecap} />}
       {showTip && <KolbiSays msg={top} more={tips.length - 1} onAction={onAction} onMore={() => goTab("kolbi")} tail={!showRecap} />}
 

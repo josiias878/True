@@ -388,7 +388,8 @@ export default function LabApp() {
     },
       isNew ? { amount: 20, label: t("Check-in") } : refined ? { amount: 10, label: t("Genauer bewertet") } : undefined)
     if (isNew) { setConfetti(true); trackCheckin(Object.keys(s.checkins).length + 1) }
-  }, [s.checkins, update])
+    if (isNew && c.date === s.startDate && c.date === todayIso()) track("start_checkin")
+  }, [s.checkins, s.startDate, update])
 
   // Morgen-Frage, Extra-Einnahmen, Beschwerden tagsüber
   const [dayOpen, setDayOpen] = useState<{ tab: DayTab; date?: string } | null>(null)
@@ -628,7 +629,10 @@ export default function LabApp() {
   const kolbiTips = useMemo(() => msgs.filter(m => !m.id.startsWith("take-") && m.id !== "checkin"), [msgs])
 
   // Check-in erst ab der gewünschten Uhrzeit — früher nur per Long-Press entsperrbar
-  const checkinLocked = useMemo(() => isCheckinLocked(s, now, unlockedFor, today), [s, unlockedFor, today, now])
+  // Ausnahme Starttag: noch kein Check-in → Start-Check-in sofort offen (Erfolgsmoment am ersten Tag, nicht erst abends).
+  // Gespeichert wird wie immer EIN Eintrag pro Datum (s.checkins[heute]); ein Check-in am Abend desselben Tages ersetzt ihn.
+  const startDay = !!s.startDate && s.startDate === today && !s.checkins[today]
+  const checkinLocked = useMemo(() => !startDay && isCheckinLocked(s, now, unlockedFor, today), [s, unlockedFor, today, now, startDay])
   const pending = useMemo(() => roundSteps(s, today, now, checkinLocked), [s, today, now, checkinLocked])
 
   // Aus einer Benachrichtigung geöffnet → direkt in die Tagesrunde (Sperrzeit gilt dann nicht)
@@ -705,7 +709,7 @@ export default function LabApp() {
             onUnlock={() => { setUnlockedFor(today); setRound(roundSteps(s, today, now, false)) }}
             onCheckin={setCheckinDate} goTab={goTab} onVorrat={() => { setLab(null); setLaborView("vorrat"); goTab("labor") }}
             onExtra={addExtraV} onExtraRemove={removeExtraV} onAddMany={() => setAddMany(true)}
-            onNews={(items, start = 0) => setNews({ items, start })}
+            onNews={(items, start = 0) => setNews({ items, start })} onSettings={() => setSettingsOpen(true)}
             onAmount={(id, p) => update(q => { setAmount(q, today, id, p); return q })}
             onPortion={(id, p) => { update(q => alignStockToPortion(setPortion(q, id, p, today), id, today)); setFlash(t("✓ Gemerkt: {amount}", { amount: portionLabel(p) })) }}
             onOpenSupp={id => { setLaborView(null); setLab({ suppId: id, tab: "ueberblick" }); goTab("labor") }}

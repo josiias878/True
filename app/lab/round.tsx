@@ -230,7 +230,10 @@ function CheckinStep({ s, date, scores, setScores, tags, setTags, onDone, yester
     <>
       {yesterday
         ? <Title kicker={dayRef(date)} sub={t("Gestern ist der Check-in durchgerutscht – kurz nachtragen, dann fehlt nichts in deiner Auswertung.")}>{t("🌅 Wie war gestern?")}</Title>
-        : <Title kicker={dayRef(date)} sub={t("Tippe die Sterne pro Bereich — alles auf einem Blick.")}>{t("Wie war dein Tag?")}</Title>}
+        : date === s.startDate && !s.checkins[date]
+          // Start-Check-in am ersten Tag (oft vormittags): nach dem Jetzt fragen, nicht nach dem ganzen Tag
+          ? <Title kicker={dayRef(date)} sub={t("Tippe die Sterne pro Bereich – so, wie es sich gerade anfühlt.")}>{t("Wie geht's dir gerade?")}</Title>
+          : <Title kicker={dayRef(date)} sub={t("Tippe die Sterne pro Bereich — alles auf einem Blick.")}>{t("Wie war dein Tag?")}</Title>}
       <div className="lab-card" style={{ padding: "4px 16px" }}>
         {dims.map((d, k) => (
           <div key={d.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "10px 0", borderTop: k ? "1px solid var(--border)" : "none" }}>
