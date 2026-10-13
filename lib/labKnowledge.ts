@@ -2,7 +2,7 @@
 // Bewusst kurz und vorsichtig formuliert: Wissen und Denkanstöße, keine Diagnose.
 
 import { t } from "./labI18n"
-import { LIB_BY_ID, libOf, checkinsIn, todayIso, addDays, type LabState } from "./supplementLab"
+import { LIB_BY_ID, libOf, checkinsIn, todayIso, addDays, ownSides, type LabState } from "./supplementLab"
 
 /** Passt gut zusammen bzw. gleicht etwas aus — wird nur vorgeschlagen, wenn der Partner noch fehlt. */
 export interface Partner { with: string; title: string; text: string }
@@ -161,7 +161,7 @@ export function partnerTips(s: LabState, suppId: string) {
 export function recentSides(s: LabState, days = 7): Set<string> {
   const today = todayIso()
   const cs = checkinsIn(s, { start: addDays(today, -days + 1), end: today })
-  return new Set(cs.flatMap(c => Object.entries(c.sides ?? {}).filter(([, v]) => v > 0).map(([id]) => id)))
+  return new Set(cs.flatMap(c => Object.entries(ownSides(c)).filter(([, v]) => v > 0).map(([id]) => id)))
 }
 
 /** Passende Erklärungen zu Nebenwirkungen, die zu diesem Supplement passen. */

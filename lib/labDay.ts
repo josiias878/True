@@ -11,7 +11,7 @@
 
 import {
   LIB_BY_ID, activeDims, isAlcoholExtra, extraEmoji, extraKey, extraLabel, extrasOn, intakeOn, morningMin, nowTime, phaseWindows,
-  relMin, suppName, todayIso, toMin, fromMin, checkinOpensMin, addDays, fmtDate,
+  relMin, suppName, todayIso, toMin, fromMin, checkinOpensMin, addDays, fmtDate, isOtherReason, otherSideStats,
   type CheckIn, type DaySides, type DimInfo, type ExtraIntake, type LabState, type MorningEntry,
 } from "./supplementLab"
 import { t } from "./labI18n"
@@ -236,7 +236,7 @@ export function suspectSummary(s: LabState): SuspectStat[] {
   for (const [date, d] of Object.entries(s.daySides ?? {})) if (d.suspect && !s.checkins[date]) days.push({ date, sides: d.sides, suspect: d.suspect })
   const m = new Map<string, SuspectStat & { dates: Set<string> }>()
   for (const d of days) for (const [side, key] of Object.entries(d.suspect)) {
-    if (!key || key === SUSPECT_UNKNOWN) continue
+    if (!key || key === SUSPECT_UNKNOWN || isOtherReason(key)) continue // „anderer Grund“ ist kein Mittel
     let st = m.get(key)
     if (!st) { st = { key, ...suspectName(s, key, d.date), total: 0, sides: [], last: d.date, dates: new Set() }; m.set(key, st) }
     st.dates.add(d.date)
@@ -247,6 +247,12 @@ export function suspectSummary(s: LabState): SuspectStat[] {
   }
   return [...m.values()].map(({ dates, ...st }) => ({ ...st, total: dates.size, sides: st.sides.sort((a, b) => b.n - a.n || b.strong - a.strong) }))
     .sort((a, b) => b.total - a.total || b.last.localeCompare(a.last))
+}
+
+/** Tage (mit Check-in oder Tages-Beschwerden) mit Beschwerden aus anderem Grund – für den Hinweis „nicht zugerechnet“. */
+export function otherReasonSummary(s: LabState) {
+  const days = [...Object.values(s.checkins), ...Object.entries(s.daySides ?? {}).filter(([date]) => !s.checkins[date]).map(([, d]) => d)]
+  return otherSideStats(days)
 }
 
 function suspectName(s: LabState, key: string, date: string): { name: string; emoji: string } {
@@ -264,9 +270,10 @@ function suspectName(s: LabState, key: string, date: string): { name: string; em
   return lib ? { name: lib.name, emoji: lib.emoji } : { name: key, emoji: "💊" }
 }
 
-/** Gibt es an diesem Tag irgendetwas, das den Vergleich unfair macht? (Störfaktoren oder Extra-Einnahmen) – für Tages-Markierungen. */
+/** Gibt es an diesem Tag irgendetwas, das den Vergleich unfair macht? (Störfaktoren, Extra-Einnahmen, Beschwerde aus anderem Grund) – für Tages-Markierungen. */
 export function dayMarked(s: LabState, date: string) {
-  return (s.checkins[date]?.tags.length ?? 0) > 0 || extrasOn(s, date).length > 0
+  const sus = s.checkins[date]?.suspect ?? s.daySides?.[date]?.suspect
+  return (s.checkins[date]?.tags.length ?? 0) > 0 || extrasOn(s, date).length > 0 || Object.values(sus ?? {}).some(isOtherReason)
 }
 
 // ── Koffein heute (reine Anzeige-Faustregel) ───────────────────────────────────

@@ -1,9 +1,9 @@
 // ── Supplement Lab: Muster-Detektor ───────────────────────────────────────────
-// Kolbi sucht in deinen Check-ins nach Zusammenhängen: Störfaktoren, Wochentage,
+// Kolbi sucht in deinen Check-ins nach Zusammenhängen: Störfaktoren (auch Beschwerden mit anderem Grund), Wochentage,
 // ausgelassene Einnahmen und Einnahme-Uhrzeit. Nur Hinweise – keine Beweise.
 
 import {
-  DIMS, TAGS, addDays, daySum, tagLabel, intakeOn, libOf, relMin, toMin, fromMin, evalCheckin, extraKey, extraLabel, isAlcoholExtra, extraEmoji, LIB_BY_ID,
+  DIMS, TAGS, addDays, daySum, tagLabel, intakeOn, libOf, relMin, toMin, fromMin, evalCheckin, extraKey, extraLabel, isAlcoholExtra, extraEmoji, LIB_BY_ID, isOtherReason,
   type CheckIn, type Dim, type LabState,
 } from "./supplementLab"
 import { t } from "./labI18n"
@@ -63,6 +63,15 @@ export function findPatterns(s: LabState): Pattern[] {
     const yes = cs.filter(c => c.tags.includes(tag)), no = cs.filter(c => !c.tags.includes(tag))
     const b = bestSplit(yes, no, allDims)
     if (b) out.push({ id: `tag:${tag}`, kind: "tag", emoji: TAG_EMOJI[tag] ?? "🏷️", title: tag === "Training" ? t("An Trainingstagen") : tag === "Reise" ? t("An Reisetagen") : t("Bei „{tag}“", { tag: tagLabel(tag) }),
+      dim: b.dim, delta: b.d, with: b.w, without: b.wo, labelWith: t("mit"), labelWithout: t("ohne"), n: yes.length })
+  }
+
+  // Beschwerde mit anderem Grund (z. B. wenig getrunken, Stress) – wie ein Störfaktor-Tag
+  {
+    const isOther = (c: CheckIn) => Object.values(c.suspect ?? {}).some(isOtherReason)
+    const yes = cs.filter(isOther), no = cs.filter(c => !isOther(c))
+    const b = bestSplit(yes, no, allDims)
+    if (b) out.push({ id: "tag:other", kind: "tag", emoji: "🧭", title: t("An Tagen mit Beschwerde aus anderem Grund"),
       dim: b.dim, delta: b.d, with: b.w, without: b.wo, labelWith: t("mit"), labelWithout: t("ohne"), n: yes.length })
   }
 

@@ -878,6 +878,63 @@ export interface ExtraIntake {
 /** Beschwerden an einem Tag OHNE (oder vor dem) Abend-Check-in – wird beim Check-in in checkin.sides/suspect übernommen. */
 export interface DaySides { sides: Record<string, number>; suspect?: Record<string, string>; at?: string }
 
+// ── Beschwerde mit anderem Grund ─────────────────────────────────────────────
+// Gespeichert in suspect[beschwerde] als "o" (anderer Grund, ohne Angabe) bzw. "o:<grund>" – kein neues Feld, kein Freitext.
+// Alte Stände kennen das nicht → wie bisher. Solche Beschwerden zählen NICHT gegen ein Supplement (sideStats, Coach,
+// Wissens-Hinweise), der Tag wird in der Auswertung wie ein Störfaktor-Tag gekennzeichnet (nicht herausgerechnet).
+
+export const SUSPECT_OTHER = "o"
+/** Feste Kurz-Auswahl für „Hat einen anderen Grund“ (Schlüssel bleiben deutsch-neutral, Anzeige über otherReasonInfo). */
+export const OTHER_REASONS: { id: string; emoji: string; label: string }[] = [
+  { id: "wasser",     emoji: "💧", label: t("wenig getrunken") },
+  { id: "stress",     emoji: "😣", label: t("Stress") },
+  { id: "schlaf",     emoji: "😴", label: t("wenig Schlaf") },
+  { id: "bildschirm", emoji: "📱", label: t("Bildschirm") },
+  { id: "infekt",     emoji: "🤧", label: t("Erkältung") },
+]
+export const isOtherReason = (key: string | undefined): key is string => key === SUSPECT_OTHER || !!key?.startsWith(`${SUSPECT_OTHER}:`)
+/** Anzeige eines „anderer Grund“-Schlüssels; ohne bekannte Angabe → allgemein. */
+export function otherReasonInfo(key: string): { emoji: string; label: string } {
+  const r = OTHER_REASONS.find(x => `${SUSPECT_OTHER}:${x.id}` === key)
+  return r ? { emoji: r.emoji, label: r.label } : { emoji: "🧭", label: t("anderer Grund") }
+}
+/** Beschwerden eines Check-ins, die einem Supplement zugerechnet werden können (ohne „anderer Grund“). */
+export function ownSides(c: Pick<CheckIn, "sides" | "suspect">): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const [id, v] of Object.entries(c.sides ?? {})) if (v && !isOtherReason(c.suspect?.[id])) out[id] = v
+  return out
+}
+/** Beschwerden mit anderem Grund in einem Satz Check-ins: je Beschwerde Anzahl Tage (+ genannte Gründe). */
+export function otherSideStats(cs: Pick<CheckIn, "sides" | "suspect">[]) {
+  const m = new Map<string, { id: string; days: number; reasons: string[] }>()
+  let days = 0
+  for (const c of cs) {
+    let any = false
+    for (const [id, v] of Object.entries(c.sides ?? {})) {
+      const key = c.suspect?.[id]
+      if (!v || !isOtherReason(key)) continue
+      any = true
+      const x = m.get(id) ?? { id, days: 0, reasons: [] }
+      x.days++
+      if (key !== SUSPECT_OTHER && !x.reasons.includes(key)) x.reasons.push(key)
+      m.set(id, x)
+    }
+    if (any) days++
+  }
+  return { days, list: [...m.values()].sort((a, b) => b.days - a.days) }
+}
+/** Suspect-Werte aus gespeicherten/importierten Daten bereinigen: nur Text, nur zu vorhandenen Beschwerden, unbekannte Gründe → "o". */
+function cleanSuspectMap(raw: unknown, sides: Record<string, number>): Record<string, string> | undefined {
+  if (!isObj(raw)) return undefined
+  const out: Record<string, string> = {}
+  for (const [k, v] of Object.entries(raw)) {
+    if (typeof v !== "string" || !v || !sides[k]) continue
+    out[k] = isOtherReason(v) && !OTHER_REASONS.some(x => `${SUSPECT_OTHER}:${x.id}` === v) ? SUSPECT_OTHER : v
+  }
+  return Object.keys(out).length ? out : undefined
+}
+
+
 export type Decision = "keep" | "maybe" | "drop"
 export interface Verdict { decision: Decision; note: string; date: string }
 
@@ -1030,11 +1087,8 @@ function sanitizeDayData(s: LabState) {
       for (const [k, v] of Object.entries(e.sides)) if (v === 1 || v === 2) sides[k] = v
       if (!Object.keys(sides).length) continue
       const x: DaySides = { sides }
-      if (isObj(e.suspect)) {
-        const sus: Record<string, string> = {}
-        for (const [k, v] of Object.entries(e.suspect)) if (typeof v === "string" && sides[k]) sus[k] = v
-        if (Object.keys(sus).length) x.suspect = sus
-      }
+      const sus = cleanSuspectMap(e.suspect, sides)
+      if (sus) x.suspect = sus
       if (typeof e.at === "string") x.at = e.at
       out[d] = x
     }
@@ -1065,6 +1119,11 @@ function sanitizeDayData(s: LabState) {
   }
   s.supps = s.supps.map(x => x.portion === undefined || okPortion(x.portion) ? x : { ...x, portion: undefined })
   for (const c of Object.values(s.checkins)) {
+    if (c.suspect !== undefined) {
+      const sus = cleanSuspectMap(c.suspect, isObj(c.sides) ? c.sides : {})
+      if (sus) c.suspect = sus
+      else delete c.suspect
+    }
     if (c.face !== undefined && !(okScore(c.face) && Number.isInteger(c.face))) delete c.face
     if (c.estDims !== undefined) {
       const ok = Array.isArray(c.estDims) ? [...new Set(c.estDims.filter(d => typeof d === "string" && d in DIM_BY_ID))] : []
@@ -1371,7 +1430,8 @@ export interface SideStat { id: string; days: number; strong: number }
 export function sideStats(cs: CheckIn[]) {
   const m = new Map<string, SideStat>()
   let load = 0
-  for (const c of cs) for (const [id, sev] of Object.entries(c.sides ?? {})) {
+  // Beschwerden mit „anderem Grund“ zählen nicht (siehe ownSides)
+  for (const c of cs) for (const [id, sev] of Object.entries(ownSides(c))) {
     if (!sev) continue
     const x = m.get(id) ?? { id, days: 0, strong: 0 }
     x.days++; if (sev >= 2) x.strong++
@@ -1402,12 +1462,15 @@ export function testResult(s: LabState, suppId: string) {
   const baseRate = new Map(sBase.list.map(x => [x.id, baseW ? x.days / Math.max(1, checkinsIn(s, baseW).length) : 0]))
   // Nebenwirkungen, die im Test häufiger sind als im Reset
   const newSides = sTest.list.filter(x => x.days / Math.max(1, cs.length) > (baseRate.get(x.id) ?? 0) + 0.15 || x.strong > 0)
-  const sides = { load: sTest.load, baseLoad: sBase.load, extra: Math.max(0, sTest.load - sBase.load), list: newSides, strongDays: cs.filter(c => Object.values(c.sides ?? {}).some(v => v >= 2)).length }
+  const sides = { load: sTest.load, baseLoad: sBase.load, extra: Math.max(0, sTest.load - sBase.load), list: newSides, strongDays: cs.filter(c => Object.values(ownSides(c)).some(v => v >= 2)).length }
+  // Beschwerden mit anderem Grund: nicht dem Mittel zugerechnet, Tag gekennzeichnet wie ein Störfaktor-Tag
+  const other = otherSideStats(cs)
   // Extra-Einnahmen zählen wie Störfaktoren: in `tags` als „➕ Name“ (so zeigt sie die Ergebnis-Karte ohne Umbau) + getrennt in `extras`
   const extras = extraCounts(s, cs)
   const baseExtras = baseW ? extraCounts(s, checkinsIn(s, baseW)) : []
-  const tags = [...tagCounts(cs), ...extras.map(([n, k]) => [`➕ ${n}`, k] as [string, number])].sort((a, b) => b[1] - a[1])
-  if (!avg || !base) return { window: w, n: cs.length, avg, base, delta: null, dims: [] as Dim[], total: 0, overall, sides, tags, extras, baseExtras }
+  const tags = [...tagCounts(cs), ...extras.map(([n, k]) => [`➕ ${n}`, k] as [string, number]),
+    ...(other.days ? [[OTHER_TAG, other.days] as [string, number]] : [])].sort((a, b) => b[1] - a[1])
+  if (!avg || !base) return { window: w, n: cs.length, avg, base, delta: null, dims: [] as Dim[], total: 0, overall, sides, tags, extras, baseExtras, other }
   const delta: Scores = {}
   const dims: Dim[] = []
   let total = 0
@@ -1417,8 +1480,11 @@ export function testResult(s: LabState, suppId: string) {
     dims.push(d.id)
     total += delta[d.id]!
   }
-  return { window: w, n: cs.length, avg, base, delta, dims, total, overall, sides, tags, extras, baseExtras }
+  return { window: w, n: cs.length, avg, base, delta, dims, total, overall, sides, tags, extras, baseExtras, other }
 }
+
+/** Störfaktor-Eintrag in testResult().tags für Tage mit Beschwerde aus anderem Grund (Anzeige über t()). */
+export const OTHER_TAG = "🧭 Beschwerde, anderer Grund"
 
 function tagCounts(cs: CheckIn[]) {
   const m: Record<string, number> = {}

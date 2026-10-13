@@ -6,7 +6,7 @@ import {
   DIMS, LIB_BY_ID, ONSET_INFO, SLOTS, SIDE_BY_ID,
   phaseWindows, phaseAt, checkinsIn, nextCandidates, signal, testResult, intakeOn, slotFor, slotMinutes, slotTime,
   avgIntakeMinutes, meanScore, libOf, defaultMode, todayIso, addDays, diffDays, fmtDate, fromMin, toMin, daySum,
-  suppMinutes, suppTime, recentIntake, relMin, isHere, doneOn,
+  suppMinutes, suppTime, recentIntake, relMin, isHere, doneOn, ownSides,
   type LabState, type Decision, type PhaseWindow,
 } from "./supplementLab"
 import { partnerTips, recentSides, sideCauses } from "./labKnowledge"
@@ -82,7 +82,7 @@ export function coach(s: LabState, now = new Date(), dismissed: string[] = []): 
 
   // ── Starke Nebenwirkungen im laufenden Test
   if (w?.kind === "test" && w.suppId) {
-    const strong = checkinsIn(s, w).flatMap(c => Object.entries(c.sides ?? {}).filter(([, v]) => v >= 2).map(([id]) => SIDE_BY_ID[id]?.label))
+    const strong = checkinsIn(s, w).flatMap(c => Object.entries(ownSides(c)).filter(([, v]) => v >= 2).map(([id]) => SIDE_BY_ID[id]?.label))
     if (strong.length) {
       push({ id: `strong-${w.id}`, mood: "alert", prio: 1, title: t("Starke Nebenwirkung bei {name}", { name: name(s, w.suppId) }),
         text: t("{sides}. Wenn es dir damit nicht gut geht: brich den Test ab. Hält es an, lass es ärztlich abklären.", { sides: [...new Set(strong)].join(", ") }),

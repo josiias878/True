@@ -294,5 +294,19 @@ export const EN_J: Record<string, string> = {
   "Wie geht's dir gerade?": "How are you right now?",
   "Heute schon etwas genommen? Dann starte lieber morgen – so bleibt die Pause fair.": "Already taken something today? Then better start tomorrow – that keeps the break fair.",
   "🌙 Tag 1 geschafft": "🌙 Day 1 done",
-  "Passt dein Start-Check-in von heute noch? Kurz anpassen – es zählt ein Wert pro Tag.": "Does today's start check-in still fit? Adjust it quickly – one value counts per day."
+  "Passt dein Start-Check-in von heute noch? Kurz anpassen – es zählt ein Wert pro Tag.": "Does today's start check-in still fit? Adjust it quickly – one value counts per day.",
+  "wenig getrunken": "too little water",
+  "Stress": "stress",
+  "wenig Schlaf": "little sleep",
+  "Bildschirm": "screen time",
+  "Erkältung": "a cold",
+  "anderer Grund": "another reason",
+  "Zählt nicht gegen deine Supplements. Grund (optional):": "Won't count against your supplements. Reason (optional):",
+  "Bei starken oder wiederkehrenden Beschwerden ärztlich abklären.": "If symptoms are strong or keep coming back, see a doctor.",
+  "mit {side} aus anderem Grund": "with {side} from another reason",
+  "nicht dem Mittel zugerechnet": "not counted against the supplement",
+  "🧭 Beschwerde, anderer Grund": "🧭 Symptom, other reason",
+  "An Tagen mit Beschwerde aus anderem Grund": "On days with a symptom from another reason",
+  "Beschwerde mit anderem Grund": "Symptom with another reason",
+  "Kopfschmerzen vom wenig Trinken? Markiere „anderer Grund“ – dann zählt es nicht gegen deine Supplements.": "Headache from not drinking enough? Mark it as “another reason” – then it won't count against your supplements."
 }

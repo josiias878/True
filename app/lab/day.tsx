@@ -3,10 +3,10 @@
 // Logik in lib/labDay.ts – hier nur die Anzeige.
 import React, { useEffect, useMemo, useRef, useState } from "react"
 import {
-  FACES, FACE_LABELS, LIBRARY, SIDE_BY_ID, SIDE_EFFECTS, knownSides, intakeOn, todayIso, addDays, fmtDate, diffDays, extrasOn, extraLabel, extraEmoji,
+  FACES, FACE_LABELS, LIBRARY, SIDE_BY_ID, SIDE_EFFECTS, knownSides, intakeOn, todayIso, addDays, fmtDate, diffDays, extrasOn, extraLabel, extraEmoji, OTHER_REASONS, SUSPECT_OTHER, isOtherReason, otherReasonInfo,
   type LabState, type MorningEntry,
 } from "@/lib/supplementLab"
-import { SUSPECT_UNKNOWN, recentExtras, sidesOf, suspectOptions, suspectSummary, type ExtraInput } from "@/lib/labDay"
+import { SUSPECT_UNKNOWN, otherReasonSummary, recentExtras, sidesOf, suspectOptions, suspectSummary, type ExtraInput } from "@/lib/labDay"
 import { Btn, Card, FaceRow, Label, Segmented, Sheet, SideChips } from "./ui"
 import { t, clock } from "@/lib/labI18n"
 
@@ -120,8 +120,21 @@ export function SidesWithSuspect({ s, date, value, suspect, onChange, onSuspect,
                 <button key={o.key} className="lab-press" onClick={() => onSuspect({ ...suspect, [id]: o.key })} style={chip(cur === o.key)}>{o.emoji} {o.name}</button>
               ))}
               <button className="lab-press" onClick={() => { const n = { ...suspect }; delete n[id]; onSuspect(n) }} style={chip(cur === SUSPECT_UNKNOWN)}>🤷 {t("weiß nicht")}</button>
+              <button className="lab-press" onClick={() => onSuspect({ ...suspect, [id]: SUSPECT_OTHER })} style={chip(isOtherReason(cur))}>🧭 {t("anderer Grund")}</button>
             </div>
-            {!opts.length && <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 6 }}>{t("An dem Tag ist noch keine Einnahme eingetragen.")}</div>}
+            {isOtherReason(cur) && (
+              <div className="lab-rise" style={{ marginTop: 8 }}>
+                <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginBottom: 6 }}>{t("Zählt nicht gegen deine Supplements. Grund (optional):")}</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {OTHER_REASONS.map(r => {
+                    const key = `${SUSPECT_OTHER}:${r.id}`
+                    return <button key={r.id} className="lab-press" onClick={() => onSuspect({ ...suspect, [id]: cur === key ? SUSPECT_OTHER : key })} style={chip(cur === key)}>{r.emoji} {r.label}</button>
+                  })}
+                </div>
+              </div>
+            )}
+            {!opts.length && !isOtherReason(cur) && <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 6 }}>{t("An dem Tag ist noch keine Einnahme eingetragen.")}</div>}
+            {value[id] >= 2 && <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 6 }}>{t("Bei starken oder wiederkehrenden Beschwerden ärztlich abklären.")}</div>}
           </div>
         )
       })}
@@ -249,7 +262,8 @@ export function DaySheet({ s, tab: tab0 = "take", date: date0, fixedDate, onlyTa
 
 export function SuspectCard({ s }: { s: LabState }) {
   const list = useMemo(() => suspectSummary(s), [s])
-  if (!list.length) return null
+  const other = useMemo(() => otherReasonSummary(s), [s])
+  if (!list.length && !other.days) return null
   return (
     <Card className="lab-rise">
       <Label style={{ marginBottom: 4 }}>{t("🤔 Deine Vermutungen")}</Label>
@@ -269,9 +283,26 @@ export function SuspectCard({ s }: { s: LabState }) {
           </div>
         ))}
       </div>
+      {other.days > 0 && <OtherReasonNote other={other} style={{ marginTop: list.length ? 12 : 0 }} />}
       <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", lineHeight: 1.45, marginTop: 12 }}>
         {t("Nur deine Notizen, kein Beweis – bleibt auf deinem Gerät.")} {t("Bei anhaltenden Beschwerden ärztlich abklären.")}
       </div>
     </Card>
+  )
+}
+
+/** „2 Tage mit 🤕 Kopfschmerzen aus anderem Grund – nicht dem Mittel zugerechnet“ (Ergebnis + Vermutungen). */
+export function OtherReasonNote({ other, style }: { other: { days: number; list: { id: string; days: number; reasons: string[] }[] }; style?: React.CSSProperties }) {
+  if (!other.days) return null
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: "0.78rem", lineHeight: 1.4, ...style }}>
+      {other.list.slice(0, 3).map(x => (
+        <span key={x.id}>
+          🧭 <b>{x.days === 1 ? t("1 Tag") : t("{n} Tage", { n: x.days })}</b> {t("mit {side} aus anderem Grund", { side: `${SIDE_BY_ID[x.id]?.emoji ?? ""} ${SIDE_BY_ID[x.id]?.label ?? x.id}`.trim() })}
+          {x.reasons.length > 0 && <span style={{ color: "var(--text-dim)" }}> ({x.reasons.map(k => otherReasonInfo(k).label).join(", ")})</span>}
+          <span style={{ color: "var(--text-dim)" }}> – {t("nicht dem Mittel zugerechnet")}</span>
+        </span>
+      ))}
+    </div>
   )
 }

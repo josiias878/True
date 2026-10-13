@@ -5,6 +5,7 @@ import {
   type Dim, type LabState, type Scores,
 } from "@/lib/supplementLab"
 import { t, dec } from "@/lib/labI18n"
+import { OtherReasonNote } from "./day"
 
 const POS = "#1baf7a"
 const NEG = "#e34948"
@@ -241,6 +242,7 @@ export function ProCon({ s, suppId }: { s: LabState; suppId: string }) {
           {!sig.cons.length && !r.sides.list.length && <div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>{t("keine Nachteile bemerkt 🎉")}</div>}
         </div>
       </div>
+      {r.other.days > 0 && <OtherReasonNote other={r.other} style={{ marginTop: 10 }} />}
     </div>
   )
 }
