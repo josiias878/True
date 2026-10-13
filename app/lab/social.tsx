@@ -4,7 +4,8 @@
 // Lese-Flächen neutral (Grafit/Weiß), Lab-/Ziel-Farben nur als Akzent, Grün→Blau nur für „Selbst testen“.
 // Server-Aufrufe ausschließlich über lib/labSocialApi (Edge Function „lab-social“).
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
-import { DIMS, GOALS, GOAL_BY_ID, LIB_BY_ID, STORE_MODE, type GoalId, type LabState, type LibSupp } from "@/lib/supplementLab"
+import { DIMS, GOALS, GOAL_BY_ID, LIB_BY_ID, STORE_MODE, todayIso, type GoalId, type LabState, type LibSupp } from "@/lib/supplementLab"
+import { markGuide } from "@/lib/labGuide"
 import { groupInfo, groupSteps } from "@/lib/labGroups"
 import { AVATAR_ACCESSORIES, AVATAR_COLORS, AVATAR_MOODS, DEFAULT_AVATAR, LAB_GROUPS, avatarColorBg, labColor, loadAvatar, pseudoSeed, pseudonym, type LabAvatar, type LabGroup } from "@/lib/labSocial"
 import { SITE_URL, appVersion } from "@/lib/labGrow"
@@ -1039,7 +1040,7 @@ function useJoin(c0: SocialCommunity, onJoined?: () => void) {
     set(!was)
     await ensureMe()
     const ok = await (was ? api.leave(c.id) : api.join(c.id))
-    if (!ok) { set(was); flash(OFFLINE()) } else if (!was) { flash(t("✓ Beigetreten")); onJoined?.() }
+    if (!ok) { set(was); flash(OFFLINE()) } else if (!was) { flash(t("✓ Beigetreten")); markGuide("group", todayIso()); onJoined?.() }
   }
   return [c, toggle] as const
 }
@@ -1238,6 +1239,7 @@ export function HomeFeed({ myLibs, onSelfTest, onEmpty }: { myLibs: Set<string>;
   }, [reload, libsKey]) // eslint-disable-line react-hooks/exhaustive-deps
   const items = st.items.filter(it => it.k !== "post" || visible(it.p))
   const joined = st.comms.filter(c => c.joined)
+  useEffect(() => { if (joined.length) markGuide("group", todayIso()) }, [joined.length])
   const start = st.comms.filter(c => c.featured && !c.joined).sort((a, b) => (a.featured ?? 99) - (b.featured ?? 99)).slice(0, 3)
   const empty = st.state === "ok" && !items.length
   useEffect(() => { if (st.state !== "loading") onEmpty?.(st.state === "offline" || (empty && !start.length)) }, [st.state, empty, start.length]) // eslint-disable-line react-hooks/exhaustive-deps

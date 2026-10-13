@@ -11,6 +11,7 @@ import { partnerTips } from "./labKnowledge"
 import { LOW_DAYS, buyInfo, inUse, needPending, stockInfo } from "./labStock"
 import { recordDefaultAmount } from "./labDose"
 import { t, clock } from "./labI18n"
+import { loadGuide, nudgeStep, type GuidePrefs } from "./labGuide"
 
 const APP_URL = STORE_MODE ? "" : "https://get-true.de/lab"
 
@@ -164,7 +165,7 @@ function joinNames(names: string[]) {
   return `${names.slice(0, 2).join(", ")} +${names.length - 2}`
 }
 
-export function notificationPlan(s: LabState, days = 7, now = new Date()): PlannedNotification[] {
+export function notificationPlan(s: LabState, days = 7, now = new Date(), guide: GuidePrefs = loadGuide()): PlannedNotification[] {
   if (!s.reminders.enabled || !s.startDate) return []
   const wins = phaseWindows(s)
   if (!wins.length) return []
@@ -298,6 +299,21 @@ export function notificationPlan(s: LabState, days = 7, now = new Date()): Plann
           body: shorten(partner ? `${partner.title}. ${partner.text}` : libOf(supp)!.timing, 170),
           generic: { title: t("💡 Kolbis Praxis-Tipp der Woche"), body: t("Ein kurzer Tipp für deinen Alltag.") },
         })
+      }
+    }
+
+    // „Kolbi führt dich“: höchstens 1 sanfte Erinnerung am Tag an einen offenen Einstiegs-Schritt (erste 7 Tage,
+    // nicht in der Demo, nicht bei „Später“/„Nicht für mich“). Nie in der Nähe (±60 Min.) einer anderen Nachricht –
+    // dann lieber gar nicht. Neutrale Texte ohne Supplement-Namen (auch lokal).
+    const step = nudgeStep(s, date, guide, now)
+    if (step) {
+      const sameDay = out.filter(n => n.date === date || n.key.endsWith(date) || n.key.includes(`-${date}-`))
+      const free = (m: number) => m < bed - 60 && !sameDay.some(n => Math.abs(+n.at - +atDate(date, m)) <= 60 * 60_000)
+      const m = [wake + 300, wake + 420, wake + 180].find(free)
+      if (m != null) {
+        const text = { title: `${step.emoji} ${step.title}`, body: step.why }
+        out.push({ key: `guide-${date}`, kind: "tip", url: `${LAB_BASE}?tab=heute`, at: atDate(date, m), date, ...text,
+          generic: { title: t("👋 Dein nächster Schritt bei Kolbi"), body: t("1 Minute – Kolbi zeigt dir, was dir als Nächstes hilft.") } })
       }
     }
   }

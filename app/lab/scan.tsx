@@ -3,7 +3,8 @@
 // Kamera → Zahlencode (BarcodeDetector, sonst @zxing lazy geladen) → lab-barcode → Auswahl vorbefüllt → du bestätigst.
 // Das Kamerabild bleibt auf dem Gerät; gesendet wird nur der Code (und auf Wunsch die anonyme Zuordnung).
 import React, { useEffect, useMemo, useRef, useState } from "react"
-import type { LibSupp } from "@/lib/supplementLab"
+import { todayIso, type LibSupp } from "@/lib/supplementLab"
+import { markGuide } from "@/lib/labGuide"
 import {
   BARCODE_LIBRARY, buildCandidates, lookupBarcode, normalizeBarcode, offProductUrl, productInfo, submitBarcode, usesOff,
   type BarcodeCand, type BarcodeFormat, type LookupResult,
@@ -104,6 +105,7 @@ export function ScanSheet({ owned, onClose, onAdd }: {
 
   const lookup = async (c: string) => {
     setCode(c); setPhase("loading"); setFailed(false); setPicking(false); setQ("")
+    markGuide("scan", todayIso()) // „Kolbi führt dich“: Scan ausprobiert → Schritt erledigt
     const r = await lookupBarcode(c, LANG)
     setRes(r); setFailed(!r)
     const { cands, preselect } = buildCandidates(r)

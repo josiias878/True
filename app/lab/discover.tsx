@@ -8,6 +8,7 @@ import { LAB_GROUPS, feedOrder, keepWords, labColor, labGroup, tierOf, WORDS_MIN
 import { Btn, DemoBadge, Sheet, SuppIcon, TabHead, haptic } from "./ui"
 import { pathStops, type Stop } from "@/lib/labPath"
 import { RoadPath } from "./path"
+import { openTimeline } from "@/lib/labGuide"
 import { CommunitySection, WaySection } from "./todayStack"
 import { HowToShare } from "./howto"
 import { Mascot } from "./mascot"
@@ -183,7 +184,10 @@ export function DiscoverView({ s, today, now, checkinLocked, recapReady, onRecap
         <Sheet open onClose={() => setDaySheet(false)} title={t("🗺️ Dein Tag")}>
           {road.stops.length > 0 ? <RoadPath stops={road.stops} goal={road.goal} today={today} onStop={onStop} />
             : <div style={{ color: "var(--text-dim)", fontSize: "0.9rem", padding: 8 }}>{t("Heute steht nichts an.")}</div>}
-          <Btn variant="soft" full onClick={() => { setDaySheet(false); goTab("reise") }} style={{ marginTop: 12 }}>{t("Ganzer Verlauf ›")}</Btn>
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <Btn variant="soft" onClick={() => { setDaySheet(false); openTimeline() }} style={{ flex: 1, padding: "14px 10px" }}>🗺️ {t("So geht es weiter")}</Btn>
+            <Btn variant="soft" onClick={() => { setDaySheet(false); goTab("reise") }} style={{ flex: 1, padding: "14px 10px" }}>{t("Ganzer Verlauf ›")}</Btn>
+          </div>
         </Sheet>
       )}
 

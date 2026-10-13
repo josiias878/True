@@ -586,7 +586,9 @@ function SuppInfoSheet({ s, x, today, testing, onFreq, onAmount, onPortion, onCl
 
 // ── 2 · Kosten & Kolbi-Coach ────────────────────────────────────────────────
 
-export function CostSection({ s, today, onVorrat, onAction }: { s: LabState; today: string; onVorrat: () => void; onAction: (a: CoachAction, id: string) => void }) {
+export function CostSection({ s, today, onVorrat, onAction, onPrice }: { s: LabState; today: string; onVorrat: () => void; onAction: (a: CoachAction, id: string) => void
+  /** Leerer Zustand „noch keine Preise“: direkt zum ersten Preis (Kolbi führt dich) */
+  onPrice?: () => void }) {
   const cs = useMemo(() => costSummary(s, today), [s, today])
   const cc = useMemo(() => costCoach(s, today), [s, today])
   if (!s.supps.length) return null
@@ -602,9 +604,11 @@ export function CostSection({ s, today, onVorrat, onAction }: { s: LabState; tod
       ) : cs.pending.length > 0 && !cs.missing.length ? (
         <div style={{ ...dim, fontSize: "0.84rem" }}>💶 {t("Nach Bedarf: für €/Monat noch zu wenig Einträge – ich rechne, sobald ich dein Tempo kenne.")}</div>
       ) : (
-        <button className="lab-press" onClick={onVorrat} style={{ ...linkBtn, color: "var(--text)", fontWeight: 700, width: "100%" }}>
-          💶 {t("Preise eintragen, dann rechne ich mit.")} <span style={{ color: "var(--accent-ink)", fontWeight: 800 }}>{t("Zum Vorrat ›")}</span>
-        </button>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", padding: "10px 12px", borderRadius: 16, background: "var(--surface-2)" }}>
+          <span aria-hidden style={{ flexShrink: 0 }}><Mascot mood="think" size={30} /></span>
+          <span style={{ flex: 1, minWidth: 0, fontSize: "0.84rem", fontWeight: 700, lineHeight: 1.4 }}>{t("Was kostet dein Stack im Monat? Trag einen Preis ein – den Rest rechne ich.")}</span>
+          <Btn variant="soft" onClick={() => { haptic(); (onPrice ?? onVorrat)() }} style={{ flexShrink: 0, minHeight: 44, padding: "8px 12px", fontSize: "0.82rem", borderRadius: 12 }}>💶 {t("Preis")}</Btn>
+        </div>
       )}
       {cs.savedMonthly > 0 && <div style={{ ...dim, marginTop: 2 }}>{t("✂️ Gespart: {price}/Monat durch Aussortiertes", { price: fmtEuro(cs.savedMonthly) })}</div>}
       {cc && (

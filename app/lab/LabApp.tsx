@@ -9,7 +9,7 @@ import {
   STORE_MODE, LAB_BASE, todayIso, setDayBoundary, addDays, diffDays, fmtDate, suppColor, daySum, activeDims, signal, libOf, makeSupp, defaultCheckinTime,
   nextCandidates, suppStatus, takingInfo, avgIntakeMinutes, phaseEndsAt, fmtCountdown, nowTime, closeActive, looksPrescribed,
   startTest, startStack, startCheck, applyVerdict, resolveCheck, fromMin, timeTip, LIB_BY_ID, slotMinutes, libDoseLabel,
-  isCheckinLocked, checkinOpensMin, extrasOn, MORNING_DELAYS, MORNING_DELAY_DEFAULT, morningMin, withFreq, asNeeded,
+  isCheckinLocked, checkinOpensMin, extrasOn, MORNING_DELAYS, MORNING_DELAY_DEFAULT, morningMin, withFreq, asNeeded, isHere,
   type SlotId, type LabState, type Decision, type Dim, type PhaseWindow, type MySupp, type LibSupp, type Settings, type CheckIn, type Scores, type SuppStatusKey, type SuppFreq, type TakenAmount,
 } from "@/lib/supplementLab"
 import { applyTaken, checkLabReminders, downloadIcs, hasNativeReminders, onNotifTaken, syncNativeReminders } from "@/lib/labReminders"
@@ -58,6 +58,8 @@ import { quickScores } from "@/lib/labLearn"
 import { TAG_EMOJI, findPatterns } from "@/lib/labPatterns"
 import { pathStops, type Stop } from "@/lib/labPath"
 import { t, dec, clock, isEn, LANG, setLang, canSwitchLang } from "@/lib/labI18n"
+import { guideSteps, guideTimeline, laterGuide, loadGuide, markGuide, neverGuide, onGuideChange, onOpenTimeline, openTimeline, resetGuide, type GuideStep } from "@/lib/labGuide"
+import { PortionGuideSheet, TimelineSheet } from "./guide"
 
 type Tab = "heute" | "entdecken" | "labor" | "ich"
 const TABS: { id: Tab; icon: string; label: string }[] = [
@@ -271,6 +273,13 @@ export default function LabApp() {
   const [quickOpen, setQuickOpen] = useState(false)
   const [news, setNews] = useState<{ items: LabNews[]; start: number } | null>(null) // „Neu bei Kolbi“-Storys offen
   const [newsScan, setNewsScan] = useState(false) // Deep-Link: Scanner direkt
+  // „Kolbi führt dich“: Später/Nicht für mich (lokal), Zeitleiste, Menge-pro-Einnahme-Blatt, Vorrat ab Preis-Schritt
+  const [guidePrefs, setGuidePrefs] = useState(loadGuide)
+  useEffect(() => onGuideChange(() => setGuidePrefs(loadGuide())), [])
+  const [timelineOpen, setTimelineOpen] = useState(false)
+  useEffect(() => onOpenTimeline(() => setTimelineOpen(true)), [])
+  const [portionFor, setPortionFor] = useState<string | null>(null)
+  const [stockStart, setStockStart] = useState(0)
   const [expOpen, setExpOpen] = useState<Experiment | null>(null)
   const [resView, setResView] = useState<"auswertung" | "verlauf">("auswertung")
   const [tabDir, setTabDir] = useState(1)
@@ -643,6 +652,40 @@ export default function LabApp() {
   const checkinLocked = useMemo(() => !startDay && isCheckinLocked(s, now, unlockedFor, today), [s, unlockedFor, today, now, startDay])
   const pending = useMemo(() => roundSteps(s, today, now, checkinLocked), [s, today, now, checkinLocked])
 
+  // „Kolbi führt dich“: Einrichtungs-Schritte mit Status (lib/labGuide.ts) – Heute zeigt den einen nächsten
+  const pushCtx: "on" | "off" | "na" = s.demo ? "na" : hasNativeReminders() ? (s.reminders.enabled ? "on" : "off") : pushSt === "on" ? "on" : pushSt === "off" ? "off" : "na"
+  const recapReady = s.startDate ? recapAvailable(s, now, today).ready : false
+  const guide = useMemo(() => guideSteps(s, today, {
+    push: pushCtx, social: !s.demo, recapReady, checkinLocked, checkinAt: clock(fromMin(checkinOpensMin(s))), now, prefs: guidePrefs,
+  }), [s, today, pushCtx, recapReady, checkinLocked, now, guidePrefs])
+  // Später/Nicht für mich ändern die sanfte Erinnerung → Plan neu übertragen (Push bzw. nativ)
+  useEffect(() => {
+    syncNativeReminders(s)
+    if (pushSt === "on") syncPush(s)
+  }, [guidePrefs]) // eslint-disable-line react-hooks/exhaustive-deps
+  const runGuide = (x: GuideStep) => {
+    const a = x.action
+    if (!a) return
+    setTimelineOpen(false)
+    switch (a.kind) {
+      case "checkin": {
+        if (checkinLocked) { setFlash(`⏰ ${t("Check-in ab {time}", { time: clock(fromMin(checkinOpensMin(s))) })}`); break }
+        const steps = pending.filter(p => p.kind === "checkin" || p.kind === "sides")
+        if (steps.length) setRound(steps); else setCheckinDate(today)
+        break
+      }
+      case "push": enableReminders(false); break
+      case "scan": setNewsScan(true); break
+      case "portion": setPortionFor(a.suppId); break
+      case "stock": setStockStart(0); setStockFor(a.suppId); break
+      case "price": setStockStart(3); setStockFor(a.suppId); break
+      case "morning": goTab("heute"); break
+      case "test": setTestSetup(a.suppId); break
+      case "recap": setRecapEnd(recapWeekEnd(now, today)); break
+      case "groups": showCommunitiesNext(); setLab(null); setLaborView(null); goTab("labor"); break
+    }
+  }
+
   // Aus einer Benachrichtigung geöffnet → direkt in die Tagesrunde (Sperrzeit gilt dann nicht)
   useEffect(() => {
     if (init.openMorning) {
@@ -667,6 +710,7 @@ export default function LabApp() {
         else setCheckinDate(today)
         break
       case "communities": showCommunitiesNext(); setLab(null); setLaborView(null); goTab("labor"); break
+      case "guide": goTab("heute"); setTimelineOpen(true); break
       case "stack": goTab("heute"); setTimeout(() => { try { document.getElementById("lab-today-stack")?.scrollIntoView({ behavior: "smooth", block: "start" }) } catch {} }, 120); break
     }
   }
@@ -721,6 +765,7 @@ export default function LabApp() {
             onAmount={(id, p) => update(q => { setAmount(q, today, id, p); return q })} onFreq={setFreq}
             onPortion={(id, p) => { update(q => alignStockToPortion(setPortion(q, id, p, today), id, today)); setFlash(t("✓ Gemerkt: {amount}", { amount: portionLabel(p) })) }}
             onOpenSupp={id => { setLaborView(null); setLab({ suppId: id, tab: "ueberblick" }); goTab("labor") }}
+            guide={{ steps: guide, onRun: runGuide, onLater: id => laterGuide(id, today), onNever: neverGuide, onTimeline: () => setTimelineOpen(true) }}
             />}
 
           {tab === "entdecken" && <DiscoverView s={s} today={today} now={now} checkinLocked={checkinLocked} goTab={goTab}
@@ -879,10 +924,10 @@ export default function LabApp() {
       <SocialHost s={s} onFlash={setFlash} hold={!!newBadge || !!round || !!recapEnd || askCommunity !== false} />
       <PhaseSheet s={s} w={phaseSheet} today={today} onClose={() => setPhaseSheet(null)} update={update} onVerdict={id => { setPhaseSheet(null); setVerdictFor(id) }} />
       {suppSheet && <SuppSheet s={s} id={suppSheet} today={today} adv={adv} onClose={() => setSuppSheet(null)} update={update} onAction={a => { setSuppSheet(null); runAction(a, "supp") }} onVerdict={id => { setSuppSheet(null); setVerdictFor(id) }} onStock={id => setStockFor(id)} onJoin={() => setAskCommunity(s.verdicts[suppSheet] ? suppSheet : null)} />}
-      {stockFor && <StockSheet s={s} suppId={stockFor} onClose={() => setStockFor(null)} onSave={(stock, dose) => {
+      {stockFor && <StockSheet s={s} suppId={stockFor} startStep={s.supps.find(x => x.id === stockFor)?.stock ? stockStart : 0} onClose={() => { setStockFor(null); setStockStart(0) }} onSave={(stock, dose) => {
         const first = !s.supps.find(x => x.id === stockFor)?.stock
         update(p => { p.supps = p.supps.map(x => x.id === stockFor ? { ...x, stock, dose } : x); return p }, first ? { amount: 10, label: t("Vorrat eingetragen") } : undefined)
-        setStockFor(null)
+        setStockFor(null); setStockStart(0)
       }} />}
       {reclassifyIds && <ReclassifySheet s={s} ids={reclassifyIds} onClose={() => setReclassifyIds(null)} onApply={konstant => {
         update(p => {
@@ -897,9 +942,13 @@ export default function LabApp() {
         onAdd={items => {
           const fresh = items.filter(it => it.lib ? !s.supps.some(x => x.lib === it.lib!.id) : !s.supps.some(x => !x.lib && x.name.toLowerCase() === it.name.toLowerCase()))
           update(p => { fresh.forEach(it => p.supps.push(makeSupp(it.lib, it.name, p.supps, it.dose))); return p })
+          markGuide("scan", today)
           setNewsScan(false)
           if (fresh.length) setFlash(fresh.length === 1 ? t("✓ 1 Supplement hinzugefügt") : t("✓ {n} Supplements hinzugefügt", { n: fresh.length }))
         }} />}
+      {timelineOpen && <TimelineSheet items={guideTimeline(s, today)} steps={guide} today={today} onClose={() => setTimelineOpen(false)} onRun={runGuide} onRestore={resetGuide} />}
+      {portionFor && <PortionGuideSheet supps={s.supps.filter(x => isHere(x) && !libOf(x)?.rx)} startId={portionFor} onClose={() => setPortionFor(null)}
+        onPick={(id, p) => update(q => alignStockToPortion(setPortion(q, id, p, today), id, today), { amount: 5, label: t("Menge gemerkt") })} />}
       {addMany && <AddManySheet s={s} update={update} onClose={() => setAddMany(false)} onDone={n => { setAddMany(false); setFlash(n === 1 ? t("✓ 1 Supplement hinzugefügt") : t("✓ {n} Supplements hinzugefügt", { n })) }} />}
       {pickOpen && <PickNextSheet s={s} onClose={() => setPickOpen(false)} update={update} onStart={id => { setPickOpen(false); runAction({ kind: "startTest", suppId: id }, "pick") }} />}
       {testSetup && <TestSetupSheet s={s} suppId={testSetup} onClose={() => setTestSetup(null)}
@@ -992,7 +1041,19 @@ function LaborSub({ s, today, view, onBack, update, onSupp, onAction, onVerdict,
       {view === "exp" ? <ProGate s={s} feature="experiments"><ExperimentsView s={s} onPick={onExperiment} /></ProGate>
       : view === "stack" ? <StackView s={s} update={update} onVerdict={onVerdict} onStartStack={onStartStack} /> : <>
         <ShoppingCard s={s} away={shop.away} low={shop.low} onOpen={onSupp} onArrived={id => onAction({ kind: "arrived", suppId: id }, "shop")} />
-        {!shop.count && !showCost && <div className="lab-card" style={{ padding: 16, fontSize: "0.88rem", color: "var(--text-dim)", lineHeight: 1.45 }}>{t("Alles da. Trag bei einem Supplement den Vorrat ein, dann sag ich dir, bevor es leer ist.")}</div>}
+        {!shop.count && !showCost && (() => {
+          // Leerer Zustand mit Knopf: direkt beim ersten Supplement ohne Vorrat anfangen
+          const first = s.supps.find(x => isHere(x) && !x.stock && !libOf(x)?.rx)
+          return (
+            <div className="lab-card" style={{ padding: 16, display: "flex", gap: 12, alignItems: "flex-start" }}>
+              <span aria-hidden style={{ flexShrink: 0 }}><Mascot mood="think" size={40} /></span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: "0.88rem", color: "var(--text-dim)", lineHeight: 1.45 }}>{t("Alles da. Trag bei einem Supplement den Vorrat ein, dann sag ich dir, bevor es leer ist.")}</div>
+                {first && <Btn onClick={() => onAction({ kind: "stock", suppId: first.id }, "vorrat-empty")} style={{ marginTop: 10, minHeight: 44, padding: "9px 16px", fontSize: "0.86rem", borderRadius: 12 }}>📦 {t("Vorrat eintragen: {name}", { name: first.name })}</Btn>}
+              </div>
+            </div>
+          )
+        })()}
         {showCost && <ProGate s={s} feature="costs"><CostCard s={s} today={today} onStock={id => onAction({ kind: "stock", suppId: id }, "cost")} /></ProGate>}
         {showTiming && <ProGate s={s} feature="timing"><InteractionCard s={s} today={today} onFix={fix} /></ProGate>}
         {!adv && <button onClick={onMore} style={{ alignSelf: "center", background: "none", border: "none", color: "var(--text-dim)", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer", padding: "4px 8px" }}>{t("Mehr Funktionen anzeigen ›")}</button>}
@@ -1587,11 +1648,14 @@ function DataView({ s, wins, onVerdict, onCheckin }: { s: LabState; wins: PhaseW
   const pastMissing = pastDays.filter(d => d !== todayIso() && !s.checkins[d]).length
 
   if (!nCheck) {
+    const firstResult = guideTimeline(s, todayIso()).find(m => m.key.startsWith("r-") && m.state !== "done")
     return (
       <Card style={{ textAlign: "center", padding: 32 }}>
         <div className="lab-float" style={{ fontSize: "3.5rem" }}>📈</div>
         <div style={{ fontWeight: 900, fontSize: "1.2rem", marginTop: 10 }}>{t("Noch keine Daten")}</div>
         <div style={{ color: "var(--text-dim)", marginTop: 6 }}>{t("Nach deinem ersten Check-in erscheinen hier deine Kurven.")}</div>
+        {firstResult && <div style={{ fontSize: "0.86rem", fontWeight: 800, marginTop: 10 }}>{t("🎁 Dein erstes Ergebnis: ca. {date}", { date: fmtDate(firstResult.date) })}</div>}
+        <Btn variant="soft" onClick={openTimeline} style={{ marginTop: 14, minHeight: 44 }}>🗺️ {t("So geht es weiter")} ›</Btn>
       </Card>
     )
   }

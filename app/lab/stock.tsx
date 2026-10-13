@@ -103,15 +103,18 @@ function Dots({ n, i }: { n: number; i: number }) {
 
 // ── Vorrat eintragen: Schritt für Schritt ──────────────────────────────────────
 
-export function StockSheet({ s, suppId, onClose, onSave }: {
+export function StockSheet({ s, suppId, onClose, onSave, startStep = 0 }: {
   s: LabState; suppId: string; onClose: () => void; onSave: (stock: Stock, dose: string) => void
+  /** Direkt bei „Ausrechnen“ (3) beginnen – z. B. „Preis eintragen“ bei schon eingetragenem Vorrat */
+  startStep?: number
 }) {
   const x = s.supps.find(q => q.id === suppId)!
   const prev = x.stock
-  const [step, setStep] = useState(0)
+  const [step, setStep] = useState(prev ? startStep : 0)
   const [form, setForm] = useState<StockForm>(prev?.form ?? guessForm(x))
   const [pack, setPack] = useState(prev?.pack ?? FORMS[prev?.form ?? guessForm(x)].packChips[1])
-  const [opened, setOpened] = useState(false)
+  // Direkt zum Preis: Rest bleibt wie er ist (sonst gälte die Packung als neu/voll)
+  const [opened, setOpened] = useState(!!prev && startStep > 0)
   const [left, setLeft] = useState(prev ? Math.round((stockInfo(s, x)?.left ?? prev.pack) * 10) / 10 : 0)
   const [perDay, setPerDay] = useState(prev?.perDay ?? guessPerDay(x, prev?.form ?? guessForm(x)))
   const [active, setActive] = useState(prev?.active ?? 0)

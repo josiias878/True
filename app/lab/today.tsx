@@ -20,6 +20,8 @@ import { CostSection, StackSection, StateSection } from "./todayStack"
 import { t, dec, clock, LOCALE } from "@/lib/labI18n"
 import { NewsRing, NewsTicker } from "./news"
 import { recentNews, type LabNews } from "@/lib/labNews"
+import { nextGuideStep, waitingGuideStep, type GuideStep, type GuideStepId } from "@/lib/labGuide"
+import { GuideCard } from "./guide"
 
 
 const fmt = (n: number) => dec(n, 1)
@@ -90,7 +92,7 @@ function greeting(now: Date) {
 
 type Main = "notStarted" | "reveal" | "morning" | "take" | "checkin" | "locked" | "done"
 
-export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, recap, onRecap, pushHint, onPush, onAction, onRound, onTakeAll, onTake, onSkip, onMorning, onUnlock, onCheckin, goTab, onVorrat, onExtra, onExtraRemove, onOpenSupp, onAddMany, onAmount, onPortion, onFreq, onNews, onSettings }: {
+export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, recap, onRecap, pushHint, onPush, onAction, onRound, onTakeAll, onTake, onSkip, onMorning, onUnlock, onCheckin, goTab, onVorrat, onExtra, onExtraRemove, onOpenSupp, onAddMany, onAmount, onPortion, onFreq, onNews, onSettings, guide }: {
   s: LabState; wins: PhaseWindow[]; today: string; now: Date; pending: RoundStep[]; checkinLocked: boolean; tips: CoachMsg[]
   /** Wochenrückblick bereit und noch nicht gesehen → schmale Zeile unter der Hauptsache */
   recap: { ready: boolean; end: string }; onRecap: () => void
@@ -108,6 +110,8 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
   onNews?: (items: LabNews[], start?: number) => void
   /** Einstellungen öffnen (Starttag: „Passt 7:00 Aufstehen? Ändern“ – das Onboarding fragt die Zeiten nicht mehr ab) */
   onSettings?: () => void
+  /** „Kolbi führt dich“: Schritte (lib/labGuide.ts) + Aktionen – Karte „Dein nächster Schritt“ */
+  guide?: { steps: GuideStep[]; onRun: (x: GuideStep) => void; onLater: (id: GuideStepId) => void; onNever: (id: GuideStepId) => void; onTimeline: () => void }
 }) {
   const [mHold, setMHold] = useState(false)
   const first = wins[0]
@@ -150,9 +154,16 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
   const startIn = notStarted ? new Date(first.start + "T00:00:00").getTime() - now.getTime() : null
   const tipsShown = main === "done" || main === "locked"
   const top = tips[0]
-  const showRecap = recap.ready && !notStarted
+  // „Kolbi führt dich“: was gerade groß oben steht (Check-in, Morgen-Frage), zeigt die Karte nicht noch einmal
+  const heroKinds: GuideStepId[] = main === "checkin" ? ["checkin"] : main === "morning" ? ["morning"] : []
+  const gNext = guide ? nextGuideStep(guide.steps, heroKinds) : null
+  const gWait = guide && !gNext ? waitingGuideStep(guide.steps) : null
+  // Nichts Dringendes oben → der nächste Schritt ist Kolbis Sprechblase (groß); sonst kompakt darunter
+  const calm = tipsShown || main === "notStarted"
+  const guideBig = calm && !!gNext
+  const showRecap = recap.ready && !notStarted && gNext?.id !== "recap"
   // Eine Hauptsache pro Bildschirm: Push-Hinweis + Rückblick reichen – dann kein Kolbi-Tipp (Kacheln bleiben sichtbar)
-  const showTip = tipsShown && !!top && !(pushHint && showRecap)
+  const showTip = tipsShown && !!top && !(pushHint && showRecap) && !guideBig
   // „Ich melde mich …“ stimmt bei geschlossener App nur mit Push → genau dort dezent darauf hinweisen
   const pushRow = tipsShown && pushHint ? (
     <div style={{ marginTop: 16, width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "8px 8px 8px 12px", borderRadius: 16, background: "var(--surface-2)", textAlign: "left" }}>
@@ -170,7 +181,8 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
     boxShadow: "inset 0 1px 0 rgba(255,255,255,.45), inset 0 -2px 0 rgba(0,0,0,.12), 0 12px 28px rgba(46,204,138,.35)",
   }
   // Kolbi-Ticker im großen Feld, wenn gerade nichts zu tun ist – Feld wird dafür kompakter
-  const ticker = !!onNews && !s.demo && recentNews(today).length > 0 && (main === "done" || main === "locked" || main === "notStarted") ? <NewsTicker s={s} today={today} onOpen={onNews} /> : null
+  // …aber nicht, wenn Kolbis nächster Schritt groß darunter steht (eine Hauptsache; der Neu-Kreis oben bleibt)
+  const ticker = !!onNews && !s.demo && !guideBig && recentNews(today).length > 0 && (main === "done" || main === "locked" || main === "notStarted") ? <NewsTicker s={s} today={today} onOpen={onNews} /> : null
   const title = (x: React.ReactNode) => <div style={{ fontSize: "1.6rem", fontWeight: 900, letterSpacing: "-.01em", lineHeight: 1.15 }}>{x}</div>
   const sub = (x: React.ReactNode) => <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--text-dim)", marginTop: 6, lineHeight: 1.4 }}>{x}</div>
 
@@ -186,7 +198,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
       {/* ── Die eine Hauptsache ── */}
       <div className="lab-rise" style={{
         position: "relative", overflow: "hidden", isolation: "isolate", borderRadius: 30, padding: "22px 18px 24px", textAlign: "center",
-        minHeight: (tipsShown && top) || ticker ? undefined : "min(44vh, 380px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        minHeight: (tipsShown && top) || ticker || guideBig ? undefined : "min(44vh, 380px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         background: "var(--surface)", border: "1px solid var(--glass-line)",
       }}>
         {/* Marken-Licht: Selbsttest-Fläche */}
@@ -264,6 +276,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
         </>}
       </div>
 
+      {guide && (calm || gNext) && <GuideCard steps={guide.steps} next={gNext} waiting={gWait} prominent={guideBig} onRun={guide.onRun} onLater={guide.onLater} onNever={guide.onNever} onTimeline={guide.onTimeline} />}
       {!notStarted && <RefineRow s={s} today={today} hideToday={main === "done"} onCheckin={onCheckin} />}
       {startDay && onSettings && !s.demo && (
         <button className="lab-press" onClick={onSettings} style={{
@@ -276,11 +289,12 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
         </button>
       )}
       {showRecap && <RecapTeaser slim end={recap.end} onOpen={onRecap} />}
-      {showTip && <KolbiSays msg={top} more={tips.length - 1} onAction={onAction} onMore={() => goTab("kolbi")} tail={!showRecap} />}
+      {showTip && <KolbiSays msg={top} more={tips.length - 1} onAction={onAction} onMore={() => goTab("kolbi")} tail={!showRecap && !gWait} />}
 
       {/* ── Feste Bereiche: Stack · Kosten & Coach · Zustand · Weg · Community ── */}
       <div id="lab-today-stack" style={{ scrollMarginTop: 16 }}><StackSection s={s} today={today} onTake={onTake} onSkip={onSkip} onExtra={onExtra} onExtraRemove={onExtraRemove} onOpenSupp={onOpenSupp} onVorrat={onVorrat} onAddMany={onAddMany} goTab={goTab} onAmount={onAmount} onPortion={onPortion} onFreq={onFreq} /></div>
-      <CostSection s={s} today={today} onVorrat={onVorrat} onAction={onAction} />
+      <CostSection s={s} today={today} onVorrat={onVorrat} onAction={onAction}
+        onPrice={() => { const st = guide?.steps.find(x => x.id === "price"); if (guide && st?.action && st.status !== "done") guide.onRun(st); else onVorrat() }} />
       <StateSection s={s} today={today} onOpen={() => goTab("reise")} />
 
     </div>
