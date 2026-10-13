@@ -168,6 +168,93 @@ try {
     assert.equal(ok.supps[1].freqAt, ago(20))
   })
 
+  // ── QA: Pflicht-Tage im eigenen Test zählen nicht ins Bedarf-Tempo ──
+  await test("needRate: Tage aus dem eigenen Test zählen weder als Tag noch als Einnahme", () => {
+    const s = base(ago(40))
+    s.startDate = ago(40)
+    // Test von Melatonin vor 20…11 Tagen (10 Tage, jeden Tag genommen), danach wieder nach Bedarf
+    s.phases = [{ id: "p0", kind: "baseline", start: ago(40), days: 3 }, { id: "p1", kind: "test", suppId: "mel", start: ago(20), days: 10 }]
+    for (let n = 11; n <= 20; n++) takeOn(s, [n])
+    takeOn(s, [2, 6, 9, 25])
+    for (let n = 11; n <= 20; n++) assert.ok(L.intakeOn(s, ago(n)).includes("mel"))
+    const r = S.needRate(s, s.supps[1], today)
+    assert.equal(r.uses, 4)
+    assert.equal(r.days, 27 - 10)
+  })
+
+  // ── QA: Vorrat springt beim Umstellen nicht rückwirkend ──
+  const left = s => S.stockInfo(s, s.supps[1], today).left
+  await test("Umstellen täglich → nach Bedarf: Vorrat bleibt (keepStock)", () => {
+    const s = base()
+    const mel = s.supps[1]
+    delete mel.freq; delete mel.freqAt
+    mel.stock = { ...mel.stock, left: 60, at: ago(10) }
+    takeOn(s, [3])
+    const before = left(s)
+    assert.equal(before, 50) // 10 Plantage seit Eintrag (inkl. heute)
+    const next = structuredClone(s)
+    next.supps[1] = L.withFreq(next.supps[1], "bedarf", today)
+    S.keepStock(s, next, today)
+    assert.equal(left(next), before + 1) // bis gestern 9 fest, heute ohne Eintrag kein Abzug mehr → 51
+    assert.equal(next.supps[1].stock.at, ago(1))
+    // Ohne keepStock wäre es rückwirkend gesprungen
+    const raw = structuredClone(s)
+    raw.supps[1] = L.withFreq(raw.supps[1], "bedarf", today)
+    assert.equal(left(raw), 59)
+  })
+  await test("Umstellen nach Bedarf → täglich: Vorrat bleibt", () => {
+    const s = base()
+    const mel = s.supps[1]
+    mel.stock = { ...mel.stock, left: 60, at: ago(10) }
+    takeOn(s, [3, 5])
+    assert.equal(left(s), 58)
+    const next = structuredClone(s)
+    next.supps[1] = L.withFreq(next.supps[1], "taeglich", today)
+    S.keepStock(s, next, today)
+    assert.equal(left(next), 57) // 58 bis gestern + heute als Plantag
+  })
+  await test("Modus-Wechsel (durchgehend → Pause / Doch einzeln testen / Test starten): Vorrat bleibt", () => {
+    for (const change of [
+      p => { p.supps[0].mode = "pause" },
+      p => { p.supps[0] = { ...p.supps[0], mode: "test", keepTesting: true } },
+      p => L.startTest(p, "mag", today, 5),
+      p => { p.supps[0].away = today },
+    ]) {
+      const s = base()
+      s.supps[0].stock = { ...s.supps[0].stock, left: 60, at: ago(10) }
+      const lm = q => S.stockInfo(q, q.supps[0], today).left
+      const yesterday = 60 - 9
+      const next = structuredClone(s)
+      change(next)
+      S.keepStock(s, next, today)
+      assert.equal(next.supps[0].stock.at, ago(1))
+      assert.ok(lm(next) <= yesterday && lm(next) >= yesterday - 1, `${lm(next)}`)
+    }
+  })
+  await test("keepStock: ohne planrelevante Änderung oder bei selbst bearbeitetem Vorrat nichts festschreiben", () => {
+    const s = base()
+    s.supps[1].stock = { ...s.supps[1].stock, left: 60, at: ago(10) }
+    const a = structuredClone(s); a.took[today] = ["mel"]
+    S.keepStock(s, a, today)
+    assert.equal(a.supps[1].stock.at, ago(10))
+    const b = structuredClone(s); b.supps[1] = { ...L.withFreq(b.supps[1], "taeglich", today), stock: { ...b.supps[1].stock, left: 30, at: today } }
+    S.keepStock(s, b, today)
+    assert.equal(b.supps[1].stock.left, 30); assert.equal(b.supps[1].stock.at, today)
+  })
+  await test("own-stack-Umstellung beim Laden: Vorrat eigener Mittel bleibt", () => {
+    const s = L.emptyState()
+    s.startDate = ago(30)
+    s.phases = [{ id: "p0", kind: "baseline", start: ago(30), days: 3 }]
+    s.supps = [{ id: "custom-x", name: "Mein Pulver", emoji: "💊", color: 0, dose: "", mode: "test",
+      stock: { form: "kapseln", pack: 60, perDay: 1, left: 60, at: ago(10) } }]
+    s.took[ago(4)] = ["custom-x"]
+    const h = L.hydrate(JSON.parse(JSON.stringify(s)))
+    assert.equal(h.supps[0].mode, "konstant")
+    assert.equal(h.supps[0].stock.left, 59)
+    assert.equal(h.supps[0].stock.at, ago(1))
+    assert.equal(S.stockInfo(h, h.supps[0], today).left, 58) // heute als Plantag
+  })
+
   // ── Muster „An Tagen mit X / ohne X“ ──
   const withCheckins = (good, bad) => {
     const s = base()

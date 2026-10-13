@@ -10,6 +10,8 @@
  * Wird im Vite-Build der App gesetzt, im TRUE-Web ist es aus.
  */
 import { t, toDe, LOCALE } from "./labI18n"
+// Zyklischer Import (labStock → supplementLab): keepStock wird nur zur Laufzeit in hydrate() aufgerufen, nie beim Laden.
+import { keepStock } from "./labStock"
 
 export const STORE_MODE = process.env.NEXT_PUBLIC_LAB_STORE === "1"
 /** Basis-Pfad der App (TRUE: /lab, Store-App: /) */
@@ -1054,7 +1056,9 @@ export function hydrate(raw: unknown): LabState {
   // nicht bewusst „zum Testen behalten“) einmalig auf „läuft durchgehend“. Testen geht weiter über „Doch einzeln testen“.
   if (!s.migrated?.includes("own-stack")) {
     const planned = new Set([...s.phases.map(q => q.suppId), ...(s.queue ?? [])].filter(Boolean))
+    const before = { ...s, supps: [...s.supps] }
     s.supps = s.supps.map(x => !x.lib && x.mode === "test" && !x.keepTesting && !s.verdicts[x.id] && !planned.has(x.id) ? { ...x, mode: "konstant" } : x)
+    keepStock(before, s) // Vorrat: bisherigen Verbrauch festschreiben, sonst zählten vergangene Tage plötzlich als Einnahmetage
     s.migrated = [...(s.migrated ?? []), "own-stack"]
   }
   // „Nach Bedarf“ ohne Umstellungs-Datum (Stand vor freqAt): ab heute zählen – lieber erst „noch zu wenig Daten“

@@ -2,7 +2,7 @@
 // ── Labor: meine Labs als große Kacheln + Suche in der Bibliothek; Lab-Seite pro Supplement ──
 import React, { useEffect, useMemo, useState } from "react"
 import {
-  LIBRARY, LIB_BY_ID, LIB_SIDES, ONSET_INFO, SIDE_BY_ID, diffDays, libOf, phaseAt, phaseWindows, suppStatus, testResult,
+  LIBRARY, LIB_BY_ID, LIB_SIDES, ONSET_INFO, SIDE_BY_ID, diffDays, libOf, phaseAt, asNeeded, phaseWindows, suppStatus, testResult,
   type LabState, type LibSupp, type MySupp, type PhaseWindow, type SuppStatusKey,
 } from "@/lib/supplementLab"
 import { fetchStats, type CommunityStats } from "@/lib/labCommunity"
@@ -232,7 +232,7 @@ export function LabPage({ s, today, suppId, libId, tab, setTab, onBack, onSelfTe
           </> : <>
             <Mascot mood={st?.key === "verdict" ? "party" : "think"} size={110} />
             <div style={{ fontSize: "1.45rem", fontWeight: 900 }}>
-              {!x ? t("Noch nicht in deinem Labor") : st?.key === "verdict" ? t("Dein Ergebnis ist da") : st?.key === "constant" ? t("Läuft durchgehend") : x.away ? t("Noch nicht da") : t("Noch nicht getestet")}
+              {!x ? t("Noch nicht in deinem Labor") : st?.key === "verdict" ? t("Dein Ergebnis ist da") : st?.key === "constant" ? (asNeeded(x) ? t("Nach Bedarf") : t("Läuft durchgehend")) : x.away ? t("Noch nicht da") : t("Noch nicht getestet")}
             </div>
             <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--text-dim)", lineHeight: 1.45, maxWidth: 300 }}>
               {lib?.rx ? t("Verschriebene Mittel testest du nicht selbst – Änderungen nur mit Ärztin oder Arzt.") : lib ? t("Finde raus, ob {name} bei dir einen Unterschied macht – verglichen mit deinem Normal.", { name }) : t("Teste es wie jedes andere – ich vergleiche mit deinem Normal.")}

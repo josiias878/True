@@ -79,16 +79,18 @@ export function needRate(s: LabState, x: MySupp, today = todayIso()): NeedRate |
   if (!asNeeded(x) || intakeOn(s, today).includes(x.id)) return null
   let from = addDays(today, -(NEED_WINDOW - 1))
   if (x.freqAt && x.freqAt > from) from = x.freqAt > today ? today : x.freqAt
-  let uses = 0, days = 0
+  // span = freie Tage seit der Umstellung inkl. heute (auch wenn heute noch nichts eingetragen ist).
+  // Pflicht-Tage aus dem eigenen Test (stand im Plan) zählen weder als Tag noch als Einnahme – dort war es nicht „nach Bedarf“.
+  let uses = 0, days = 0, span = 0
   for (let d = from, k = 0; d <= today && k < NEED_WINDOW + 1; d = addDays(d, 1), k++) {
+    if (intakeOn(s, d).includes(x.id)) continue
+    span++
     const on = tookOn(s, x, d)
     if (d === today && !on) continue
     days++
     if (on) uses++
   }
-  // Seit der Umstellung (inkl. heute) – auch wenn heute noch nichts eingetragen ist
-  const since = Math.min(NEED_WINDOW, Math.round((Date.parse(`${today}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86400000) + 1)
-  const enough = uses >= NEED_MIN_USES && since >= NEED_MIN_DAYS && days > 0
+  const enough = uses >= NEED_MIN_USES && span >= NEED_MIN_DAYS && days > 0
   return { uses, days, perDay: enough ? uses / days : null }
 }
 
@@ -360,10 +362,47 @@ export function alignStockToPortion(s: LabState, id: string, today = todayIso())
   const x = s.supps.find(q => q.id === id)
   const st = x?.stock, p = x?.portion
   if (!x || !st || !p || p.u !== stockUnit(st.form) || st.perDay === p.n) return s
-  // Nur bis GESTERN festschreiben (Rest am Ende von gestern, at = gestern) – der heutige Tag bleibt beweglich
-  // (Abhaken, Menge ändern, Haken entfernen zählen weiter richtig). Eingetragen erst heute → nichts festzuschreiben.
-  const y = addDays(today, -1)
-  const frozen = st.at < y ? { left: Math.round(Math.max(0, st.left - usedSince(s, x, st, st.at, y)) * 1000) / 1000, at: y } : {}
-  s.supps = s.supps.map(q => q.id === id && q.stock ? { ...q, stock: { ...q.stock, perDay: p.n, ...frozen } } : q)
+  s.supps = s.supps.map(q => q.id === id && q.stock ? { ...q, stock: { ...q.stock, perDay: p.n, ...frozenUntilYesterday(s, x, st, today) } } : q)
   return s
+}
+
+/**
+ * Bisherigen Verbrauch festschreiben: Rest am Ende von GESTERN, at = gestern (berechnet im Zustand s). Der heutige Tag
+ * bleibt beweglich (Abhaken, Menge ändern, Haken entfernen zählen weiter richtig). Eingetragen erst heute/gestern → {}.
+ */
+function frozenUntilYesterday(s: LabState, x: MySupp, st: Stock, today: string): Partial<Stock> {
+  const y = addDays(today, -1)
+  return st.at < y ? { left: Math.round(Math.max(0, st.left - usedSince(s, x, st, st.at, y)) * 1000) / 1000, at: y } : {}
+}
+
+/** Felder, die rückwirkend ändern, welche Tage als Einnahmetag zählen (über intakeOn). */
+function planKey(s: LabState, x: MySupp) {
+  return [x.mode, x.freq ?? "", x.away ?? "", x.keepTesting ? 1 : 0, s.verdicts[x.id]?.decision ?? ""].join("|")
+}
+
+/**
+ * Vorrat bleibt beim Umstellen stabil: Ändert sich Rhythmus (täglich/nach Bedarf), Modus (Test/durchgehend/Pause),
+ * „nicht da“, Urteil oder der Phasenplan, rechnet usedSince() vergangene Tage mit dem NEUEN Plan – der Vorrat
+ * sprünge rückwirkend. Darum: Verbrauch bis gestern mit dem ALTEN Zustand festschreiben (wie alignStockToPortion).
+ * Für alle Änderungen über update() in LabApp und die einmaligen Umstellungen in hydrate(). Mutiert und liefert `after`.
+ * Wurde der Vorrat in derselben Änderung selbst bearbeitet (left/at/perDay anders), bleibt er, wie er ist.
+ */
+export function keepStock(before: LabState, after: LabState, today = todayIso()): LabState {
+  const phasesChanged = JSON.stringify(before.phases) !== JSON.stringify(after.phases)
+  const old = new Map(before.supps.map(x => [x.id, x]))
+  let changed = false
+  const supps = after.supps.map(x => {
+    const b = old.get(x.id), st = x.stock, bst = b?.stock
+    if (!b || !st || !bst || st.at !== bst.at || st.left !== bst.left || st.perDay !== bst.perDay || st.form !== bst.form) return x
+    if (!phasesChanged && planKey(before, b) === planKey(after, x)) return x
+    const y = addDays(today, -1)
+    if (bst.at >= y) return x
+    // Nur festschreiben, wenn sich der berechnete Verbrauch bis gestern wirklich ändert
+    const was = usedSince(before, b, bst, bst.at, y)
+    if (Math.abs(was - usedSince(after, x, st, st.at, y)) < 1e-9) return x
+    changed = true
+    return { ...x, stock: { ...st, ...frozenUntilYesterday(before, b, bst, today) } }
+  })
+  if (changed) after.supps = supps
+  return after
 }

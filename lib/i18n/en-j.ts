@@ -347,5 +347,6 @@ export const EN_J: Record<string, string> = {
   "· nach deinem Tempo ({n} Einnahmetage in {d} Tagen)": "· at your pace ({n} days taken in {d} days)",
   "Nach Bedarf: für €/Monat noch zu wenig Einträge – ich rechne, sobald ich dein Tempo kenne.": "As needed: not enough entries yet for a monthly cost – I'll calculate once I know your pace.",
   "· 1 nach Bedarf: noch zu wenig Daten": "· 1 as needed: not enough data yet",
-  "· {n} nach Bedarf: noch zu wenig Daten": "· {n} as needed: not enough data yet"
+  "· {n} nach Bedarf: noch zu wenig Daten": "· {n} as needed: not enough data yet",
+  "🔁 Nach Bedarf:": "🔁 As needed:"
 }

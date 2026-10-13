@@ -9,7 +9,7 @@ import {
   STORE_MODE, LAB_BASE, todayIso, setDayBoundary, addDays, diffDays, fmtDate, suppColor, daySum, activeDims, signal, libOf, makeSupp, defaultCheckinTime,
   nextCandidates, suppStatus, takingInfo, avgIntakeMinutes, phaseEndsAt, fmtCountdown, nowTime, closeActive, looksPrescribed,
   startTest, startStack, startCheck, applyVerdict, resolveCheck, fromMin, timeTip, LIB_BY_ID, slotMinutes, libDoseLabel,
-  isCheckinLocked, checkinOpensMin, extrasOn, MORNING_DELAYS, MORNING_DELAY_DEFAULT, morningMin, withFreq,
+  isCheckinLocked, checkinOpensMin, extrasOn, MORNING_DELAYS, MORNING_DELAY_DEFAULT, morningMin, withFreq, asNeeded,
   type SlotId, type LabState, type Decision, type Dim, type PhaseWindow, type MySupp, type LibSupp, type Settings, type CheckIn, type Scores, type SuppStatusKey, type SuppFreq, type TakenAmount,
 } from "@/lib/supplementLab"
 import { applyTaken, checkLabReminders, downloadIcs, hasNativeReminders, onNotifTaken, syncNativeReminders } from "@/lib/labReminders"
@@ -26,7 +26,7 @@ import { InstallHint } from "./install"
 import { DailyRound, dayProgress, roundSteps, withMorning, type RoundStep } from "./round"
 import { FreqPick } from "./todayStack"
 import { factsFor, partnerTips, recentSides, sideCauses } from "@/lib/labKnowledge"
-import { alignStockToPortion, openShop, refillStock, shoppingList, stockInfo } from "@/lib/labStock"
+import { alignStockToPortion, keepStock, openShop, refillStock, shoppingList } from "@/lib/labStock"
 import { ShopButton, ShoppingCard, StockCard, StockSheet } from "./stock"
 import { BadgeGrid, KnowledgeAlbum, KolbiPage } from "./kolbi"
 import { QuickSheet, TodayView } from "./today"
@@ -337,7 +337,8 @@ export default function LabApp() {
 
   const update: Update = useCallback((fn, xp) => {
     setS(prev => {
-      let next = fn(structuredClone(prev))
+      // Vorrat bleibt beim Umstellen (Rhythmus, Modus, Urteil, Pause …) stabil – siehe keepStock
+      let next = keepStock(prev, fn(structuredClone(prev)))
       if (xp) next.xp += xp.amount
       const badges = computeBadges(next)
       const fresh = badges.filter(b => !next.badges.includes(b))
@@ -1360,7 +1361,8 @@ function JourneyView({ s, wins, today, onPhase, goTab }: {
 }) {
   const offsets = [0, 1, 1.4, 1, 0, -1, -1.4, -1]
   const kept = stackMembers(s, false).length
-  const constants = s.supps.filter(x => x.mode === "konstant")
+  const constants = s.supps.filter(x => x.mode === "konstant" && !asNeeded(x))
+  const asNeed = s.supps.filter(x => x.mode === "konstant" && asNeeded(x))
   const cands = nextCandidates(s)
   const hasStack = wins.some(w => w.kind === "stack")
   return (
@@ -1370,6 +1372,11 @@ function JourneyView({ s, wins, today, onPhase, goTab }: {
       {constants.length > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: "0.75rem", color: "var(--text-dim)", marginTop: 8 }}>
           {t("📌 Läuft durchgehend:")} {constants.map(x => <Capsule key={x.id} supp={x} size="sm" />)}
+        </div>
+      )}
+      {asNeed.length > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: "0.75rem", color: "var(--text-dim)", marginTop: 6 }}>
+          {t("🔁 Nach Bedarf:")} {asNeed.map(x => <Capsule key={x.id} supp={x} size="sm" />)}
         </div>
       )}
 

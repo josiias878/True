@@ -120,7 +120,7 @@ export function SidesWithSuspect({ s, date, value, suspect, onChange, onSuspect,
                 <button key={o.key} className="lab-press" onClick={() => onSuspect({ ...suspect, [id]: o.key })} style={chip(cur === o.key)}>{o.emoji} {o.name}</button>
               ))}
               <button className="lab-press" onClick={() => { const n = { ...suspect }; delete n[id]; onSuspect(n) }} style={chip(cur === SUSPECT_UNKNOWN)}>🤷 {t("weiß nicht")}</button>
-              <button className="lab-press" onClick={() => onSuspect({ ...suspect, [id]: SUSPECT_OTHER })} style={chip(isOtherReason(cur))}>🧭 {t("anderer Grund")}</button>
+              <button className="lab-press" onClick={() => onSuspect({ ...suspect, [id]: isOtherReason(cur) ? cur : SUSPECT_OTHER })} style={chip(isOtherReason(cur))}>🧭 {t("anderer Grund")}</button>
             </div>
             {isOtherReason(cur) && (
               <div className="lab-rise" style={{ marginTop: 8 }}>
