@@ -9,7 +9,7 @@ import {
   type LabState, type LibSupp, type MySupp, type Portion, type SuppFreq, type TakenAmount,
 } from "@/lib/supplementLab"
 import { caffeineToday, recentExtras, type ExtraInput } from "@/lib/labDay"
-import { costSummary, fmtEuro, monthlyCost } from "@/lib/labStock"
+import { costPending, costSummary, fmtEuro, monthlyCost, needRate } from "@/lib/labStock"
 import { costCoach, type CoachAction } from "@/lib/labCoach"
 import type { Stop } from "@/lib/labPath"
 import { COMMUNITY_MIN, fetchOverview } from "@/lib/labCommunity"
@@ -522,7 +522,8 @@ function SuppInfoSheet({ s, x, today, testing, onFreq, onAmount, onPortion, onCl
 }) {
   const lib = libOf(x)
   const sides = (lib ? LIB_SIDES[lib.id] ?? [] : []).map(id => SIDE_BY_ID[id]).filter(Boolean)
-  const cost = monthlyCost(x)
+  const cost = monthlyCost(x, s, today)
+  const need = needRate(s, x, today)
   const head = (txt: string) => <div style={{ fontSize: "0.72rem", fontWeight: 900, letterSpacing: ".05em", color: "var(--text-dim)", margin: "14px 0 5px" }}>{txt}</div>
   const body: React.CSSProperties = { fontSize: "0.9rem", lineHeight: 1.5 }
   return (
@@ -566,7 +567,8 @@ function SuppInfoSheet({ s, x, today, testing, onFreq, onAmount, onPortion, onCl
 
       {head(t("KOSTEN"))}
       {cost != null
-        ? <div style={{ ...body, fontWeight: 800 }}>{t("ca. {price} pro Monat", { price: fmtEuro(cost) })} <span style={{ ...dim, fontWeight: 600 }}>{t("· aus deinem Vorrat")}</span></div>
+        ? <div style={{ ...body, fontWeight: 800 }}>{t("ca. {price} pro Monat", { price: fmtEuro(cost) })} <span style={{ ...dim, fontWeight: 600 }}>{need ? t("· nach deinem Tempo ({n} Einnahmetage in {d} Tagen)", { n: need.uses, d: need.days }) : t("· aus deinem Vorrat")}</span></div>
+        : costPending(s, x, today) ? <div style={dim}>{t("Nach Bedarf: für €/Monat noch zu wenig Einträge – ich rechne, sobald ich dein Tempo kenne.")}</div>
         : lib?.rx ? <div style={dim}>{t("Verschrieben – Kosten rechne ich hier nicht mit.")}</div>
         : <button className="lab-press" onClick={onVorrat} style={linkBtn}>{t("Preis im Vorrat eintragen ›")}</button>}
 
@@ -595,7 +597,10 @@ export function CostSection({ s, today, onVorrat, onAction }: { s: LabState; tod
           <span style={{ fontSize: "0.86rem", fontWeight: 700, color: "var(--text-dim)" }}>{t("Dein Stack:")}</span>
           <span style={{ fontSize: "1.35rem", fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>{t("ca. {price}/Monat", { price: fmtEuro(cs.total) })}</span>
           {cs.missing.length > 0 && <span style={{ ...dim, fontSize: "0.74rem" }}>{cs.missing.length === 1 ? t("· 1 ohne Preis") : t("· {n} ohne Preis", { n: cs.missing.length })}</span>}
+          {cs.pending.length > 0 && <span style={{ ...dim, fontSize: "0.74rem" }}>{cs.pending.length === 1 ? t("· 1 nach Bedarf: noch zu wenig Daten") : t("· {n} nach Bedarf: noch zu wenig Daten", { n: cs.pending.length })}</span>}
         </div>
+      ) : cs.pending.length > 0 && !cs.missing.length ? (
+        <div style={{ ...dim, fontSize: "0.84rem" }}>💶 {t("Nach Bedarf: für €/Monat noch zu wenig Einträge – ich rechne, sobald ich dein Tempo kenne.")}</div>
       ) : (
         <button className="lab-press" onClick={onVorrat} style={{ ...linkBtn, color: "var(--text)", fontWeight: 700, width: "100%" }}>
           💶 {t("Preise eintragen, dann rechne ich mit.")} <span style={{ color: "var(--accent-ink)", fontWeight: 800 }}>{t("Zum Vorrat ›")}</span>

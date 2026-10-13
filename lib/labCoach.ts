@@ -174,7 +174,8 @@ export function coach(s: LabState, now = new Date(), dismissed: string[] = []): 
         ] })
     } else if (info.low) {
       const alt = buyInfo(x).alt
-      push({ id: `low-${x.id}-${x.stock.at}`, mood: "think", prio: 5, title: info.days === 1 ? t("🛒 {name} reicht noch 1 Tag", { name: x.name }) : t("🛒 {name} reicht noch {n} Tage", { name: x.name, n: info.days }),
+      push({ id: `low-${x.id}-${x.stock.at}`, mood: "think", prio: 5, title: info.need ? (info.days === 1 ? t("🛒 {name} reicht bei deinem Tempo noch ca. 1 Tag", { name: x.name }) : t("🛒 {name} reicht bei deinem Tempo noch ca. {n} Tage", { name: x.name, n: info.days }))
+        : info.days === 1 ? t("🛒 {name} reicht noch 1 Tag", { name: x.name }) : t("🛒 {name} reicht noch {n} Tage", { name: x.name, n: info.days }),
         text: `${t("Zeit nachzubestellen, damit keine Lücke entsteht.")}${alt ? ` 💡 ${alt}` : ""}`,
         actions: [
           { label: t("📦 Hab bestellt"), action: { kind: "ordered", suppId: x.id }, primary: true },

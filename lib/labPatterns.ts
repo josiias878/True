@@ -1,16 +1,16 @@
 // ── Supplement Lab: Muster-Detektor ───────────────────────────────────────────
 // Kolbi sucht in deinen Check-ins nach Zusammenhängen: Störfaktoren (auch Beschwerden mit anderem Grund), Wochentage,
-// ausgelassene Einnahmen und Einnahme-Uhrzeit. Nur Hinweise – keine Beweise.
+// ausgelassene Einnahmen, Tage mit/ohne „Nach Bedarf“-Mittel und Einnahme-Uhrzeit. Nur Hinweise – keine Beweise.
 
 import {
-  DIMS, TAGS, addDays, daySum, tagLabel, intakeOn, libOf, relMin, toMin, fromMin, evalCheckin, extraKey, extraLabel, isAlcoholExtra, extraEmoji, LIB_BY_ID, isOtherReason,
+  DIMS, TAGS, addDays, daySum, tagLabel, intakeOn, libOf, relMin, toMin, fromMin, evalCheckin, extraKey, extraLabel, isAlcoholExtra, extraEmoji, LIB_BY_ID, isOtherReason, asNeeded,
   type CheckIn, type Dim, type LabState,
 } from "./supplementLab"
 import { t } from "./labI18n"
 
 export interface Pattern {
   id: string
-  kind: "tag" | "nextday" | "weekday" | "skip" | "time" | "extra" | "extranext"   // nextday = Tag NACH einem Störfaktor (z. B. Alkohol) · extra/extranext = an Tagen mit / am Tag nach einer Extra-Einnahme
+  kind: "tag" | "nextday" | "weekday" | "skip" | "time" | "extra" | "extranext" | "need"   // nextday = Tag NACH einem Störfaktor (z. B. Alkohol) · extra/extranext = an Tagen mit / am Tag nach einer Extra-Einnahme · need = an Tagen mit / ohne ein „Nach Bedarf“-Mittel
   emoji: string
   title: string       // z. B. „Nach Alkohol“
   dim: Dim | null     // null = Gesamtgefühl
@@ -89,6 +89,22 @@ export function findPatterns(s: LabState): Pattern[] {
       dim: b.dim, delta: b.d, with: b.w, without: b.wo, labelWith: t("Tag danach"), labelWithout: t("sonst"), n: yes.length })
   }
 
+  // „Nach Bedarf“-Mittel: „An Tagen mit X“ gegen „ohne X“ (Genommen-Haken oder Extra-Einnahme desselben Mittels).
+  // Tage, an denen es fest im Plan stand (eigener Test), fallen raus – dort war die Einnahme nicht frei gewählt.
+  // Gleiche Mindestmengen wie oben (je Gruppe mind. MIN_N Check-in-Tage, Unterschied ≥ MIN_DELTA). Rein beschreibend.
+  const needKeys = new Set<string>()
+  for (const x of s.supps.filter(q => asNeeded(q))) {
+    needKeys.add(x.id)
+    if (x.lib) needKeys.add(x.lib)
+    const on = (d: string) => (s.took[d] ?? []).includes(x.id) || (s.extra?.[d] ?? []).some(e => e.supp === x.id || (!!x.lib && e.lib === x.lib))
+    const free = cs.filter(c => !intakeOn(s, c.date).includes(x.id))
+    const yes = free.filter(c => on(c.date)), no = free.filter(c => !on(c.date))
+    const dims = [null, ...(libOf(x)?.watch ?? allDims.filter((d): d is Dim => d != null))] as (Dim | null)[]
+    const b = bestSplit(yes, no, dims)
+    if (b) out.push({ id: `need:${x.id}`, kind: "need", emoji: x.emoji, title: t("An Tagen mit {name}", { name: x.name }),
+      dim: b.dim, delta: b.d, with: b.w, without: b.wo, labelWith: t("mit"), labelWithout: t("ohne"), n: yes.length })
+  }
+
   // Extra-Einnahmen: „An Tagen mit …“ und „Am Tag nach …“ (gleiche Mindestmengen wie oben).
   // Nur Check-in-Tage zählen; ohne Check-in am Vortag ist der Folgetag unbekannt und fällt raus.
   const extraKeys = new Map<string, { label: string; emoji: string; dates: Set<string> }>()
@@ -103,7 +119,8 @@ export function findPatterns(s: LabState): Pattern[] {
     if (info.dates.size < MIN_N) continue
     const dims = [null, ...(LIB_BY_ID[k]?.watch ?? allDims.filter((d): d is Dim => d != null))] as (Dim | null)[]
     const b = bestSplit(cs.filter(c => info.dates.has(c.date)), cs.filter(c => !info.dates.has(c.date)), dims)
-    if (b) out.push({ id: `extra:${k}`, kind: "extra", emoji: info.emoji, title: t("An Tagen mit {name}", { name: info.label }),
+    // „Nach Bedarf“-Mittel stehen schon oben (mit/ohne) – nicht doppelt; „Am Tag nach …“ bleibt
+    if (b && !needKeys.has(k)) out.push({ id: `extra:${k}`, kind: "extra", emoji: info.emoji, title: t("An Tagen mit {name}", { name: info.label }),
       dim: b.dim, delta: b.d, with: b.w, without: b.wo, labelWith: t("mit"), labelWithout: t("ohne"), n: cs.filter(c => info.dates.has(c.date)).length })
     const after = cs.filter(c => byDate.has(addDays(c.date, -1)))
     const yes = after.filter(c => info.dates.has(addDays(c.date, -1)))

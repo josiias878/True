@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react"
 import { addDays, fmtDate, libOf, suppColor, todayIso, type LabState, type MySupp, type Stock, type StockForm } from "@/lib/supplementLab"
 import {
   FORMS, doseCheck, doseLabel, doseRange, fmtNum, gramDosed, guessForm, guessPerDay, openShop, perUse, shopIsAd, shopUrl,
-  stockInfo, buyInfo, LOW_DAYS, monthlyCost, fmtEuro, type StockInfo,
+  stockInfo, buyInfo, LOW_DAYS, monthlyCost, fmtEuro, needRate, needPending, costPending, type StockInfo,
 } from "@/lib/labStock"
 import { Btn, Sheet } from "./ui"
 import { KolbiTip, Mascot } from "./mascot"
@@ -132,9 +132,12 @@ export function StockSheet({ s, suppId, onClose, onSave }: {
     ...(askActive && active > 0 ? { active, activeUnit } : {}),
     ...(price > 0 ? { price } : {}),
   }
-  const perMonth = monthlyCost({ ...x, stock })
+  const perMonth = monthlyCost({ ...x, stock }, s)
   const uses = perUse(stock) > 0 ? Math.floor(stock.left / perUse(stock) + 1e-9) : 0
-  const days = libOf(x)?.weekly ? uses * 7 : uses
+  // „Nach Bedarf“: Reichweite nach deinem Tempo (eingetragene Einnahmetage) – sonst ehrlich nur die Einnahmen
+  const need = needRate(s, x)
+  const days = need ? (need.perDay ? Math.floor(uses / need.perDay + 1e-9) : uses) : libOf(x)?.weekly ? uses * 7 : uses
+  const needFew = !!need && need.perDay == null
   const check = doseCheck(x, stock)
   const color = suppColor(x)
   const steps = 4
@@ -212,9 +215,12 @@ export function StockSheet({ s, suppId, onClose, onSave }: {
             <div className="lab-pop" style={{ position: "absolute", right: -30, bottom: 6 }}><Mascot mood="party" size={54} /></div>
           </div>
           <div style={{ fontSize: "0.72rem", fontWeight: 900, letterSpacing: ".1em", color: "var(--accent)" }}>{t("REICHT FÜR CA.")}</div>
-          <div style={{ fontSize: "3rem", fontWeight: 900, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}><CountUp to={days} /> <span style={{ fontSize: "1.3rem" }}>{t("Tage")}</span></div>
+          <div style={{ fontSize: "3rem", fontWeight: 900, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}><CountUp to={days} /> <span style={{ fontSize: "1.3rem" }}>{needFew ? (days === 1 ? t("Einnahme") : t("Einnahmen")) : t("Tage")}</span></div>
           <div style={{ color: "var(--text-dim)", fontSize: "0.88rem" }}>
-            {days > 0 ? `${t("bis {date}", { date: fmtDate(addDays(todayIso(), days)) })} · ${doseLabel(stock)} ${libOf(x)?.weekly ? t("pro Woche") : t("am Tag")}` : t("Da ist nichts mehr drin.")}
+            {days <= 0 ? t("Da ist nichts mehr drin.")
+              : needFew ? `${doseLabel(stock)} ${t("pro Einnahme")} · ${t("Nach Bedarf: wie lange das reicht, sehe ich nach ein paar Einträgen.")}`
+              : need ? `${t("bis {date}", { date: fmtDate(addDays(todayIso(), days)) })} · ${t("bei deinem Tempo (nach Bedarf)")}`
+              : `${t("bis {date}", { date: fmtDate(addDays(todayIso(), days)) })} · ${doseLabel(stock)} ${libOf(x)?.weekly ? t("pro Woche") : t("am Tag")}`}
           </div>
           {check && (
             <div className="lab-late" style={{ width: "100%", textAlign: "left" }}>
@@ -240,13 +246,16 @@ export function StockSheet({ s, suppId, onClose, onSave }: {
                   background: price === v ? "var(--accent)" : "var(--surface)", color: price === v ? "#fff" : "var(--text)" }}>{euro(v)}</button>
               ))}
             </div>
+            {perMonth == null && costPending(s, { ...x, stock }) && (
+              <div style={{ marginTop: 10, fontSize: "0.78rem", color: "var(--text-dim)", lineHeight: 1.4 }}>{t("🔁 €/Monat rechne ich aus, sobald ich dein Tempo kenne – noch zu wenig Einträge.")}</div>
+            )}
             {perMonth != null && (
               <div key={Math.round(perMonth * 100)} className="lab-pop" style={{ marginTop: 10, display: "inline-flex", alignItems: "baseline", gap: 6, padding: "8px 14px", borderRadius: 999, background: "linear-gradient(135deg, #1baf7a, #2ECC8A)", color: "#fff" }}>
                 <span style={{ fontSize: "1.2rem", fontWeight: 900 }}>{fmtEuro(perMonth)}</span><span style={{ fontSize: "0.78rem", fontWeight: 800 }}>{t("pro Monat")}</span>
               </div>
             )}
           </div>
-          <div className="lab-late" style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>{t("🛒 Ich sag dir {n} Tage vorher Bescheid.", { n: LOW_DAYS })}</div>
+          {!needFew && <div className="lab-late" style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>{t("🛒 Ich sag dir {n} Tage vorher Bescheid.", { n: LOW_DAYS })}</div>}
           <div style={{ display: "flex", gap: 8, width: "100%", marginTop: 6 }}>
             <Btn variant="soft" onClick={() => setStep(2)} style={{ flex: 1 }}>{t("Ändern")}</Btn>
             <Btn onClick={() => onSave(stock, doseLabel(stock))} style={{ flex: 2 }}>{t("Speichern")}</Btn>
@@ -274,6 +283,13 @@ export function ShopButton({ x, label = t("🛒 Kaufen"), small }: { x: MySupp; 
 
 // ── Vorrat im Supplement-Blatt ─────────────────────────────────────────────────
 
+/** „Reicht noch …“ – bei „Nach Bedarf“ als Schätzung bzw. (zu wenig Daten) nur die übrigen Einnahmen. */
+function stockDaysLabel(info: StockInfo) {
+  if (needPending(info)) return info.uses === 1 ? t("Noch 1 Einnahme") : t("Noch {n} Einnahmen", { n: info.uses })
+  if (info.need) return info.days === 1 ? t("Reicht noch ca. 1 Tag") : t("Reicht noch ca. {n} Tage", { n: info.days })
+  return info.days === 1 ? t("Reicht noch 1 Tag") : t("Reicht noch {n} Tage", { n: info.days })
+}
+
 export function StockCard({ s, x, onEdit, onRefill, onOrdered }: {
   s: LabState; x: MySupp; onEdit: () => void; onRefill: () => void; onOrdered: () => void
 }) {
@@ -291,16 +307,21 @@ export function StockCard({ s, x, onEdit, onRefill, onOrdered }: {
     )
   }
   const alt = buyInfo(x).alt
+  const cost = monthlyCost(x, s)
   return (
     <div className="lab-card" style={{ padding: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <Jar form={x.stock.form} pct={info.pct} color={info.low ? "#eda100" : suppColor(x)} size={58} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: "0.68rem", fontWeight: 900, letterSpacing: ".08em", color: info.low ? "var(--warning)" : "var(--text-dim)" }}>{t("VORRAT")}</div>
-          <div style={{ fontWeight: 900, fontSize: "1.05rem" }}>{info.empty ? t("Leer") : info.days === 1 ? t("Reicht noch 1 Tag") : t("Reicht noch {n} Tage", { n: info.days })}</div>
+          <div style={{ fontWeight: 900, fontSize: "1.05rem" }}>{info.empty ? t("Leer") : stockDaysLabel(info)}</div>
           <div style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>
-            {fmtNum(info.left)} {FORMS[x.stock.form].packUnit} {t("übrig")} · {doseLabel(x.stock)}{info.until ? ` · ${t("bis {date}", { date: fmtDate(info.until) })}` : ""}{monthlyCost(x) != null ? ` · 💶 ${t("{amount}/Monat", { amount: fmtEuro(monthlyCost(x)!) })}` : ""}
+            {fmtNum(info.left)} {FORMS[x.stock.form].packUnit} {t("übrig")} · {doseLabel(x.stock)}{info.until ? ` · ${t("bis {date}", { date: fmtDate(info.until) })}` : ""}{cost != null ? ` · 💶 ${t("{amount}/Monat", { amount: fmtEuro(cost) })}` : ""}
           </div>
+          {info.need && !info.empty && <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 2 }}>
+            {needPending(info) ? t("🔁 Nach Bedarf: noch zu wenig Einträge für „reicht bis“ – ich rechne, sobald ich dein Tempo kenne.")
+              : t("🔁 Nach Bedarf: geschätzt aus {n} Einnahmetagen in den letzten {d} Tagen.", { n: info.need.uses, d: info.need.days })}
+          </div>}
         </div>
         <button className="lab-press" onClick={onEdit} aria-label={t("Vorrat ändern")} style={{ border: "none", background: "var(--surface-2)", borderRadius: 12, padding: "8px 10px", color: "var(--text-dim)", fontWeight: 800 }}>✎</button>
       </div>
@@ -331,7 +352,7 @@ export function ShoppingCard({ s, away, low, onArrived, onOpen }: {
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: "block", fontWeight: 800, fontSize: "0.92rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{x.name}</span>
         <span style={{ display: "block", fontSize: "0.72rem", color: info ? "var(--warning)" : "var(--text-dim)" }}>
-          {info ? (info.empty ? t("leer") : info.days === 1 ? t("reicht noch 1 Tag") : t("reicht noch {n} Tage", { n: info.days })) : x.stock?.ordered ? t("bestellt") : t("noch nicht da")}
+          {info ? (info.empty ? t("leer") : info.need ? (info.days === 1 ? t("reicht noch ca. 1 Tag") : t("reicht noch ca. {n} Tage", { n: info.days })) : info.days === 1 ? t("reicht noch 1 Tag") : t("reicht noch {n} Tage", { n: info.days })) : x.stock?.ordered ? t("bestellt") : t("noch nicht da")}
         </span>
       </span>
       {x.away

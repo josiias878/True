@@ -789,6 +789,12 @@ export type SuppMode = "test" | "konstant" | "pause"
 export type SuppFreq = "taeglich" | "bedarf"
 /** Unregelmäßig/nach Bedarf? Dann kein Tagesplan: keine Erinnerung, kein „fehlt“, kein Vorrat-Abzug ohne Eintrag. */
 export const asNeeded = (x: Pick<MySupp, "freq"> | undefined) => x?.freq === "bedarf"
+/** Rhythmus setzen (Feld weg = täglich). Beim Wechsel auf „nach Bedarf“ merkt sich Kolbi den Tag (freqAt) –
+ *  ab dann rechnen Kosten und Vorrat mit deinen eingetragenen Einnahmetagen statt mit einer Einnahme pro Tag. */
+export function withFreq<T extends Pick<MySupp, "freq" | "freqAt">>(x: T, f: SuppFreq, today = todayIso()): T {
+  if (f !== "bedarf") return { ...x, freq: undefined, freqAt: undefined }
+  return { ...x, freq: "bedarf", freqAt: asNeeded(x) && x.freqAt ? x.freqAt : today }
+}
 
 export interface MySupp {
   id: string          // libId oder "custom-xyz"
@@ -810,6 +816,8 @@ export interface MySupp {
   portion?: Portion
   /** Einnahme-Rhythmus (fehlt = täglich). „bedarf“ zählt nur, was du einträgst – außer während des eigenen Tests. */
   freq?: SuppFreq
+  /** Seit wann „nach Bedarf“ (YYYY-MM-DD) – Hochrechnung von Kosten/Vorrat erst ab hier (fehlt bei Altständen). */
+  freqAt?: string
 }
 
 /** Einheit einer Einnahme-Menge: stk = Kapsel/Tablette/Stück. */
@@ -1049,6 +1057,10 @@ export function hydrate(raw: unknown): LabState {
     s.supps = s.supps.map(x => !x.lib && x.mode === "test" && !x.keepTesting && !s.verdicts[x.id] && !planned.has(x.id) ? { ...x, mode: "konstant" } : x)
     s.migrated = [...(s.migrated ?? []), "own-stack"]
   }
+  // „Nach Bedarf“ ohne Umstellungs-Datum (Stand vor freqAt): ab heute zählen – lieber erst „noch zu wenig Daten“
+  // als alte tägliche Einnahmen als Bedarf-Tempo hochzurechnen.
+  const noAt = (x: MySupp) => asNeeded(x) && !/^\d{4}-\d{2}-\d{2}$/.test(x.freqAt ?? "")
+  if (s.supps.some(noAt)) s.supps = s.supps.map(x => noAt(x) ? { ...x, freqAt: todayIso() } : x)
   return s
 }
 

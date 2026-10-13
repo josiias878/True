@@ -9,7 +9,7 @@ import {
   STORE_MODE, LAB_BASE, todayIso, setDayBoundary, addDays, diffDays, fmtDate, suppColor, daySum, activeDims, signal, libOf, makeSupp, defaultCheckinTime,
   nextCandidates, suppStatus, takingInfo, avgIntakeMinutes, phaseEndsAt, fmtCountdown, nowTime, closeActive, looksPrescribed,
   startTest, startStack, startCheck, applyVerdict, resolveCheck, fromMin, timeTip, LIB_BY_ID, slotMinutes, libDoseLabel,
-  isCheckinLocked, checkinOpensMin, extrasOn, MORNING_DELAYS, MORNING_DELAY_DEFAULT, morningMin,
+  isCheckinLocked, checkinOpensMin, extrasOn, MORNING_DELAYS, MORNING_DELAY_DEFAULT, morningMin, withFreq,
   type SlotId, type LabState, type Decision, type Dim, type PhaseWindow, type MySupp, type LibSupp, type Settings, type CheckIn, type Scores, type SuppStatusKey, type SuppFreq, type TakenAmount,
 } from "@/lib/supplementLab"
 import { applyTaken, checkLabReminders, downloadIcs, hasNativeReminders, onNotifTaken, syncNativeReminders } from "@/lib/labReminders"
@@ -505,7 +505,7 @@ export default function LabApp() {
   }, [s.took, today, update])
   /** Einnahme-Rhythmus: täglich (Feld weg) oder unregelmäßig/nach Bedarf */
   const setFreq = useCallback((id: string, f: SuppFreq) => {
-    update(p => { p.supps = p.supps.map(q => q.id === id ? { ...q, freq: f === "bedarf" ? f : undefined } : q); return p })
+    update(p => { p.supps = p.supps.map(q => q.id === id ? withFreq(q, f) : q); return p })
   }, [update])
   /** „Heute nicht“ (Wischen bzw. Knopf im Detail) setzen oder aufheben – entfernt einen Genommen-Haken für heute. */
   const skipToday = useCallback((id: string, on: boolean, restore?: { at?: string; amt?: TakenAmount }) => {
@@ -1116,7 +1116,7 @@ function SuppSheet({ s, id, today, adv, onClose, update, onAction, onVerdict, on
         <Card style={{ marginBottom: 12 }}>
           <Label style={{ marginBottom: 8 }}>{t("Wie nimmst du es?")}</Label>
           <FreqPick x={x} testing={st.key === "testing" || st.key === "waiting"}
-            onPick={f => update(p => { p.supps = p.supps.map(q => q.id === id ? { ...q, freq: f === "bedarf" ? f : undefined } : q); return p })} />
+            onPick={f => update(p => { p.supps = p.supps.map(q => q.id === id ? withFreq(q, f) : q); return p })} />
         </Card>
       )}
 
@@ -1216,7 +1216,7 @@ function PickNextSheet({ s, onClose, update, onStart }: { s: LabState; onClose: 
       )}
       {adding ? (
         <SuppPicker selected={s.supps} goals={s.goals}
-          onFreq={(id, f) => update(p => { p.supps = p.supps.map(q => q.id === id ? { ...q, freq: f === "bedarf" ? f : undefined } : q); return p })}
+          onFreq={(id, f) => update(p => { p.supps = p.supps.map(q => q.id === id ? withFreq(q, f) : q); return p })}
           onAddCustom={name => update(p => { p.supps.push(makeSupp(null, name, p.supps)); return p })}
           onPasteAdd={items => update(p => { items.forEach(it => { if (!it.lib || !p.supps.some(x => x.lib === it.lib!.id)) p.supps.push(makeSupp(it.lib, it.name, p.supps, it.dose)) }); return p })}
           onToggle={(lib: LibSupp) => update(p => { if (!p.supps.some(x => x.lib === lib.id)) p.supps.push(makeSupp(lib, lib.name, p.supps)); return p })}
@@ -1232,7 +1232,7 @@ function AddManySheet({ s, update, onClose, onDone }: { s: LabState; update: Upd
     <Sheet open onClose={onClose} title={t("＋ Mehrere auf einmal")}>
       <div style={{ fontSize: "0.84rem", color: "var(--text-dim)", lineHeight: 1.45, marginBottom: 12 }}>{t("Einfach alle Namen mit Komma oder je Zeile eintippen – Unbekanntes lege ich als eigenes Mittel an.")}</div>
       <SuppPicker selected={s.supps} goals={s.goals} initialMode="paste"
-        onFreq={(id, f) => update(p => { p.supps = p.supps.map(q => q.id === id ? { ...q, freq: f === "bedarf" ? f : undefined } : q); return p })}
+        onFreq={(id, f) => update(p => { p.supps = p.supps.map(q => q.id === id ? withFreq(q, f) : q); return p })}
         onAddCustom={name => update(p => { p.supps.push(makeSupp(null, name, p.supps)); return p })}
         onPasteAdd={items => {
           const fresh = items.filter(it => it.lib ? !s.supps.some(x => x.lib === it.lib!.id) : !s.supps.some(x => !x.lib && x.name.toLowerCase() === it.name.toLowerCase()))

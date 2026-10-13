@@ -4,7 +4,7 @@ import Link from "next/link"
 import {
   FACES, FACE_LABELS, LIBRARY, ROUTE_INFO, SUPP_COLORS, CATEGORIES, GOALS,
   todayIso, addDays, dayRef, makeSupp, autoOrder, parseSuppList, goalRelevance, extrasOn,
-  defaultCheckinTime, libOf, daySum, libTimeTip, STORE_MODE, asNeeded,
+  defaultCheckinTime, libOf, daySum, libTimeTip, STORE_MODE, asNeeded, withFreq,
   type CheckIn, type Dim, type LabState, type MySupp, type Settings, type LibSupp, type GoalId, type Scores, type SuppFreq,
 } from "@/lib/supplementLab"
 import { hasNativeReminders } from "@/lib/labReminders"
@@ -379,7 +379,7 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
           {question(t("Was nimmst du gerade?"))}
           <SuppPicker selected={supps} goals={goals} onToggle={toggleSupp} onAddCustom={addCustom} onPasteAdd={pasteAdd}
             onRemove={id => setSupps(p => p.filter(x => x.id !== id))}
-            onFreq={(id, f) => setSupps(p => p.map(x => x.id === id ? { ...x, freq: f === "bedarf" ? f : undefined } : x))}
+            onFreq={(id, f) => setSupps(p => p.map(x => x.id === id ? withFreq(x, f) : x))}
             onAway={(libId, v) => setSupps(prev => prev.map(x => x.lib === libId ? { ...x, away: v ? todayIso() : undefined } : x))} />
           {footer(<Btn full disabled={!supps.length} onClick={next}>{supps.length ? t("Weiter mit {n}", { n: supps.length }) : t("Wähle mindestens eins")}</Btn>)}
         </div>

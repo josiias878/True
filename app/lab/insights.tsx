@@ -63,10 +63,22 @@ function Donut({ parts, size = 132, stroke = 16, children }: { parts: { value: n
   )
 }
 
+/** „Nach Bedarf“-Mittel mit Preis, aber zu wenig Einträgen: ehrlich statt erfundener Monatsbetrag. */
+function pendingText(xs: MySupp[]) {
+  const names = xs.map(x => x.name).join(", ")
+  return t("🔁 {names}: nach Bedarf – für €/Monat noch zu wenig Einträge. Ich rechne, sobald ich dein Tempo kenne.", { names })
+}
+
 export function CostCard({ s, today, onStock }: { s: LabState; today: string; onStock: (id: string) => void }) {
   const c = useMemo(() => costSummary(s, today), [s, today])
   if (!c.items.length && !c.saved.length) {
-    if (!c.missing.length) return null
+    if (!c.missing.length && !c.pending.length) return null
+    if (!c.missing.length) return (
+      <div className="lab-card lab-rise" style={{ padding: 16, fontSize: "0.84rem", color: "var(--text-dim)", lineHeight: 1.45 }}>
+        <Label>{t("💶 Dein Stack kostet")}</Label>
+        <div style={{ marginTop: 6 }}>{pendingText(c.pending)}</div>
+      </div>
+    )
     return (
       <button className="lab-card lab-press lab-rise" onClick={() => onStock(c.missing[0].id)} style={{ display: "flex", alignItems: "center", gap: 14, padding: 16, width: "100%", textAlign: "left", color: "var(--text)" }}>
         <Donut parts={c.missing.slice(0, 5).map(x => ({ value: 1, color: `color-mix(in srgb, ${suppColor(x)} 35%, var(--surface-2))` }))} size={70} stroke={10}><span style={{ fontSize: "1.3rem" }}>💶</span></Donut>
@@ -90,7 +102,7 @@ export function CostCard({ s, today, onStock }: { s: LabState; today: string; on
           {c.items.slice(0, 5).map(i => (
             <div key={i.x.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.84rem" }}>
               <span style={{ width: 10, height: 10, borderRadius: 3, background: suppColor(i.x), flexShrink: 0 }} />
-              <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 700 }}>{i.x.emoji} {i.x.name}</span>
+              <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 700 }}>{i.x.emoji} {i.x.name}{i.need ? <span title={t("Nach Bedarf – nach deinem Tempo")}> 🔁</span> : null}</span>
               <span style={{ fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>{fmtEuro(i.cost)}</span>
             </div>
           ))}
@@ -106,6 +118,8 @@ export function CostCard({ s, today, onStock }: { s: LabState; today: string; on
           </span>
         </div>
       )}
+      {c.pending.length > 0 && <div style={{ fontSize: "0.74rem", color: "var(--text-dim)", marginTop: 12, lineHeight: 1.4 }}>{pendingText(c.pending)}</div>}
+      {c.items.some(i => i.need) && <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 8 }}>{t("🔁 = nach Bedarf: hochgerechnet aus deinen Einnahmetagen der letzten Wochen.")}</div>}
       {c.missing.length > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 12 }}>
           <span style={{ fontSize: "0.74rem", fontWeight: 800, color: "var(--text-dim)" }}>{t("Preis fehlt:")}</span>

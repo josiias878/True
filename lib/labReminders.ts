@@ -8,7 +8,7 @@ import {
 } from "./supplementLab"
 import { morningAnswered } from "./labDay"
 import { partnerTips } from "./labKnowledge"
-import { LOW_DAYS, buyInfo, inUse, stockInfo } from "./labStock"
+import { LOW_DAYS, buyInfo, inUse, needPending, stockInfo } from "./labStock"
 import { recordDefaultAmount } from "./labDose"
 import { t, clock } from "./labI18n"
 
@@ -304,14 +304,16 @@ export function notificationPlan(s: LabState, days = 7, now = new Date()): Plann
   // Vorrat geht aus: einmal pro Packung, vormittags an dem Tag, an dem es knapp wird
   for (const x of s.supps) {
     const info = stockInfo(s, x)
-    if (!info || !x.stock || x.stock.ordered || info.empty || !inUse(s, x, today)) continue
+    // „Nach Bedarf“ mit zu wenig Einträgen: kein erfundenes Datum → keine Nachkauf-Erinnerung (sonst Tempo aus deinen Einträgen)
+    if (!info || !x.stock || x.stock.ordered || info.empty || needPending(info) || !inUse(s, x, today)) continue
     const date = addDays(today, Math.max(0, info.days - LOW_DAYS))
     if (date > addDays(today, days - 1)) continue
     const left = Math.min(info.days, LOW_DAYS)
     const alt = buyInfo(x).alt
     out.push({
       key: `stock-${x.id}-${x.stock.at}`, kind: "stock", url: LAB_BASE, at: atDate(date, wake + 150),
-      title: left === 1 ? t("🛒 {name} reicht noch 1 Tag", { name: x.name }) : t("🛒 {name} reicht noch {n} Tage", { name: x.name, n: left }),
+      title: info.need ? (left === 1 ? t("🛒 {name} reicht bei deinem Tempo noch ca. 1 Tag", { name: x.name }) : t("🛒 {name} reicht bei deinem Tempo noch ca. {n} Tage", { name: x.name, n: left }))
+        : left === 1 ? t("🛒 {name} reicht noch 1 Tag", { name: x.name }) : t("🛒 {name} reicht noch {n} Tage", { name: x.name, n: left }),
       body: shorten(alt ? t("Zeit nachzubestellen. 💡 {tip}", { tip: alt }) : t("Zeit nachzubestellen, damit keine Lücke entsteht."), 170),
       generic: { title: t("🛒 Dein Vorrat geht bald aus"), body: t("Zeit nachzubestellen, damit keine Lücke entsteht.") },
     })

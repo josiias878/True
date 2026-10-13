@@ -3,7 +3,7 @@
 // Dosis gegen die übliche Tagesmenge und erinnert rechtzeitig ans Nachkaufen.
 
 import {
-  addDays, intakeOn, libOf, todayIso, isHere, looksPrescribed, STORE_MODE, skippedOn,
+  addDays, intakeOn, libOf, todayIso, isHere, looksPrescribed, STORE_MODE, skippedOn, asNeeded,
   type LabState, type LibSupp, type MySupp, type Stock, type StockForm,
 } from "./supplementLab"
 import { t, euro, isEn, LOCALE } from "./labI18n"
@@ -53,18 +53,69 @@ function usedSince(s: LabState, x: MySupp, st: Stock, from: string, until = toda
   return n
 }
 
-export interface StockInfo { left: number; uses: number; days: number; until: string | null; pct: number; low: boolean; empty: boolean }
+// ── „Nach Bedarf“: Tempo aus deinen eingetragenen Einnahmetagen ────────────────
 
-export function stockInfo(s: LabState, x: MySupp | undefined): StockInfo | null {
+/** Rückblick für das Bedarf-Tempo (Tage). */
+export const NEED_WINDOW = 28
+/** Erst ab so vielen Einnahmetagen … */
+export const NEED_MIN_USES = 3
+/** … und so vielen Tagen seit der Umstellung rechnet Kolbi hoch – vorher „noch zu wenig Daten“. */
+export const NEED_MIN_DAYS = 7
+
+/** uses = Einnahmetage im Rückblick (days Tage) · perDay = Einnahmen pro Tag, null = noch zu wenig Daten. */
+export interface NeedRate { uses: number; days: number; perDay: number | null }
+
+/** An diesem Tag eingetragen? (Genommen-Haken oder Extra-Einnahme desselben Mittels) */
+function tookOn(s: LabState, x: MySupp, d: string) {
+  return (s.took[d] ?? []).includes(x.id) || (s.extra?.[d] ?? []).some(e => e.supp === x.id || (!!x.lib && e.lib === x.lib))
+}
+
+/**
+ * Wie oft nimmst du ein „Nach Bedarf“-Mittel wirklich? Zählt die eingetragenen Einnahmetage der letzten
+ * NEED_WINDOW Tage (frühestens ab der Umstellung, freqAt). Heute zählt nur mit, wenn heute schon eingetragen ist.
+ * null = kein „Nach Bedarf“ (täglich) oder gerade im eigenen Test (dann steht es täglich im Plan).
+ */
+export function needRate(s: LabState, x: MySupp, today = todayIso()): NeedRate | null {
+  if (!asNeeded(x) || intakeOn(s, today).includes(x.id)) return null
+  let from = addDays(today, -(NEED_WINDOW - 1))
+  if (x.freqAt && x.freqAt > from) from = x.freqAt > today ? today : x.freqAt
+  let uses = 0, days = 0
+  for (let d = from, k = 0; d <= today && k < NEED_WINDOW + 1; d = addDays(d, 1), k++) {
+    const on = tookOn(s, x, d)
+    if (d === today && !on) continue
+    days++
+    if (on) uses++
+  }
+  // Seit der Umstellung (inkl. heute) – auch wenn heute noch nichts eingetragen ist
+  const since = Math.min(NEED_WINDOW, Math.round((Date.parse(`${today}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86400000) + 1)
+  const enough = uses >= NEED_MIN_USES && since >= NEED_MIN_DAYS && days > 0
+  return { uses, days, perDay: enough ? uses / days : null }
+}
+
+/** need = „Nach Bedarf“: days/until sind dann eine Hochrechnung (need.perDay) – bei zu wenig Daten until null, low false. */
+export interface StockInfo { left: number; uses: number; days: number; until: string | null; pct: number; low: boolean; empty: boolean; need?: NeedRate }
+
+export function stockInfo(s: LabState, x: MySupp | undefined, today = todayIso()): StockInfo | null {
   const st = x?.stock
   if (!x || !st) return null
   const per = perUse(st)
   if (per <= 0) return null
-  const left = Math.max(0, st.left - usedSince(s, x, st, st.at))
+  const left = Math.max(0, st.left - usedSince(s, x, st, st.at, today))
   const uses = Math.floor(left / per + 1e-9)
+  const pct = Math.min(1, left / Math.max(st.pack, left, 1e-9))
+  const need = needRate(s, x, today)
+  if (need) {
+    // Kein erfundenes „reicht bis“: ohne genug Einträge nur die Einnahmen, kein Datum, keine Nachkauf-Erinnerung
+    if (need.perDay == null) return { left, uses, days: uses, until: null, pct, low: false, empty: uses <= 0, need }
+    const days = Math.floor(uses / need.perDay + 1e-9)
+    return { left, uses, days, until: days > 0 ? addDays(today, days) : null, pct, low: days <= LOW_DAYS, empty: uses <= 0, need }
+  }
   const days = libOf(x)?.weekly ? uses * 7 : uses
-  return { left, uses, days, until: days > 0 ? addDays(todayIso(), days) : null, pct: Math.min(1, left / Math.max(st.pack, left, 1e-9)), low: days <= LOW_DAYS, empty: uses <= 0 }
+  return { left, uses, days, until: days > 0 ? addDays(today, days) : null, pct, low: days <= LOW_DAYS, empty: uses <= 0 }
 }
+
+/** „Nach Bedarf“ mit zu wenig Einträgen? Dann zeigt Kolbi kein Datum/keinen Monatsbetrag, sondern „noch zu wenig Daten“. */
+export const needPending = (info: Pick<StockInfo, "need"> | null | undefined) => !!info?.need && info.need.perDay == null
 
 /** Wird es gerade regelmäßig genommen? (Dann lohnt die Nachkauf-Erinnerung.) */
 export function inUse(s: LabState, x: MySupp, today = todayIso()) {
@@ -245,22 +296,37 @@ export function shoppingList(s: LabState, today = todayIso()) {
 
 const DAYS_PER_MONTH = 30.44
 
-/** € pro Monat bei deiner Tagesmenge (null, wenn kein Preis eingetragen ist). */
-export function monthlyCost(x: MySupp): number | null {
+/**
+ * € pro Monat bei deiner Tagesmenge (null, wenn kein Preis eingetragen ist). Mit s: „Nach Bedarf“-Mittel nach
+ * deinem tatsächlichen Tempo (needRate) – bei zu wenig Daten ebenfalls null (siehe costSummary.pending).
+ */
+export function monthlyCost(x: MySupp, s?: LabState, today = todayIso()): number | null {
   const st = x.stock
   if (!st?.price || st.price <= 0) return null
   const per = perUse(st)
   if (per <= 0 || st.pack <= 0) return null
   const days = (st.pack / per) * (libOf(x)?.weekly ? 7 : 1)
-  return days > 0 ? (st.price / days) * DAYS_PER_MONTH : null
+  if (days <= 0) return null
+  const daily = (st.price / days) * DAYS_PER_MONTH
+  const need = s ? needRate(s, x, today) : null
+  if (!need) return daily
+  return need.perDay == null ? null : daily * need.perDay
+}
+
+/** Preis eingetragen, aber „Nach Bedarf“ mit zu wenig Einträgen → noch kein Monatsbetrag. */
+export function costPending(s: LabState, x: MySupp, today = todayIso()) {
+  return !!x.stock?.price && x.stock.price > 0 && needRate(s, x, today)?.perDay === null
 }
 
 export const fmtEuro = (v: number) => euro(v)
 
 export interface CostSummary {
   total: number
-  items: { x: MySupp; cost: number }[]
+  /** need = „Nach Bedarf“, Betrag hochgerechnet aus deinen Einnahmetagen */
+  items: { x: MySupp; cost: number; need?: boolean }[]
   missing: MySupp[]
+  /** „Nach Bedarf“ mit Preis, aber noch zu wenig Einträgen – zählt (noch) nicht in total */
+  pending: MySupp[]
   saved: { x: MySupp; cost: number; since: string }[]
   savedMonthly: number
   savedSoFar: number
@@ -269,13 +335,16 @@ export interface CostSummary {
 /** Was dein aktiver Stack kostet – und was rausgeflogene Supplements dir sparen. */
 export function costSummary(s: LabState, today = todayIso()): CostSummary {
   const active = s.supps.filter(x => s.verdicts[x.id]?.decision !== "drop" && x.mode !== "pause" && (inUse(s, x, today) || x.mode === "test"))
-  const items = active.map(x => ({ x, cost: monthlyCost(x) })).filter((i): i is { x: MySupp; cost: number } => i.cost != null).sort((a, b) => b.cost - a.cost)
-  const missing = active.filter(x => monthlyCost(x) == null && !libOf(x)?.rx && libOf(x)?.category !== "Peptide")
-  const saved = s.supps.filter(x => s.verdicts[x.id]?.decision === "drop").map(x => ({ x, cost: monthlyCost(x), since: s.verdicts[x.id].date }))
+  const pending = active.filter(x => costPending(s, x, today))
+  const items = active.map(x => ({ x, cost: monthlyCost(x, s, today), ...(needRate(s, x, today) ? { need: true } : {}) }))
+    .filter((i): i is { x: MySupp; cost: number; need?: boolean } => i.cost != null).sort((a, b) => b.cost - a.cost)
+  const missing = active.filter(x => monthlyCost(x, s, today) == null && !pending.includes(x) && !libOf(x)?.rx && libOf(x)?.category !== "Peptide")
+  // Gespart: beim Weglassen genommenes Tempo (Bedarf: Rückblick bis zum Urteil; zu wenig Daten → nicht mitgezählt)
+  const saved = s.supps.filter(x => s.verdicts[x.id]?.decision === "drop").map(x => ({ x, cost: monthlyCost(x, s, s.verdicts[x.id].date), since: s.verdicts[x.id].date }))
     .filter((i): i is { x: MySupp; cost: number; since: string } => i.cost != null)
   const savedMonthly = saved.reduce((a, b) => a + b.cost, 0)
   const savedSoFar = saved.reduce((a, b) => a + b.cost * Math.max(0, diffDaysSafe(b.since, today)) / DAYS_PER_MONTH, 0)
-  return { total: items.reduce((a, b) => a + b.cost, 0), items, missing, saved, savedMonthly, savedSoFar }
+  return { total: items.reduce((a, b) => a + b.cost, 0), items, missing, pending, saved, savedMonthly, savedSoFar }
 }
 
 function diffDaysSafe(a: string, b: string) {
