@@ -6,7 +6,7 @@
 // Texte: konkreter Nutzen der Funktion, keine Wirkversprechen (EU 432/2012). Keine Supplement-Namen in Titeln.
 
 import {
-  addDays, diffDays, nextCandidates, phaseWindows, isHere, defaultDays, libOf, stackMembers,
+  addDays, diffDays, nextCandidates, phaseWindows, isHere, defaultDays, libOf,
   type LabState, type PhaseWindow,
 } from "./supplementLab"
 import type { CoachAction } from "./labCoach"
@@ -227,7 +227,7 @@ export function experimentGuide(s: LabState, today: string): ExpGuide | null {
       sub: left <= 0 ? t("Geschafft – ab morgen kennt Kolbi dein Normal.") : left === 1 ? t("Noch 1 Check-in, dann kennt Kolbi dein Normal.") : t("Noch {n} Check-ins, dann kennt Kolbi dein Normal.", { n: left }) }
     if (w.kind === "test" && w.suppId) return { key: `test-${w.id}-${day}-${left}`, emoji: s.supps.find(x => x.id === w.suppId)?.emoji ?? "🔬", progress,
       title: t("{name}-Test · Tag {n} von {total}", { name: name(w.suppId), n: day, total: w.days }),
-      sub: left <= 0 ? t("Alle Check-ins drin – dein Ergebnis ist morgen früh bereit.") : left === 1 ? t("Noch 1 Check-in – morgen früh ist dein Ergebnis bereit.") : t("Noch {n} Check-ins bis zum Ergebnis.", { n: left }) }
+      sub: left <= 0 ? t("Alle Check-ins drin – dein Ergebnis ist morgen früh bereit.") : left === 1 ? (today === w.end ? t("Noch 1 Check-in – morgen früh ist dein Ergebnis bereit.") : t("Noch 1 Check-in bis zum Ergebnis.")) : t("Noch {n} Check-ins bis zum Ergebnis.", { n: left }) }
     if (w.kind === "washout") {
       const next = nextCandidates(s)[0]
       return { key: `wash-${w.id}-${day}`, emoji: "💧", progress, title: t("Kurze Pause · Tag {n} von {total}", { n: day, total: w.days }),
@@ -237,11 +237,12 @@ export function experimentGuide(s: LabState, today: string): ExpGuide | null {
       title: t("Ohne {name} · Tag {n} von {total}", { name: name(w.suppId), n: day, total: w.days }), sub: t("Danach entscheidest du, ob es dir gefehlt hat.") }
   }
   if (w) return null // laufender Stack: nichts zu führen
+  if (wins[wins.length - 1]?.kind === "check") return null // „Hat dir X gefehlt?“ kommt zuerst (wie labCoach)
   const next = nextCandidates(s)[0]
   if (next) return { key: `next-${next.id}`, emoji: "🔬", title: t("Bereit für den nächsten Test"),
     sub: t("Vorschlag: {name} · {n} Tage allein testen.", { name: next.name, n: defaultDays(next) }),
     action: { label: t("Test starten"), action: { kind: "startTest", suppId: next.id } }, covers: ["next-", "slow-"] }
-  if (stackMembers(s, false).length && !wins.some(x => x.kind === "stack")) return { key: "stack-ready", emoji: "🏆", title: t("Alles getestet"),
+  if (s.supps.some(x => s.verdicts[x.id]?.decision === "keep") && !wins.some(x => x.kind === "stack")) return { key: "stack-ready", emoji: "🏆", title: t("Alles getestet"),
     sub: t("Jetzt alles Behaltene zusammen nehmen – Kolbi vergleicht weiter mit deinem Normal."),
     action: { label: t("🏆 Stack starten"), action: { kind: "startStack" } }, covers: ["stack-ready"] }
   return null

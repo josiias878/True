@@ -431,6 +431,7 @@ export const EN_J: Record<string, string> = {
   "Noch {n} Check-ins, dann kennt Kolbi dein Normal.": "{n} more check-ins, then Kolbi knows your normal.",
   "Alle Check-ins drin – dein Ergebnis ist morgen früh bereit.": "All check-ins in – your result is ready tomorrow morning.",
   "Noch 1 Check-in – morgen früh ist dein Ergebnis bereit.": "1 more check-in – your result is ready tomorrow morning.",
+  "Noch 1 Check-in bis zum Ergebnis.": "1 more check-in until your result.",
   "Noch {n} Check-ins bis zum Ergebnis.": "{n} more check-ins until your result.",
   "Kurze Pause · Tag {n} von {total}": "Short break · day {n} of {total}",
   "Damit sich nichts überlagert. Danach ist {name} dran.": "So nothing overlaps. Then it's {name}'s turn.",
