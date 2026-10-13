@@ -58,7 +58,7 @@ import { quickScores } from "@/lib/labLearn"
 import { TAG_EMOJI, findPatterns } from "@/lib/labPatterns"
 import { pathStops, type Stop } from "@/lib/labPath"
 import { t, dec, clock, isEn, LANG, setLang, canSwitchLang } from "@/lib/labI18n"
-import { guideSteps, guideTimeline, laterGuide, loadGuide, markGuide, neverGuide, onGuideChange, onOpenTimeline, openTimeline, resetGuide, type GuideStep } from "@/lib/labGuide"
+import { experimentGuide, isEstablished, guideSteps, guideTimeline, laterGuide, loadGuide, markGuide, neverGuide, onGuideChange, onOpenTimeline, openTimeline, resetGuide, type GuideStep } from "@/lib/labGuide"
 import { PortionGuideSheet, TimelineSheet } from "./guide"
 
 type Tab = "heute" | "entdecken" | "labor" | "ich"
@@ -679,7 +679,11 @@ export default function LabApp() {
       case "portion": setPortionFor(a.suppId); break
       case "stock": setStockStart(0); setStockFor(a.suppId); break
       case "price": setStockStart(3); setStockFor(a.suppId); break
-      case "morning": goTab("heute"); break
+      case "morning": { // Morgen-Frage direkt öffnen (wie ?morning=1), auch wenn oben etwas anderes steht
+        const steps = withMorning(s, today, [])
+        if (steps.length) setRound(steps); else goTab("heute")
+        break
+      }
       case "test": setTestSetup(a.suppId); break
       case "recap": setRecapEnd(recapWeekEnd(now, today)); break
       case "groups": showCommunitiesNext(); setLab(null); setLaborView(null); goTab("labor"); break
@@ -765,7 +769,8 @@ export default function LabApp() {
             onAmount={(id, p) => update(q => { setAmount(q, today, id, p); return q })} onFreq={setFreq}
             onPortion={(id, p) => { update(q => alignStockToPortion(setPortion(q, id, p, today), id, today)); setFlash(t("✓ Gemerkt: {amount}", { amount: portionLabel(p) })) }}
             onOpenSupp={id => { setLaborView(null); setLab({ suppId: id, tab: "ueberblick" }); goTab("labor") }}
-            guide={{ steps: guide, onRun: runGuide, onLater: id => laterGuide(id, today), onNever: neverGuide, onTimeline: () => setTimelineOpen(true) }}
+            guide={{ steps: guide, onRun: runGuide, onLater: id => laterGuide(id, today), onNever: neverGuide, onTimeline: () => setTimelineOpen(true),
+              established: isEstablished(s, today), exp: experimentGuide(s, today) }}
             />}
 
           {tab === "entdecken" && <DiscoverView s={s} today={today} now={now} checkinLocked={checkinLocked} goTab={goTab}

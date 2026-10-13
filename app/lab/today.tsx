@@ -20,8 +20,8 @@ import { CostSection, StackSection, StateSection } from "./todayStack"
 import { t, dec, clock, LOCALE } from "@/lib/labI18n"
 import { NewsRing, NewsTicker } from "./news"
 import { recentNews, type LabNews } from "@/lib/labNews"
-import { nextGuideStep, waitingGuideStep, type GuideStep, type GuideStepId } from "@/lib/labGuide"
-import { GuideCard } from "./guide"
+import { nextGuideStep, waitingGuideStep, type ExpGuide, type GuideStep, type GuideStepId } from "@/lib/labGuide"
+import { ExpCard, GuideCard } from "./guide"
 
 
 const fmt = (n: number) => dec(n, 1)
@@ -111,7 +111,9 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
   /** Einstellungen öffnen (Starttag: „Passt 7:00 Aufstehen? Ändern“ – das Onboarding fragt die Zeiten nicht mehr ab) */
   onSettings?: () => void
   /** „Kolbi führt dich“: Schritte (lib/labGuide.ts) + Aktionen – Karte „Dein nächster Schritt“ */
-  guide?: { steps: GuideStep[]; onRun: (x: GuideStep) => void; onLater: (id: GuideStepId) => void; onNever: (id: GuideStepId) => void; onTimeline: () => void }
+  guide?: { steps: GuideStep[]; onRun: (x: GuideStep) => void; onLater: (id: GuideStepId) => void; onNever: (id: GuideStepId) => void; onTimeline: () => void
+    /** Bestandsnutzer → keine Einrichtungs-Karte; exp = Experiment-Führung (Reset/Test Tag x von y …) */
+    established: boolean; exp: ExpGuide | null }
 }) {
   const [mHold, setMHold] = useState(false)
   const first = wins[0]
@@ -153,14 +155,23 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
   const catchUp = checks.some(p => p.kind === "checkin" && p.date && p.date !== today)
   const startIn = notStarted ? new Date(first.start + "T00:00:00").getTime() - now.getTime() : null
   const tipsShown = main === "done" || main === "locked"
-  const top = tips[0]
-  // „Kolbi führt dich“: was gerade groß oben steht (Check-in, Morgen-Frage), zeigt die Karte nicht noch einmal
-  const heroKinds: GuideStepId[] = main === "checkin" ? ["checkin"] : main === "morning" ? ["morning"] : []
-  const gNext = guide ? nextGuideStep(guide.steps, heroKinds) : null
-  const gWait = guide && !gNext ? waitingGuideStep(guide.steps) : null
-  // Nichts Dringendes oben → der nächste Schritt ist Kolbis Sprechblase (groß); sonst kompakt darunter
+  // „Kolbi führt dich“: was gerade groß oben steht (Check-in, Morgen-Frage, Push-Hinweis), zeigt die Karte nicht noch einmal
+  const heroKinds: GuideStepId[] = [...(main === "checkin" ? ["checkin" as const] : main === "morning" ? ["morning" as const] : []), ...(tipsShown && pushHint ? ["push" as const] : [])]
+  // Bestandsnutzer (≥ 7 Tage): keine Einrichtungs-Karte mehr – stattdessen Experiment-Führung
+  const est = !!guide?.established
+  const gNext = guide && !est ? nextGuideStep(guide.steps, heroKinds) : null
+  const exp = guide?.exp && main !== "reveal" && main !== "notStarted" ? guide.exp : null
+  const showExp = !!exp && !gNext
+  const gWait = guide && !gNext && !showExp && !est ? waitingGuideStep(guide.steps) : null
+  // Kolbi-Tipps, die dasselbe sagen wie die Experiment-Zeile (z. B. „Stack starten“), nicht doppelt
+  const tipsF = showExp && exp?.covers ? tips.filter(m => !exp.covers!.some(p => m.id.startsWith(p))) : tips
+  const top = tipsF[0]
+  // Nichts Dringendes oben → der nächste Schritt ist Kolbis Sprechblase (groß); sonst kompakt darunter.
+  // Nie über einen Kolbi-Tipp mit Aktion legen (der hat Vorrang).
   const calm = tipsShown || main === "notStarted"
-  const guideBig = calm && !!gNext
+  const guideBig = calm && !!gNext && !(tipsShown && !!top?.actions?.length)
+  // Darunter steht etwas mit Knopf (nächster Schritt groß / Experiment-Schritt) → Feld kompakt, kein Ticker
+  const focusBelow = guideBig || (tipsShown && showExp && !!exp?.action)
   const showRecap = recap.ready && !notStarted && gNext?.id !== "recap"
   // Eine Hauptsache pro Bildschirm: Push-Hinweis + Rückblick reichen – dann kein Kolbi-Tipp (Kacheln bleiben sichtbar)
   const showTip = tipsShown && !!top && !(pushHint && showRecap) && !guideBig
@@ -182,7 +193,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
   }
   // Kolbi-Ticker im großen Feld, wenn gerade nichts zu tun ist – Feld wird dafür kompakter
   // …aber nicht, wenn Kolbis nächster Schritt groß darunter steht (eine Hauptsache; der Neu-Kreis oben bleibt)
-  const ticker = !!onNews && !s.demo && !guideBig && recentNews(today).length > 0 && (main === "done" || main === "locked" || main === "notStarted") ? <NewsTicker s={s} today={today} onOpen={onNews} /> : null
+  const ticker = !!onNews && !s.demo && !focusBelow && recentNews(today).length > 0 && (main === "done" || main === "locked" || main === "notStarted") ? <NewsTicker s={s} today={today} onOpen={onNews} /> : null
   const title = (x: React.ReactNode) => <div style={{ fontSize: "1.6rem", fontWeight: 900, letterSpacing: "-.01em", lineHeight: 1.15 }}>{x}</div>
   const sub = (x: React.ReactNode) => <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--text-dim)", marginTop: 6, lineHeight: 1.4 }}>{x}</div>
 
@@ -198,7 +209,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
       {/* ── Die eine Hauptsache ── */}
       <div className="lab-rise" style={{
         position: "relative", overflow: "hidden", isolation: "isolate", borderRadius: 30, padding: "22px 18px 24px", textAlign: "center",
-        minHeight: (tipsShown && top) || ticker || guideBig ? undefined : "min(44vh, 380px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        minHeight: (tipsShown && top) || ticker || focusBelow ? undefined : "min(44vh, 380px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         background: "var(--surface)", border: "1px solid var(--glass-line)",
       }}>
         {/* Marken-Licht: Selbsttest-Fläche */}
@@ -277,6 +288,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
       </div>
 
       {guide && (calm || gNext) && <GuideCard steps={guide.steps} next={gNext} waiting={gWait} prominent={guideBig} onRun={guide.onRun} onLater={guide.onLater} onNever={guide.onNever} onTimeline={guide.onTimeline} />}
+      {guide && showExp && exp && <ExpCard exp={exp} onAction={a => onAction(a, "exp")} onTimeline={guide.onTimeline} />}
       {!notStarted && <RefineRow s={s} today={today} hideToday={main === "done"} onCheckin={onCheckin} />}
       {startDay && onSettings && !s.demo && (
         <button className="lab-press" onClick={onSettings} style={{
@@ -289,7 +301,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
         </button>
       )}
       {showRecap && <RecapTeaser slim end={recap.end} onOpen={onRecap} />}
-      {showTip && <KolbiSays msg={top} more={tips.length - 1} onAction={onAction} onMore={() => goTab("kolbi")} tail={!showRecap && !gWait} />}
+      {showTip && <KolbiSays msg={top} more={tipsF.length - 1} onAction={onAction} onMore={() => goTab("kolbi")} tail={!showRecap && !gWait && !showExp} />}
 
       {/* ── Feste Bereiche: Stack · Kosten & Coach · Zustand · Weg · Community ── */}
       <div id="lab-today-stack" style={{ scrollMarginTop: 16 }}><StackSection s={s} today={today} onTake={onTake} onSkip={onSkip} onExtra={onExtra} onExtraRemove={onExtraRemove} onOpenSupp={onOpenSupp} onVorrat={onVorrat} onAddMany={onAddMany} goTab={goTab} onAmount={onAmount} onPortion={onPortion} onFreq={onFreq} /></div>

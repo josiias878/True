@@ -33,7 +33,7 @@ const VIDEO_BASE = "https://kolbi-smoky.vercel.app/video/archiv/kolbi-02-testet"
 
 export const LAB_NEWS: LabNews[] = [
   { id: "2026-10-kolbi-fuehrt", date: "2026-10-13", art: "scan", img: "./news/news-scan.webp", action: "guide",
-    title: t("Kolbi führt dich"), text: t("Auf Heute steht jetzt immer dein nächster Schritt – mit Fortschritt und einem Plan, wann dein erstes Ergebnis kommt.") },
+    title: t("Kolbi führt dich"), text: t("Auf Heute zeigt Kolbi dir jetzt deinen nächsten Schritt – und während des Experiments, wie viele Check-ins bis zum Ergebnis fehlen.") },
   { id: "2026-10-nach-bedarf", date: "2026-10-13", art: "dose", img: "./news/news-menge.webp", action: "stack",
     title: t("Dein Stack, wie du ihn nimmst"), text: t("Eigene Mittel stehen jetzt mit im Stack – und was du nur ab und zu nimmst, stellst du auf „Nach Bedarf“: ohne Erinnerung, ohne Druck. Kosten und Vorrat rechnet Kolbi dann nach deinem Tempo.") },
   { id: "2026-10-anderer-grund", date: "2026-10-13", art: "stars", img: "./news/news-sterne.webp", action: "checkin",

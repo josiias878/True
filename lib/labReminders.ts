@@ -302,20 +302,6 @@ export function notificationPlan(s: LabState, days = 7, now = new Date(), guide:
       }
     }
 
-    // „Kolbi führt dich“: höchstens 1 sanfte Erinnerung am Tag an einen offenen Einstiegs-Schritt (erste 7 Tage,
-    // nicht in der Demo, nicht bei „Später“/„Nicht für mich“). Nie in der Nähe (±60 Min.) einer anderen Nachricht –
-    // dann lieber gar nicht. Neutrale Texte ohne Supplement-Namen (auch lokal).
-    const step = nudgeStep(s, date, guide, now)
-    if (step) {
-      const sameDay = out.filter(n => n.date === date || n.key.endsWith(date) || n.key.includes(`-${date}-`))
-      const free = (m: number) => m < bed - 60 && !sameDay.some(n => Math.abs(+n.at - +atDate(date, m)) <= 60 * 60_000)
-      const m = [wake + 300, wake + 420, wake + 180].find(free)
-      if (m != null) {
-        const text = { title: `${step.emoji} ${step.title}`, body: step.why }
-        out.push({ key: `guide-${date}`, kind: "tip", url: `${LAB_BASE}?tab=heute`, at: atDate(date, m), date, ...text,
-          generic: { title: t("👋 Dein nächster Schritt bei Kolbi"), body: t("1 Minute – Kolbi zeigt dir, was dir als Nächstes hilft.") } })
-      }
-    }
   }
   // Vorrat geht aus: einmal pro Packung, vormittags an dem Tag, an dem es knapp wird
   for (const x of s.supps) {
@@ -327,12 +313,26 @@ export function notificationPlan(s: LabState, days = 7, now = new Date(), guide:
     const left = Math.min(info.days, LOW_DAYS)
     const alt = buyInfo(x).alt
     out.push({
-      key: `stock-${x.id}-${x.stock.at}`, kind: "stock", url: LAB_BASE, at: atDate(date, wake + 150),
+      key: `stock-${x.id}-${x.stock.at}`, kind: "stock", url: LAB_BASE, at: atDate(date, wake + 150), date,
       title: info.need ? (left === 1 ? t("🛒 {name} reicht bei deinem Tempo noch ca. 1 Tag", { name: x.name }) : t("🛒 {name} reicht bei deinem Tempo noch ca. {n} Tage", { name: x.name, n: left }))
         : left === 1 ? t("🛒 {name} reicht noch 1 Tag", { name: x.name }) : t("🛒 {name} reicht noch {n} Tage", { name: x.name, n: left }),
       body: shorten(alt ? t("Zeit nachzubestellen. 💡 {tip}", { tip: alt }) : t("Zeit nachzubestellen, damit keine Lücke entsteht."), 170),
       generic: { title: t("🛒 Dein Vorrat geht bald aus"), body: t("Zeit nachzubestellen, damit keine Lücke entsteht.") },
     })
+  }
+  // „Kolbi führt dich“: höchstens 1 sanfte Erinnerung am Tag an einen offenen Einstiegs-Schritt (Tag 1–7, nicht in der
+  // Demo, nicht bei „Später“/„Nicht für mich“). Zuletzt geplant, damit der Abstand (±60 Min.) gegen ALLE Nachrichten
+  // gilt (auch Vorrat) – sonst lieber gar nicht. Neutrale Texte ohne Supplement-Namen (auch lokal).
+  for (let i = 0; i < days; i++) {
+    const date = addDays(today, i)
+    const step = nudgeStep(s, date, guide, now)
+    if (!step) continue
+    const free = (m: number) => m < bed - 60 && !out.some(n => Math.abs(+n.at - +atDate(date, m)) <= 60 * 60_000)
+    const m = [wake + 300, wake + 420, wake + 180].find(free)
+    if (m == null) continue
+    const text = { title: `${step.emoji} ${step.title}`, body: step.why }
+    out.push({ key: `guide-${date}`, kind: "tip", url: `${LAB_BASE}?tab=heute`, at: atDate(date, m), date, ...text,
+      generic: { title: t("👋 Dein nächster Schritt bei Kolbi"), body: t("1 Minute – Kolbi zeigt dir, was dir als Nächstes hilft.") } })
   }
   return out.filter(n => n.at > now).sort((a, b) => +a.at - +b.at).slice(0, 60).map(n => ({ ...n, id: hashId(n.key) }))
 }

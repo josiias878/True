@@ -4,7 +4,8 @@
 import React, { useEffect, useRef, useState } from "react"
 import type { MySupp, Portion } from "@/lib/supplementLab"
 import { fmtDate } from "@/lib/supplementLab"
-import { guideProgress, type GuideMilestone, type GuideStep, type GuideStepId } from "@/lib/labGuide"
+import { guideProgress, type ExpGuide, type GuideMilestone, type GuideStep, type GuideStepId } from "@/lib/labGuide"
+import type { CoachAction } from "@/lib/labCoach"
 import { defaultPortion } from "@/lib/labDose"
 import { t } from "@/lib/labI18n"
 import { Btn, Sheet, haptic } from "./ui"
@@ -142,6 +143,29 @@ export function GuideCard({ steps, next, waiting, prominent, onRun, onLater, onN
         </div>
       </section>
     </div>
+  )
+}
+
+/** Experiment-Führung: wo du stehst (Tag x von y) und was bis zum nächsten Meilenstein fehlt – schlank, ein Knopf. */
+export function ExpCard({ exp, onAction, onTimeline }: { exp: ExpGuide; onAction: (a: CoachAction) => void; onTimeline: () => void }) {
+  const pct = exp.progress ? Math.min(1, exp.progress.day / Math.max(1, exp.progress.days)) : null
+  return (
+    <section className="lab-card lab-rise" aria-label={t("Dein Experiment")} style={{ padding: "12px 14px", borderRadius: 22 }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+        <span aria-hidden style={{ width: 42, height: 42, borderRadius: 14, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem", background: "var(--surface-2)" }}>{exp.emoji}</span>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: "block", fontWeight: 900, fontSize: "0.95rem", lineHeight: 1.3 }}>{exp.title}</span>
+          <span style={{ display: "block", fontSize: "0.82rem", lineHeight: 1.4, color: "var(--text-dim)", marginTop: 2 }}>{exp.sub}</span>
+        </span>
+        <button onClick={() => { haptic(); onTimeline() }} aria-label={t("So geht es weiter")} style={{ ...quiet, marginTop: -10, marginRight: -8, color: "var(--accent-ink)", whiteSpace: "nowrap" }}>{t("Plan")} ›</button>
+      </div>
+      {pct != null && (
+        <div aria-hidden style={{ height: 6, borderRadius: 4, background: "var(--surface-2)", marginTop: 10, overflow: "hidden" }}>
+          <div style={{ width: `${Math.max(6, pct * 100)}%`, height: "100%", borderRadius: 4, background: "var(--lab-grad)" }} />
+        </div>
+      )}
+      {exp.action && <Btn full onClick={() => { haptic(10); onAction(exp.action!.action) }} style={{ marginTop: 12, minHeight: 48, borderRadius: 16 }}>{exp.action.label}</Btn>}
+    </section>
   )
 }
 

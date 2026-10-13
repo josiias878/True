@@ -37,7 +37,8 @@ try {
     const steps = G.guideSteps(fresh(), today, ctx())
     assert.deepEqual(steps.map(x => x.id), ["checkin", "push", "scan", "portion", "stock", "price", "morning", "test", "recap", "group"])
     assert.equal(G.nextGuideStep(steps).id, "checkin")
-    assert.deepEqual(G.guideProgress(steps), { done: 0, total: 10 })
+    assert.equal(st(steps, "scan"), "done") // Supplements schon eingetragen → Scan ist Komfort, kein Muss
+    assert.deepEqual(G.guideProgress(steps), { done: 1, total: 10 })
     assert.equal(st(steps, "test"), "waiting") // Reset läuft
     assert.match(steps.find(x => x.id === "test").wait, /1/)
     // Check-in groß oben → Karte zeigt den nächsten
@@ -50,7 +51,7 @@ try {
     let steps = G.guideSteps(s, today, ctx({ push: "on" }))
     assert.equal(st(steps, "checkin"), "done")
     assert.equal(st(steps, "push"), "done")
-    assert.equal(G.nextGuideStep(steps).id, "scan")
+    assert.equal(G.nextGuideStep(steps).id, "portion")
     assert.deepEqual(steps.find(x => x.id === "portion").action, { kind: "portion", suppId: "magnesium" })
     s.supps.forEach(x => { x.portion = { n: 1, u: "stk" } })
     s.supps[0].stock = { form: "kapseln", pack: 60, perDay: 1, left: 60, at: today }
@@ -92,19 +93,20 @@ try {
 
   await test("Später: bis morgen weg, dann wieder da; 3× Später = Nicht für mich (zählt nicht mehr mit)", () => {
     const s = fresh()
-    let p = G.snoozeStep({}, "scan", today)
-    assert.equal(st(G.guideSteps(s, today, ctx({ prefs: p })), "scan"), "later")
-    assert.equal(st(G.guideSteps(s, L.addDays(today, 1), ctx({ prefs: p })), "scan"), "open")
-    p = G.snoozeStep(p, "scan", today)
-    p = G.snoozeStep(p, "scan", today)
+    let p = G.snoozeStep({}, "stock", today)
+    assert.equal(st(G.guideSteps(s, today, ctx({ prefs: p })), "stock"), "later")
+    assert.equal(st(G.guideSteps(s, L.addDays(today, 1), ctx({ prefs: p })), "stock"), "open")
+    p = G.snoozeStep(p, "stock", today)
+    p = G.snoozeStep(p, "stock", today)
     const steps = G.guideSteps(s, L.addDays(today, 5), ctx({ prefs: p }))
-    assert.equal(st(steps, "scan"), "never")
+    assert.equal(st(steps, "stock"), "never")
     assert.equal(G.guideProgress(steps).total, 9)
   })
 
-  await test("Nicht für mich + Merker im Speicher (localStorage), Zurücksetzen behält Merker", () => {
+  await test("Nicht für mich + Merker im Speicher (localStorage), Zurücksetzen holt nur „Nicht für mich“ zurück", () => {
     store.clear()
     G.neverGuide("group")
+    G.laterGuide("price", today)
     G.markGuide("scan", today)
     let p = G.loadGuide()
     assert.deepEqual(p.never, ["group"])
@@ -114,8 +116,10 @@ try {
     assert.equal(st(steps, "scan"), "done")
     G.resetGuide()
     p = G.loadGuide()
-    assert.equal(p.never, undefined)
+    assert.deepEqual(p.never, [])
     assert.equal(p.flags.scan, today)
+    assert.equal(p.later.price, L.addDays(today, 1)) // „Später“ gilt weiter bis morgen
+    assert.equal(st(G.guideSteps(fresh(), today, ctx({ prefs: p })), "price"), "later")
     store.clear()
   })
 
@@ -156,8 +160,62 @@ try {
     assert.ok(tl.some(m => m.key === "today" && m.state === "now"))
   })
 
+
+  await test("Vor dem Start: Morgen-Frage und Test warten „ab dem Starttag“", () => {
+    const s = fresh(L.addDays(today, 1))
+    const steps = G.guideSteps(s, today, ctx())
+    const m = steps.find(x => x.id === "morning"), t = steps.find(x => x.id === "test")
+    assert.equal(m.status, "waiting"); assert.equal(t.status, "waiting")
+    assert.equal(m.wait, t.wait)
+    assert.doesNotMatch(t.wait, /Reset/)
+  })
+
+  await test("Bestandsnutzer: ab 7 Tagen nach Start bzw. erstem Check-in", () => {
+    assert.equal(G.isEstablished(fresh(L.addDays(today, -3)), today), false)
+    assert.equal(G.isEstablished(fresh(L.addDays(today, -7)), today), true)
+  })
+
+  await test("Experiment-Führung: Reset Tag 2 von 3 – noch Check-ins bis zum Normal", () => {
+    const s = fresh(L.addDays(today, -1))
+    let e = G.experimentGuide(s, today)
+    assert.deepEqual(e.progress, { day: 2, days: 3 })
+    assert.match(e.sub, /2/) // heute + morgen
+    s.checkins[today] = { date: today, scores: { energie: 3 }, tags: [], note: "" }
+    e = G.experimentGuide(s, today)
+    assert.match(e.sub, /1/)
+    assert.equal(e.action, undefined)
+  })
+
+  await test("Experiment-Führung: Test Tag 3 von 5, letzter Tag → Ergebnis morgen früh, offenes Ergebnis → nichts (steht oben)", () => {
+    const s = fresh(L.addDays(today, -6))
+    L.startTest(s, "magnesium", L.addDays(today, -2), 5)
+    let e = G.experimentGuide(s, today)
+    assert.deepEqual(e.progress, { day: 3, days: 5 })
+    assert.match(e.title, /Magnesium/)
+    assert.match(e.sub, /3/)
+    const last = fresh(L.addDays(today, -6)); L.startTest(last, "magnesium", L.addDays(today, -4), 5)
+    e = G.experimentGuide(last, today)
+    assert.deepEqual(e.progress, { day: 5, days: 5 })
+    assert.match(e.sub, /morgen früh/)
+    const done = fresh(L.addDays(today, -10)); L.startTest(done, "magnesium", L.addDays(today, -6), 5)
+    assert.equal(G.experimentGuide(done, today), null)
+  })
+
+  await test("Experiment-Führung: nichts aktiv → nächster Test mit Knopf; alles getestet → Stack starten; Stack läuft → nichts", () => {
+    const s = fresh(L.addDays(today, -10))
+    let e = G.experimentGuide(s, today)
+    assert.equal(e.action.action.kind, "startTest")
+    assert.ok(e.covers.includes("next-"))
+    s.supps.forEach(x => { if (x.mode === "test") s.verdicts[x.id] = { decision: "keep", note: "", date: today } })
+    s.phases.push({ id: "t1", kind: "test", suppId: "magnesium", start: L.addDays(today, -7), days: 2 }, { id: "t2", kind: "test", suppId: "theanin", start: L.addDays(today, -5), days: 2 })
+    e = G.experimentGuide(s, today)
+    assert.equal(e.action.action.kind, "startStack")
+    L.startStack(s, today)
+    assert.equal(G.experimentGuide(s, today), null)
+  })
+
   // ── Sanfte Erinnerung ──
-  await test("Erinnerung: höchstens 1 pro Tag, nur Tag 1–7 nach dem Start", () => {
+  await test("Erinnerung: höchstens 1 pro Tag, nur Tag 1–7 (Tag 1 = Starttag)", () => {
     const s = fresh(today)
     s.checkins[today] = { date: today, scores: { energie: 3 }, tags: [], note: "" }
     const ns = R.notificationPlan(s, 10, new Date(`${today}T00:01:00`), {}).filter(n => n.key.startsWith("guide-"))
@@ -165,22 +223,30 @@ try {
     const dates = ns.map(n => n.key.slice(6))
     assert.equal(new Set(dates).size, dates.length) // je Tag höchstens eine
     for (const d of dates) {
-      const k = L.diffDays(s.startDate, d)
+      const k = L.diffDays(s.startDate, d) + 1
       assert.ok(k >= 1 && k <= G.NUDGE_DAYS, `Tag ${k}`)
     }
+    assert.ok(dates.includes(today), "Tag 1 (Starttag) fehlt")
+    assert.ok(!dates.includes(L.addDays(today, 7)), "Tag 8 darf nicht")
   })
 
-  await test("Erinnerung: neutraler Push-Text ohne Supplement-Namen, Abstand ≥ 60 Min. zu anderen Nachrichten", () => {
+  await test("Erinnerung: neutraler Push-Text ohne Supplement-Namen, Abstand ≥ 60 Min. zu allen anderen (auch Vorrat)", () => {
     const s = fresh(today)
+    // Vorrat geht bald aus → Vorrat-Nachricht (wird nach der Tagesschleife geplant) muss mitzählen
+    s.settings.wake = "06:30"
+    s.supps[0].portion = { n: 1, u: "stk" }
+    s.supps[0].stock = { form: "kapseln", pack: 10, perDay: 1, left: 4, at: today }
+    s.supps[0].mode = "konstant"
     const plan = R.notificationPlan(s, 8, new Date(`${today}T00:01:00`), {})
     const ns = plan.filter(n => n.key.startsWith("guide-"))
     assert.ok(ns.length)
+    assert.ok(plan.some(n => n.kind === "stock" && n.date), "Vorrat-Nachricht mit Datum erwartet")
     for (const n of ns) {
       for (const x of s.supps) {
         assert.ok(!n.generic.title.includes(x.name) && !n.generic.body.includes(x.name), "Name im Push")
         assert.ok(!n.title.includes(x.name) && !n.body.includes(x.name), "Name lokal")
       }
-      const others = plan.filter(o => o !== n && o.at.toDateString() === n.at.toDateString())
+      const others = plan.filter(o => o !== n)
       for (const o of others) assert.ok(Math.abs(+o.at - +n.at) > 60 * 60_000, `zu nah an ${o.key}`)
     }
   })

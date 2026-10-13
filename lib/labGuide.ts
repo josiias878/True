@@ -6,9 +6,10 @@
 // Texte: konkreter Nutzen der Funktion, keine Wirkversprechen (EU 432/2012). Keine Supplement-Namen in Titeln.
 
 import {
-  addDays, diffDays, nextCandidates, phaseWindows, isHere, defaultDays, libOf,
+  addDays, diffDays, nextCandidates, phaseWindows, isHere, defaultDays, libOf, stackMembers,
   type LabState, type PhaseWindow,
 } from "./supplementLab"
+import type { CoachAction } from "./labCoach"
 import { morningAnswered, morningDue } from "./labDay"
 import { defaultPortion } from "./labDose"
 import { t } from "./labI18n"
@@ -111,7 +112,8 @@ export function guideSteps(s: LabState, today: string, ctx: GuideCtx): GuideStep
       title: t("Erinnerungen einschalten"), why: t("Kolbi meldet sich zur richtigen Zeit – auch wenn die App zu ist."), cta: t("Einschalten"), action: { kind: "push" } })
 
   // 3 · Packung scannen (Produkt erkennen → eintragen samt Menge)
-  add({ id: "scan", emoji: "📷", core: true, done: !!prefs.flags?.scan,
+  // Scan ist Komfort, kein Muss: wer schon Supplements eingetragen hat, ist hier fertig
+  add({ id: "scan", emoji: "📷", core: true, done: !!prefs.flags?.scan || s.supps.length > 0,
     title: s.supps.length ? t("Packung scannen") : t("Deine Supplements eintragen"),
     why: t("Strichcode in die Kamera – Kolbi erkennt das Produkt und trägt es für dich ein."), cta: t("Kamera öffnen"), action: { kind: "scan" } })
 
@@ -137,7 +139,7 @@ export function guideSteps(s: LabState, today: string, ctx: GuideCtx): GuideStep
   // 7 · Morgen-Frage (kommt morgens von selbst)
   const morningDone = Object.keys(s.morning ?? {}).some(d => morningAnswered(s, d))
   const mDue = !notStarted && morningDue(s, today, ctx.now)
-  add({ id: "morning", emoji: "🌙", core: false, done: morningDone, waiting: !mDue, wait: t("morgen früh"),
+  add({ id: "morning", emoji: "🌙", core: false, done: morningDone, waiting: !mDue, wait: notStarted ? t("ab dem Starttag") : t("morgen früh"),
     title: t("Morgen-Frage beantworten"), why: t("1 Tipp nach dem Aufstehen – so siehst du später, wie deine Nächte waren."), cta: t("Jetzt beantworten"), action: { kind: "morning" } })
 
   // 8 · Erster Test (nach dem Reset)
@@ -148,7 +150,7 @@ export function guideSteps(s: LabState, today: string, ctx: GuideCtx): GuideStep
     const inReset = !!base && today <= base.end && !base.open
     const day = base ? Math.max(1, diffDays(base.start, today) + 1) : 1
     add({ id: "test", emoji: "🔬", core: true, done: tested, waiting: inReset || notStarted,
-      wait: base ? t("Reset · Tag {n} von {total}", { n: Math.min(day, base.days), total: base.days }) : undefined,
+      wait: notStarted ? t("ab dem Starttag") : base ? t("Reset · Tag {n} von {total}", { n: Math.min(day, base.days), total: base.days }) : undefined,
       title: t("Ersten Test starten"), why: t("Ein Supplement allein – nach ein paar Tagen siehst du, ob sich bei dir etwas verändert."), cta: t("Test einrichten"),
       action: cand ? { kind: "test", suppId: cand.id } : null })
   }
@@ -180,6 +182,69 @@ export function nextGuideStep(steps: GuideStep[], skip: GuideStepId[] = []): Gui
 /** Als Nächstes, wenn gerade nichts machbar ist (wartet auf morgen/Reset) – für die schlanke Zeile. */
 export function waitingGuideStep(steps: GuideStep[]): GuideStep | null {
   return steps.find(x => x.status === "waiting") ?? null
+}
+
+/** Bestandsnutzer: Start (oder erster Check-in) liegt ≥ 7 Tage zurück → keine große Einrichtungs-Karte mehr */
+export function isEstablished(s: LabState, today: string): boolean {
+  if (!s.startDate) return false
+  const first = Object.keys(s.checkins).sort()[0]
+  return diffDays(s.startDate, today) >= NUDGE_DAYS || (!!first && diffDays(first, today) >= NUDGE_DAYS)
+}
+
+// ── Experiment-Führung: wo stehe ich, was fehlt bis zum nächsten Meilenstein ─────────
+
+export interface ExpGuide {
+  key: string
+  emoji: string
+  title: string
+  sub: string
+  /** Tag x von y (Balken) */
+  progress?: { day: number; days: number }
+  action?: { label: string; action: CoachAction }
+  /** Kolbi-Tipps (id-Anfang), die dasselbe sagen → auf Heute nicht zusätzlich zeigen */
+  covers?: string[]
+}
+
+/**
+ * Die eine Zeile zum Experiment aus echten Phasen-Daten: Reset/Test/Pause mit „Tag x von y“ und wie viele Check-ins
+ * noch fehlen, sonst der nächste Schritt (Test starten, Stack starten). null, wenn nichts Sinnvolles zu sagen ist
+ * (vor dem Start, offenes Ergebnis – das zeigt Heute groß –, laufender Stack). Keine Wirkversprechen.
+ */
+export function experimentGuide(s: LabState, today: string): ExpGuide | null {
+  if (!s.startDate) return null
+  const wins = phaseWindows(s)
+  if (!wins.length || today < wins[0].start) return null
+  // Offenes Ergebnis steht ohnehin groß oben
+  if (wins.some(w => w.kind === "test" && w.suppId && w.end < today && !s.verdicts[w.suppId])) return null
+  const name = (id?: string) => s.supps.find(x => x.id === id)?.name ?? "?"
+  const w = wins.find(x => today >= x.start && today <= x.end)
+  const checked = !!s.checkins[today]
+  if (w && !w.open) {
+    const day = diffDays(w.start, today) + 1
+    const left = diffDays(today, w.end) + (checked ? 0 : 1) // Check-ins bis zum Phasenende (heute eingeschlossen)
+    const progress = { day, days: w.days }
+    if (w.kind === "baseline") return { key: `base-${day}-${left}`, emoji: "🧘", progress, title: t("Reset · Tag {n} von {total}", { n: day, total: w.days }),
+      sub: left <= 0 ? t("Geschafft – ab morgen kennt Kolbi dein Normal.") : left === 1 ? t("Noch 1 Check-in, dann kennt Kolbi dein Normal.") : t("Noch {n} Check-ins, dann kennt Kolbi dein Normal.", { n: left }) }
+    if (w.kind === "test" && w.suppId) return { key: `test-${w.id}-${day}-${left}`, emoji: s.supps.find(x => x.id === w.suppId)?.emoji ?? "🔬", progress,
+      title: t("{name}-Test · Tag {n} von {total}", { name: name(w.suppId), n: day, total: w.days }),
+      sub: left <= 0 ? t("Alle Check-ins drin – dein Ergebnis ist morgen früh bereit.") : left === 1 ? t("Noch 1 Check-in – morgen früh ist dein Ergebnis bereit.") : t("Noch {n} Check-ins bis zum Ergebnis.", { n: left }) }
+    if (w.kind === "washout") {
+      const next = nextCandidates(s)[0]
+      return { key: `wash-${w.id}-${day}`, emoji: "💧", progress, title: t("Kurze Pause · Tag {n} von {total}", { n: day, total: w.days }),
+        sub: next ? t("Damit sich nichts überlagert. Danach ist {name} dran.", { name: next.name }) : t("Damit sich nichts überlagert. Danach geht es weiter.") }
+    }
+    if (w.kind === "check" && w.suppId) return { key: `check-${w.id}-${day}`, emoji: "🤔", progress,
+      title: t("Ohne {name} · Tag {n} von {total}", { name: name(w.suppId), n: day, total: w.days }), sub: t("Danach entscheidest du, ob es dir gefehlt hat.") }
+  }
+  if (w) return null // laufender Stack: nichts zu führen
+  const next = nextCandidates(s)[0]
+  if (next) return { key: `next-${next.id}`, emoji: "🔬", title: t("Bereit für den nächsten Test"),
+    sub: t("Vorschlag: {name} · {n} Tage allein testen.", { name: next.name, n: defaultDays(next) }),
+    action: { label: t("Test starten"), action: { kind: "startTest", suppId: next.id } }, covers: ["next-", "slow-"] }
+  if (stackMembers(s, false).length && !wins.some(x => x.kind === "stack")) return { key: "stack-ready", emoji: "🏆", title: t("Alles getestet"),
+    sub: t("Jetzt alles Behaltene zusammen nehmen – Kolbi vergleicht weiter mit deinem Normal."),
+    action: { label: t("🏆 Stack starten"), action: { kind: "startStack" } }, covers: ["stack-ready"] }
+  return null
 }
 
 // ── „So geht es weiter“: Zeitleiste aus echten Plan-Daten ─────────────────────────
@@ -279,7 +344,13 @@ export function markGuide(flag: "scan" | "group", today: string) {
   saveGuide({ ...p, flags: { ...p.flags, [flag]: today } })
 }
 /** „Nicht für mich“ zurücknehmen (Einstellungen / Zeitleiste) */
-export function resetGuide() { saveGuide({ flags: loadGuide().flags }) }
+export function resetGuide() {
+  const p = loadGuide()
+  const never = p.never ?? []
+  // Nur „Nicht für mich“ zurückholen; „Später“ (bis morgen) bleibt, Später-Zähler der zurückgeholten neu
+  const laterN = Object.fromEntries(Object.entries(p.laterN ?? {}).filter(([id]) => !never.includes(id as GuideStepId)))
+  saveGuide({ ...p, never: [], laterN })
+}
 
 export function onGuideChange(fn: () => void): () => void {
   try {
@@ -305,7 +376,7 @@ export function onOpenTimeline(fn: () => void): () => void {
 export function nudgeStep(s: LabState, date: string, prefs: GuidePrefs, now: Date): GuideStep | null {
   if (s.demo || !s.startDate) return null
   const d = diffDays(s.startDate, date)
-  if (d < 1 || d > NUDGE_DAYS) return null
+  if (d < 0 || d >= NUDGE_DAYS) return null // Tag 1–7 (Tag 1 = Starttag)
   // Status für diesen Tag (Später gilt bis zum gemerkten Datum); Check-in-Sperre spielt hier keine Rolle
   const steps = guideSteps(s, date, { push: "on", social: false, recapReady: false, checkinLocked: false, now, prefs })
   return steps.find(x => x.status === "open" && x.core && NUDGE_IDS.includes(x.id)) ?? null
