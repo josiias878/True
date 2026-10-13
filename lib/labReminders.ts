@@ -4,7 +4,7 @@
 
 import {
   LIB_BY_ID, SLOTS, phaseWindows, intakeOn, slotFor, slotMinutes, suppMinutes, fromMin, toMin, todayIso, addDays, diffDays, libOf, streak,
-  STORAGE_KEY, hydrate, saveState, STORE_MODE, LAB_BASE, isHere, morningMin, doneOn, skippedOn, setSkipped, type LabState, type SlotId,
+  STORAGE_KEY, hydrate, saveState, STORE_MODE, LAB_BASE, isHere, morningMin, doneOn, skippedOn, setSkipped, asNeeded, type LabState, type SlotId,
 } from "./supplementLab"
 import { morningAnswered } from "./labDay"
 import { partnerTips } from "./labKnowledge"
@@ -88,13 +88,13 @@ export function buildIcs(s: LabState): string {
     // Stack-Phase: alle behaltenen täglich
     const stack = wins.find(w => w.kind === "stack" && w.end >= from)
     if (stack) {
-      for (const supp of s.supps.filter(x => s.verdicts[x.id]?.decision === "keep" && x.mode !== "konstant" && isHere(x))) {
+      for (const supp of s.supps.filter(x => s.verdicts[x.id]?.decision === "keep" && x.mode !== "konstant" && !asNeeded(x) && isHere(x))) {
         const time = fromMin(suppMinutes(supp.id, s))
         ev.push(event(`stack-${supp.id}`, icsDate(stack.start > from ? stack.start : from, time), t("{emoji} {name} nehmen", { emoji: supp.emoji, name: supp.name }), supp.dose || "", icsDate(last.end, "23:59")))
       }
     }
     // Durchgehende Supplements
-    for (const supp of s.supps.filter(x => x.mode === "konstant" && isHere(x))) {
+    for (const supp of s.supps.filter(x => x.mode === "konstant" && !asNeeded(x) && isHere(x))) {
       const lib = supp.lib ? LIB_BY_ID[supp.lib] : undefined
       const time = fromMin(suppMinutes(supp.id, s))
       // wöchentliche am Wochentag des Experiment-Starts

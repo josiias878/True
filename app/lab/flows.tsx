@@ -4,15 +4,15 @@ import Link from "next/link"
 import {
   FACES, FACE_LABELS, LIBRARY, ROUTE_INFO, SUPP_COLORS, CATEGORIES, GOALS,
   todayIso, addDays, dayRef, makeSupp, autoOrder, parseSuppList, goalRelevance, extrasOn,
-  defaultCheckinTime, libOf, daySum, libTimeTip, STORE_MODE,
-  type CheckIn, type Dim, type LabState, type MySupp, type Settings, type LibSupp, type GoalId, type Scores,
+  defaultCheckinTime, libOf, daySum, libTimeTip, STORE_MODE, asNeeded,
+  type CheckIn, type Dim, type LabState, type MySupp, type Settings, type LibSupp, type GoalId, type Scores, type SuppFreq,
 } from "@/lib/supplementLab"
 import { hasNativeReminders } from "@/lib/labReminders"
 import { eveningDims, morningAnswered, prefillTags, sidesOf, type ExtraInput } from "@/lib/labDay"
 import { DaySheet, ExtraList, SidesWithSuspect } from "./day"
 import { pairsWith } from "@/lib/labInteractions"
 import { fetchOverview } from "@/lib/labCommunity"
-import { Btn, Capsule, Card, FaceRow, Label, Segmented, Stars, SuppIcon, TagChips, haptic } from "./ui"
+import { Btn, Card, FaceRow, Label, Segmented, Stars, SuppIcon, TagChips, haptic } from "./ui"
 import { suggestScores } from "@/lib/labLearn"
 import { KolbiTip, MASCOT_NAME, Mascot } from "./mascot"
 import { InstallHint } from "./install"
@@ -23,16 +23,24 @@ import { trackOnce } from "@/lib/labStats"
 
 // ── Supplement-Auswahl: antippen oder Liste einfügen ───────────────────────────
 
-export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd, onAway, initialMode = "tap" }: {
+export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd, onAway, onFreq, onRemove, initialMode = "tap" }: {
   selected: MySupp[]; goals: GoalId[]; initialMode?: "tap" | "paste"
   onToggle: (lib: LibSupp) => void; onAddCustom: (name: string) => void
   onPasteAdd: (items: { lib: LibSupp | null; name: string; dose: string }[]) => void
   /** „Schon zu Hause?“ – nicht da = Einkaufsliste, zählt noch nicht mit */
   onAway?: (libId: string, away: boolean) => void
+  /** „Wie oft?“ – täglich oder nach Bedarf (je Supplement-ID) */
+  onFreq?: (suppId: string, f: SuppFreq) => void
+  /** Aus der Auswahl nehmen (✕ an der Stack-Zeile oben) */
+  onRemove?: (suppId: string) => void
 }) {
   const [mode, setMode] = useState<"tap" | "paste">(initialMode)
   const [q, setQ] = useState("")
-  const [lastAdded, setLastAdded] = useState<LibSupp | null>(null)
+  // Zuletzt hinzugefügt bzw. oben angetippt: Bibliothek (lib) oder eigenes Mittel (nur Name)
+  const [last, setLast] = useState<{ lib: LibSupp | null; name: string } | null>(null)
+  const lastAdded = last?.lib ?? null
+  const setLastAdded = (l: LibSupp | null) => setLast(l ? { lib: l, name: l.name } : null)
+  const lastSupp = last ? selected.find(x => last.lib ? x.lib === last.lib.id : !x.lib && x.name === last.name) : undefined
   // Social Proof: wie viele andere haben es nach dem Test behalten? (ab genug Beiträgen)
   const [crowd, setCrowd] = useState<Record<string, { n: number; keepPct: number | null }>>({})
   useEffect(() => { let on = true; fetchOverview().then(v => { if (on && v?.libs) setCrowd(v.libs) }); return () => { on = false } }, [])
@@ -64,6 +72,35 @@ export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd,
 
   return (
     <div>
+      {selected.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <Label style={{ marginBottom: 8 }}>{t("Dein Stack · {n}", { n: selected.length })}</Label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {selected.map(x => {
+              const c = SUPP_COLORS[x.color % SUPP_COLORS.length]
+              const on = lastSupp?.id === x.id
+              return (
+                <span key={x.id} style={{
+                  display: "inline-flex", alignItems: "center", maxWidth: "100%", minWidth: 0, borderRadius: 999,
+                  border: on ? `2px solid ${c}` : `1px solid color-mix(in srgb, ${c} 40%, transparent)`, background: `color-mix(in srgb, ${c} 14%, var(--surface))`,
+                }}>
+                  <button className="lab-press" onClick={() => { haptic(6); setLast({ lib: libOf(x) ?? null, name: x.name }); setMode("tap") }} style={{
+                    display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0, minHeight: 36, padding: onRemove ? "2px 4px 2px 6px" : "2px 12px 2px 6px",
+                    border: "none", background: "none", color: "var(--text)", fontWeight: 700, fontSize: "0.8rem",
+                  }}>
+                    <span aria-hidden style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, flexShrink: 0 }}><SuppIcon lib={x.lib} emoji={x.emoji} size={24} /></span>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{x.name}</span>
+                    {asNeeded(x) && <span title={t("Nach Bedarf")} style={{ fontSize: "0.72rem" }}>🔁</span>}
+                  </button>
+                  {onRemove && <button className="lab-press" onClick={() => { if (on) setLast(null); onRemove(x.id) }} aria-label={t("{name} entfernen", { name: x.name })} style={{
+                    minWidth: 36, minHeight: 36, padding: "0 10px 0 4px", border: "none", background: "none", color: "var(--text-dim)", fontSize: "0.8rem",
+                  }}>✕</button>}
+                </span>
+              )
+            })}
+          </div>
+        </div>
+      )}
       <div style={{ marginBottom: 10 }}>
         <Segmented value={mode} onChange={setMode} options={[{ id: "tap", label: t("👆 Antippen") }, { id: "paste", label: t("📋 Liste einfügen") }]} />
       </div>
@@ -96,12 +133,14 @@ export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd,
         <div className="lab-rise">
           <input value={q} onChange={e => setQ(e.target.value)} placeholder={t("🔍 Suchen … (z. B. Magnesium, BPC)")}
             style={{ width: "100%", padding: "12px 14px", borderRadius: 14, fontSize: "0.95rem", marginBottom: 14 }} />
-          {lastAdded && sel.has(lastAdded.id) && (() => {
-            const tip = libTimeTip(lastAdded)
+          {last && lastSupp && (() => {
+            const tip = lastAdded ? libTimeTip(lastAdded) : null
             return (
-              <div key={lastAdded.id} className="lab-rise" style={{ position: "sticky", top: 8, zIndex: 2, marginBottom: 14 }}>
-                <KolbiTip title={`${lastAdded.emoji} ${t("{name}: am besten {when}", { name: lastAdded.name, when: `${tip.emoji} ${tip.label.charAt(0).toLowerCase()}${tip.label.slice(1)}` })}`}>{tip.why}</KolbiTip>
-                {(() => {
+              <div key={lastSupp.id} className="lab-rise" style={{ position: "sticky", top: 8, zIndex: 2, marginBottom: 14 }}>
+                {lastAdded && tip
+                  ? <KolbiTip title={`${lastAdded.emoji} ${t("{name}: am besten {when}", { name: lastAdded.name, when: `${tip.emoji} ${tip.label.charAt(0).toLowerCase()}${tip.label.slice(1)}` })}`}>{tip.why}</KolbiTip>
+                  : <KolbiTip mood="think" title={`💊 ${lastSupp.name}`}>{t("Eigenes Mittel – dazu habe ich keine Infos. Es steht jetzt in deinem Stack.")}</KolbiTip>}
+                {lastAdded && (() => {
                   const pairs = pairsWith({ supps: selected }, lastAdded.id)
                   if (!pairs.length) return null
                   return (
@@ -119,7 +158,25 @@ export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd,
                     </div>
                   )
                 })()}
-                {onAway && (() => {
+                {onFreq && !lastAdded?.weekly && (() => {
+                  const need = asNeeded(lastSupp)
+                  const opt = (f: SuppFreq, l: string) => {
+                    const on = (f === "bedarf") === need
+                    return (
+                      <button className="lab-press" onClick={() => { if (!on) onFreq(lastSupp.id, f) }} aria-pressed={on} style={{
+                        flex: 1, minWidth: 0, minHeight: 40, padding: "8px 8px", borderRadius: 14, fontWeight: 800, fontSize: "0.78rem", color: "var(--text)",
+                        border: on ? "2px solid var(--accent)" : "1px solid var(--border)", background: on ? "var(--accent-dim)" : "var(--surface)",
+                      }}>{l}</button>
+                    )
+                  }
+                  return (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+                      <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "var(--text-dim)", flexShrink: 0 }}>{t("Wie oft?")}</span>
+                      {opt("taeglich", t("📅 Täglich"))}{opt("bedarf", t("🔁 Nach Bedarf"))}
+                    </div>
+                  )
+                })()}
+                {onAway && lastAdded && (() => {
                   const away = !!selected.find(s => s.lib === lastAdded.id)?.away
                   const opt = (v: boolean, l: string) => (
                     <button className="lab-press" onClick={() => onAway(lastAdded.id, v)} aria-pressed={away === v} style={{
@@ -154,15 +211,7 @@ export function SuppPicker({ selected, goals, onToggle, onAddCustom, onPasteAdd,
             )
           })}
           {ql && !LIBRARY.some(l => l.name.toLowerCase().includes(ql)) && (
-            <Btn variant="soft" full onClick={() => { onAddCustom(q.trim()); setQ("") }}>{t("+ „{name}“ als eigenes hinzufügen", { name: q.trim() })}</Btn>
-          )}
-          {selected.filter(s => !s.lib).length > 0 && (
-            <div style={{ marginTop: 6 }}>
-              <Label style={{ marginBottom: 8 }}>{t("Eigene")}</Label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {selected.filter(s => !s.lib).map(s => <Capsule key={s.id} supp={s} size="sm" />)}
-              </div>
-            </div>
+            <Btn variant="soft" full onClick={() => { const name = q.trim(); onAddCustom(name); setLast({ lib: null, name }); setQ("") }}>{t("+ „{name}“ als eigenes hinzufügen", { name: q.trim() })}</Btn>
           )}
         </div>
       )}
@@ -328,12 +377,9 @@ export function Onboarding({ onStart, onDemo }: { onStart: (r: OnboardResult) =>
         <div className="lab-rise" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           {kolbi("happy", <>{t("Tipp an,")} <b>{t("was du gerade nimmst")}</b>{t(". Oder kopier deine Liste rein, ich erkenne sie. Später ergänzen geht jederzeit.")}</>)}
           {question(t("Was nimmst du gerade?"))}
-          {supps.length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-              {supps.map(s => <Capsule key={s.id} supp={s} size="sm" onClick={() => setSupps(p => p.filter(x => x.id !== s.id))} right={<span style={{ color: "var(--text-dim)" }}>✕</span>} />)}
-            </div>
-          )}
           <SuppPicker selected={supps} goals={goals} onToggle={toggleSupp} onAddCustom={addCustom} onPasteAdd={pasteAdd}
+            onRemove={id => setSupps(p => p.filter(x => x.id !== id))}
+            onFreq={(id, f) => setSupps(p => p.map(x => x.id === id ? { ...x, freq: f === "bedarf" ? f : undefined } : x))}
             onAway={(libId, v) => setSupps(prev => prev.map(x => x.lib === libId ? { ...x, away: v ? todayIso() : undefined } : x))} />
           {footer(<Btn full disabled={!supps.length} onClick={next}>{supps.length ? t("Weiter mit {n}", { n: supps.length }) : t("Wähle mindestens eins")}</Btn>)}
         </div>

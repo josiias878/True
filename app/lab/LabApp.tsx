@@ -10,7 +10,7 @@ import {
   nextCandidates, suppStatus, takingInfo, avgIntakeMinutes, phaseEndsAt, fmtCountdown, nowTime, closeActive, looksPrescribed,
   startTest, startStack, startCheck, applyVerdict, resolveCheck, fromMin, timeTip, LIB_BY_ID, slotMinutes, libDoseLabel,
   isCheckinLocked, checkinOpensMin, extrasOn, MORNING_DELAYS, MORNING_DELAY_DEFAULT, morningMin,
-  type SlotId, type LabState, type Decision, type Dim, type PhaseWindow, type MySupp, type LibSupp, type Settings, type CheckIn, type Scores, type SuppStatusKey, type TakenAmount,
+  type SlotId, type LabState, type Decision, type Dim, type PhaseWindow, type MySupp, type LibSupp, type Settings, type CheckIn, type Scores, type SuppStatusKey, type SuppFreq, type TakenAmount,
 } from "@/lib/supplementLab"
 import { applyTaken, checkLabReminders, downloadIcs, hasNativeReminders, onNotifTaken, syncNativeReminders } from "@/lib/labReminders"
 import { addExtra, syncAlcoholTag, unsyncAlcoholTag, eveningDims, morningAnswered, putCheckin, removeExtra, saveMorning, setDaySides, sidesOf, type ExtraInput } from "@/lib/labDay"
@@ -24,6 +24,7 @@ import { DeltaBars, DimLineChart, MoodCurve, ProCon } from "./charts"
 import { CoachBubble, HelpSheet, KolbiTip, MASCOT_NAME, Mascot } from "./mascot"
 import { InstallHint } from "./install"
 import { DailyRound, dayProgress, roundSteps, withMorning, type RoundStep } from "./round"
+import { FreqPick } from "./todayStack"
 import { factsFor, partnerTips, recentSides, sideCauses } from "@/lib/labKnowledge"
 import { alignStockToPortion, openShop, refillStock, shoppingList, stockInfo } from "@/lib/labStock"
 import { ShopButton, ShoppingCard, StockCard, StockSheet } from "./stock"
@@ -502,6 +503,10 @@ export default function LabApp() {
       return p
     }, on ? undefined : { amount: 5, label: t("Eingenommen") })
   }, [s.took, today, update])
+  /** Einnahme-Rhythmus: täglich (Feld weg) oder unregelmäßig/nach Bedarf */
+  const setFreq = useCallback((id: string, f: SuppFreq) => {
+    update(p => { p.supps = p.supps.map(q => q.id === id ? { ...q, freq: f === "bedarf" ? f : undefined } : q); return p })
+  }, [update])
   /** „Heute nicht“ (Wischen bzw. Knopf im Detail) setzen oder aufheben – entfernt einen Genommen-Haken für heute. */
   const skipToday = useCallback((id: string, on: boolean, restore?: { at?: string; amt?: TakenAmount }) => {
     update(p => {
@@ -712,7 +717,7 @@ export default function LabApp() {
             onCheckin={setCheckinDate} goTab={goTab} onVorrat={() => { setLab(null); setLaborView("vorrat"); goTab("labor") }}
             onExtra={addExtraV} onExtraRemove={removeExtraV} onAddMany={() => setAddMany(true)}
             onNews={(items, start = 0) => setNews({ items, start })} onSettings={() => setSettingsOpen(true)}
-            onAmount={(id, p) => update(q => { setAmount(q, today, id, p); return q })}
+            onAmount={(id, p) => update(q => { setAmount(q, today, id, p); return q })} onFreq={setFreq}
             onPortion={(id, p) => { update(q => alignStockToPortion(setPortion(q, id, p, today), id, today)); setFlash(t("✓ Gemerkt: {amount}", { amount: portionLabel(p) })) }}
             onOpenSupp={id => { setLaborView(null); setLab({ suppId: id, tab: "ueberblick" }); goTab("labor") }}
             />}
@@ -1107,6 +1112,14 @@ function SuppSheet({ s, id, today, adv, onClose, update, onAction, onVerdict, on
         </div>
       </Card>
 
+      {!lib?.weekly && (
+        <Card style={{ marginBottom: 12 }}>
+          <Label style={{ marginBottom: 8 }}>{t("Wie nimmst du es?")}</Label>
+          <FreqPick x={x} testing={st.key === "testing" || st.key === "waiting"}
+            onPick={f => update(p => { p.supps = p.supps.map(q => q.id === id ? { ...q, freq: f === "bedarf" ? f : undefined } : q); return p })} />
+        </Card>
+      )}
+
       {(() => {
         const tip = timeTip(s, id)
         const slots = SLOTS.filter(q => q.id !== "training" || s.settings.training || tip.slot === "training")
@@ -1203,6 +1216,7 @@ function PickNextSheet({ s, onClose, update, onStart }: { s: LabState; onClose: 
       )}
       {adding ? (
         <SuppPicker selected={s.supps} goals={s.goals}
+          onFreq={(id, f) => update(p => { p.supps = p.supps.map(q => q.id === id ? { ...q, freq: f === "bedarf" ? f : undefined } : q); return p })}
           onAddCustom={name => update(p => { p.supps.push(makeSupp(null, name, p.supps)); return p })}
           onPasteAdd={items => update(p => { items.forEach(it => { if (!it.lib || !p.supps.some(x => x.lib === it.lib!.id)) p.supps.push(makeSupp(it.lib, it.name, p.supps, it.dose)) }); return p })}
           onToggle={(lib: LibSupp) => update(p => { if (!p.supps.some(x => x.lib === lib.id)) p.supps.push(makeSupp(lib, lib.name, p.supps)); return p })}
@@ -1218,6 +1232,7 @@ function AddManySheet({ s, update, onClose, onDone }: { s: LabState; update: Upd
     <Sheet open onClose={onClose} title={t("＋ Mehrere auf einmal")}>
       <div style={{ fontSize: "0.84rem", color: "var(--text-dim)", lineHeight: 1.45, marginBottom: 12 }}>{t("Einfach alle Namen mit Komma oder je Zeile eintippen – Unbekanntes lege ich als eigenes Mittel an.")}</div>
       <SuppPicker selected={s.supps} goals={s.goals} initialMode="paste"
+        onFreq={(id, f) => update(p => { p.supps = p.supps.map(q => q.id === id ? { ...q, freq: f === "bedarf" ? f : undefined } : q); return p })}
         onAddCustom={name => update(p => { p.supps.push(makeSupp(null, name, p.supps)); return p })}
         onPasteAdd={items => {
           const fresh = items.filter(it => it.lib ? !s.supps.some(x => x.lib === it.lib!.id) : !s.supps.some(x => !x.lib && x.name.toLowerCase() === it.name.toLowerCase()))
@@ -1323,6 +1338,11 @@ function TestSetupSheet({ s, suppId, onClose, onConfirm, onKonstant }: {
         <span style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>{t("eigene Anzahl")}</span>
         <Stepper value={days} min={1} max={30} onChange={setDays} suffix={t(" T")} />
       </div>
+      {x.freq === "bedarf" && (
+        <div role="note" style={{ fontSize: "0.8rem", lineHeight: 1.45, padding: "10px 12px", borderRadius: 14, background: "var(--surface-2)", marginTop: -8, marginBottom: 16 }}>
+          🔁 {t("Du nimmst es sonst nach Bedarf. Für einen fairen Test nimm es in den Testtagen bitte regelmäßig – danach geht es wieder nach Bedarf.")}
+        </div>
+      )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {prescribed ? <>{stayBtn}{startBtn}</> : <>{startBtn}{stayBtn}</>}

@@ -32,6 +32,8 @@ export type LabNews = {
 const VIDEO_BASE = "https://kolbi-smoky.vercel.app/video/archiv/kolbi-02-testet"
 
 export const LAB_NEWS: LabNews[] = [
+  { id: "2026-10-nach-bedarf", date: "2026-10-13", art: "dose", img: "./news/news-menge.webp", action: "stack",
+    title: t("Dein Stack, wie du ihn nimmst"), text: t("Eigene Mittel stehen jetzt mit im Stack – und was du nur ab und zu nimmst, stellst du auf „Nach Bedarf“: ohne Erinnerung, ohne Druck.") },
   { id: "2026-10-anderer-grund", date: "2026-10-13", art: "stars", img: "./news/news-sterne.webp", action: "checkin",
     title: t("Beschwerde mit anderem Grund"), text: t("Kopfschmerzen vom wenig Trinken? Markiere „anderer Grund“ – dann zählt es nicht gegen deine Supplements.") },
   { id: "2026-10-start-checkin", date: "2026-10-10", art: "stars", img: "./news/news-sterne.webp", action: "checkin",

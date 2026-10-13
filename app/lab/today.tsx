@@ -5,7 +5,7 @@ import React, { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import {
   FACES, FACE_LABELS, STORE_MODE, addDays, dayRef, nightRef, checkinOpensMin, daySum, fmtCountdown, fromMin, intakeOn, streak, extrasOn, skippedOn,
-  type LabState, type PhaseWindow, type Portion, type TakenAmount,
+  type LabState, type PhaseWindow, type Portion, type SuppFreq, type TakenAmount,
 } from "@/lib/supplementLab"
 import { sidesOf, type ExtraInput } from "@/lib/labDay"
 import type { CoachAction, CoachMsg } from "@/lib/labCoach"
@@ -90,7 +90,7 @@ function greeting(now: Date) {
 
 type Main = "notStarted" | "reveal" | "morning" | "take" | "checkin" | "locked" | "done"
 
-export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, recap, onRecap, pushHint, onPush, onAction, onRound, onTakeAll, onTake, onSkip, onMorning, onUnlock, onCheckin, goTab, onVorrat, onExtra, onExtraRemove, onOpenSupp, onAddMany, onAmount, onPortion, onNews, onSettings }: {
+export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, recap, onRecap, pushHint, onPush, onAction, onRound, onTakeAll, onTake, onSkip, onMorning, onUnlock, onCheckin, goTab, onVorrat, onExtra, onExtraRemove, onOpenSupp, onAddMany, onAmount, onPortion, onFreq, onNews, onSettings }: {
   s: LabState; wins: PhaseWindow[]; today: string; now: Date; pending: RoundStep[]; checkinLocked: boolean; tips: CoachMsg[]
   /** Wochenrückblick bereit und noch nicht gesehen → schmale Zeile unter der Hauptsache */
   recap: { ready: boolean; end: string }; onRecap: () => void
@@ -103,6 +103,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
   onExtra: (date: string, item: ExtraInput, label: string) => void; onExtraRemove: (date: string, id: string) => void
   onOpenSupp: (id: string) => void; onAddMany: () => void
   onAmount: (id: string, p: Portion) => void; onPortion: (id: string, p: Portion) => void
+  onFreq: (id: string, f: SuppFreq) => void
   /** „Neu bei Kolbi“-Kreis antippen → Storys mit diesen (ungesehenen) Neuheiten */
   onNews?: (items: LabNews[], start?: number) => void
   /** Einstellungen öffnen (Starttag: „Passt 7:00 Aufstehen? Ändern“ – das Onboarding fragt die Zeiten nicht mehr ab) */
@@ -278,7 +279,7 @@ export function TodayView({ s, wins, today, now, pending, checkinLocked, tips, r
       {showTip && <KolbiSays msg={top} more={tips.length - 1} onAction={onAction} onMore={() => goTab("kolbi")} tail={!showRecap} />}
 
       {/* ── Feste Bereiche: Stack · Kosten & Coach · Zustand · Weg · Community ── */}
-      <div id="lab-today-stack" style={{ scrollMarginTop: 16 }}><StackSection s={s} today={today} onTake={onTake} onSkip={onSkip} onExtra={onExtra} onExtraRemove={onExtraRemove} onOpenSupp={onOpenSupp} onVorrat={onVorrat} onAddMany={onAddMany} goTab={goTab} onAmount={onAmount} onPortion={onPortion} /></div>
+      <div id="lab-today-stack" style={{ scrollMarginTop: 16 }}><StackSection s={s} today={today} onTake={onTake} onSkip={onSkip} onExtra={onExtra} onExtraRemove={onExtraRemove} onOpenSupp={onOpenSupp} onVorrat={onVorrat} onAddMany={onAddMany} goTab={goTab} onAmount={onAmount} onPortion={onPortion} onFreq={onFreq} /></div>
       <CostSection s={s} today={today} onVorrat={onVorrat} onAction={onAction} />
       <StateSection s={s} today={today} onOpen={() => goTab("reise")} />
 

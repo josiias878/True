@@ -785,6 +785,10 @@ export function pairRule(a: string, b: string) {
 
 /** test = wird einzeln getestet · konstant = läuft durchgehend weiter · pause = vorerst weglassen */
 export type SuppMode = "test" | "konstant" | "pause"
+/** Einnahme-Rhythmus: taeglich (Standard, Feld fehlt) · bedarf = unregelmäßig, nur wenn du es einträgst. */
+export type SuppFreq = "taeglich" | "bedarf"
+/** Unregelmäßig/nach Bedarf? Dann kein Tagesplan: keine Erinnerung, kein „fehlt“, kein Vorrat-Abzug ohne Eintrag. */
+export const asNeeded = (x: Pick<MySupp, "freq"> | undefined) => x?.freq === "bedarf"
 
 export interface MySupp {
   id: string          // libId oder "custom-xyz"
@@ -804,6 +808,8 @@ export interface MySupp {
   stock?: Stock
   /** Standard-Menge pro Einnahme (z. B. 1 Kapsel, 2000 IE) – wird beim Abhaken mitgespeichert (lib/labDose.ts). */
   portion?: Portion
+  /** Einnahme-Rhythmus (fehlt = täglich). „bedarf“ zählt nur, was du einträgst – außer während des eigenen Tests. */
+  freq?: SuppFreq
 }
 
 /** Einheit einer Einnahme-Menge: stk = Kapsel/Tablette/Stück. */
@@ -1036,6 +1042,13 @@ export function hydrate(raw: unknown): LabState {
     }
     delete (s as Partial<typeof p>).taken
   }
+  // Eigene Mittel gehören zu „Mein Stack“: früher als wartende Testkandidaten angelegte (nie eingeplant, kein Urteil,
+  // nicht bewusst „zum Testen behalten“) einmalig auf „läuft durchgehend“. Testen geht weiter über „Doch einzeln testen“.
+  if (!s.migrated?.includes("own-stack")) {
+    const planned = new Set([...s.phases.map(q => q.suppId), ...(s.queue ?? [])].filter(Boolean))
+    s.supps = s.supps.map(x => !x.lib && x.mode === "test" && !x.keepTesting && !s.verdicts[x.id] && !planned.has(x.id) ? { ...x, mode: "konstant" } : x)
+    s.migrated = [...(s.migrated ?? []), "own-stack"]
+  }
   return s
 }
 
@@ -1208,7 +1221,8 @@ export function makeSupp(lib: LibSupp | null, name: string, existing: MySupp[], 
   // Store-Modus: die übliche Bibliotheks-Menge NICHT als „deine Dosis“ vorbelegen (sonst stünde sie in Erinnerungen
   // und Tagesrunde wie eine persönliche Empfehlung). Eigene Angaben (dose, z. B. aus „Liste einfügen“) bleiben.
   if (lib) return { id: lib.id, name: lib.name, emoji: lib.emoji, dose: dose || (STORE_MODE ? "" : lib.dose), lib: lib.id, color, mode: defaultMode(lib) }
-  return { id: `custom-${Date.now().toString(36)}-${existing.length}`, name, emoji: "💊", dose, color, mode: "test" }
+  // Eigene Mittel gehören zu „Mein Stack“ (laufen durchgehend); testen geht jederzeit über „Doch einzeln testen“.
+  return { id: `custom-${Date.now().toString(36)}-${existing.length}`, name, emoji: "💊", dose, color, mode: "konstant" }
 }
 
 /**
@@ -1318,11 +1332,12 @@ export function intakeOn(s: LabState, date: string): string[] {
   if (!first || date < first.start) return []
   // Wöchentliche (z. B. GLP-1) nur am Wochentag des Experiment-Starts
   const sameWeekday = diffDays(first.start, date) % 7 === 0
-  const ids = s.supps.filter(x => x.mode === "konstant" && isHere(x) && (!libOf(x)?.weekly || sameWeekday)).map(x => x.id)
+  // „Nach Bedarf“ steht nie fest im Plan – außer im eigenen Test (unten), da zählt jeder Tag.
+  const ids = s.supps.filter(x => x.mode === "konstant" && !asNeeded(x) && isHere(x) && (!libOf(x)?.weekly || sameWeekday)).map(x => x.id)
   const w = phaseAt(s, date)
   if (w?.kind === "test" && w.suppId && !ids.includes(w.suppId)) ids.unshift(w.suppId)
   if (w?.kind === "stack" || w?.kind === "check") {
-    const kept = s.supps.filter(x => s.verdicts[x.id]?.decision === "keep" && isHere(x) && !ids.includes(x.id) && !(w.kind === "check" && x.id === w.suppId))
+    const kept = s.supps.filter(x => s.verdicts[x.id]?.decision === "keep" && !asNeeded(x) && isHere(x) && !ids.includes(x.id) && !(w.kind === "check" && x.id === w.suppId))
       .filter(x => !libOf(x)?.weekly || sameWeekday)
     ids.unshift(...kept.map(x => x.id))
   }
@@ -1751,7 +1766,7 @@ export function suppStatus(s: LabState, id: string, today = todayIso()): { key: 
   if (v === "keep") return { key: "kept", label: t("Behalten"), emoji: "💚" }
   if (v === "maybe") return { key: "maybe", label: t("Vielleicht"), emoji: "🤔" }
   if (v === "drop") return { key: "dropped", label: t("Raus"), emoji: "✂️" }
-  if (x?.mode === "konstant") return { key: "constant", label: t("Läuft durchgehend"), emoji: "📌" }
+  if (x?.mode === "konstant") return asNeeded(x) ? { key: "constant", label: t("Nach Bedarf"), emoji: "🔁" } : { key: "constant", label: t("Läuft durchgehend"), emoji: "📌" }
   if (x?.mode === "pause") return { key: "paused", label: t("Pausiert"), emoji: "⏸️" }
   if (phaseWindows(s).some(p => p.kind === "test" && p.suppId === id && p.end < today)) return { key: "verdict", label: t("Urteil fällig"), emoji: "⚖️" }
   return { key: "waiting", label: t("Wartet auf Test"), emoji: "⏳" }

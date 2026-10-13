@@ -5,8 +5,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   FACES, LIB_BY_ID, LIB_SIDES, SIDE_BY_ID, addDays, checkinsIn, daySum, diffDays, extraKey, extrasOn, fmtDate, intakeOn, isHere, libOf,
-  meanScore, phaseWindows, skippedOn, streak, suppColor,
-  type LabState, type LibSupp, type MySupp, type Portion, type TakenAmount,
+  meanScore, phaseWindows, skippedOn, streak, suppColor, asNeeded,
+  type LabState, type LibSupp, type MySupp, type Portion, type SuppFreq, type TakenAmount,
 } from "@/lib/supplementLab"
 import { caffeineToday, recentExtras, type ExtraInput } from "@/lib/labDay"
 import { costSummary, fmtEuro, monthlyCost } from "@/lib/labStock"
@@ -189,10 +189,56 @@ function SwipeRow({ action, tone, onAction, onSwipe, hint, divider, children }: 
   )
 }
 
+/** Zeile ohne Wisch-Aktion (z. B. „nach Bedarf“: da gibt es kein „Heute nicht“) – gleiche Maße wie SwipeRow. */
+function PlainRow({ divider, children }: { divider?: boolean; children: React.ReactNode }) {
+  return (
+    <div style={{ position: "relative", margin: "0 -14px", padding: "0 14px" }}>
+      {divider && <div aria-hidden style={{ position: "absolute", top: 0, left: 14, right: 14, height: 1, background: "var(--border)" }} />}
+      {children}
+    </div>
+  )
+}
+
+/** Einnahme-Rhythmus wählen: täglich (Standard) oder unregelmäßig/nach Bedarf. Für Heute-Sheet, Supplement-Sheet und Hinzufügen. */
+export function FreqPick({ x, onPick, testing }: {
+  x: Pick<MySupp, "freq">; onPick: (f: SuppFreq) => void
+  /** Steht ein Test dieses Mittels an oder läuft er? Dann Hinweis: für einen fairen Test regelmäßig nehmen. */
+  testing?: boolean
+}) {
+  const need = asNeeded(x)
+  const opt = (f: SuppFreq, label: string) => {
+    const on = (f === "bedarf") === need
+    return (
+      <button key={f} className="lab-press" aria-pressed={on} onClick={() => { haptic(8); if (!on) onPick(f) }} style={{
+        flex: 1, minWidth: 0, minHeight: 44, padding: "8px 10px", borderRadius: 14, fontWeight: 800, fontSize: "0.82rem", lineHeight: 1.25, color: "var(--text)",
+        border: on ? "2px solid var(--accent)" : "1px solid var(--border)", background: on ? "var(--accent-dim)" : "var(--surface)",
+      }}>{label}</button>
+    )
+  }
+  return (
+    <div>
+      <div role="group" aria-label={t("Wie nimmst du es?")} style={{ display: "flex", gap: 8 }}>
+        {opt("taeglich", t("📅 Täglich"))}{opt("bedarf", t("🔁 Nach Bedarf"))}
+      </div>
+      {!(need && testing) && <div style={{ ...dim, fontSize: "0.74rem", marginTop: 6 }}>
+        {need ? t("Unregelmäßig: keine Tages-Erinnerung, zählt nie als vergessen. Tipp „Heute genommen“, wenn du es nimmst.")
+          : t("Steht jeden Tag in deinem Plan.")}
+      </div>}
+      {need && testing && (
+        <div role="note" style={{ fontSize: "0.76rem", lineHeight: 1.4, fontWeight: 700, marginTop: 6, padding: "8px 10px", borderRadius: 12, background: "var(--surface-2)" }}>
+          🔬 {t("Im Test zählt jeder Tag: Für einen fairen Vergleich nimm es in der Testphase bitte regelmäßig – danach wieder nach Bedarf.")}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── 1 · Mein Stack heute ─────────────────────────────────────────────────────
 
-export function StackSection({ s, today, onTake, onSkip, onExtra, onExtraRemove, onOpenSupp, onVorrat, onAddMany, goTab, onAmount, onPortion }: {
+export function StackSection({ s, today, onTake, onSkip, onExtra, onExtraRemove, onOpenSupp, onVorrat, onAddMany, goTab, onAmount, onPortion, onFreq }: {
   s: LabState; today: string
+  /** Einnahme-Rhythmus ändern (täglich / nach Bedarf) */
+  onFreq: (id: string, f: SuppFreq) => void
   onTake: (id: string) => void
   /** Menge heute ändern (½ · 1× · 2× · +1) bzw. Standard-Menge setzen (setzt die heutige mit, falls abgehakt) */
   onAmount: (id: string, p: Portion) => void; onPortion: (id: string, p: Portion) => void
@@ -228,9 +274,12 @@ export function StackSection({ s, today, onTake, onSkip, onExtra, onExtraRemove,
   const kept = (x: MySupp) => s.verdicts[x.id]?.decision === "keep"
   const current = (x: MySupp) => s.verdicts[x.id]?.decision !== "drop" && x.mode !== "pause" && (x.mode === "konstant" || kept(x))
   const phaseSupp = w?.suppId ? s.supps.find(x => x.id === w.suppId)?.name ?? "" : ""
+  // „Nach Bedarf“ steht nicht im Tagesplan, gehört aber zu deinem Stack: Durchgehende auch in Reset/Test/Auswasch zeigen
+  // (wie tägliche Durchgehende, die laufen dort ja auch weiter) – zum schnellen „Heute genommen“.
   const rows = [
     ...intake.map(id => s.supps.find(x => x.id === id)).filter((x): x is MySupp => !!x),
-    ...(isolated ? [] : s.supps.filter(x => !intake.includes(x.id) && current(x) && isHere(x) && !libOf(x)?.weekly && !(w?.kind === "check" && w.suppId === x.id))),
+    ...s.supps.filter(x => !intake.includes(x.id) && current(x) && isHere(x) && !libOf(x)?.weekly && !(w?.kind === "check" && w.suppId === x.id)
+      && (!isolated || (x.mode === "konstant" && asNeeded(x)))),
   ]
   const paused: { x: MySupp; why: string }[] = []
   for (const x of s.supps) {
@@ -283,6 +332,9 @@ export function StackSection({ s, today, onTake, onSkip, onExtra, onExtraRemove,
   const open = info ? s.supps.find(x => x.id === info) : undefined
   /** Läuft gerade der Test genau dieses Mittels? Dann zählt jeder Tag. */
   const inTest = (id: string) => w?.kind === "test" && w.suppId === id
+  /** Unregelmäßig und gerade nicht im eigenen Test → kein Plan, kein „Heute nicht“, nur „Heute genommen“. */
+  const free = (x: MySupp) => asNeeded(x) && !inTest(x.id)
+  const firstSwipe = rows.findIndex(x => !free(x))
   // Vorher abgehakt? Haken + Uhrzeit merken, damit „Rückgängig“ ihn wiederherstellt.
   const prevTaken = useRef<Record<string, { at?: string; amt?: TakenAmount }>>({})
   const skip = (x: MySupp) => {
@@ -303,7 +355,7 @@ export function StackSection({ s, today, onTake, onSkip, onExtra, onExtraRemove,
             : t("Heute steht nichts auf dem Plan.")}
         </div>
       )}
-      {coach && rows.length > 0 && (
+      {coach && firstSwipe >= 0 && (
         <div role="note" style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 6px", padding: "8px 8px 8px 10px", borderRadius: 16, background: "var(--surface-2)" }}>
           <span aria-hidden style={{ flexShrink: 0 }}><Mascot mood="happy" size={28} /></span>
           <span style={{ flex: 1, minWidth: 0, fontSize: "0.82rem", fontWeight: 700, lineHeight: 1.35 }}>
@@ -315,7 +367,8 @@ export function StackSection({ s, today, onTake, onSkip, onExtra, onExtraRemove,
       <div style={{ display: "flex", flexDirection: "column" }}>
         {rows.map((x, i) => {
           const on = took.includes(x.id)
-          const off = !on && skipList.includes(x.id)
+          const need = free(x)
+          const off = !on && !need && skipList.includes(x.id)
           const at = s.tookAt[today]?.[x.id]
           const amt = on ? amountOn(s, today, x) : null
           const icon = (
@@ -340,9 +393,7 @@ export function StackSection({ s, today, onTake, onSkip, onExtra, onExtraRemove,
               </div>
             </SwipeRow>
           )
-          return (
-            <React.Fragment key={x.id}>
-            <SwipeRow divider={i > 0} action={t("Heute nicht")} tone="skip" onAction={() => skip(x)} onSwipe={coachDone} hint={coach && i === 0}>
+          const line = (
             <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0" }}>
               <button className="lab-press" onClick={() => { haptic(); seen(); setUndo(null); setInfo(x.id) }} aria-label={t("{name}: wofür, Timing, Nebenwirkungen", { name: x.name })} style={{
                 flex: 1, minWidth: 0, minHeight: 52, display: "flex", alignItems: "center", gap: 10, padding: "4px 0", border: "none", background: "none", color: "var(--text)", textAlign: "left",
@@ -351,6 +402,7 @@ export function StackSection({ s, today, onTake, onSkip, onExtra, onExtraRemove,
                 <span style={{ minWidth: 0, flex: 1 }}>
                   <span style={{ ...ellipsis, fontWeight: 800, fontSize: "0.94rem" }}>{x.name}</span>
                   {amt && <span style={{ ...ellipsis, fontSize: "0.76rem", lineHeight: 1.35, fontWeight: 800, color: "var(--accent-ink)" }}>✓ {portionLabel(amt)}</span>}
+                  {asNeeded(x) && <span style={{ display: "block", fontSize: "0.76rem", lineHeight: 1.35, fontWeight: 800, color: need ? "var(--text-dim)" : "var(--accent-ink)" }}>{need ? t("🔁 Nach Bedarf") : t("🔬 Im Test: bitte regelmäßig nehmen")}</span>}
                   <span style={{ ...(libOf(x)?.claim ? { display: "block" } : { display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }), fontSize: "0.76rem", lineHeight: 1.35, color: "var(--text-dim)", fontWeight: 600 }}>{purposeShort(libOf(x))}</span>
                 </span>
               </button>
@@ -358,13 +410,23 @@ export function StackSection({ s, today, onTake, onSkip, onExtra, onExtraRemove,
                 <button className="lab-press" aria-pressed onClick={() => { haptic(8); if (amtFor === x.id) setAmtFor(null); onTake(x.id) }} aria-label={t("{name} genommen – rückgängig", { name: x.name })} style={{
                   ...pill, minWidth: 76, padding: "0 12px", border: "none", background: "var(--accent-dim)", color: "var(--accent-ink)", fontVariantNumeric: "tabular-nums",
                 }}>✓{at ? ` ${at}` : ""}</button>
+              ) : need ? (
+                <button className="lab-press" aria-pressed={false} onClick={() => { haptic(12); seen(); setAmtFor(x.id); onTake(x.id) }} aria-label={t("{name}: heute genommen", { name: x.name })} style={{
+                  ...pill, minWidth: 76, maxWidth: 124, padding: "0 12px", border: "1.5px dashed var(--border)", background: "var(--surface)", color: "var(--text)",
+                  whiteSpace: "normal", lineHeight: 1.15, fontSize: "0.8rem",
+                }}>{t("Heute genommen")}</button>
               ) : (
                 <button className="lab-press" aria-pressed={false} onClick={() => { haptic(12); seen(); setAmtFor(x.id); onTake(x.id) }} style={{
                   ...pill, minWidth: 76, padding: "0 14px", border: "1.5px solid var(--border)", background: "var(--surface)", color: "var(--text)",
                 }}>{t("Genommen")}</button>
               )}
             </div>
-            </SwipeRow>
+          )
+          return (
+            <React.Fragment key={x.id}>
+            {need
+              ? <PlainRow divider={i > 0}>{line}</PlainRow>
+              : <SwipeRow divider={i > 0} action={t("Heute nicht")} tone="skip" onAction={() => skip(x)} onSwipe={coachDone} hint={coach && i === firstSwipe}>{line}</SwipeRow>}
             {on && amtFor === x.id && (
               <div className="lab-rise" style={{ padding: "2px 0 10px 48px" }}>
                 <AmountChips x={x} amt={s.tookAmt?.[today]?.[x.id] ?? null} onAmount={p => onAmount(x.id, p)} onPortion={p => onPortion(x.id, p)} />
@@ -420,8 +482,8 @@ export function StackSection({ s, today, onTake, onSkip, onExtra, onExtraRemove,
         <button className="lab-press" onClick={() => { seen(); onAddMany() }} style={{ ...linkBtn, marginTop: 4 }}>{t("＋ Mehrere auf einmal eintragen")}</button>
       </div>
 
-      {open && <SuppInfoSheet s={s} x={open} today={today} onAmount={p => onAmount(open.id, p)} onPortion={p => onPortion(open.id, p)} onClose={() => setInfo(null)} onVorrat={() => { setInfo(null); onVorrat() }} onOpen={() => { setInfo(null); onOpenSupp(open.id) }}
-        skip={rowIds.has(open.id) ? { off: skipList.includes(open.id), test: inTest(open.id), set: on => { setInfo(null); if (on) { haptic(12); skip(open) } else unskip(open) } } : undefined} />}
+      {open && <SuppInfoSheet s={s} x={open} today={today} testing={inTest(open.id)} onFreq={f => onFreq(open.id, f)} onAmount={p => onAmount(open.id, p)} onPortion={p => onPortion(open.id, p)} onClose={() => setInfo(null)} onVorrat={() => { setInfo(null); onVorrat() }} onOpen={() => { setInfo(null); onOpenSupp(open.id) }}
+        skip={rowIds.has(open.id) && !free(open) ? { off: skipList.includes(open.id), test: inTest(open.id), set: on => { setInfo(null); if (on) { haptic(12); skip(open) } else unskip(open) } } : undefined} />}
 
       {undo && (
         <div style={{ position: "fixed", left: 0, right: 0, bottom: "calc(96px + env(safe-area-inset-bottom))", zIndex: 400, display: "flex", justifyContent: "center", padding: "0 16px", pointerEvents: "none" }}>
@@ -452,8 +514,8 @@ function sameText(claim: string | undefined, effect: string) {
 }
 
 /** Detail-Ebene je Supplement: wofür (lang), Timing, Vorsicht, mögliche Nebenwirkungen, Kosten. */
-function SuppInfoSheet({ s, x, today, onAmount, onPortion, onClose, onVorrat, onOpen, skip }: {
-  s: LabState; x: MySupp; today: string; onAmount: (p: Portion) => void; onPortion: (p: Portion) => void
+function SuppInfoSheet({ s, x, today, testing, onFreq, onAmount, onPortion, onClose, onVorrat, onOpen, skip }: {
+  s: LabState; x: MySupp; today: string; testing: boolean; onFreq: (f: SuppFreq) => void; onAmount: (p: Portion) => void; onPortion: (p: Portion) => void
   onClose: () => void; onVorrat: () => void; onOpen: () => void
   /** Steht heute im Stack: „Heute nicht genommen“ (off = schon ausgelassen, test = läuft gerade sein Test) */
   skip?: { off: boolean; test: boolean; set: (on: boolean) => void }
@@ -472,6 +534,10 @@ function SuppInfoSheet({ s, x, today, onAmount, onPortion, onClose, onVorrat, on
       </> : <>
         {head(t("MENGE PRO EINNAHME"))}
         <PortionPick x={x} value={defaultPortion(x)} onPick={onPortion} label={t("Wird beim Abhaken mitgespeichert – optional.")} />
+      </>}
+      {!lib?.weekly && <>
+        {head(t("WIE NIMMST DU ES?"))}
+        <FreqPick x={x} onPick={onFreq} testing={testing} />
       </>}
       {head(t("WOFÜR"))}
       {lib ? <>
