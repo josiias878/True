@@ -21,6 +21,8 @@ Feedback aus `lab_feedback` einarbeiten; Store-Build vorbereiten, sobald der App
 
 ## Entscheidungen (vom Inhaber)
 
+- ⛔ 28. Okt 2026 (Inhaber): **Projekt aufgegeben und deaktiviert** („hilft mir praktisch nicht weiter“). Bewusst *deaktiviert*, nicht gelöscht: Vercel-Projekte supplement-lab + kolbi pausiert (503 DEPLOYMENT_PAUSED), Supabase-Projekt mkdfohmshuuiroeruyyz pausiert, Wochen-Routine gelöscht. Code bleibt in diesem Repo. Reaktivieren: Vercel unpause_project, Supabase restore_project.
+
 - ⏸️ 17. Okt 2026 (Inhaber): **Projekt pausiert** – ein anderes Projekt hat Vorrang bei der Nutzung. Wochen-Sprint-Routine deaktiviert (trig_01VreFq5pnaus5jWRsyzyPD3, jederzeit wieder einschaltbar). App + Website bleiben unverändert online. Wiedereinstieg: Stand im Log unten (letzter Eintrag), offene Inhaber-Punkte: Search Console, Reddit-Konto, Wochentest-Fazit „Kolbi führt dich“.
 
 - ✅ 10. Okt 2026 (Inhaber): **Dauerfreigabe technische Schritte.** SQL/Migrationen, Server-Funktionen und Deploys (App, Website) innerhalb einer freigegebenen Phase macht Claude ohne Einzel-Bestätigung. Weiterhin mit Freigabe: neue Phasen, Geld, Higgsfield-Credits, Videos, Rechtsprüfung.
