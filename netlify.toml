@@ -1,0 +1,7 @@
+[build]
+  base = "klar"
+  publish = "."
+  command = "echo Klar static site ready"
+
+[build.environment]
+  NETLIFY_NEXT_PLUGIN_SKIP = "true"
