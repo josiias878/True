@@ -58,7 +58,7 @@ function contractPlanPayment(id){
  $('#contractPaymentForm').onsubmit=e=>{e.preventDefault();const selected=$('#contractPaymentLink').value;if(linked&&selected!==linked.id){notify('Diese Fälligkeit ist bereits verknüpft. Bitte die zugehörige Zahlung auswählen.');return;}
   const payment={id:selected||uid(),name:def[2]+(c.provider?' · '+c.provider:''),amount:c.amount,date:c.due,category:def[1]==='home'?'Wohnen':'Verträge',paid:false,contractId:id,monthly:false};
   if(selected)state.payments=state.payments.map(p=>p.id===selected?payment:p);else state.payments.push(payment);
-  state.reviewed=false;save('Vertragszahlung eingeplant: '+def[2]);close();refresh();notify('Offene Zahlung eingeplant. Dein Kontostand wurde nicht verändert.');
+  c.openingTreatment='open';state.reviewed=false;save('Vertragszahlung eingeplant: '+def[2]);close();refresh();notify('Offene Zahlung eingeplant. Dein Kontostand wurde nicht verändert.');
  };
 }
 function contractAmounts(text){return [...new Set((String(text).match(/\b\d{1,3}(?:\.\d{3})*,\d{2}\s*(?:€|EUR)|\b\d+,\d{2}\s*(?:€|EUR)/gi)||[]).map(s=>Math.round(Number(s.replace(/\s*(€|EUR)/i,'').replace(/\./g,'').replace(',','.'))*100)))].filter(n=>n>0&&n<1e9).slice(0,12);}

@@ -1,7 +1,7 @@
 # Grundlagen und Vertragsübersicht
 
-Nach den bisherigen drei Finanzfragen folgt eine durchgehbare Einrichtung mit
-fünf Bereichen: Wohnen, Energie, Telefon/Internet, Versicherungen und Mobilität.
+Vor den Fragen zu Kontostand und Gehalt führt die Einrichtung durch
+fünf Bereiche: Wohnen, Energie, Telefon/Internet, Versicherungen und Mobilität.
 Bestehende Nutzer starten über die Übersicht oder Verträge → Einrichtung
 durchgehen. Überspringen und später fortsetzen sind möglich; ein durchgesehener
 Bereich bedeutet nicht, dass alle Vertragsangaben bekannt sind.

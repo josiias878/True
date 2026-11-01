@@ -39,6 +39,8 @@ function reminder(plan,day){
   const payments=(plan.payments||[]).filter(p=>!p.paid&&valid(p.date)&&p.date<=tomorrow);
   const transactions=new Map((plan.transactions||[]).map(t=>[t.id,t]));
   const debts=(plan.debts||[]).filter(d=>valid(d.due)&&d.due<=day&&d.amount>(d.settlements||[]).reduce((n,id)=>n+(transactions.get(id)?.amount||0),0));
+  const salaryDate=plan.profile.salaryReminderDate||plan.profile.payday;
+  if(valid(salaryDate)&&salaryDate<=day&&!(plan.transactions||[]).some(t=>t.salaryFor===plan.profile.payday))return {title:'Klar · Gehalt prüfen',body:'Ist dein Gehalt angekommen? Bestätige den tatsächlichen Betrag in Klar und prüfe deine fälligen Zahlungen.',tag:'klar-daily-'+day,url:'/?view=salary'};
   if(!payments.length&&!debts.length)return null;
   return {title:'Klar · Dein Tagescheck',body:'Es gibt offene Zahlungen oder Rückzahlungen zu prüfen. Öffne deinen Geldkalender.',tag:'klar-daily-'+day,url:'/?view=calendar'};
 }

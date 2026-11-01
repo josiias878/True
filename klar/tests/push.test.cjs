@@ -29,6 +29,14 @@ test('subscription cannot target arbitrary or local servers',()=>{
   for(const endpoint of ['http://web.push.apple.com/a','https://127.0.0.1/a','https://evil.push.apple.com.evil.test/a','https://web.push.apple.com:444/a','https://user@web.push.apple.com/a'])assert.throws(()=>p.subscription({...sub,endpoint}));
   assert.throws(()=>p.subscription({...sub,keys:{auth:'x',p256dh:'x'}}));
 });
+test('salary question starts on payday, respects postponing and never presumes receipt',()=>{
+ const plan={profile:{payday:'2026-11-08'},transactions:[]};
+ assert.equal(p.reminder(plan,'2026-11-07'),null);
+ assert.equal(p.reminder(plan,'2026-11-08').url,'/?view=salary');
+ plan.profile.salaryReminderDate='2026-11-10';assert.equal(p.reminder(plan,'2026-11-09'),null);
+ assert.ok(p.reminder(plan,'2026-11-10'));
+ plan.transactions=[{salaryFor:'2026-11-08'}];assert.equal(p.reminder(plan,'2026-11-10'),null);
+});
 test('API authenticates, enforces origin and requires an uploaded plan',async()=>{
   for(const key of ['KLAR_SUPABASE_URL','KLAR_SUPABASE_SERVICE_KEY','KLAR_VAPID_PUBLIC_KEY','KLAR_VAPID_PRIVATE_KEY','KLAR_VAPID_SUBJECT'])process.env[key]='test';
   const event={httpMethod:'POST',headers:{origin:p.SITE},body:JSON.stringify({action:'subscribe',subscription:sub})};
