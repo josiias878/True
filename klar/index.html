@@ -190,4 +190,4 @@ cloudDialog=function(message=''){if(cloudBusy&&cloudTaskGeneration!==cloudGenera
 function updateCloudIndicator(){if(cloudSession)$('#privacy').textContent='Onlinekonto angemeldet · Laden und Hochladen erfolgen nur auf deine Bestätigung. Kein Bankzugriff. Claude und Push-Mitteilungen sind noch nicht verbunden.';else $('#privacy').textContent='Lokale Version · Keine Bankverbindung · Ohne Anmeldung werden Finanzdaten nicht an einen Server gesendet. Claude und Push-Mitteilungen sind noch nicht verbunden.'}
 const beforeCloudBind=bind;bind=function(){beforeCloudBind();updateCloudIndicator()};
 updateCloudIndicator();
-</script><script src="/install.js"></script></body></html>
+</script><script src="/install.js"></script><script src="/groceries.js"></script></body></html>
