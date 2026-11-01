@@ -1,0 +1,28 @@
+const {chromium}=require('playwright');const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+(async()=>{const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});try{
+ const page=await browser.newPage({viewport:{width:1440,height:1100}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.route('https://klar.test/**',r=>{const name=new URL(r.request().url()).pathname.slice(1)||'index.html';return r.fulfill({body:fs.readFileSync(path.join(__dirname,'..',name)),contentType:name.endsWith('.js')?'text/javascript':'text/html'});});
+ await page.goto('https://klar.test');await page.evaluate(()=>setup());await page.locator('#balance').fill('1800');await page.locator('#payday').fill('2027-01-20');await page.locator('#setupForm button').last().click();await page.locator('#setupForm button').last().click();await page.locator('#persist').check();await page.locator('#setupForm button').last().click();
+ await page.locator('[data-contract-edit="rent"]').waitFor();assert.equal(await page.evaluate(()=>tab),'contracts');
+ await page.locator('[data-contract-edit="rent"]').click();await page.locator('#contractProvider').fill('Beispiel Hausverwaltung');await page.locator('#contractPortal').fill('Eigene Unterlagen');await page.locator('#contractAmount').fill('800');
+ await page.locator('summary').filter({hasText:'Warmmiete aufteilen'}).click();await page.locator('#contractCold').fill('600');await page.locator('#contractExtras').fill('300');await page.locator('#contractForm button').click();assert.ok(await page.locator('#contractError').textContent());
+ await page.locator('#contractExtras').fill('200');await page.locator('#contractDue').fill('2026-12-01');await page.locator('#contractForm button').click();
+ assert.equal(await page.evaluate(()=>contracts().reduce((n,c)=>n+contractMonthly(c),0)),80000);assert.equal(await page.evaluate(()=>state.payments.length),0);
+ await page.locator('[data-contract-pay]').click();await page.locator('#contractPaymentForm input[type=checkbox]').check();await page.locator('#contractPaymentForm button').click();
+ await page.locator('[data-contract-pay]').click();await page.locator('#contractPaymentForm input[type=checkbox]').check();await page.locator('#contractPaymentForm button').click();
+ assert.equal(await page.evaluate(()=>state.payments.length),1);assert.equal(await page.evaluate(()=>currentBalance()),180000);
+ await page.locator('#contractNext').click();await page.locator('[data-contract-edit="electricity"]').click();
+ await page.evaluate(()=>{contractOCR=true;reviewOCR('Jahresverbrauch 2100 kWh\nAbschlag 89,50 EUR\nJahreskosten 1.074,00 EUR');});
+ await page.locator('summary').filter({hasText:'Screenshot als Ausfüllhilfe'}).click();await page.locator('[data-contract-amount="8950"]').click();assert.equal(await page.locator('#contractAmount').inputValue(),'89.5');
+ await page.locator('#contractProvider').fill('Beispiel Energie');await page.locator('#contractPortal').fill('CHECK24');await page.locator('#contractForm button').click();
+ await page.evaluate(()=>{state.contractSetupStep=3;refresh();});await page.locator('[data-contract-edit="legal"]').click();assert.equal(await page.locator('#contractStatus').inputValue(),'wanted');await page.locator('#contractForm button').click();
+ await page.locator('#contractNext').click();await page.locator('[data-contract-edit="adac"]').click();assert.equal(await page.locator('#contractStatus').inputValue(),'wanted');await page.locator('#contractForm button').click();await page.locator('#contractNext').click();
+ await page.locator('#contractAdd').click();await page.locator('#contractTitle').fill('Beispiel Fitnessstudio');await page.locator('#contractGroup').selectOption('home');await page.locator('#contractNewForm button').click();await page.locator('#contractAmount').fill('240');await page.locator('#contractInterval').selectOption('12');await page.locator('#contractForm button').click();
+ assert.equal(await page.evaluate(()=>contracts().reduce((n,c)=>n+contractMonthly(c),0)),90950);
+ assert.equal(await page.evaluate(()=>{validateBackup(JSON.parse(JSON.stringify(state)));return true;}),true);
+ await page.screenshot({path:'/workspace/klar-vertraege-desktop.png',fullPage:true});
+ await page.reload();await page.locator('nav [data-tab="contracts"]').click();assert.equal(await page.evaluate(()=>contracts().length),5);
+ await page.setViewportSize({width:390,height:844});await page.locator('[data-contract-filter="insurance"]').click();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ await page.locator('.contracts-view').screenshot({path:'/workspace/klar-vertraege-mobil.png'});
+ assert.deepEqual(errors,[]);console.log('PASS new-user onboarding, rent breakdown, explicit payment transfer without duplicates, OCR amount review, wishes excluded, annual normalization, custom contract, backup validation and persisted mobile view');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1)});
