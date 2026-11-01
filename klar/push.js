@@ -6,7 +6,7 @@ function pushNeedsInstall(){return (/iPad|iPhone|iPod/.test(navigator.userAgent)
 async function pushApi(method,body){
   const headers={'Content-Type':'application/json'};
   if(method!=='GET'){
-    if(!cloudSession||Date.now()>=cloudSession.expiresAt)throw Error('Bitte zuerst in der Online-Verbindung anmelden.');
+    await ensureCloudSession();
     headers.Authorization='Bearer '+cloudSession.token;
   }
   const r=await fetch('/.netlify/functions/klar-push',{method,headers,body:body?JSON.stringify(body):undefined,credentials:'omit',signal:AbortSignal.timeout(15000)});
