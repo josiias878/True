@@ -5,3 +5,10 @@
 
 [build.environment]
   NETLIFY_NEXT_PLUGIN_SKIP = "true"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[functions."klar-reminders"]
+  schedule = "*/15 7-8 * * *"

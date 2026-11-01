@@ -1,0 +1,6 @@
+{
+  "name": "klar-static-app",
+  "private": true,
+  "scripts": { "test": "node --test tests/*.test.cjs" },
+  "dependencies": { "web-push": "3.6.7" }
+}
