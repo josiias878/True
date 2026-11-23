@@ -60,6 +60,21 @@ button.x{border:0;background:none;color:var(--muted);padding:4px 8px;font-size:1
 .amt{border:0;background:none;padding:4px 2px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600;font-size:15px;white-space:nowrap;border-radius:8px}
 .amt:hover{background:var(--surface-2)}
 .amt small{display:block;font-size:12px;font-weight:600}
+.ico{font-size:20px;width:26px;text-align:center;flex:none}
+.it button.n{border:0;background:none;padding:2px 0;text-align:left;font-size:16px;color:var(--text);flex:1;min-width:0}
+.it .n small.save,.amt.save,.pos,b.pos{color:var(--good)}
+.savepill{display:inline-block;margin-top:10px;background:var(--good-bg);color:var(--good);border-radius:999px;padding:5px 12px;font-size:14px;font-weight:600}
+.calc{margin-top:12px;padding:10px 12px 4px;background:var(--surface-2);border-radius:14px}
+.calc .line{border-top:0;padding:5px 0}
+.calc .line.now{border-top:2px solid var(--line);margin-top:4px;padding-top:9px;font-size:18px;font-weight:750}
+.adds{grid-template-columns:1fr 1fr !important}
+.savebtn{background:var(--good-bg);color:var(--good);border-color:transparent}
+.sbar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom));z-index:20}
+.sbar > div{max-width:600px;margin:0 auto;display:flex;justify-content:space-between;gap:10px}
+.sbar span{display:flex;flex-direction:column;font-size:12px;color:var(--text-2)}
+.sbar b{font-size:17px;color:var(--text);font-variant-numeric:tabular-nums}
+.sbar b.good{color:var(--good)} .sbar b.warn{color:var(--warn)} .sbar b.bad{color:var(--bad)} .sbar b.pos{color:var(--good)}
+.toast{bottom:90px !important}
 .up{color:var(--bad)} .down{color:var(--good)} .muted{color:var(--muted)} .t2{color:var(--text-2)}
 .adds{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .adds button{font-size:13px;padding:10px 6px;font-weight:600}
@@ -295,8 +310,9 @@ function currentPlan(m){
 }
 const rec = m => S.months[m] || {};
 function ensureRec(m){
-  if (!S.months[m]) S.months[m] = { incomeIst:{}, expenseIst:{}, extraIncome:[], oneOffs:[], payments:[], note:'', closed:false, opening:null };
-  return S.months[m];
+  if (!S.months[m]) S.months[m] = { incomeIst:{}, expenseIst:{}, extraIncome:[], oneOffs:[], payments:[], savings:[], dates:{}, note:'', closed:false, opening:null };
+  const r = S.months[m]; ['extraIncome','oneOffs','payments','savings'].forEach(k => r[k] = r[k] || []); r.dates = r.dates || {};
+  return r;
 }
 const planFor = m => { const r = rec(m); return r.closed && r.snapshot ? r.snapshot : currentPlan(m); };
 
@@ -306,21 +322,27 @@ function calc(m){
   const r = rec(m), p = planFor(m);
   const inc = p.incomes.map(i => { const ist = r.incomeIst?.[i.id]; return { ...i, soll:i.amount, ist: ist ?? null, eff: ist ?? i.amount }; });
   const exp = p.expenses.map(e => { const ist = r.expenseIst?.[e.id]; return { ...e, soll:e.amount, ist: ist ?? null, eff: ist ?? e.amount }; });
-  const extra = r.extraIncome || [], one = r.oneOffs || [], pay = r.payments || [];
+  const extra = r.extraIncome || [], one = r.oneOffs || [], pay = r.payments || [], sav = r.savings || [];
   const incSoll = sum(inc, x => x.soll), incIst = sum(inc, x => x.eff) + sum(extra, x => x.amount);
   const expSoll = sum(exp, x => x.soll), expIst = sum(exp, x => x.eff) + sum(one, x => x.amount);
-  const payT = sum(pay, x => x.amount);
+  const payT = sum(pay, x => x.amount), savT = sum(sav, x => x.amount);
   let opening;
   if (r.opening != null) opening = r.opening;
   else if (m <= S.settings.startMonth) opening = Number(S.settings.openingBalance) || 0;
   else opening = calc(addYM(m, -1)).closing;
   const result = incIst - expIst, resultSoll = incSoll - expSoll;
-  const closing = opening + result - payT;
+  const closing = opening + result - payT - savT;
   const target = Number(S.settings.bufferTarget) || 0;
   const buffer = Math.max(0, Math.min(closing, target)), free = closing - buffer;
   const byType = {}; for (const t in TYPES) byType[t] = { soll: sum(exp.filter(e => e.type === t), x => x.soll), ist: sum(exp.filter(e => e.type === t), x => x.eff) };
   const lines = inc.length + exp.length, checked = inc.filter(x => x.ist != null).length + exp.filter(x => x.ist != null).length;
-  const out = { m, r, inc, exp, extra, one, pay, incSoll, incIst, expSoll, expIst, payT, opening, result, resultSoll, closing, buffer, free, target, byType, lines, checked, closed: !!r.closed, touched: !!S.months[m] };
+  const isSave = e => e.type === 'ruecklage';
+  const inChecked = sum(inc.filter(x => x.ist != null), x => x.ist) + sum(extra, x => x.amount);
+  const outChecked = sum(exp.filter(x => x.ist != null && !isSave(x)), x => x.ist) + sum(one, x => x.amount) + payT;
+  const savedChecked = sum(exp.filter(x => x.ist != null && isSave(x)), x => x.ist) + savT;
+  const nowLeft = opening + inChecked - outChecked - savedChecked;
+  const savedPlan = sum(exp.filter(isSave), x => x.eff) + savT;
+  const out = { m, r, inc, exp, extra, one, pay, sav, savT, inChecked, outChecked, savedChecked, nowLeft, savedPlan, incSoll, incIst, expSoll, expIst, payT, opening, result, resultSoll, closing, buffer, free, target, byType, lines, checked, closed: !!r.closed, touched: !!S.months[m] };
   memo.set(m, out); return out;
 }
 function debtStatus(d){
@@ -411,20 +433,32 @@ function suggestion(c){
 }
 
 /* ---------- Monat ---------- */
-function itemRow(kind, x, color, cl){
+const ICON = { 'inc-gehalt':'💼', 'inc-neben':'⏱️', 'ex-miete':'🏠', 'ex-strom':'⚡', 'ex-internet':'🌐', 'ex-kredit':'🚗', 'ex-sprit':'⛽',
+  'ex-vers':'🛡️', 'ex-autoruecklage':'🔧', 'ex-lebensmittel':'🛒', 'ex-freizeit':'🎉', 'ex-abos':'☁️', 'ex-afa':'🏛️',
+  'car-oel':'🛢️', 'car-reifen':'🛞', 'car-zahnriemen':'⚙️', 'car-pollen':'🌬️', 'car-bremsfl':'🛑', 'car-hu':'📋', 'car-luft':'💨', 'car-zuend':'✨', 'car-getriebe':'🔩' };
+const TYPE_ICON = { inc:'💶', fix:'📄', variabel:'🛍️', ruecklage:'🐷', schulden:'💳' };
+const icon = (id, type) => `<span class="ico" aria-hidden="true">${ICON[id] || TYPE_ICON[type] || '🔹'}</span>`;
+const defDate = m => TODAY.slice(0,7) === m ? TODAY : m > THIS_YM ? m + '-01' : addDays(addYM(m, 1) + '-01', -1);
+const shortDate = s => s ? s.slice(8,10) + '.' + s.slice(5,7) + '.' : '';
+
+function itemRow(kind, x, color, cl, dates){
   const on = x.ist != null, d = on ? r2(x.ist - x.soll) : 0;
-  const bad = kind === 'inc' ? d < 0 : d > 0;
+  const bad = kind === 'inc' ? d < 0 : d > 0, saving = x.type === 'ruecklage';
+  const dt = on && dates[x.id] ? (kind === 'inc' ? 'eingegangen ' : saving ? 'zurückgelegt ' : 'abgebucht ') + shortDate(dates[x.id]) : saving ? 'wird gespart' : '';
   return `<div class="it">
     <button class="chk ${on?'on':''}" style="--c:${color}" data-act="tick" data-k="${kind}" data-id="${x.id}" ${cl?'disabled':''} aria-label="${esc(x.name)} abhaken">${on?'✓':''}</button>
-    <div class="n">${esc(x.name)}</div>
-    <button class="amt" data-act="editAmt" data-k="${kind}" data-id="${x.id}" ${cl?'disabled':''}>${eur(x.eff)}${on && Math.abs(d) >= .01 ? `<small class="${bad?'up':'down'}">${d>0?'+':'−'}${eur(Math.abs(d))} ${d>0?'mehr':'weniger'}</small>` : ''}</button>
+    ${icon(x.id, kind === 'inc' ? 'inc' : x.type)}
+    <button class="n" data-act="editAmt" data-k="${kind}" data-id="${x.id}" ${cl?'disabled':''}>${esc(x.name)}${dt ? `<small class="${saving?'save':''}">${dt}</small>` : ''}</button>
+    <button class="amt ${saving||kind==='inc'?'save':''}" data-act="editAmt" data-k="${kind}" data-id="${x.id}" ${cl?'disabled':''}>${kind==='inc'?'+ ':saving?'→ ':''}${eur(x.eff)}${on && Math.abs(d) >= .01 ? `<small class="${bad?'up':'down'}">${d>0?'+':'−'}${eur(Math.abs(d))} ${d>0?'mehr':'weniger'}</small>` : ''}</button>
   </div>`;
 }
-function extraRow(name, sub, amount, color, list, id, cl){
-  return `<div class="it"><span class="chk on" style="--c:${color}">✓</span><div class="n">${esc(name)}<small>${esc(sub)}</small></div><b class="amt">${eur(amount)}</b>${cl?'':`<button class="x" data-act="delList" data-list="${list}" data-id="${id}" aria-label="Löschen">✕</button>`}</div>`;
+function extraRow(ic, name, sub, amount, cls, list, id, cl, date){
+  return `<div class="it"><span class="chk on" style="--c:${cls==='save'||cls==='inc'?'var(--inc)':cls==='debt'?'var(--debt)':'var(--muted)'}">✓</span><span class="ico" aria-hidden="true">${ic}</span>
+    <div class="n">${esc(name)}<small class="${cls==='save'?'save':''}">${sub}${date ? ' · ' + shortDate(date) : ''}</small></div>
+    <b class="amt ${cls==='save'||cls==='inc'?'save':''}">${cls==='inc'?'+ ':cls==='save'?'→ ':''}${eur(amount)}</b>${cl?'':`<button class="x" data-act="delList" data-list="${list}" data-id="${id}" aria-label="Löschen">✕</button>`}</div>`;
 }
 function vMonth(){
-  const m = ui.month, c = calc(m), cl = c.closed, sg = suggestion(c);
+  const m = ui.month, c = calc(m), cl = c.closed, sg = suggestion(c), dates = c.r.dates || {};
   const cls = c.closing < 0 ? 'bad' : c.closing < c.target ? 'warn' : 'good';
   const sub = c.closing >= c.target ? `${eur0(c.target)} bleiben als Puffer · <b>${eur0(c.free)} frei</b>`
             : c.closing >= 0 ? `Noch ${eur0(c.target - c.closing)} bis zum Puffer von ${eur0(c.target)}` : 'Ausgaben prüfen – der Monat geht ins Minus';
@@ -433,6 +467,7 @@ function vMonth(){
   const pct = Math.round(c.checked / c.lines * 100);
   const debts = sortedDebts();
   const next = S.car.items.map(i => ({ i, d:itemDue(i) })).sort((a,b) => a.d.eff < b.d.eff ? -1 : 1)[0];
+  const savedTotal = savingsTotal(m);
   return `
   <div class="top"><button class="round" data-act="mPrev" aria-label="Vormonat">◀</button><div class="m">${ymLabel(m)}</div><button class="round" data-act="mNext" aria-label="Nächster Monat">▶</button></div>
 
@@ -440,47 +475,61 @@ function vMonth(){
     <div class="lbl">${cl ? 'Abgeschlossen ✓ · Kontostand Monatsende' : 'Am Monatsende übrig'}</div>
     <div class="big ${cls}">${eur(c.closing)}</div>
     <div class="sub">${sub}</div>
+    ${c.savedPlan ? `<div class="savepill">🐷 + ${eur(c.savedPlan)} gespart diesen Monat</div>` : ''}
     ${tip}
   </div>
 
   <div class="card">
     <h2>Abbuchungen abhaken <small>${c.checked} von ${c.lines}</small></h2>
     <div class="prog"><span style="width:${pct}%"></span></div>
-    <div class="muted" style="font-size:13px">○ antippen = wie geplant · Betrag antippen = anderer Betrag</div>
+    <div class="muted" style="font-size:13px">○ antippen = wie geplant · Zeile antippen = Betrag & Datum ändern</div>
     <div class="sec">Geld rein</div>
-    ${c.inc.map(i => itemRow('inc', i, 'var(--inc)', cl)).join('')}
-    ${c.extra.map(x => extraRow(x.name, 'Extra verdient', x.amount, 'var(--inc)', 'extraIncome', x.id, cl)).join('')}
+    ${c.inc.map(i => itemRow('inc', i, 'var(--inc)', cl, dates)).join('')}
+    ${c.extra.map(x => extraRow('💶', x.name, 'Extra verdient', x.amount, 'inc', 'extraIncome', x.id, cl, x.date)).join('')}
     <div class="sec">Geld raus</div>
-    ${c.exp.map(e => itemRow('exp', e, TYPES[e.type].c, cl)).join('')}
-    ${c.one.map(o => extraRow(o.name, 'Extra ausgegeben', o.amount, 'var(--muted)', 'oneOffs', o.id, cl)).join('')}
-    ${c.pay.map(p => extraRow(S.debts.find(d => d.id === p.debt)?.name || 'Tilgung', 'Extra getilgt', p.amount, 'var(--debt)', 'payments', p.id, cl)).join('')}
+    ${c.exp.map(e => itemRow('exp', e, TYPES[e.type].c, cl, dates)).join('')}
+    ${c.one.map(o => extraRow('🧾', o.name, 'Extra ausgegeben', o.amount, '', 'oneOffs', o.id, cl, o.date)).join('')}
+    ${c.pay.map(p => extraRow('💳', S.debts.find(d => d.id === p.debt)?.name || 'Tilgung', 'Extra getilgt', p.amount, 'debt', 'payments', p.id, cl, p.date)).join('')}
+    ${c.sav.map(x => extraRow('🐷', x.name, 'Gespart / anderes Konto', x.amount, 'save', 'savings', x.id, cl, x.date)).join('')}
+
+    <div class="calc">
+      ${c.opening ? `<div class="line"><span>Übertrag aus Vormonat</span><b>${eur(c.opening)}</b></div>` : ''}
+      <div class="line"><span>Eingegangen</span><b class="pos">+ ${eur(c.inChecked)}</b></div>
+      <div class="line"><span>Abgebucht</span><b>− ${eur(c.outChecked)}</b></div>
+      ${c.savedChecked ? `<div class="line"><span class="pos">🐷 Gespart / umgebucht</span><b class="pos">→ ${eur(c.savedChecked)}</b></div>` : ''}
+      <div class="line now"><span>Jetzt übrig</span><b>${eur(c.nowLeft)}</b></div>
+      ${Math.abs(c.closing - c.nowLeft) >= .01 ? `<div class="line"><span class="t2">Noch nicht abgehakt</span><b class="t2">${c.closing - c.nowLeft >= 0 ? '+ ' : '− '}${eur(Math.abs(c.closing - c.nowLeft))}</b></div>
+      <div class="line"><span class="t2">Am Monatsende voraussichtlich</span><b class="t2">${eur(c.closing)}</b></div>` : ''}
+    </div>
   </div>
 
-  ${cl ? '' : `<div class="adds"><button data-act="dlgExtra">＋ Extra verdient</button><button data-act="dlgOne">＋ Extra ausgegeben</button><button data-act="dlgPay">＋ Extra getilgt</button></div>`}
+  ${cl ? '' : `<div class="adds"><button data-act="dlgExtra">💶 Extra verdient</button><button data-act="dlgOne">🧾 Extra ausgegeben</button><button data-act="dlgPay">💳 Extra getilgt</button><button data-act="dlgSave" class="savebtn">🐷 Gespart / umgebucht</button></div>`}
 
   ${cl ? `<button class="block" data-act="reopen">Monat wieder öffnen</button>`
        : `<button class="block primary" data-act="close">✓ Monat abschließen</button>
           <p class="muted" style="font-size:13px;text-align:center;margin:6px 0 14px">${c.lines - c.checked ? `Noch ${c.lines - c.checked} nicht abgehakt – werden wie geplant übernommen.` : 'Alles geprüft. Der Rest wandert in den nächsten Monat.'}</p>`}
 
   <div class="card" style="margin-top:12px">
-    <details class="more"><summary>So wird gerechnet</summary>
+    <details class="more"><summary>Kontostand zu Monatsbeginn & Notiz</summary>
       <div class="line"><span>Kontostand zu Monatsbeginn</span><button class="link" data-act="dlgOpening" ${cl?'disabled':''}>${eur(c.opening)}</button></div>
-      <div class="line"><span><span class="dot" style="--c:var(--inc)"></span>+ Einnahmen</span><b>${eur(c.incIst)}</b></div>
-      <div class="line"><span><span class="dot" style="--c:var(--fix)"></span>− Ausgaben</span><b>${eur(c.expIst)}</b></div>
-      <div class="line"><span><span class="dot" style="--c:var(--debt)"></span>− Extra getilgt</span><b>${eur(c.payT)}</b></div>
-      <div class="line total"><span>= Monatsende</span><b>${eur(c.closing)}</b></div>
       <textarea data-ch="mNote" ${cl?'disabled':''} placeholder="Notiz zum Monat (optional)" style="margin-top:8px">${esc(c.r.note||'')}</textarea>
     </details>
   </div>
 
   <div class="card">
-    <h2>Offene Schulden</h2>
+    <h2>Schulden & Erspartes</h2>
     ${debts.map(d => { const s = debtStatus(d); return `<div class="line"><span><span class="dot" style="--c:var(--debt)"></span>${esc(d.name)}</span>${s.done ? '<span class="pill good">✓ erledigt</span>' : s.remaining == null ? `<span class="muted" style="font-size:14px">${eur0(s.rate)} / Monat</span>` : `<b>${eur(s.remaining)}</b>`}</div>`; }).join('')}
-    <div class="line"><span><span class="dot" style="--c:var(--res)"></span>Auto-Rücklage (Guthaben)</span><b>${eur(potStatus(S.pots[0]).balance)}</b></div>
+    <div class="line"><span><span class="dot" style="--c:var(--inc)"></span>🔧 Auto-Rücklage</span><b class="pos">${eur(potStatus(S.pots[0]).balance)}</b></div>
+    <div class="line"><span><span class="dot" style="--c:var(--inc)"></span>🐷 Gespart / anderes Konto</span><b class="pos">${eur(savedTotal)}</b></div>
   </div>
 
   ${next ? `<div class="card" data-act="tab" data-k="car" style="cursor:pointer"><h2>Auto <small>Alle Termine ›</small></h2>
-    <div class="line"><span><span class="dot" style="--c:${ST_C[next.d.status]}"></span>${esc(next.i.name)}</span><b>${cdShort(next.d)}</b></div></div>` : ''}`;
+    <div class="line"><span><span class="dot" style="--c:${ST_C[next.d.status]}"></span>${ICON[next.i.id] || '🔧'} ${esc(next.i.name)}</span><b>${cdShort(next.d)}</b></div></div>` : ''}
+  <div style="height:70px"></div>
+  <div class="sbar"><div><span>Jetzt übrig<b>${eur(c.nowLeft)}</b></span><span>Monatsende<b class="${cls}">${eur(c.closing)}</b></span>${c.savedPlan ? `<span>Gespart<b class="pos">${eur(c.savedPlan)}</b></span>` : ''}</div></div>`;
+}
+function savingsTotal(upTo){
+  return sum(Object.keys(S.months).filter(m => m <= upTo), m => sum(S.months[m].savings || [], x => x.amount));
 }
 function cdShort(d){
   if (d.days < 0) return 'überfällig';
@@ -506,7 +555,7 @@ function vCar(){
     <details class="car" data-id="${i.id}" ${ui.open.has(i.id) ? 'open' : ''}>
       <summary>
         <span class="dot" style="--c:${ST_C[d.status]}"></span>
-        <span class="n">${esc(i.name)}<small>${dMonth(d.eff)}${d.byKm ? ' · wegen km' : ''}${i.snoozed ? ' · verschoben' : ''}${d.recentDone ? ' · ✓ erledigt' : ''}</small></span>
+        <span class="ico" aria-hidden="true">${ICON[i.id] || '🔧'}</span><span class="n">${esc(i.name)}<small>${dMonth(d.eff)}${d.byKm ? ' · wegen km' : ''}${i.snoozed ? ' · verschoben' : ''}${d.recentDone ? ' · ✓ erledigt' : ''}</small></span>
         <span class="when">${cdShort(d)}<small>${d.status === 'over' ? 'überfällig' : d.status === 'soon' ? 'bald fällig' : ''}</small></span>
       </summary>
       <div class="body">
@@ -604,6 +653,7 @@ function report(){
   const unchecked = c.exp.filter(x => x.ist == null).map(x => x.name); if (unchecked.length) L.push('Nicht geprüft: ' + unchecked.join(', '));
   if (c.extra.length) L.push('Extra-Einnahmen: ' + c.extra.map(x => `${x.name} ${eur(x.amount)}`).join(', '));
   if (c.one.length) L.push('Einmalausgaben: ' + c.one.map(x => `${x.name} ${eur(x.amount)}`).join(', '));
+  if (c.sav.length) L.push('Gespart/umgebucht: ' + c.sav.map(x => `${x.name} ${eur(x.amount)}`).join(', '));
   if (c.pay.length) L.push('Sondertilgungen: ' + c.pay.map(p => `${S.debts.find(d => d.id === p.debt)?.name} ${eur(p.amount)}`).join(', '));
   if (c.r.note) L.push('Notiz: ' + c.r.note);
   L.push('', 'Offene Posten:'); S.debts.forEach(d => { const s = debtStatus(d); L.push(`- ${d.name}: ${s.done ? 'abgelöst' : s.remaining == null ? 'Restschuld unbekannt' : eur(s.remaining)}${s.extra ? ` (Sondertilgung gesamt ${eur(s.extra)})` : ''}`); });
@@ -681,10 +731,15 @@ const amountOk = v => { const a = parseAmount(v); if (a == null || isNaN(a) || a
 
 function dlgAmount(kind, id){
   const c = calc(ui.month), x = (kind === 'inc' ? c.inc : c.exp).find(y => y.id === id);
-  formDlg(esc(x.name), `<div class="t2">Geplant: <b>${eur(x.soll)}</b></div>
-    <input class="num" id="fA" inputmode="decimal" placeholder="${numIn(x.soll)}" value="${x.ist != null ? numIn(x.ist) : ''}">
-    <div class="muted" style="font-size:13px">Mehrere Beträge? Einfach addieren: 55+62,40+48</div>`, 'Speichern', (d, act) => {
+  const r0 = rec(ui.month);
+  formDlg((ICON[id] || '') + ' ' + esc(x.name), `<div class="t2">Geplant: <b>${eur(x.soll)}</b></div>
+    <label class="field">Betrag<input class="num" id="fA" inputmode="decimal" placeholder="${numIn(x.soll)}" value="${x.ist != null ? numIn(x.ist) : ''}"></label>
+    <div class="muted" style="font-size:13px">Mehrere Beträge? Einfach addieren: 55+62,40+48</div>
+    <label class="field">${kind === 'inc' ? 'Eingegangen am' : 'Abgebucht am'}<input type="date" id="fDt" value="${r0.dates?.[id] || defDate(ui.month)}"></label>
+    ${x.ist != null ? '<button class="link" data-dlg="untick" style="justify-self:start">Haken entfernen</button>' : ''}`, 'Speichern', (d, act) => {
     const r = ensureRec(ui.month), key = kind === 'inc' ? 'incomeIst' : 'expenseIst';
+    if (act === 'untick') { delete r[key][id]; delete r.dates[id]; return; }
+    r.dates[id] = d.querySelector('#fDt').value || defDate(ui.month);
     if (act === 'plan') { r[key][id] = x.soll; return; }
     const v = parseAmount(d.querySelector('#fA').value);
     if (v == null) { r[key][id] = x.soll; return; }
@@ -693,20 +748,24 @@ function dlgAmount(kind, id){
   }, `<button data-dlg="plan">Wie geplant</button>`);
 }
 const nameField = (ph) => `<input id="fN" placeholder="${ph}">`;
-const amtField = (v) => `<input class="num" id="fA" inputmode="decimal" placeholder="Betrag in €" value="${v || ''}">`;
+const amtField = (v) => `<input class="num" id="fA" inputmode="decimal" placeholder="Betrag in €" value="${v || ''}"><label class="field">Datum<input type="date" id="fDt" value="${defDate(ui.month)}"></label>`;
+const dtVal = d => d.querySelector('#fDt')?.value || defDate(ui.month);
 function dlgExtra(){ formDlg('Extra verdient', nameField('Wofür? z. B. Überstunden') + amtField(), 'Hinzufügen', d => {
   const a = amountOk(d.querySelector('#fA').value); if (!a) return false;
-  ensureRec(ui.month).extraIncome.push({ id:uid('xi'), name:d.querySelector('#fN').value.trim() || 'Extra verdient', amount:a }); toast('Gespeichert ✓'); }); }
+  ensureRec(ui.month).extraIncome.push({ id:uid('xi'), name:d.querySelector('#fN').value.trim() || 'Extra verdient', amount:a, date:dtVal(d) }); toast('Gespeichert ✓'); }); }
 function dlgOne(){ formDlg('Extra ausgegeben', nameField('Wofür? z. B. Geschenk, Reparatur') + amtField(), 'Hinzufügen', d => {
   const a = amountOk(d.querySelector('#fA').value); if (!a) return false;
-  ensureRec(ui.month).oneOffs.push({ id:uid('oo'), name:d.querySelector('#fN').value.trim() || 'Einmalausgabe', amount:a, cat:'sonstiges' }); toast('Gespeichert ✓'); }); }
+  ensureRec(ui.month).oneOffs.push({ id:uid('oo'), name:d.querySelector('#fN').value.trim() || 'Einmalausgabe', amount:a, cat:'sonstiges', date:dtVal(d) }); toast('Gespeichert ✓'); }); }
 function dlgPay(){
   const c = calc(ui.month), sg = suggestion(c), open = sortedDebts().filter(d => !debtStatus(d).done);
   formDlg('Extra getilgt', `<select id="fD">${open.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join('')}</select>${amtField(sg.amount >= 100 ? sg.amount : '')}
     <div class="muted" style="font-size:13px">Frei nach Puffer: ${eur(Math.max(0, c.free))}</div>`, 'Buchen', d => {
     const a = amountOk(d.querySelector('#fA').value); if (!a) return false;
-    ensureRec(ui.month).payments.push({ id:uid('pay'), debt:d.querySelector('#fD').value, amount:a, note:'' }); toast('Sondertilgung gebucht ✓'); });
+    ensureRec(ui.month).payments.push({ id:uid('pay'), debt:d.querySelector('#fD').value, amount:a, note:'', date:dtVal(d) }); toast('Sondertilgung gebucht ✓'); });
 }
+function dlgSave(){ formDlg('🐷 Gespart / umgebucht', nameField('Wohin? z. B. Sparkonto, Tagesgeld') + amtField(), 'Hinzufügen', d => {
+  const a = amountOk(d.querySelector('#fA').value); if (!a) return false;
+  ensureRec(ui.month).savings.push({ id:uid('sv'), name:d.querySelector('#fN').value.trim() || 'Sparkonto', amount:a, date:dtVal(d) }); toast('Gespart ✓'); }); }
 function dlgOpening(){
   const c = calc(ui.month);
   formDlg('Kontostand zu Monatsbeginn', `<input class="num" id="fA" inputmode="decimal" value="${numIn(c.opening)}">
@@ -762,12 +821,14 @@ const A = {
   mPrev: () => { ui.month = addYM(ui.month, -1); },
   mNext: () => { ui.month = addYM(ui.month, 1); },
   tick: d => { const r = ensureRec(ui.month), key = d.k === 'inc' ? 'incomeIst' : 'expenseIst';
-    if (r[key][d.id] != null) delete r[key][d.id];
-    else r[key][d.id] = (d.k === 'inc' ? calc(ui.month).inc : calc(ui.month).exp).find(x => x.id === d.id).soll; },
+    if (r[key][d.id] != null) { delete r[key][d.id]; delete r.dates[d.id]; return; }
+    r.dates[d.id] = defDate(ui.month);
+    r[key][d.id] = (d.k === 'inc' ? calc(ui.month).inc : calc(ui.month).exp).find(x => x.id === d.id).soll; },
   editAmt: d => { dlgAmount(d.k, d.id); return false; },
   dlgExtra: () => { dlgExtra(); return false; },
   dlgOne: () => { dlgOne(); return false; },
   dlgPay: () => { dlgPay(); return false; },
+  dlgSave: () => { dlgSave(); return false; },
   dlgOpening: () => { dlgOpening(); return false; },
   dlgKm: () => { dlgKm(); return false; },
   dlgWd: () => { dlgWd(); return false; },
