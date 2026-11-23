@@ -1,0 +1,293 @@
+{
+  "schema": 1,
+  "settings": {
+    "bufferTarget": 400,
+    "startMonth": "2026-12",
+    "openingBalance": 0
+  },
+  "incomes": [
+    {
+      "id": "inc-gehalt",
+      "name": "Grundgehalt (netto)",
+      "amount": 2500,
+      "from": "",
+      "variable": false,
+      "note": "Sichere Basis"
+    },
+    {
+      "id": "inc-neben",
+      "name": "Nebeneinkünfte / Überstunden",
+      "amount": 200,
+      "from": "2027-01",
+      "variable": true,
+      "note": "Konservativ 200 €, gute Monate 300 € · Dez-Überstunden kommen am 08.01."
+    }
+  ],
+  "expenses": [
+    {
+      "id": "ex-miete",
+      "name": "Warmmiete",
+      "cat": "wohnen",
+      "type": "fix",
+      "amount": 690,
+      "note": ""
+    },
+    {
+      "id": "ex-strom",
+      "name": "Strom (Abschlag)",
+      "cat": "wohnen",
+      "type": "fix",
+      "amount": 45,
+      "note": "Aktuell ca. 50–51 € · Ziel ~40 €"
+    },
+    {
+      "id": "ex-internet",
+      "name": "Internet (eigenes + Eltern)",
+      "cat": "wohnen",
+      "type": "fix",
+      "amount": 78,
+      "note": "2 × 39 €"
+    },
+    {
+      "id": "ex-kredit",
+      "name": "Autokredit VW Golf (Rate)",
+      "cat": "auto",
+      "type": "schulden",
+      "amount": 275,
+      "debt": "debt-auto",
+      "note": ""
+    },
+    {
+      "id": "ex-sprit",
+      "name": "Sprit / Benzin",
+      "cat": "auto",
+      "type": "variabel",
+      "amount": 225,
+      "note": "Spanne 200–250 € · Tankbelege einfach addieren: 55+62,4+48"
+    },
+    {
+      "id": "ex-vers",
+      "name": "Kfz-Versicherung (TK, 150 € SB)",
+      "cat": "auto",
+      "type": "fix",
+      "amount": 56,
+      "note": "≈ 673 € / Jahr"
+    },
+    {
+      "id": "ex-autoruecklage",
+      "name": "Kfz-Steuer & Wartungsrücklage",
+      "cat": "auto",
+      "type": "ruecklage",
+      "amount": 60,
+      "pot": "pot-auto",
+      "note": "Fließt in die Auto-Rücklage"
+    },
+    {
+      "id": "ex-lebensmittel",
+      "name": "Lebensmittel",
+      "cat": "alltag",
+      "type": "variabel",
+      "amount": 250,
+      "note": ""
+    },
+    {
+      "id": "ex-freizeit",
+      "name": "Freizeit / Essen / Freunde",
+      "cat": "alltag",
+      "type": "variabel",
+      "amount": 150,
+      "note": "Bewusster Rahmen"
+    },
+    {
+      "id": "ex-abos",
+      "name": "Abos & Cloud",
+      "cat": "digital",
+      "type": "fix",
+      "amount": 0,
+      "fromSubs": true,
+      "note": "Summe aus der Abo-Liste"
+    },
+    {
+      "id": "ex-afa",
+      "name": "Rate Agentur für Arbeit",
+      "cat": "schulden",
+      "type": "schulden",
+      "amount": 100,
+      "debt": "debt-afa",
+      "note": "Zielrate statt 600 €"
+    }
+  ],
+  "subs": [
+    {
+      "id": "sub-sammel",
+      "name": "App-/Datenspeicher-Abos (Sammelposten – gern einzeln aufteilen)",
+      "amount": 90,
+      "interval": "monat",
+      "active": true,
+      "billingMonth": ""
+    },
+    {
+      "id": "sub-apple",
+      "name": "Apple",
+      "amount": 100,
+      "interval": "jahr",
+      "active": true,
+      "billingMonth": ""
+    },
+    {
+      "id": "sub-google",
+      "name": "Google",
+      "amount": 25,
+      "interval": "jahr",
+      "active": true,
+      "billingMonth": ""
+    }
+  ],
+  "debts": [
+    {
+      "id": "debt-spk",
+      "name": "Sparkasse Alt-Minus",
+      "kind": "einmalig",
+      "startBalance": 500,
+      "clarified": false,
+      "priority": 1,
+      "note": "Konto-Status & exakter Saldo werden noch geklärt. Danach einmalig aus einem Monatsüberschuss ablösen."
+    },
+    {
+      "id": "debt-auto",
+      "name": "Autokredit VW Golf",
+      "kind": "kredit",
+      "startBalance": null,
+      "priority": 2,
+      "withdrawUntil": "2026-12-04",
+      "note": "Ausgezahlt 20.11.2026 · 275 €/Monat. Restschuld laut Kreditvertrag eintragen."
+    },
+    {
+      "id": "debt-afa",
+      "name": "Agentur für Arbeit",
+      "kind": "rate",
+      "startBalance": null,
+      "priority": 3,
+      "note": "Zielrate 100 €/Monat (statt 600 €) – begründet mit Grundgehalt, Wohnkosten, Auto für den Arbeitsweg. Gesamtforderung eintragen."
+    }
+  ],
+  "pots": [
+    {
+      "id": "pot-auto",
+      "name": "Auto-Rücklage (Steuer, Inspektion, Reifen, Verschleiß)",
+      "start": 0,
+      "withdrawals": []
+    }
+  ],
+  "car": {
+    "name": "VW Golf 1.5 TSI",
+    "details": "Bj. 2017 · Benzin · 110 kW / 150 PS",
+    "handoverDate": "2026-11-28",
+    "handoverKm": null,
+    "kmPerYear": 16000,
+    "kmLog": [],
+    "handoverNote": "Frischer TÜV (HU/AU), große Inspektion inkl. Getriebeöl & Filter – laut Kaufvertrag + abgestempelter Wartungsliste.",
+    "items": [
+      {
+        "id": "car-oel",
+        "name": "Motoröl & Ölfilter",
+        "intervalMonths": 12,
+        "intervalKm": 15000,
+        "nextDue": "2027-11-28",
+        "info": "LongLife – bei TSI & Kurz-/Mittelstrecke lieber jährlich bzw. alle 15.000 km.",
+        "note": "",
+        "history": [],
+        "snoozed": 0
+      },
+      {
+        "id": "car-reifen",
+        "name": "Reifen, Bremsbeläge & Wischer",
+        "intervalMonths": 6,
+        "intervalKm": null,
+        "nextDue": "2027-04-01",
+        "info": "Sichtprüfung beim Reifenwechsel (April & Oktober). Profil ≥ 3 mm (Winter ≥ 4 mm) sinnvoll.",
+        "note": "",
+        "history": [],
+        "snoozed": 0
+      },
+      {
+        "id": "car-zahnriemen",
+        "name": "Zahnriemen-Sichtprüfung",
+        "intervalMonths": 12,
+        "intervalKm": null,
+        "dueKmAbs": 210000,
+        "nextDue": "2027-11-28",
+        "info": "Kein festes VW-Zeitintervall (Prüfung ab 210.000 km). Ab 10 Jahren Fahrzeugalter bei jeder Inspektion mitprüfen lassen.",
+        "note": "",
+        "history": [],
+        "snoozed": 0
+      },
+      {
+        "id": "car-pollen",
+        "name": "Innenraum- / Pollenfilter",
+        "intervalMonths": 24,
+        "intervalKm": 30000,
+        "nextDue": "2028-11-28",
+        "info": "Alle 2 Jahre / 30.000 km.",
+        "note": "",
+        "history": [],
+        "snoozed": 0
+      },
+      {
+        "id": "car-bremsfl",
+        "name": "Bremsflüssigkeit",
+        "intervalMonths": 24,
+        "intervalKm": null,
+        "nextDue": "2028-11-28",
+        "info": "Alle 2 Jahre, unabhängig von km.",
+        "note": "",
+        "history": [],
+        "snoozed": 0
+      },
+      {
+        "id": "car-hu",
+        "name": "HU / AU (TÜV)",
+        "intervalMonths": 24,
+        "intervalKm": null,
+        "nextDue": "2028-11-28",
+        "info": "Alle 2 Jahre – Monat steht auf der Plakette.",
+        "note": "",
+        "history": [],
+        "snoozed": 0
+      },
+      {
+        "id": "car-luft",
+        "name": "Luftfilter Motor",
+        "intervalMonths": 48,
+        "intervalKm": 60000,
+        "nextDue": "2030-11-28",
+        "info": "Alle 4 Jahre / 60.000 km – was zuerst eintritt.",
+        "note": "",
+        "history": [],
+        "snoozed": 0
+      },
+      {
+        "id": "car-zuend",
+        "name": "Zündkerzen",
+        "intervalMonths": 48,
+        "intervalKm": 60000,
+        "nextDue": "2030-11-28",
+        "info": "Alle 4 Jahre / 60.000 km – was zuerst eintritt.",
+        "note": "",
+        "history": [],
+        "snoozed": 0
+      },
+      {
+        "id": "car-getriebe",
+        "name": "Getriebeölwechsel",
+        "intervalMonths": 48,
+        "intervalKm": 60000,
+        "nextDue": "2030-11-28",
+        "info": "Je nach Getriebetyp 60.000–120.000 km. Bei Übergabe frisch gemacht → Erinnerung nach ~60.000 km / ~4 Jahren.",
+        "note": "",
+        "history": [],
+        "snoozed": 0
+      }
+    ]
+  }
+}

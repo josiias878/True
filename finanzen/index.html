@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>Mein Geld & Auto</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Mein Geld">
+<meta name="theme-color" content="#f4f4f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121211" media="(prefers-color-scheme: dark)">
 <style>
 :root{
   color-scheme:light;
@@ -24,7 +33,7 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
-.wrap{max-width:600px;margin:0 auto;padding:14px 14px 80px}
+.wrap{max-width:600px;margin:0 auto;padding:max(14px, env(safe-area-inset-top)) 14px 80px}
 .top{display:flex;align-items:center;gap:8px;margin-bottom:12px}
 .top .m{flex:1;text-align:center;font-size:19px;font-weight:700}
 .nav{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:14px;margin-bottom:14px}
@@ -145,74 +154,34 @@ dialog h3{margin:0 0 12px;font-size:18px}
 <script>
 'use strict';
 /* =========================================================
-   STAMMDATEN (Soll-Werte) – von Claude gepflegt.
-   SEED_REV erhöhen, wenn sich die Stammdaten ändern.
+   Diese Datei enthält KEINE persönlichen Daten.
+   Deine Zahlen kommen einmalig per privatem Link (#d=…) oder
+   per Backup-Import aufs Gerät und bleiben nur dort gespeichert.
    ========================================================= */
-const SEED_REV = 1;
 const KEY = 'fin-auto-cockpit-v1';
+const APP_URL = location.protocol === 'https:' ? location.origin + location.pathname : '';
 
 function seed(){
+  const t = new Date(), d0 = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0');
+  const due = n => { const x = new Date(t.getFullYear(), t.getMonth() + n, t.getDate()); return x.getFullYear() + '-' + String(x.getMonth()+1).padStart(2,'0') + '-' + String(x.getDate()).padStart(2,'0'); };
+  const item = (id, name, m, km, info) => ({ id, name, intervalMonths:m, intervalKm:km, nextDue:due(m), info, note:'', history:[], snoozed:0 });
   return {
-    schema: 1,
-    seedRev: SEED_REV,
-    settings: { bufferTarget: 400, startMonth: '2026-12', openingBalance: 0 },
-    incomes: [
-      { id:'inc-gehalt', name:'Grundgehalt (netto)', amount:2500, from:'', variable:false, note:'Sichere Basis' },
-      { id:'inc-neben', name:'Nebeneinkünfte / Überstunden', amount:200, from:'2027-01', variable:true, note:'Konservativ 200 €, gute Monate 300 € · Dez-Überstunden kommen am 08.01.' }
-    ],
+    schema: 1, template: true,
+    settings: { bufferTarget: 300, startMonth: d0, openingBalance: 0, reminderDay: 28 },
+    incomes: [ { id:'inc-gehalt', name:'Gehalt (netto)', amount:0, from:'', variable:false, note:'' } ],
     expenses: [
-      { id:'ex-miete', name:'Warmmiete', cat:'wohnen', type:'fix', amount:690, note:'' },
-      { id:'ex-strom', name:'Strom (Abschlag)', cat:'wohnen', type:'fix', amount:45, note:'Aktuell ca. 50–51 € · Ziel ~40 €' },
-      { id:'ex-internet', name:'Internet (eigenes + Eltern)', cat:'wohnen', type:'fix', amount:78, note:'2 × 39 €' },
-      { id:'ex-kredit', name:'Autokredit VW Golf (Rate)', cat:'auto', type:'schulden', amount:275, debt:'debt-auto', note:'' },
-      { id:'ex-sprit', name:'Sprit / Benzin', cat:'auto', type:'variabel', amount:225, note:'Spanne 200–250 € · Tankbelege einfach addieren: 55+62,4+48' },
-      { id:'ex-vers', name:'Kfz-Versicherung (TK, 150 € SB)', cat:'auto', type:'fix', amount:56, note:'≈ 673 € / Jahr' },
-      { id:'ex-autoruecklage', name:'Kfz-Steuer & Wartungsrücklage', cat:'auto', type:'ruecklage', amount:60, pot:'pot-auto', note:'Fließt in die Auto-Rücklage' },
-      { id:'ex-lebensmittel', name:'Lebensmittel', cat:'alltag', type:'variabel', amount:250, note:'' },
-      { id:'ex-freizeit', name:'Freizeit / Essen / Freunde', cat:'alltag', type:'variabel', amount:150, note:'Bewusster Rahmen' },
-      { id:'ex-abos', name:'Abos & Cloud', cat:'digital', type:'fix', amount:0, fromSubs:true, note:'Summe aus der Abo-Liste' },
-      { id:'ex-afa', name:'Rate Agentur für Arbeit', cat:'schulden', type:'schulden', amount:100, debt:'debt-afa', note:'Zielrate statt 600 €' }
+      { id:'ex-miete', name:'Miete', cat:'wohnen', type:'fix', amount:0, note:'' },
+      { id:'ex-strom', name:'Strom', cat:'wohnen', type:'fix', amount:0, note:'' },
+      { id:'ex-lebensmittel', name:'Lebensmittel', cat:'alltag', type:'variabel', amount:0, note:'' },
+      { id:'ex-freizeit', name:'Freizeit', cat:'alltag', type:'variabel', amount:0, note:'' },
+      { id:'ex-abos', name:'Abos', cat:'digital', type:'fix', amount:0, fromSubs:true, note:'' }
     ],
-    subs: [
-      { id:'sub-sammel', name:'App-/Datenspeicher-Abos (Sammelposten – gern einzeln aufteilen)', amount:90, interval:'monat', active:true, billingMonth:'' },
-      { id:'sub-apple', name:'Apple', amount:100, interval:'jahr', active:true, billingMonth:'' },
-      { id:'sub-google', name:'Google', amount:25, interval:'jahr', active:true, billingMonth:'' }
-    ],
-    debts: [
-      { id:'debt-spk', name:'Sparkasse Alt-Minus', kind:'einmalig', startBalance:500, clarified:false, priority:1,
-        note:'Konto-Status & exakter Saldo werden noch geklärt. Danach einmalig aus einem Monatsüberschuss ablösen.' },
-      { id:'debt-auto', name:'Autokredit VW Golf', kind:'kredit', startBalance:null, priority:2, withdrawUntil:'2026-12-04',
-        note:'Ausgezahlt 20.11.2026 · 275 €/Monat. Restschuld laut Kreditvertrag eintragen.' },
-      { id:'debt-afa', name:'Agentur für Arbeit', kind:'rate', startBalance:null, priority:3,
-        note:'Zielrate 100 €/Monat (statt 600 €) – begründet mit Grundgehalt, Wohnkosten, Auto für den Arbeitsweg. Gesamtforderung eintragen.' }
-    ],
-    pots: [ { id:'pot-auto', name:'Auto-Rücklage (Steuer, Inspektion, Reifen, Verschleiß)', start:0, withdrawals:[] } ],
+    subs: [], debts: [],
+    pots: [ { id:'pot-auto', name:'Auto-Rücklage', start:0, withdrawals:[] } ],
     months: {},
-    car: {
-      name:'VW Golf 1.5 TSI', details:'Bj. 2017 · Benzin · 110 kW / 150 PS',
-      handoverDate:'2026-11-28', handoverKm:null, kmPerYear:16000, kmLog:[],
-      handoverNote:'Frischer TÜV (HU/AU), große Inspektion inkl. Getriebeöl & Filter – laut Kaufvertrag + abgestempelter Wartungsliste.',
-      items: [
-        { id:'car-oel', name:'Motoröl & Ölfilter', intervalMonths:12, intervalKm:15000, nextDue:'2027-11-28',
-          info:'LongLife – bei TSI & Kurz-/Mittelstrecke lieber jährlich bzw. alle 15.000 km.', note:'', history:[], snoozed:0 },
-        { id:'car-reifen', name:'Reifen, Bremsbeläge & Wischer', intervalMonths:6, intervalKm:null, nextDue:'2027-04-01',
-          info:'Sichtprüfung beim Reifenwechsel (April & Oktober). Profil ≥ 3 mm (Winter ≥ 4 mm) sinnvoll.', note:'', history:[], snoozed:0 },
-        { id:'car-zahnriemen', name:'Zahnriemen-Sichtprüfung', intervalMonths:12, intervalKm:null, dueKmAbs:210000, nextDue:'2027-11-28',
-          info:'Kein festes VW-Zeitintervall (Prüfung ab 210.000 km). Ab 10 Jahren Fahrzeugalter bei jeder Inspektion mitprüfen lassen.', note:'', history:[], snoozed:0 },
-        { id:'car-pollen', name:'Innenraum- / Pollenfilter', intervalMonths:24, intervalKm:30000, nextDue:'2028-11-28',
-          info:'Alle 2 Jahre / 30.000 km.', note:'', history:[], snoozed:0 },
-        { id:'car-bremsfl', name:'Bremsflüssigkeit', intervalMonths:24, intervalKm:null, nextDue:'2028-11-28',
-          info:'Alle 2 Jahre, unabhängig von km.', note:'', history:[], snoozed:0 },
-        { id:'car-hu', name:'HU / AU (TÜV)', intervalMonths:24, intervalKm:null, nextDue:'2028-11-28',
-          info:'Alle 2 Jahre – Monat steht auf der Plakette.', note:'', history:[], snoozed:0 },
-        { id:'car-luft', name:'Luftfilter Motor', intervalMonths:48, intervalKm:60000, nextDue:'2030-11-28',
-          info:'Alle 4 Jahre / 60.000 km – was zuerst eintritt.', note:'', history:[], snoozed:0 },
-        { id:'car-zuend', name:'Zündkerzen', intervalMonths:48, intervalKm:60000, nextDue:'2030-11-28',
-          info:'Alle 4 Jahre / 60.000 km – was zuerst eintritt.', note:'', history:[], snoozed:0 },
-        { id:'car-getriebe', name:'Getriebeölwechsel', intervalMonths:48, intervalKm:60000, nextDue:'2030-11-28',
-          info:'Je nach Getriebetyp 60.000–120.000 km. Bei Übergabe frisch gemacht → Erinnerung nach ~60.000 km / ~4 Jahren.', note:'', history:[], snoozed:0 }
-      ]
-    }
+    car: { name:'Mein Auto', details:'', handoverDate:due(0), handoverKm:null, kmPerYear:15000, kmLog:[], handoverNote:'',
+      items: [ item('car-oel','Motoröl & Ölfilter',12,15000,'Jährlich bzw. alle 15.000 km.'), item('car-reifen','Reifen, Bremsbeläge & Wischer',6,null,'Sichtprüfung beim Reifenwechsel.'),
+        item('car-pollen','Innenraum- / Pollenfilter',24,30000,'Alle 2 Jahre / 30.000 km.'), item('car-bremsfl','Bremsflüssigkeit',24,null,'Alle 2 Jahre.'), item('car-hu','HU / AU (TÜV)',24,null,'Alle 2 Jahre.') ] }
   };
 }
 
@@ -278,7 +247,7 @@ function load(){
 }
 function normalize(d){
   const s = seed();
-  for (const k of Object.keys(s)) if (d[k] == null) d[k] = s[k];
+  for (const k of Object.keys(s)) if (d[k] == null && k !== 'template') d[k] = s[k];
   d.settings = Object.assign({}, s.settings, d.settings);
   d.car = Object.assign({}, s.car, d.car);
   d.pots.forEach(p => p.withdrawals = p.withdrawals || []);
@@ -419,7 +388,10 @@ function render(){
   memo = new Map();
   if (!ui.month) ui.month = focusMonth();
   $('#tabs').innerHTML = TABS.map(([k,l]) => `<button class="${ui.tab===k?'on':''}" data-act="tab" data-k="${k}">${l}</button>`).join('');
-  $('#banner').innerHTML = (S.seedRev||0) < SEED_REV ? `<div class="banner"><b>Claude hat deine Planung aktualisiert.</b> Übernehmen? Deine Monatseinträge bleiben erhalten.<div><button class="primary" data-act="applySeed">Übernehmen</button><button data-act="dismissSeed">Später</button></div></div>` : '';
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent), standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+  const hint = !S.template && APP_URL && !standalone && !localStorage.getItem(KEY + ':hint')
+    ? `<div class="banner"><b>📲 Auf den Home-Bildschirm:</b> ${isIOS ? 'Unten auf <b>Teilen</b> ⬆︎ tippen → <b>„Zum Home-Bildschirm“</b>.' : 'Im Browser-Menü „Zum Startbildschirm hinzufügen“ wählen.'} Danach öffnest du „Mein Geld“ wie eine normale App.<div><button data-act="hintOk">Erledigt</button></div></div>` : '';
+  $('#banner').innerHTML = hint + (S.template ? `<div class="banner"><b>👋 Willkommen!</b> Öffne den privaten Link von Claude, damit deine Daten geladen werden – oder füge ihn hier ein:<textarea id="linkIn" placeholder="Link hier einfügen" style="margin-top:8px;min-height:44px"></textarea><div><button class="primary" data-act="pasteLink">Daten laden</button><button data-act="import">Backup laden</button></div></div>` : '');
   $('#main').innerHTML = ({ month:vMonth, car:vCar, settings:vSettings })[ui.tab]();
 }
 
@@ -561,7 +533,7 @@ function vCar(){
       <div class="body">
         <div>${esc(i.info)}</div>
         ${d.dueKm != null ? `<div style="margin-top:4px">Spätestens bei <b>${KM(d.dueKm)}</b>${d.kmLeft != null ? ` · noch ${KM(Math.max(0, d.kmLeft))}` : ''}</div>` : ''}
-        <div class="acts"><button class="primary" data-act="carDone" data-id="${i.id}">✓ Erledigt</button><button data-act="carSnooze" data-id="${i.id}">+1 Monat</button></div>
+        <div class="acts"><button class="primary" data-act="carDone" data-id="${i.id}">✓ Erledigt</button><button data-act="carSnooze" data-id="${i.id}">+1 Monat</button><button data-act="calOne" data-id="${i.id}" style="flex:0 0 52px" aria-label="In Kalender">📅</button></div>
         ${i.history.length ? `<ul class="hist">${[...i.history].reverse().map(h => `<li>✓ ${dLabel(h.date)}${h.km != null ? ' · ' + KM(h.km) : ''}${h.cost ? ' · ' + eur(h.cost) : ''}${h.note ? ' · ' + esc(h.note) : ''} <button class="x" data-act="delHist" data-item="${i.id}" data-id="${h.id}">✕</button></li>`).join('')}</ul>` : ''}
         <textarea placeholder="Notiz / Beleg (Werkstatt, Rechnungsnr. …)" data-ch="field" data-coll="carItems" data-id="${i.id}" data-f="note">${esc(i.note)}</textarea>
         <button class="link" data-act="carEdit" data-id="${i.id}">Intervall / Termin ändern</button>
@@ -579,7 +551,7 @@ function edRow(coll, o, extra){
 }
 function vSettings(){
   const base = currentPlan(S.settings.startMonth), expT = sum(base.expenses, e => e.amount);
-  const spk = S.debts.find(d => d.id === 'debt-spk'), pot = S.pots[0], potS = potStatus(pot);
+  const spk = S.debts.find(d => d.kind === 'einmalig'), pot = S.pots[0], potS = potStatus(pot);
   return `<div class="settings">
   <details ${ui.open.has('s-plan')?'open':''} data-id="s-plan"><summary>Einnahmen & Ausgaben (Plan)</summary><div>
     <p>Änderungen gelten ab dem aktuellen, noch offenen Monat. Abgeschlossene Monate bleiben unverändert.</p>
@@ -601,10 +573,10 @@ function vSettings(){
   </div></details>
 
   <details ${ui.open.has('s-debts')?'open':''} data-id="s-debts"><summary>Schulden & Rücklage</summary><div>
-    <p>Reihenfolge fürs Extra-Tilgen: 1. Sparkasse (Dispo ist am teuersten) · 2. Autokredit (spart Zinsen) · 3. Agentur für Arbeit (meist zinsfrei).</p>
+    <p>Reihenfolge fürs Extra-Tilgen: zuerst Dispo/Minus (teuerste Zinsen), dann verzinste Kredite, zinsfreie Raten zuletzt.</p>
     ${sortedDebts().map(d => `<label class="field" style="margin-bottom:8px">${esc(d.name)} – ${d.kind==='einmalig' ? 'Saldo' : 'Restschuld laut Vertrag/Bescheid'}<input class="num" inputmode="decimal" placeholder="noch eintragen" value="${numIn(d.startBalance)}" data-ch="field" data-coll="debts" data-id="${d.id}" data-f="startBalance" data-k="numnull"></label>`).join('')}
-    ${spk && !debtStatus(spk).done ? `<button class="block" data-act="payOff" data-id="${spk.id}">Sparkasse im ${ymLabel(ui.month)} ablösen (${eur0(debtStatus(spk).remaining)})</button>` : ''}
-    ${S.debts.find(d => d.withdrawUntil && TODAY <= d.withdrawUntil) ? `<p>⏳ Widerrufsrecht Autokredit noch ${daysBetween(TODAY, '2026-12-04')} Tag(e) (bis 04.12.2026).</p>` : ''}
+    ${spk && !debtStatus(spk).done ? `<button class="block" data-act="payOff" data-id="${spk.id}">${esc(spk.name)} im ${ymLabel(ui.month)} ablösen (${eur0(debtStatus(spk).remaining)})</button>` : ''}
+    ${S.debts.find(d => d.withdrawUntil && TODAY <= d.withdrawUntil) ? `<p>⏳ Widerrufsrecht Autokredit noch ${daysBetween(TODAY, S.debts.find(d => d.withdrawUntil && TODAY <= d.withdrawUntil).withdrawUntil)} Tag(e) (bis ${dLabel(S.debts.find(d => d.withdrawUntil && TODAY <= d.withdrawUntil).withdrawUntil)}).</p>` : ''}
     <div class="sec">Auto-Rücklage</div>
     <div class="line"><span>Guthaben</span><b>${eur(potS.balance)}</b></div>
     ${pot.withdrawals.map(w => `<div class="line"><span class="t2">${dLabel(w.date)} · ${esc(w.note)}</span><span><b>−${eur(w.amount)}</b><button class="x" data-act="delWd" data-pot="${pot.id}" data-id="${w.id}">✕</button></span></div>`).join('')}
@@ -618,6 +590,13 @@ function vSettings(){
     <label class="field">Auto-Übergabe<input type="date" value="${S.car.handoverDate}" data-ch="car" data-f="handoverDate"></label>
     <label class="field">km bei Übergabe<input class="num" inputmode="numeric" value="${S.car.handoverKm ?? ''}" data-ch="car" data-f="handoverKm" data-k="numnull"></label>
     <label class="field">Geplante km / Jahr<input class="num" inputmode="numeric" value="${S.car.kmPerYear}" data-ch="car" data-f="kmPerYear" data-k="num"></label>
+  </div></details>
+
+  <details ${ui.open.has('s-rem')?'open':''} data-id="s-rem"><summary>🔔 Erinnerungen & Kalender</summary><div>
+    <p>Dein iPhone-Kalender erinnert dich – auch wenn die App geschlossen ist:</p>
+    <p>• <b>Monats-Check</b> jeden Monat am <input class="num" style="width:64px;display:inline-block;padding:4px 6px" inputmode="numeric" value="${S.settings.reminderDay || 28}" data-ch="setting" data-f="reminderDay" data-k="num">. um 19 Uhr<br>• <b>Auto-Wartung</b>: 14 Tage vorher und am Vortag<br>${S.debts.some(d => d.withdrawUntil && TODAY <= d.withdrawUntil) ? '• <b>Fristen</b> (z. B. Widerruf Autokredit)<br>' : ''}</p>
+    <button class="block primary" data-act="calAll">📅 Erinnerungen in Kalender übernehmen</button>
+    <p class="muted" style="font-size:13px">Nur einmal nötig. Wenn du ein Auto-Teil als „Erledigt“ abhakst, kannst du den neuen Termin dort einzeln mit „📅“ hinzufügen.</p>
   </div></details>
 
   <details ${ui.open.has('s-save')?'open':''} data-id="s-save"><summary>Sichern & an Claude schicken</summary><div class="grid">
@@ -829,6 +808,9 @@ const A = {
   dlgOne: () => { dlgOne(); return false; },
   dlgPay: () => { dlgPay(); return false; },
   dlgSave: () => { dlgSave(); return false; },
+  calAll: () => { openCalendar(buildICS(null)); return false; },
+  calOne: d => { openCalendar(buildICS(d.id)); return false; },
+  hintOk: () => { localStorage.setItem(KEY + ':hint', '1'); },
   dlgOpening: () => { dlgOpening(); return false; },
   dlgKm: () => { dlgKm(); return false; },
   dlgWd: () => { dlgWd(); return false; },
@@ -861,11 +843,8 @@ const A = {
   export: () => { const b = new Blob([JSON.stringify(S, null, 2)], { type:'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'mein-geld-backup-' + TODAY + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); return false; },
   import: () => { $('#importFile').click(); return false; },
   reset: () => { if (!confirm('Wirklich alles zurücksetzen? Vorher Backup speichern!')) return false; S = seed(); ui.month = null; },
-  applySeed: () => { const s = seed(); Object.assign(S, { incomes:s.incomes, expenses:s.expenses, subs:s.subs, seedRev:SEED_REV });
-    S.debts = s.debts.map(d => { const old = S.debts.find(o => o.id === d.id); return old ? { ...d, startBalance: old.startBalance ?? d.startBalance, clarified: old.clarified || d.clarified } : d; });
-    const oldItems = S.car.items; S.car = { ...s.car, handoverDate:S.car.handoverDate, handoverKm:S.car.handoverKm ?? s.car.handoverKm, kmLog:S.car.kmLog, items: s.car.items.map(i => { const o = oldItems.find(x => x.id === i.id); return o ? { ...i, nextDue:o.nextDue, lastKm:o.lastKm, history:o.history, note:o.note, snoozed:o.snoozed } : i; }).concat(oldItems.filter(o => !s.car.items.some(i => i.id === o.id))) };
-    toast('Übernommen ✓'); },
-  dismissSeed: () => { S.seedRev = SEED_REV; }
+  pasteLink: () => { const v = ($('#linkIn')?.value || '').trim(); const m = v.match(/[#&]d=([A-Za-z0-9_-]+)/) || v.match(/^([zj][A-Za-z0-9_-]{20,})$/); if (!m) { toast('Kein gültiger Link'); return false; } importCode(m[1], true); return false; },
+
 };
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]'); if (!el || el.disabled) return;
@@ -881,7 +860,76 @@ $('#importFile').addEventListener('change', async e => {
   catch(err) { alert('Diese Datei ist kein gültiges Backup.'); }
   e.target.value = '';
 });
+/* ================= Import per privatem Link ================= */
+async function decodeCode(code){
+  const t = code[0]; let b = code.slice(1).replace(/-/g, '+').replace(/_/g, '/'); b += '='.repeat((4 - b.length % 4) % 4);
+  const bin = Uint8Array.from(atob(b), c => c.charCodeAt(0));
+  if (t === 'z') return JSON.parse(await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text());
+  return JSON.parse(new TextDecoder().decode(bin));
+}
+function applyPlan(p, fresh){
+  if (fresh) { const months = S.template ? {} : S.months; S = normalize({ ...JSON.parse(JSON.stringify(p)), months }); delete S.template; return; }
+  S.incomes = p.incomes; S.expenses = p.expenses; S.subs = p.subs;
+  S.settings = { ...S.settings, bufferTarget:p.settings.bufferTarget, reminderDay:p.settings.reminderDay ?? S.settings.reminderDay };
+  S.debts = p.debts.map(d => { const o = S.debts.find(x => x.id === d.id); return o ? { ...d, startBalance: d.startBalance ?? o.startBalance, clarified: d.clarified || o.clarified } : d; });
+  S.pots = p.pots.map(q => { const o = S.pots.find(x => x.id === q.id); return o ? { ...q, withdrawals:o.withdrawals } : { ...q, withdrawals:q.withdrawals || [] }; });
+  const oldItems = S.car.items;
+  S.car = { ...p.car, handoverDate:S.car.handoverDate || p.car.handoverDate, handoverKm:p.car.handoverKm ?? S.car.handoverKm, kmLog:S.car.kmLog,
+    items: p.car.items.map(i => { const o = oldItems.find(x => x.id === i.id); return o ? { ...i, nextDue:o.history.length || o.snoozed ? o.nextDue : i.nextDue, lastKm:o.lastKm, history:o.history, note:o.note, snoozed:o.snoozed } : i; })
+      .concat(oldItems.filter(o => !p.car.items.some(i => i.id === o.id))) };
+}
+async function importCode(code, force){
+  let payload; try { payload = await decodeCode(code); if (!payload.data || !payload.data.expenses) throw 0; } catch(e) { toast('Link ungültig'); return; }
+  const seen = (localStorage.getItem(KEY + ':imports') || '').split(',').filter(Boolean);
+  if (!force && seen.includes(payload.id)) return;
+  const fresh = !!S.template || !Object.keys(S.months).length;
+  applyPlan(payload.data, fresh);
+  if (!seen.includes(payload.id)) seen.push(payload.id);
+  localStorage.setItem(KEY + ':imports', seen.join(','));
+  ui.month = null; save(); render(); toast(fresh ? 'Deine Daten sind geladen ✓' : 'Planung aktualisiert ✓');
+}
+
+/* ================= Kalender (ICS) ================= */
+const icsEsc = t => String(t).replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+function icsFold(line){ const cp = Array.from(line), out = []; let cur = ''; for (const ch of cp) { if (new TextEncoder().encode(cur + ch).length > 72) { out.push(cur); cur = ' ' + ch; } else cur += ch; } out.push(cur); return out.join('\r\n'); }
+const icsDate = s => s.replace(/-/g, '');
+function buildICS(onlyId){
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+  const ev = [], link = APP_URL ? '\n\nApp öffnen: ' + APP_URL : '';
+  const allDay = (uidKey, date, title, desc, alarms) => {
+    ev.push(['BEGIN:VEVENT', `UID:${uidKey}-${icsDate(date)}@mein-geld`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${icsDate(date)}`, `DTEND;VALUE=DATE:${icsDate(addDays(date, 1))}`,
+      `SUMMARY:${icsEsc(title)}`, `DESCRIPTION:${icsEsc(desc + link)}`, 'TRANSP:TRANSPARENT',
+      ...alarms.flatMap(tr => ['BEGIN:VALARM', 'ACTION:DISPLAY', `TRIGGER:${tr}`, `DESCRIPTION:${icsEsc(title)}`, 'END:VALARM']), 'END:VEVENT']);
+  };
+  if (!onlyId) {
+    const day = Math.min(28, Math.max(1, Math.round(S.settings.reminderDay || 28)));
+    let first = TODAY.slice(0, 8) + String(day).padStart(2, '0'); if (first < TODAY) first = addMonths(first, 1);
+    ev.push(['BEGIN:VEVENT', 'UID:monatscheck@mein-geld', `DTSTAMP:${stamp}`, `DTSTART:${icsDate(first)}T190000`, 'DURATION:PT15M', `RRULE:FREQ=MONTHLY;BYMONTHDAY=${day}`,
+      `SUMMARY:${icsEsc('💶 Monats-Check: Abbuchungen abhaken')}`, `DESCRIPTION:${icsEsc('Kontoauszug öffnen, Abbuchungen abhaken, Monat abschließen. Danach Backup speichern.' + link)}`,
+      'BEGIN:VALARM', 'ACTION:DISPLAY', 'TRIGGER:PT0M', 'DESCRIPTION:Monats-Check', 'END:VALARM', 'END:VEVENT']);
+    S.debts.filter(d => d.withdrawUntil && TODAY <= d.withdrawUntil).forEach(d => allDay('frist-' + d.id, d.withdrawUntil, '⏳ Widerrufsfrist endet: ' + d.name, 'Letzter Tag für den Widerruf.', ['-P1DT15H', '-PT15H']));
+  }
+  S.car.items.filter(i => !onlyId || i.id === onlyId).forEach(i => {
+    const d = itemDue(i);
+    allDay(i.id, d.eff, (ICON[i.id] || '🔧') + ' ' + S.car.name + ': ' + i.name, (i.info || '') + (d.dueKm != null ? `\nSpätestens bei ${KM(d.dueKm)}.` : '') + '\nNach dem Termin in der App „Erledigt“ antippen.', ['-P13DT15H', '-PT15H']);
+  });
+  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Mein Geld//DE', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', ...ev.flat(), 'END:VCALENDAR'].map(icsFold).join('\r\n') + '\r\n';
+}
+function openCalendar(ics){
+  if (APP_URL) {
+    const bytes = new TextEncoder().encode(ics); let bin = ''; bytes.forEach(b => bin += String.fromCharCode(b));
+    const c = btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    window.open(new URL('api/ics?c=' + c, location.href).href, '_blank');
+  } else {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([ics], { type:'text/calendar' })); a.download = 'erinnerungen.ics'; a.click();
+  }
+  toast('Kalender öffnet sich – „Alle hinzufügen“ tippen');
+}
+
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 render();
+const hashCode = location.hash.match(/[#&]d=([A-Za-z0-9_-]+)/);
+if (hashCode) importCode(hashCode[1]);
 </script>
 </body>
 </html>

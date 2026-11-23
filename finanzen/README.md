@@ -1,7 +1,11 @@
-# Finanz- & Auto-Cockpit
+# Mein Geld & Auto
 
-Eigenständige Web-App (eine HTML-Datei, kein Build, offline nutzbar). `index.html` im Browser öffnen.
+Web-App (eine HTML-Datei) für Monats-Check, Schulden/Erspartes und Auto-Wartung. Installierbar auf dem Home-Bildschirm, offline nutzbar.
 
-- Daten liegen im `localStorage` des Browsers → regelmäßig **Backup (JSON)** exportieren.
-- Stammdaten (Budget, Abos, Auto-Plan) stehen in `seed()` in `index.html`. Bei Änderungen `SEED_REV` erhöhen – die App bietet dann „Neue Stammdaten übernehmen“ an, Monatseinträge bleiben erhalten.
-- Liegt bewusst **nicht** in `public/`, damit die persönlichen Daten nicht mit der Next.js-App deployt werden.
+- `index.html` – App. Enthält **keine persönlichen Daten** (nur eine leere Vorlage).
+- `daten/stammdaten.json` – persönliche Planung (Quelle der Wahrheit für Claude). Wird **nicht** deployt.
+- `tools/make-link.js <app-url>` – erzeugt den privaten Link `…#d=…`, der die Stammdaten einmalig aufs Gerät lädt. Der Teil nach `#` wird nie an den Server gesendet. Bereits erfasste Monate bleiben bei späteren Links erhalten (nur die Planung wird aktualisiert).
+- `api/ics.js` – gibt die in der App erzeugte Kalenderdatei zurück (nur Termin-Titel/Daten), damit iOS „Alle hinzufügen“ anbietet.
+- `sw.js`, `manifest.webmanifest`, `icon-*.png` – Home-Bildschirm & Offline.
+
+Deploy: nur `index.html sw.js manifest.webmanifest icon-*.png api/ics.js` hochladen (ohne `daten/`, `tools/`).
