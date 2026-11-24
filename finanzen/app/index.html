@@ -955,7 +955,11 @@ async function calSubscribe(){
 }
 window.addEventListener('online', () => calSchedule());
 
-if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  const hadController = !!navigator.serviceWorker.controller; let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !reloaded) { reloaded = true; location.reload(); } });
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => { r.update(); document.addEventListener('visibilitychange', () => { if (!document.hidden) r.update(); }); }).catch(() => {});
+}
 render();
 if (S.settings.calOn) calSchedule();
 const hashCode = location.hash.match(/[#&]d=([A-Za-z0-9_-]+)/);
