@@ -254,7 +254,7 @@ function normalize(d){
   return d;
 }
 let S = load();
-function save(){ localStorage.setItem(KEY, JSON.stringify(S)); }
+function save(){ localStorage.setItem(KEY, JSON.stringify(S)); if (typeof calSchedule === 'function') calSchedule(); }
 const ui = { tab: localStorage.getItem(KEY + ':tab') || 'home', month: null };
 
 /* ================= Konstanten Darstellung ================= */
@@ -533,7 +533,7 @@ function vCar(){
       <div class="body">
         <div>${esc(i.info)}</div>
         ${d.dueKm != null ? `<div style="margin-top:4px">Spätestens bei <b>${KM(d.dueKm)}</b>${d.kmLeft != null ? ` · noch ${KM(Math.max(0, d.kmLeft))}` : ''}</div>` : ''}
-        <div class="acts"><button class="primary" data-act="carDone" data-id="${i.id}">✓ Erledigt</button><button data-act="carSnooze" data-id="${i.id}">+1 Monat</button><button data-act="calOne" data-id="${i.id}" style="flex:0 0 52px" aria-label="In Kalender">📅</button></div>
+        <div class="acts"><button class="primary" data-act="carDone" data-id="${i.id}">✓ Erledigt</button><button data-act="carSnooze" data-id="${i.id}">+1 Monat</button></div>
         ${i.history.length ? `<ul class="hist">${[...i.history].reverse().map(h => `<li>✓ ${dLabel(h.date)}${h.km != null ? ' · ' + KM(h.km) : ''}${h.cost ? ' · ' + eur(h.cost) : ''}${h.note ? ' · ' + esc(h.note) : ''} <button class="x" data-act="delHist" data-item="${i.id}" data-id="${h.id}">✕</button></li>`).join('')}</ul>` : ''}
         <textarea placeholder="Notiz / Beleg (Werkstatt, Rechnungsnr. …)" data-ch="field" data-coll="carItems" data-id="${i.id}" data-f="note">${esc(i.note)}</textarea>
         <button class="link" data-act="carEdit" data-id="${i.id}">Intervall / Termin ändern</button>
@@ -593,10 +593,13 @@ function vSettings(){
   </div></details>
 
   <details ${ui.open.has('s-rem')?'open':''} data-id="s-rem"><summary>🔔 Erinnerungen & Kalender</summary><div>
-    <p>Dein iPhone-Kalender erinnert dich – auch wenn die App geschlossen ist:</p>
-    <p>• <b>Monats-Check</b> jeden Monat am <input class="num" style="width:64px;display:inline-block;padding:4px 6px" inputmode="numeric" value="${S.settings.reminderDay || 28}" data-ch="setting" data-f="reminderDay" data-k="num">. um 19 Uhr<br>• <b>Auto-Wartung</b>: 14 Tage vorher und am Vortag<br>${S.debts.some(d => d.withdrawUntil && TODAY <= d.withdrawUntil) ? '• <b>Fristen</b> (z. B. Widerruf Autokredit)<br>' : ''}</p>
-    <button class="block primary" data-act="calAll">📅 Erinnerungen in Kalender übernehmen</button>
-    <p class="muted" style="font-size:13px">Nur einmal nötig. Wenn du ein Auto-Teil als „Erledigt“ abhakst, kannst du den neuen Termin dort einzeln mit „📅“ hinzufügen.</p>
+    <p>Deine Termine erscheinen in deinem iPhone-Kalender und <b>aktualisieren sich automatisch</b>, wenn du in der App etwas einträgst oder abhakst:</p>
+    <p>• <b>Monats-Check</b> jeden Monat am <input class="num" style="width:64px;display:inline-block;padding:4px 6px" inputmode="numeric" value="${S.settings.reminderDay || 28}" data-ch="setting" data-f="reminderDay" data-k="num">. um 19 Uhr<br>• <b>Auto-Wartung</b> mit Erinnerung 14 Tage vorher und am Vortag<br>• <b>Fristen</b> (z. B. Widerruf)<br>• <b>Deine Einträge</b>: Extra verdient/ausgegeben, Sondertilgungen, Gespartes</p>
+    ${S.settings.calOn ? `<div class="tip">✓ Kalender verbunden${S.settings.calSyncedAt ? ' · zuletzt aktualisiert ' + new Date(S.settings.calSyncedAt).toLocaleString('de-DE', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : ''}</div>
+      <div class="grid g2" style="margin-top:8px"><button data-act="calSync">↻ Jetzt aktualisieren</button><button data-act="calSub">Erneut verbinden</button></div>`
+      : `<button class="block primary" data-act="calSub">📅 Mit iPhone-Kalender verbinden</button>`}
+    <p class="muted" style="font-size:13px">Im Kalender-Fenster auf <b>„Abonnieren“</b> tippen. Damit du Mitteilungen bekommst: dort den Schalter <b>„Hinweise entfernen“</b> ausschalten.<br>Es werden nur Termin-Titel übertragen, keine Beträge.</p>
+    ${S.settings.calToken ? `<details class="more"><summary>Klappt nicht? Manuell einrichten</summary><p style="font-size:13px">iPhone-Einstellungen → Kalender → Accounts → Account hinzufügen → Andere → <b>Kalenderabo hinzufügen</b> → diese Adresse einfügen:</p><input readonly value="${esc(calUrl('https'))}" onclick="this.select()"><button class="link" data-act="calCopy">Adresse kopieren</button></details>` : ''}
   </div></details>
 
   <details ${ui.open.has('s-save')?'open':''} data-id="s-save"><summary>Sichern & an Claude schicken</summary><div class="grid">
@@ -808,8 +811,9 @@ const A = {
   dlgOne: () => { dlgOne(); return false; },
   dlgPay: () => { dlgPay(); return false; },
   dlgSave: () => { dlgSave(); return false; },
-  calAll: () => { openCalendar(buildICS(null)); return false; },
-  calOne: d => { openCalendar(buildICS(d.id)); return false; },
+  calSub: () => { calSubscribe(); return false; },
+  calSync: () => { calSync(true); return false; },
+  calCopy: () => { navigator.clipboard?.writeText(calUrl('https')).then(() => toast('Adresse kopiert ✓'), () => toast('Bitte manuell kopieren')); return false; },
   hintOk: () => { localStorage.setItem(KEY + ':hint', '1'); },
   dlgOpening: () => { dlgOpening(); return false; },
   dlgKm: () => { dlgKm(); return false; },
@@ -890,44 +894,70 @@ async function importCode(code, force){
 }
 
 /* ================= Kalender (ICS) ================= */
-const icsEsc = t => String(t).replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+const icsEsc = t => String(t).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
 function icsFold(line){ const cp = Array.from(line), out = []; let cur = ''; for (const ch of cp) { if (new TextEncoder().encode(cur + ch).length > 72) { out.push(cur); cur = ' ' + ch; } else cur += ch; } out.push(cur); return out.join('\r\n'); }
 const icsDate = s => s.replace(/-/g, '');
-function buildICS(onlyId){
+function buildICS(){
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
   const ev = [], link = APP_URL ? '\n\nApp öffnen: ' + APP_URL : '';
-  const allDay = (uidKey, date, title, desc, alarms) => {
-    ev.push(['BEGIN:VEVENT', `UID:${uidKey}-${icsDate(date)}@mein-geld`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${icsDate(date)}`, `DTEND;VALUE=DATE:${icsDate(addDays(date, 1))}`,
+  const allDay = (uid, date, title, desc, alarms) => {
+    ev.push(['BEGIN:VEVENT', `UID:${uid}@mein-geld`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${icsDate(date)}`, `DTEND;VALUE=DATE:${icsDate(addDays(date, 1))}`,
       `SUMMARY:${icsEsc(title)}`, `DESCRIPTION:${icsEsc(desc + link)}`, 'TRANSP:TRANSPARENT',
       ...alarms.flatMap(tr => ['BEGIN:VALARM', 'ACTION:DISPLAY', `TRIGGER:${tr}`, `DESCRIPTION:${icsEsc(title)}`, 'END:VALARM']), 'END:VEVENT']);
   };
-  if (!onlyId) {
-    const day = Math.min(28, Math.max(1, Math.round(S.settings.reminderDay || 28)));
-    let first = TODAY.slice(0, 8) + String(day).padStart(2, '0'); if (first < TODAY) first = addMonths(first, 1);
-    ev.push(['BEGIN:VEVENT', 'UID:monatscheck@mein-geld', `DTSTAMP:${stamp}`, `DTSTART:${icsDate(first)}T190000`, 'DURATION:PT15M', `RRULE:FREQ=MONTHLY;BYMONTHDAY=${day}`,
-      `SUMMARY:${icsEsc('💶 Monats-Check: Abbuchungen abhaken')}`, `DESCRIPTION:${icsEsc('Kontoauszug öffnen, Abbuchungen abhaken, Monat abschließen. Danach Backup speichern.' + link)}`,
-      'BEGIN:VALARM', 'ACTION:DISPLAY', 'TRIGGER:PT0M', 'DESCRIPTION:Monats-Check', 'END:VALARM', 'END:VEVENT']);
-    S.debts.filter(d => d.withdrawUntil && TODAY <= d.withdrawUntil).forEach(d => allDay('frist-' + d.id, d.withdrawUntil, '⏳ Widerrufsfrist endet: ' + d.name, 'Letzter Tag für den Widerruf.', ['-P1DT15H', '-PT15H']));
-  }
-  S.car.items.filter(i => !onlyId || i.id === onlyId).forEach(i => {
+  const day = Math.min(28, Math.max(1, Math.round(S.settings.reminderDay || 28)));
+  let first = TODAY.slice(0, 8) + String(day).padStart(2, '0'); if (first < TODAY) first = addMonths(first, 1);
+  ev.push(['BEGIN:VEVENT', 'UID:monatscheck@mein-geld', `DTSTAMP:${stamp}`, `DTSTART:${icsDate(first)}T190000`, 'DURATION:PT15M', `RRULE:FREQ=MONTHLY;BYMONTHDAY=${day}`,
+    `SUMMARY:${icsEsc('💶 Monats-Check: Abbuchungen abhaken')}`, `DESCRIPTION:${icsEsc('Kontoauszug öffnen, Abbuchungen abhaken, Monat abschließen. Danach Backup speichern.' + link)}`,
+    'BEGIN:VALARM', 'ACTION:DISPLAY', 'TRIGGER:PT0M', 'DESCRIPTION:Monats-Check', 'END:VALARM', 'END:VEVENT']);
+  S.debts.filter(d => d.withdrawUntil && TODAY <= d.withdrawUntil).forEach(d => allDay('frist-' + d.id, d.withdrawUntil, '⏳ Widerrufsfrist endet: ' + d.name, 'Letzter Tag für den Widerruf.', ['-P1DT15H', '-PT15H']));
+  S.car.items.forEach(i => {
     const d = itemDue(i);
-    allDay(i.id, d.eff, (ICON[i.id] || '🔧') + ' ' + S.car.name + ': ' + i.name, (i.info || '') + (d.dueKm != null ? `\nSpätestens bei ${KM(d.dueKm)}.` : '') + '\nNach dem Termin in der App „Erledigt“ antippen.', ['-P13DT15H', '-PT15H']);
+    allDay('wartung-' + i.id, d.eff, (ICON[i.id] || '🔧') + ' ' + S.car.name + ': ' + i.name, (i.info || '') + (d.dueKm != null ? `\nSpätestens bei ${KM(d.dueKm)}.` : '') + '\nNach dem Termin in der App „Erledigt“ antippen.', ['-P13DT15H', '-PT15H']);
+    i.history.forEach(h => allDay('erledigt-' + h.id, h.date, '✓ ' + i.name + ' erledigt', h.note || '', []));
   });
-  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Mein Geld//DE', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', ...ev.flat(), 'END:VCALENDAR'].map(icsFold).join('\r\n') + '\r\n';
-}
-function openCalendar(ics){
-  if (APP_URL) {
-    const bytes = new TextEncoder().encode(ics); let bin = ''; bytes.forEach(b => bin += String.fromCharCode(b));
-    const c = btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    window.open(new URL('api/ics?c=' + c, location.href).href, '_blank');
-  } else {
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([ics], { type:'text/calendar' })); a.download = 'erinnerungen.ics'; a.click();
+  for (const [m, r] of Object.entries(S.months)) {
+    const at = x => x.date || m + '-01';
+    (r.extraIncome || []).forEach(x => allDay(x.id, at(x), '💶 Extra verdient: ' + x.name, '', []));
+    (r.oneOffs || []).forEach(x => allDay(x.id, at(x), '🧾 Extra ausgegeben: ' + x.name, '', []));
+    (r.payments || []).forEach(x => allDay(x.id, at(x), '💳 Sondertilgung: ' + (S.debts.find(d => d.id === x.debt)?.name || ''), '', []));
+    (r.savings || []).forEach(x => allDay(x.id, at(x), '🐷 Gespart: ' + x.name, '', []));
+    if (r.closed) allDay('abschluss-' + m, addDays(addYM(m, 1) + '-01', -1), '✓ ' + ymLabel(m) + ' abgeschlossen', '', []);
   }
-  toast('Kalender öffnet sich – „Alle hinzufügen“ tippen');
+  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Mein Geld//DE', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:Mein Geld & Auto',
+    'REFRESH-INTERVAL;VALUE=DURATION:PT1H', 'X-PUBLISHED-TTL:PT1H', ...ev.flat(), 'END:VCALENDAR'].map(icsFold).join('\r\n') + '\r\n';
 }
+function calToken(){
+  if (!S.settings.calToken) { const b = crypto.getRandomValues(new Uint8Array(16)); S.settings.calToken = Array.from(b, x => x.toString(16).padStart(2, '0')).join(''); localStorage.setItem(KEY, JSON.stringify(S)); }
+  return S.settings.calToken;
+}
+const calUrl = scheme => (APP_URL ? new URL('api/cal?t=' + calToken(), location.href).href : '').replace(/^https:/, scheme + ':');
+let calTimer = null, calLast = '';
+async function calSync(manual){
+  if (!APP_URL || !S.settings.calToken) return false;
+  const ics = buildICS();
+  if (!manual && ics.replace(/DTSTAMP:\S+/g, '') === calLast) return true;
+  try {
+    const r = await fetch('api/cal?t=' + S.settings.calToken, { method:'POST', headers:{ 'Content-Type':'text/plain' }, body:ics });
+    if (!r.ok) throw new Error(r.status);
+    calLast = ics.replace(/DTSTAMP:\S+/g, ''); S.settings.calSyncedAt = Date.now(); localStorage.setItem(KEY, JSON.stringify(S));
+    if (manual) { toast('Kalender aktualisiert ✓'); render(); }
+    return true;
+  } catch(e) { if (manual) toast('Keine Verbindung – versuche es später'); return false; }
+}
+function calSchedule(){ if (!S.settings.calOn) return; clearTimeout(calTimer); calTimer = setTimeout(() => calSync(false), 2500); }
+async function calSubscribe(){
+  if (!APP_URL) { toast('Nur in der installierten App möglich'); return; }
+  calToken();
+  if (!(await calSync(false))) { toast('Keine Verbindung – bitte mit Internet erneut versuchen'); return; }
+  S.settings.calOn = true; localStorage.setItem(KEY, JSON.stringify(S)); render();
+  location.href = calUrl('webcal');
+}
+window.addEventListener('online', () => calSchedule());
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 render();
+if (S.settings.calOn) calSchedule();
 const hashCode = location.hash.match(/[#&]d=([A-Za-z0-9_-]+)/);
 if (hashCode) importCode(hashCode[1]);
 </script>
