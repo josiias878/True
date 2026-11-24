@@ -84,6 +84,22 @@ button.x{border:0;background:none;color:var(--muted);padding:4px 8px;font-size:1
 .sbar b{font-size:17px;color:var(--text);font-variant-numeric:tabular-nums}
 .sbar b.good{color:var(--good)} .sbar b.warn{color:var(--warn)} .sbar b.bad{color:var(--bad)} .sbar b.pos{color:var(--good)}
 .toast{bottom:90px !important}
+.mgrid,.mleft,.mright,.mleft2{display:contents}
+.o0{order:0} .o1{order:1} .o2{order:2} .o3{order:3} .o4{order:4} .o5{order:5} .o6{order:6} .o7{order:7} .o8{order:8}
+.mgrid{display:flex;flex-direction:column}
+.mgrid > .mleft,.mgrid > .mright,.mgrid > .mleft2{display:contents}
+@media (min-width:1000px){
+  .wrap.wide{max-width:1120px}
+  .wrap.wide .nav{max-width:600px;margin-left:auto;margin-right:auto}
+  .mgrid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);grid-template-rows:auto 1fr;column-gap:20px;align-items:start}
+  .mgrid > .mleft{display:block;grid-column:1;grid-row:1}
+  .mgrid > .mleft2{display:block;grid-column:1;grid-row:2}
+  .mgrid > .mright{display:block;grid-column:2;grid-row:1 / span 2;position:sticky;top:12px}
+  .sbar,.sbar-space{display:none}
+  .wrap.wide main > :not(.mgrid){max-width:680px;margin-left:auto;margin-right:auto}
+  .it:hover{background:var(--surface-2);border-radius:10px}
+  .it{padding-left:6px;padding-right:6px}
+}
 .up{color:var(--bad)} .down{color:var(--good)} .muted{color:var(--muted)} .t2{color:var(--text-2)}
 .adds{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .adds button{font-size:13px;padding:10px 6px;font-weight:600}
@@ -159,7 +175,7 @@ dialog h3{margin:0 0 12px;font-size:18px}
    per Backup-Import aufs Gerät und bleiben nur dort gespeichert.
    ========================================================= */
 const KEY = 'fin-auto-cockpit-v1';
-const APP_URL = location.protocol === 'https:' ? location.origin + location.pathname : '';
+const APP_URL = (location.protocol === 'https:' || location.hostname === 'localhost') ? location.origin + location.pathname : '';
 
 function seed(){
   const t = new Date(), d0 = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0');
@@ -254,7 +270,7 @@ function normalize(d){
   return d;
 }
 let S = load();
-function save(){ localStorage.setItem(KEY, JSON.stringify(S)); if (typeof calSchedule === 'function') calSchedule(); }
+function save(){ if (typeof stampChanges === 'function') stampChanges(); localStorage.setItem(KEY, JSON.stringify(S)); if (typeof calSchedule === 'function') calSchedule(); if (typeof syncSchedule === 'function') syncSchedule(); }
 const ui = { tab: localStorage.getItem(KEY + ':tab') || 'home', month: null };
 
 /* ================= Konstanten Darstellung ================= */
@@ -390,8 +406,9 @@ function render(){
   $('#tabs').innerHTML = TABS.map(([k,l]) => `<button class="${ui.tab===k?'on':''}" data-act="tab" data-k="${k}">${l}</button>`).join('');
   const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent), standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
   const hint = !S.template && APP_URL && !standalone && !localStorage.getItem(KEY + ':hint')
-    ? `<div class="banner"><b>📲 Auf den Home-Bildschirm:</b> ${isIOS ? 'Unten auf <b>Teilen</b> ⬆︎ tippen → <b>„Zum Home-Bildschirm“</b>.' : 'Im Browser-Menü „Zum Startbildschirm hinzufügen“ wählen.'} Danach öffnest du „Mein Geld“ wie eine normale App.<div><button data-act="hintOk">Erledigt</button></div></div>` : '';
+    ? `<div class="banner"><b>📲 Als App installieren:</b> ${isIOS ? 'Unten auf <b>Teilen</b> ⬆︎ tippen → <b>„Zum Home-Bildschirm“</b>.' : /Macintosh/.test(navigator.userAgent) ? 'In Safari oben im Menü <b>Ablage → „Zum Dock hinzufügen“</b>.' : 'Im Browser-Menü „Zum Startbildschirm hinzufügen“ wählen.'} Danach öffnest du „Mein Geld“ wie eine normale App.<div><button data-act="hintOk">Erledigt</button></div></div>` : '';
   $('#banner').innerHTML = hint + (S.template ? `<div class="banner"><b>👋 Willkommen!</b> Öffne den privaten Link von Claude, damit deine Daten geladen werden – oder füge ihn hier ein:<textarea id="linkIn" placeholder="Link hier einfügen" style="margin-top:8px;min-height:44px"></textarea><div><button class="primary" data-act="pasteLink">Daten laden</button><button data-act="import">Backup laden</button></div></div>` : '');
+  document.querySelector('.wrap').classList.toggle('wide', ui.tab === 'month');
   $('#main').innerHTML = ({ month:vMonth, car:vCar, settings:vSettings })[ui.tab]();
 }
 
@@ -441,17 +458,48 @@ function vMonth(){
   const next = S.car.items.map(i => ({ i, d:itemDue(i) })).sort((a,b) => a.d.eff < b.d.eff ? -1 : 1)[0];
   const savedTotal = savingsTotal(m);
   return `
-  <div class="top"><button class="round" data-act="mPrev" aria-label="Vormonat">◀</button><div class="m">${ymLabel(m)}</div><button class="round" data-act="mNext" aria-label="Nächster Monat">▶</button></div>
+  <div class="mgrid"><div class="mleft">
+  <div class="top o0"><button class="round" data-act="mPrev" aria-label="Vormonat">◀</button><div class="m">${ymLabel(m)}</div><button class="round" data-act="mNext" aria-label="Nächster Monat">▶</button></div>
 
-  <div class="card hero">
+  </div><div class="mright">
+  <div class="card hero o1">
     <div class="lbl">${cl ? 'Abgeschlossen ✓ · Kontostand Monatsende' : 'Am Monatsende übrig'}</div>
     <div class="big ${cls}">${eur(c.closing)}</div>
     <div class="sub">${sub}</div>
     ${c.savedPlan ? `<div class="savepill">🐷 + ${eur(c.savedPlan)} gespart diesen Monat</div>` : ''}
     ${tip}
   </div>
+  <div class="card o3 calccard">    <div class="calc" style="margin:0">
+      ${c.opening ? `<div class="line"><span>Übertrag aus Vormonat</span><b>${eur(c.opening)}</b></div>` : ''}
+      <div class="line"><span>Eingegangen</span><b class="pos">+ ${eur(c.inChecked)}</b></div>
+      <div class="line"><span>Abgebucht</span><b>− ${eur(c.outChecked)}</b></div>
+      ${c.savedChecked ? `<div class="line"><span class="pos">🐷 Gespart / umgebucht</span><b class="pos">→ ${eur(c.savedChecked)}</b></div>` : ''}
+      <div class="line now"><span>Jetzt übrig</span><b>${eur(c.nowLeft)}</b></div>
+      ${Math.abs(c.closing - c.nowLeft) >= .01 ? `<div class="line"><span class="t2">Noch nicht abgehakt</span><b class="t2">${c.closing - c.nowLeft >= 0 ? '+ ' : '− '}${eur(Math.abs(c.closing - c.nowLeft))}</b></div>
+      <div class="line"><span class="t2">Am Monatsende voraussichtlich</span><b class="t2">${eur(c.closing)}</b></div>` : ''}
+    </div>
+</div>
+    <div class="card o7">
+    <h2>Schulden & Erspartes</h2>
+    ${debts.map(d => { const s = debtStatus(d); return `<div class="line"><span><span class="dot" style="--c:var(--debt)"></span>${esc(d.name)}</span>${s.done ? '<span class="pill good">✓ erledigt</span>' : s.remaining == null ? `<span class="muted" style="font-size:14px">${eur0(s.rate)} / Monat</span>` : `<b>${eur(s.remaining)}</b>`}</div>`; }).join('')}
+    <div class="line"><span><span class="dot" style="--c:var(--inc)"></span>🔧 Auto-Rücklage</span><b class="pos">${eur(potStatus(S.pots[0]).balance)}</b></div>
+    <div class="line"><span><span class="dot" style="--c:var(--inc)"></span>🐷 Gespart / anderes Konto</span><b class="pos">${eur(savedTotal)}</b></div>
+  </div>
 
-  <div class="card">
+
+    ${next ? `<div class="card o8" data-act="tab" data-k="car" style="cursor:pointer"><h2>Auto <small>Alle Termine ›</small></h2>
+    <div class="line"><span><span class="dot" style="--c:${ST_C[next.d.status]}"></span>${ICON[next.i.id] || '🔧'} ${esc(next.i.name)}</span><b>${cdShort(next.d)}</b></div></div>` : ''}
+
+    <div class="card o6">
+    <details class="more"><summary>Kontostand zu Monatsbeginn & Notiz</summary>
+      <div class="line"><span>Kontostand zu Monatsbeginn</span><button class="link" data-act="dlgOpening" ${cl?'disabled':''}>${eur(c.opening)}</button></div>
+      <textarea data-ch="mNote" ${cl?'disabled':''} placeholder="Notiz zum Monat (optional)" style="margin-top:8px">${esc(c.r.note||'')}</textarea>
+    </details>
+  </div>
+
+
+  </div><div class="mleft2">
+  <div class="card o2">
     <h2>Abbuchungen abhaken <small>${c.checked} von ${c.lines}</small></h2>
     <div class="prog"><span style="width:${pct}%"></span></div>
     <div class="muted" style="font-size:13px">○ antippen = wie geplant · Zeile antippen = Betrag & Datum ändern</div>
@@ -464,40 +512,18 @@ function vMonth(){
     ${c.pay.map(p => extraRow('💳', S.debts.find(d => d.id === p.debt)?.name || 'Tilgung', 'Extra getilgt', p.amount, 'debt', 'payments', p.id, cl, p.date)).join('')}
     ${c.sav.map(x => extraRow('🐷', x.name, 'Gespart / anderes Konto', x.amount, 'save', 'savings', x.id, cl, x.date)).join('')}
 
-    <div class="calc">
-      ${c.opening ? `<div class="line"><span>Übertrag aus Vormonat</span><b>${eur(c.opening)}</b></div>` : ''}
-      <div class="line"><span>Eingegangen</span><b class="pos">+ ${eur(c.inChecked)}</b></div>
-      <div class="line"><span>Abgebucht</span><b>− ${eur(c.outChecked)}</b></div>
-      ${c.savedChecked ? `<div class="line"><span class="pos">🐷 Gespart / umgebucht</span><b class="pos">→ ${eur(c.savedChecked)}</b></div>` : ''}
-      <div class="line now"><span>Jetzt übrig</span><b>${eur(c.nowLeft)}</b></div>
-      ${Math.abs(c.closing - c.nowLeft) >= .01 ? `<div class="line"><span class="t2">Noch nicht abgehakt</span><b class="t2">${c.closing - c.nowLeft >= 0 ? '+ ' : '− '}${eur(Math.abs(c.closing - c.nowLeft))}</b></div>
-      <div class="line"><span class="t2">Am Monatsende voraussichtlich</span><b class="t2">${eur(c.closing)}</b></div>` : ''}
-    </div>
   </div>
 
-  ${cl ? '' : `<div class="adds"><button data-act="dlgExtra">💶 Extra verdient</button><button data-act="dlgOne">🧾 Extra ausgegeben</button><button data-act="dlgPay">💳 Extra getilgt</button><button data-act="dlgSave" class="savebtn">🐷 Gespart / umgebucht</button></div>`}
+  ${cl ? '' : `<div class="adds o4"><button data-act="dlgExtra">💶 Extra verdient</button><button data-act="dlgOne">🧾 Extra ausgegeben</button><button data-act="dlgPay">💳 Extra getilgt</button><button data-act="dlgSave" class="savebtn">🐷 Gespart / umgebucht</button></div>`}
 
+  <div class="o5">
   ${cl ? `<button class="block" data-act="reopen">Monat wieder öffnen</button>`
        : `<button class="block primary" data-act="close">✓ Monat abschließen</button>
           <p class="muted" style="font-size:13px;text-align:center;margin:6px 0 14px">${c.lines - c.checked ? `Noch ${c.lines - c.checked} nicht abgehakt – werden wie geplant übernommen.` : 'Alles geprüft. Der Rest wandert in den nächsten Monat.'}</p>`}
-
-  <div class="card" style="margin-top:12px">
-    <details class="more"><summary>Kontostand zu Monatsbeginn & Notiz</summary>
-      <div class="line"><span>Kontostand zu Monatsbeginn</span><button class="link" data-act="dlgOpening" ${cl?'disabled':''}>${eur(c.opening)}</button></div>
-      <textarea data-ch="mNote" ${cl?'disabled':''} placeholder="Notiz zum Monat (optional)" style="margin-top:8px">${esc(c.r.note||'')}</textarea>
-    </details>
   </div>
 
-  <div class="card">
-    <h2>Schulden & Erspartes</h2>
-    ${debts.map(d => { const s = debtStatus(d); return `<div class="line"><span><span class="dot" style="--c:var(--debt)"></span>${esc(d.name)}</span>${s.done ? '<span class="pill good">✓ erledigt</span>' : s.remaining == null ? `<span class="muted" style="font-size:14px">${eur0(s.rate)} / Monat</span>` : `<b>${eur(s.remaining)}</b>`}</div>`; }).join('')}
-    <div class="line"><span><span class="dot" style="--c:var(--inc)"></span>🔧 Auto-Rücklage</span><b class="pos">${eur(potStatus(S.pots[0]).balance)}</b></div>
-    <div class="line"><span><span class="dot" style="--c:var(--inc)"></span>🐷 Gespart / anderes Konto</span><b class="pos">${eur(savedTotal)}</b></div>
-  </div>
-
-  ${next ? `<div class="card" data-act="tab" data-k="car" style="cursor:pointer"><h2>Auto <small>Alle Termine ›</small></h2>
-    <div class="line"><span><span class="dot" style="--c:${ST_C[next.d.status]}"></span>${ICON[next.i.id] || '🔧'} ${esc(next.i.name)}</span><b>${cdShort(next.d)}</b></div></div>` : ''}
-  <div style="height:70px"></div>
+  </div></div>
+  <div class="sbar-space" style="height:70px"></div>
   <div class="sbar"><div><span>Jetzt übrig<b>${eur(c.nowLeft)}</b></span><span>Monatsende<b class="${cls}">${eur(c.closing)}</b></span>${c.savedPlan ? `<span>Gespart<b class="pos">${eur(c.savedPlan)}</b></span>` : ''}</div></div>`;
 }
 function savingsTotal(upTo){
@@ -590,6 +616,17 @@ function vSettings(){
     <label class="field">Auto-Übergabe<input type="date" value="${S.car.handoverDate}" data-ch="car" data-f="handoverDate"></label>
     <label class="field">km bei Übergabe<input class="num" inputmode="numeric" value="${S.car.handoverKm ?? ''}" data-ch="car" data-f="handoverKm" data-k="numnull"></label>
     <label class="field">Geplante km / Jahr<input class="num" inputmode="numeric" value="${S.car.kmPerYear}" data-ch="car" data-f="kmPerYear" data-k="num"></label>
+  </div></details>
+
+  <details ${ui.open.has('s-sync')?'open':''} data-id="s-sync"><summary>📱💻 iPhone & MacBook abgleichen</summary><div>
+    ${syncSecret() ? `<div class="tip">✓ Abgleich aktiv${syncState.at ? ' · zuletzt ' + new Date(syncState.at).toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit' }) : ''}${syncState.err ? ' · ⚠︎ ' + esc(syncState.err) : ''}</div>
+      <p>Weiteres Gerät verbinden: diesen Link dort in <b>Safari</b> öffnen (z. B. per AirDrop schicken).</p>
+      <input readonly value="${esc(syncLink())}" onclick="this.select()">
+      <div class="grid g2" style="margin-top:8px"><button data-act="syncShare">Link teilen / AirDrop</button><button data-act="syncNowBtn">↻ Jetzt abgleichen</button></div>
+      <button class="link" data-act="syncOff" style="color:var(--bad)">Abgleich auf diesem Gerät beenden</button>`
+    : `<p>Hake am iPhone ab und bestätige am MacBook – beide Geräte zeigen immer denselben Stand.</p>
+      <button class="block primary" data-act="syncOn">Abgleich einschalten</button>`}
+    <p class="muted" style="font-size:13px">Deine Daten werden auf dem Gerät <b>verschlüsselt</b>, bevor sie gespeichert werden. Der Schlüssel steckt nur im Link – den Link bitte nicht weitergeben.</p>
   </div></details>
 
   <details ${ui.open.has('s-rem')?'open':''} data-id="s-rem"><summary>🔔 Erinnerungen & Kalender</summary><div>
@@ -812,6 +849,10 @@ const A = {
   dlgPay: () => { dlgPay(); return false; },
   dlgSave: () => { dlgSave(); return false; },
   calSub: () => { calSubscribe(); return false; },
+  syncOn: () => { syncEnable(); return false; },
+  syncOff: () => { if (!confirm('Abgleich auf diesem Gerät beenden? Deine Daten bleiben hier gespeichert.')) return false; localStorage.removeItem(KEY + ':sync'); toast('Abgleich beendet'); },
+  syncNowBtn: () => { syncNow(true); return false; },
+  syncShare: () => { const u = syncLink(); if (navigator.share) navigator.share({ title:'Mein Geld – Gerät verbinden', url:u }).catch(() => {}); else navigator.clipboard?.writeText(u).then(() => toast('Link kopiert ✓')); return false; },
   calSync: () => { calSync(true); return false; },
   calCopy: () => { navigator.clipboard?.writeText(calUrl('https')).then(() => toast('Adresse kopiert ✓'), () => toast('Bitte manuell kopieren')); return false; },
   hintOk: () => { localStorage.setItem(KEY + ':hint', '1'); },
@@ -846,7 +887,7 @@ const A = {
   report: () => { openDlg(`<h3>Monatsbericht – ${ymLabel(ui.month)}</h3><textarea style="min-height:300px;font-size:12px;font-family:ui-monospace,Menlo,monospace" readonly>${esc(report())}</textarea><div class="dlg-actions"><button data-dlg="cancel">Schließen</button><button class="primary" data-dlg="copy">Kopieren</button></div>`, () => {}); return false; },
   export: () => { const b = new Blob([JSON.stringify(S, null, 2)], { type:'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'mein-geld-backup-' + TODAY + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); return false; },
   import: () => { $('#importFile').click(); return false; },
-  reset: () => { if (!confirm('Wirklich alles zurücksetzen? Vorher Backup speichern!')) return false; S = seed(); ui.month = null; },
+  reset: () => { if (!confirm('Wirklich alles zurücksetzen? Vorher Backup speichern!')) return false; localStorage.removeItem(KEY + ':sync'); S = seed(); ui.month = null; },
   pasteLink: () => { const v = ($('#linkIn')?.value || '').trim(); const m = v.match(/[#&]d=([A-Za-z0-9_-]+)/) || v.match(/^([zj][A-Za-z0-9_-]{20,})$/); if (!m) { toast('Kein gültiger Link'); return false; } importCode(m[1], true); return false; },
 
 };
@@ -954,6 +995,100 @@ async function calSubscribe(){
   location.href = calUrl('webcal');
 }
 window.addEventListener('online', () => calSchedule());
+
+/* ================= Abgleich zwischen Geräten (Ende-zu-Ende verschlüsselt) ================= */
+const SECTIONS = ['incomes', 'expenses', 'subs', 'debts', 'pots', 'car', 'settings'];
+function sectionsOf(st){ const o = {}; SECTIONS.forEach(k => o[k] = JSON.stringify(st[k])); Object.keys(st.months || {}).forEach(m => o['m:' + m] = JSON.stringify(st.months[m])); return o; }
+let lastSnap = sectionsOf(S);
+function stampChanges(){
+  const cur = sectionsOf(S), now = Date.now(); S.stamps = S.stamps || {};
+  for (const k in cur) if (cur[k] !== lastSnap[k]) S.stamps[k] = now;
+  lastSnap = cur;
+}
+function mergeStates(local, remote){
+  const out = JSON.parse(JSON.stringify(local)), ls = local.stamps || {}, rs = remote.stamps || {};
+  out.stamps = { ...ls };
+  for (const k of new Set([...Object.keys(ls), ...Object.keys(rs)])) {
+    if ((rs[k] || 0) <= (ls[k] || 0)) continue;
+    if (k.startsWith('m:')) { const m = k.slice(2); if (remote.months?.[m]) out.months[m] = JSON.parse(JSON.stringify(remote.months[m])); }
+    else if (remote[k] !== undefined) out[k] = JSON.parse(JSON.stringify(remote[k]));
+    out.stamps[k] = rs[k];
+  }
+  if (out.settings && local.settings) { out.settings.calSyncedAt = local.settings.calSyncedAt; }
+  delete out.template; return out;
+}
+const syncSecret = () => localStorage.getItem(KEY + ':sync');
+const syncLink = () => (APP_URL || location.origin + location.pathname) + '#s=' + syncSecret();
+const syncState = { at: 0, err: '' };
+const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const unb64u = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - s.length % 4) % 4)), c => c.charCodeAt(0));
+async function syncKeys(secret){
+  const enc = new TextEncoder();
+  const idH = new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode('id:' + secret)));
+  const kH = await crypto.subtle.digest('SHA-256', enc.encode('key:' + secret));
+  return { id: Array.from(idH.slice(0, 16), x => x.toString(16).padStart(2, '0')).join(''), key: await crypto.subtle.importKey('raw', kH, 'AES-GCM', false, ['encrypt', 'decrypt']) };
+}
+async function syncPull(k){
+  const r = await fetch('api/sync?id=' + k.id, { cache: 'no-store' });
+  if (r.status === 204) return null; if (!r.ok) throw new Error('Server ' + r.status);
+  const { iv, ct } = await r.json();
+  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64u(iv) }, k.key, unb64u(ct));
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+async function syncPush(k, state){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, k.key, new TextEncoder().encode(JSON.stringify(state)));
+  const r = await fetch('api/sync?id=' + k.id, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ v: 1, iv: b64u(iv), ct: b64u(ct) }) });
+  if (!r.ok) throw new Error('Server ' + r.status);
+}
+let syncBusy = false, syncAgain = false, syncTimer = null, syncApplying = false;
+async function syncNow(manual){
+  const secret = syncSecret(); if (!secret || !APP_URL) return;
+  if (syncBusy) { syncAgain = true; return; }
+  syncBusy = true;
+  try {
+    const k = await syncKeys(secret);
+    const remote = await syncPull(k);
+    let next = S;
+    if (remote) {
+      if (S.template) ui.month = null;
+      next = S.template ? (() => { const x = JSON.parse(JSON.stringify(remote)); delete x.template; return x; })() : mergeStates(S, remote);
+      if (JSON.stringify(next) !== JSON.stringify(S)) {
+        const fromRemote = JSON.stringify(sectionsOf(next)) !== JSON.stringify(sectionsOf(S));
+        S = normalize(next); lastSnap = sectionsOf(S); localStorage.setItem(KEY, JSON.stringify(S));
+        if (fromRemote && !document.querySelector('dialog[open]')) { render(); toast('Vom anderen Gerät aktualisiert ✓'); }
+      }
+    }
+    if (!remote || JSON.stringify(remote.stamps || {}) !== JSON.stringify(S.stamps || {}) ) await syncPush(k, S);
+    syncState.at = Date.now(); syncState.err = '';
+    if (manual) { toast('Abgeglichen ✓'); render(); }
+  } catch (e) {
+    syncState.err = navigator.onLine ? 'Abgleich fehlgeschlagen' : 'offline';
+    if (manual) toast(navigator.onLine ? 'Abgleich fehlgeschlagen' : 'Keine Internetverbindung');
+  } finally {
+    syncBusy = false;
+    if (syncAgain) { syncAgain = false; syncNow(false); }
+  }
+}
+function syncSchedule(){ if (!syncSecret()) return; clearTimeout(syncTimer); syncTimer = setTimeout(() => syncNow(false), 1200); }
+async function syncEnable(){
+  if (!APP_URL) { toast('Nur in der Online-App möglich'); return; }
+  const b = crypto.getRandomValues(new Uint8Array(24)); localStorage.setItem(KEY + ':sync', b64u(b));
+  const now = Date.now(); S.stamps = S.stamps || {}; for (const k in sectionsOf(S)) S.stamps[k] = S.stamps[k] || now;
+  lastSnap = sectionsOf(S); localStorage.setItem(KEY, JSON.stringify(S));
+  await syncNow(false); ui.open.add('s-sync'); render();
+  toast(syncState.err ? 'Abgleich fehlgeschlagen – später erneut versuchen' : 'Abgleich aktiv ✓ – jetzt Link am MacBook öffnen');
+}
+const syncHash = location.hash.match(/[#&]s=([A-Za-z0-9_-]{20,})/);
+if (syncHash) {
+  localStorage.setItem(KEY + ':sync', syncHash[1]);
+  history.replaceState(null, '', location.pathname);
+  setTimeout(async () => { await syncNow(false); toast(syncState.err ? 'Verbindung fehlgeschlagen – bitte erneut öffnen' : 'Gerät verbunden ✓'); }, 50);
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) syncNow(false); });
+window.addEventListener('focus', () => syncNow(false));
+window.addEventListener('online', () => syncNow(false));
+if (syncSecret() && !syncHash) setTimeout(() => syncNow(false), 300);
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   const hadController = !!navigator.serviceWorker.controller; let reloaded = false;
