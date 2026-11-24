@@ -262,6 +262,7 @@ function load(){
   return seed();
 }
 function normalize(d){
+  if (!d.template && d.settings && d.settings.payday == null) { d.settings.payday = 8; d.settings.reminderDay = 7; }
   const s = seed();
   for (const k of Object.keys(s)) if (d[k] == null && k !== 'template') d[k] = s[k];
   d.settings = Object.assign({}, s.settings, d.settings);
@@ -427,9 +428,20 @@ const ICON = { 'inc-gehalt':'💼', 'inc-neben':'⏱️', 'ex-miete':'🏠', 'ex
   'car-oel':'🛢️', 'car-reifen':'🛞', 'car-zahnriemen':'⚙️', 'car-pollen':'🌬️', 'car-bremsfl':'🛑', 'car-hu':'📋', 'car-luft':'💨', 'car-zuend':'✨', 'car-getriebe':'🔩' };
 const TYPE_ICON = { inc:'💶', fix:'📄', variabel:'🛍️', ruecklage:'🐷', schulden:'💳' };
 const icon = (id, type) => `<span class="ico" aria-hidden="true">${ICON[id] || TYPE_ICON[type] || '🔹'}</span>`;
+const payday = () => Math.min(28, Math.max(1, Math.round(S.settings.payday || 1)));
+const dm = s => s.slice(8,10).replace(/^0/, '') + '.' + s.slice(5,7).replace(/^0/, '') + '.';
+const periodOf = m => { const pd = payday(); const a = m + '-' + String(pd).padStart(2,'0'); return { start:a, end:addDays(addMonths(a, 1), -1), before:addDays(a, -1) }; };
+const incDate = m => periodOf(m).start;
 const defDate = m => TODAY.slice(0,7) === m ? TODAY : m > THIS_YM ? m + '-01' : addDays(addYM(m, 1) + '-01', -1);
 const shortDate = s => s ? s.slice(8,10) + '.' + s.slice(5,7) + '.' : '';
 
+function carryRow(c, cl){
+  const m = c.m, prev = addYM(m, -1), first = m <= S.settings.startMonth, manual = first || c.r.opening != null, prevClosed = !!rec(prev).closed;
+  const how = manual ? `von dir eingetragen · Kontostand am ${dm(periodOf(m).before)}` : prevClosed ? `automatisch aus ${MN[+prev.slice(5,7)-1]}` : `geschätzt – antippen und echten Kontostand eintragen`;
+  return `<div class="it"><span class="chk ${manual || prevClosed ? 'on' : ''}" style="--c:var(--inc)">${manual || prevClosed ? '✓' : ''}</span><span class="ico" aria-hidden="true">↪️</span>
+    <button class="n" data-act="dlgOpening" ${cl?'disabled':''}>Übertrag aus ${MN[+prev.slice(5,7)-1]}<small class="${manual || prevClosed ? '' : 'up'}">${how}</small></button>
+    <button class="amt save" data-act="dlgOpening" ${cl?'disabled':''}>${eur(c.opening)}</button></div>`;
+}
 function itemRow(kind, x, color, cl, dates){
   const on = x.ist != null, d = on ? r2(x.ist - x.soll) : 0;
   const bad = kind === 'inc' ? d < 0 : d > 0, saving = x.type === 'ruecklage';
@@ -459,7 +471,7 @@ function vMonth(){
   const savedTotal = savingsTotal(m);
   return `
   <div class="mgrid"><div class="mleft">
-  <div class="top o0"><button class="round" data-act="mPrev" aria-label="Vormonat">◀</button><div class="m">${ymLabel(m)}</div><button class="round" data-act="mNext" aria-label="Nächster Monat">▶</button></div>
+  <div class="top o0"><button class="round" data-act="mPrev" aria-label="Vormonat">◀</button><div class="m">${ymLabel(m)}${payday() > 1 ? `<small style="display:block;font-size:12px;font-weight:500;color:var(--muted)">Gehaltsmonat ${dm(periodOf(m).start)} – ${dm(periodOf(m).end)}</small>` : ''}</div><button class="round" data-act="mNext" aria-label="Nächster Monat">▶</button></div>
 
   </div><div class="mright">
   <div class="card hero o1">
@@ -504,6 +516,7 @@ function vMonth(){
     <div class="prog"><span style="width:${pct}%"></span></div>
     <div class="muted" style="font-size:13px">○ antippen = wie geplant · Zeile antippen = Betrag & Datum ändern</div>
     <div class="sec">Geld rein</div>
+    ${carryRow(c, cl)}
     ${c.inc.map(i => itemRow('inc', i, 'var(--inc)', cl, dates)).join('')}
     ${c.extra.map(x => extraRow('💶', x.name, 'Extra verdient', x.amount, 'inc', 'extraIncome', x.id, cl, x.date)).join('')}
     <div class="sec">Geld raus</div>
@@ -612,6 +625,7 @@ function vSettings(){
   <details ${ui.open.has('s-rules')?'open':''} data-id="s-rules"><summary>Puffer, Start & Auto-Daten</summary><div class="grid g2">
     <label class="field">Puffer, der stehen bleibt<input class="num" inputmode="decimal" value="${numIn(S.settings.bufferTarget)}" data-ch="setting" data-f="bufferTarget" data-k="num"></label>
     <label class="field">Erster Monat<input type="month" value="${S.settings.startMonth}" data-ch="setting" data-f="startMonth"></label>
+    <label class="field">Gehalt kommt am (Tag)<input class="num" inputmode="numeric" value="${payday()}" data-ch="setting" data-f="payday" data-k="num"></label>
     <label class="field">Kontostand zu Beginn<input class="num" inputmode="decimal" value="${numIn(S.settings.openingBalance)}" data-ch="setting" data-f="openingBalance" data-k="num"></label>
     <label class="field">Auto-Übergabe<input type="date" value="${S.car.handoverDate}" data-ch="car" data-f="handoverDate"></label>
     <label class="field">km bei Übergabe<input class="num" inputmode="numeric" value="${S.car.handoverKm ?? ''}" data-ch="car" data-f="handoverKm" data-k="numnull"></label>
@@ -754,11 +768,11 @@ function dlgAmount(kind, id){
   formDlg((ICON[id] || '') + ' ' + esc(x.name), `<div class="t2">Geplant: <b>${eur(x.soll)}</b></div>
     <label class="field">Betrag<input class="num" id="fA" inputmode="decimal" placeholder="${numIn(x.soll)}" value="${x.ist != null ? numIn(x.ist) : ''}"></label>
     <div class="muted" style="font-size:13px">Mehrere Beträge? Einfach addieren: 55+62,40+48</div>
-    <label class="field">${kind === 'inc' ? 'Eingegangen am' : 'Abgebucht am'}<input type="date" id="fDt" value="${r0.dates?.[id] || defDate(ui.month)}"></label>
+    <label class="field">${kind === 'inc' ? 'Eingegangen am' : 'Abgebucht am'}<input type="date" id="fDt" value="${r0.dates?.[id] || (kind === 'inc' && id === 'inc-gehalt' ? incDate(ui.month) : defDate(ui.month))}"></label>
     ${x.ist != null ? '<button class="link" data-dlg="untick" style="justify-self:start">Haken entfernen</button>' : ''}`, 'Speichern', (d, act) => {
     const r = ensureRec(ui.month), key = kind === 'inc' ? 'incomeIst' : 'expenseIst';
     if (act === 'untick') { delete r[key][id]; delete r.dates[id]; return; }
-    r.dates[id] = d.querySelector('#fDt').value || defDate(ui.month);
+    r.dates[id] = d.querySelector('#fDt').value || (id === 'inc-gehalt' ? incDate(ui.month) : defDate(ui.month));
     if (act === 'plan') { r[key][id] = x.soll; return; }
     const v = parseAmount(d.querySelector('#fA').value);
     if (v == null) { r[key][id] = x.soll; return; }
@@ -787,8 +801,10 @@ function dlgSave(){ formDlg('🐷 Gespart / umgebucht', nameField('Wohin? z. B. 
   ensureRec(ui.month).savings.push({ id:uid('sv'), name:d.querySelector('#fN').value.trim() || 'Sparkonto', amount:a, date:dtVal(d) }); toast('Gespart ✓'); }); }
 function dlgOpening(){
   const c = calc(ui.month);
-  formDlg('Kontostand zu Monatsbeginn', `<input class="num" id="fA" inputmode="decimal" value="${numIn(c.opening)}">
-    <div class="muted" style="font-size:13px">Normalerweise automatisch aus dem Vormonat. Nur ändern, wenn dein Konto etwas anderes zeigt.</div>`, 'Speichern', (d, act) => {
+  const prevName = MN[+addYM(ui.month, -1).slice(5,7)-1], before = periodOf(ui.month).before;
+  formDlg('↪️ Übertrag aus ' + prevName, `<div class="t2">Wie viel war am <b>${dm(before)}</b> ${payday() > 1 ? '(Tag vor dem Gehalt) ' : ''}noch auf deinem Konto?</div>
+    <input class="num" id="fA" inputmode="decimal" placeholder="Kontostand in €" value="${c.r.opening != null || ui.month <= S.settings.startMonth ? numIn(c.opening) : ''}">
+    <div class="muted" style="font-size:13px">Schaust du in deine Banking-App: Kontostand am ${dm(before)} abends. ${rec(addYM(ui.month, -1)).closed ? 'Leer lassen oder „Automatisch“ = Ergebnis aus ' + prevName + ' (' + eur(calc(addYM(ui.month, -1)).closing) + ').' : ''}</div>`, 'Speichern', (d, act) => {
     if (act === 'auto') { ensureRec(ui.month).opening = null; return; }
     const v = parseAmount(d.querySelector('#fA').value); if (v != null && isNaN(v)) { toast('Ungültiger Betrag'); return false; }
     if (ui.month <= S.settings.startMonth) S.settings.openingBalance = v ?? 0; else ensureRec(ui.month).opening = v;
@@ -841,7 +857,7 @@ const A = {
   mNext: () => { ui.month = addYM(ui.month, 1); },
   tick: d => { const r = ensureRec(ui.month), key = d.k === 'inc' ? 'incomeIst' : 'expenseIst';
     if (r[key][d.id] != null) { delete r[key][d.id]; delete r.dates[d.id]; return; }
-    r.dates[d.id] = defDate(ui.month);
+    r.dates[d.id] = d.id === 'inc-gehalt' ? incDate(ui.month) : defDate(ui.month);
     r[key][d.id] = (d.k === 'inc' ? calc(ui.month).inc : calc(ui.month).exp).find(x => x.id === d.id).soll; },
   editAmt: d => { dlgAmount(d.k, d.id); return false; },
   dlgExtra: () => { dlgExtra(); return false; },
@@ -949,7 +965,7 @@ function buildICS(){
   const day = Math.min(28, Math.max(1, Math.round(S.settings.reminderDay || 28)));
   let first = TODAY.slice(0, 8) + String(day).padStart(2, '0'); if (first < TODAY) first = addMonths(first, 1);
   ev.push(['BEGIN:VEVENT', 'UID:monatscheck@mein-geld', `DTSTAMP:${stamp}`, `DTSTART:${icsDate(first)}T190000`, 'DURATION:PT15M', `RRULE:FREQ=MONTHLY;BYMONTHDAY=${day}`,
-    `SUMMARY:${icsEsc('💶 Monats-Check: Abbuchungen abhaken')}`, `DESCRIPTION:${icsEsc('Kontoauszug öffnen, Abbuchungen abhaken, Monat abschließen. Danach Backup speichern.' + link)}`,
+    `SUMMARY:${icsEsc(day === payday() - 1 ? '💶 Morgen kommt das Gehalt – Monat abschließen' : '💶 Monats-Check: Abbuchungen abhaken')}`, `DESCRIPTION:${icsEsc('Kontoauszug öffnen, Abbuchungen abhaken, Monat abschließen. Danach Backup speichern.' + link)}`,
     'BEGIN:VALARM', 'ACTION:DISPLAY', 'TRIGGER:PT0M', 'DESCRIPTION:Monats-Check', 'END:VALARM', 'END:VEVENT']);
   S.debts.filter(d => d.withdrawUntil && TODAY <= d.withdrawUntil).forEach(d => allDay('frist-' + d.id, d.withdrawUntil, '⏳ Widerrufsfrist endet: ' + d.name, 'Letzter Tag für den Widerruf.', ['-P1DT15H', '-PT15H']));
   S.car.items.forEach(i => {
